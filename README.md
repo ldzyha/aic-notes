@@ -83,12 +83,29 @@ extension host opens `test-fixtures/`, a workspace exercising every feature.
   `.env.note.md` under `.env`.
 - **Editor** (open `kitchen-sink.note.md`): frontmatter renders as a props
   table (click → raw YAML); markers around `**bold**` brighten when the
-  cursor touches them, with zero glyph shift; the table renders as a grid
-  (cursor inside → raw pipes); checkboxes toggle on click and persist;
-  Enter inside a list continues it (ordered lists renumber); the `js` fence
-  gets syntax colors after its chunk loads; the mermaid fence renders an SVG
-  in place (click the diagram → edit the source; a broken diagram shows a
-  warning marker whose tooltip carries the parse error).
+  cursor touches them, with zero glyph shift; headings get accent color +
+  per-level size with NO double-coloring from the base highlight style;
+  the link tooltip appears when the cursor sits in a link (open/edit/unlink;
+  local vs external colored apart); the table renders as a grid (cursor
+  inside → raw pipes); checkboxes toggle on click and persist; Enter inside
+  a list continues it (ordered lists renumber), Space on the marker toggles
+  the box; the `js` fence gets syntax colors after its chunk loads; the
+  mermaid fence renders an SVG in place (click the diagram → edit the
+  source; a broken diagram shows a warning marker whose tooltip carries the
+  parse error).
+- **Every .md**: a plain `README.md` opens in the AIC editor with the same
+  render; right-click tab → Reopen Editor With → Text Editor restores
+  native per file; **AIC Notes: Use Native Editor for Plain Markdown**
+  flips the default for `*.md` while `*.note.md` stays on the AIC editor.
+- **Mermaid preview**: caret into a ```mermaid fence → the preview panel
+  opens beside WITHOUT stealing focus; typing re-renders after ~300ms
+  (no blanking — the SVG swaps in place); caret to a second fence → the
+  panel adopts it immediately; caret out of all fences → the panel shows
+  "no mermaid fence at the caret" but stays open; ✕ the panel, then move
+  within the same fence → it stays closed; leave and re-enter a fence → it
+  reopens; break the diagram → a structured error card (code + detail);
+  the ↗ float button (or dragging the tab out) moves it to a separate OS
+  window and live updates keep flowing there.
 - **Sync**: type in the editor → tab dirties → `ctrl+s` saves; run
   `git checkout -- <note>` while it is open → content updates without an
   echo loop; `ctrl+z` inside the editor undoes through VS Code's stack.
