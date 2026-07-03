@@ -15,13 +15,13 @@ Two things, carried over from the [aic](https://github.com/ldzyha) editor:
    - global note: `~/.config/aic/note.md` (cross-project)
    Every note opens with a YAML props header (`title/level/scope/status/
    updated/created/agent`). Notes are byte-compatible with aic.
-2. **The aic markdown editor** — a live-styled CodeMirror 6 editor (no
-   preview pane): markers dim at rest and brighten near the cursor (the
-   "reveal rule", zero layout shift), live table grids, a frontmatter props
-   table, real checkboxes, list continuation/renumbering on Enter, link
-   tooltip, nested fence highlighting (lazy per-language chunks), and mermaid
-   diagrams rendered in place (lazy chunk). Colors ride the active VS Code
-   theme.
+2. **The note editor** — the default editor for `*.note.md` ONLY (owner
+   2026-07-03: regular markdown stays fully native VS Code). Deliberately
+   minimal: plain text editing with basic syntax colors, enhanced by exactly
+   three aic widgets — the live table grid, the frontmatter props table, and
+   mermaid diagrams rendered in place (lazy chunk). Cursor inside a rendered
+   block reveals its raw source for editing; arrow keys enter blocks. Colors
+   ride the active VS Code theme.
 
 ## Usage
 
@@ -41,18 +41,11 @@ Two things, carried over from the [aic](https://github.com/ldzyha) editor:
 - **Templates** — fresh notes use the built-in level templates; a project can
   override them in `.aic/templates/{file-note,folder-note,project-note}.md`
   (must contain at least one `{{token}}`).
-- **Markdown editor** — the default editor for all `*.md` (deliberate owner
-  choice). Escape hatch: right-click the tab → **Reopen Editor With… → Text
-  Editor** (per-file), or remove the `workbench.editorAssociations` /
-  customEditors default by uninstalling. Inside the editor: `ctrl+f` is the
+- **Note editor** — default for `*.note.md` only; any other markdown opens
+  in the native VS Code editor. Escape hatch per file: right-click the tab →
+  **Reopen Editor With… → Text Editor**. Inside the editor: `ctrl+f` is the
   CM search panel (the VS Code find widget can't reach webviews); undo/redo
-  route through VS Code's document stack; `ctrl/cmd+click` a `[[wiki link]]`
-  to open the referenced note.
-
-Tradeoff of the all-`*.md` default: inside the custom editor there is no
-Copilot/IntelliSense/outline/breadcrumbs and other markdown extensions don't
-run. That is the price of the aic editing experience; "Reopen Editor With…"
-is one keystroke away.
+  route through VS Code's document stack.
 
 ## Build & install
 

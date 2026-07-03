@@ -17,6 +17,7 @@ const host = {
   target: "node20",
   external: ["vscode"],
   sourcemap: true,
+  minify: true,
   logLevel: "info",
 };
 
@@ -31,6 +32,7 @@ const webview = {
   chunkNames: "chunks/[name]-[hash]",
   sourcemap: true,
   loader: { ".css": "text" },
+  minify: true,
   logLevel: "info",
 };
 
