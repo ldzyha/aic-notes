@@ -11,6 +11,27 @@ export function Icon(name) {
   return span;
 }
 
+// stand-in for aic's ErrorState card — used by the mermaid preview's "float"
+// render context (the in-editor widget keeps its one-line marker instead)
+export function ErrorCard({ error, detail, fix }) {
+  const card = document.createElement("div");
+  card.className = "aicn-error-card";
+  const head = document.createElement("div");
+  head.className = "aicn-error-head";
+  head.append(Icon("warn"), ` ${error}`);
+  const body = document.createElement("div");
+  body.className = "aicn-error-detail";
+  body.textContent = detail ?? "";
+  card.append(head, body);
+  for (const step of fix ?? []) {
+    const line = document.createElement("div");
+    line.className = "aicn-error-fix";
+    line.textContent = `fix: ${step}`;
+    card.append(line);
+  }
+  return card;
+}
+
 export function IconButton({ icon, label, onClick }) {
   const btn = document.createElement("button");
   btn.type = "button";

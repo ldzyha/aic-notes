@@ -17,14 +17,7 @@
 
 import * as vscode from "vscode";
 import { formatError } from "../errors.js";
-
-function nonce() {
-  return Array.from({ length: 32 }, () =>
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".charAt(
-      Math.floor(Math.random() * 62),
-    ),
-  ).join("");
-}
+import { webviewHtml } from "./webview-html.js";
 
 // [[target]] → note path candidates, aic LINK_RE semantics (sync.js:913):
 // a *.md target is used as-is, anything else gets `.note.md`; tried both
@@ -50,10 +43,10 @@ async function resolveWikiTarget(folder, fromRelPath, target) {
 }
 
 export class MarkdownEditorProvider {
-  static register(context) {
+  static register(context, preview) {
     return vscode.window.registerCustomEditorProvider(
       "aicNotes.markdown",
-      new MarkdownEditorProvider(context),
+      new MarkdownEditorProvider(context, preview),
       {
         webviewOptions: { retainContextWhenHidden: true },
         supportsMultipleEditorsPerDocument: false,
@@ -61,8 +54,9 @@ export class MarkdownEditorProvider {
     );
   }
 
-  constructor(context) {
+  constructor(context, preview) {
     this.context = context;
+    this.preview = preview; // MermaidPreviewManager
   }
 
   async resolveCustomTextEditor(document, webviewPanel) {
@@ -168,11 +162,20 @@ export class MarkdownEditorProvider {
     webviewPanel.onDidDispose(() => {
       changeSub.dispose();
       messageSub.dispose();
+      this.preview?.handleEditorClosed(relativePath);
     });
   }
 
   async _routeBus(msg, document, folder, relativePath) {
     const { topic, payload } = msg;
+    if (topic === "mermaid.preview") {
+      this.preview?.update({ source: String(payload?.source ?? ""), origin: relativePath });
+      return;
+    }
+    if (topic === "mermaid.preview.close") {
+      this.preview?.close();
+      return;
+    }
     if (topic === "link.external") {
       const url = String(payload?.url ?? "");
       if (!/^(?:https?:|mailto:|tel:|vscode:)/i.test(url)) {
@@ -214,22 +217,6 @@ export class MarkdownEditorProvider {
   }
 
   _html(webview, distRoot) {
-    const n = nonce();
-    const mainUri = webview.asWebviewUri(vscode.Uri.joinPath(distRoot, "main.js"));
-    // style-src needs 'unsafe-inline': CodeMirror injects its style modules at
-    // runtime and the vendored aic CSS is inlined by main.js (documented
-    // exception; script-src stays nonce + resource-origin for the lazy chunks)
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource}; script-src 'nonce-${n}' ${webview.cspSource};">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body>
-<div id="editor"></div>
-<script type="module" nonce="${n}" src="${mainUri}"></script>
-</body>
-</html>`;
+    return webviewHtml(webview, distRoot, "main.js", '<div id="editor"></div>');
   }
 }

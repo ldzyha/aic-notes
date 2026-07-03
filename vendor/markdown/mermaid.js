@@ -2,16 +2,18 @@
 // Kept: the in-place widget path — mermaidFences, MermaidWidget, renderInto,
 // makeMermaidExtension (StateField + scroll-refresh ViewPlugin), the lazy
 // mermaid chunk with the structured mermaid_bundle_missing error. Stripped:
-// the visual builder profiles/console, the float preview, the AI
-// error-explain (all coupled to aic's host.ui.console / host.providers). The
-// widget's error marker carries the parse detail in its title (aic shows it
-// in the preview float, which does not exist here). Theme picks dark/light
-// off the VS Code body class instead of a fixed "dark".
+// the visual builder profiles/console and the AI error-explain (coupled to
+// aic's host.ui.console / host.providers). renderInto keeps the upstream
+// context param: "widget" = in-editor block (one-line error marker, detail
+// in title), "float" = the preview panel (structured error card) — consumed
+// by src/webview/preview.js; the caret→preview state machine lives in
+// src/webview/mermaid-preview.js. Theme picks dark/light off the VS Code
+// body class instead of a fixed "dark".
 
 import { Decoration, EditorView, WidgetType, ViewPlugin } from "@codemirror/view";
 import { StateField, StateEffect } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
-import { Icon } from "./components-stub.js";
+import { Icon, ErrorCard } from "./components-stub.js";
 
 let mermaidPromise = null;
 let renderSeq = 0;
@@ -49,7 +51,10 @@ function loadMermaid() {
   return mermaidPromise;
 }
 
-async function renderInto(el, source) {
+// context "widget" = the in-editor block (one-line error marker, detail in
+// title); "float" = the preview panel (full structured error card) — the
+// upstream aic signature, restored for the preview
+export async function renderInto(el, source, context = "widget") {
   const id = `aicn-mmd-${renderSeq++}`;
   const token = (el.__rseq = (el.__rseq || 0) + 1); // newest-render-wins guard
   // keep the current diagram visible while the next one renders, then SWAP
@@ -83,6 +88,10 @@ async function renderInto(el, source) {
       detail: String(e?.message ?? e),
       fix: ["Put the cursor inside the fence to edit the source"],
     };
+    if (context === "float") {
+      el.replaceChildren(ErrorCard(structured));
+      return false;
+    }
     const marker = document.createElement("span");
     marker.className = "cm-md-mermaid-broken";
     marker.append(Icon("warn"), ` mermaid: ${structured.error} — click to edit the source`);

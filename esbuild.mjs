@@ -22,7 +22,9 @@ const host = {
 };
 
 const webview = {
-  entryPoints: ["src/webview/main.js"],
+  // main.js = the editor; preview.js = the mermaid preview panel — splitting
+  // shares the mermaid chunk between them
+  entryPoints: ["src/webview/main.js", "src/webview/preview.js"],
   outdir: "dist/webview",
   bundle: true,
   format: "esm",
