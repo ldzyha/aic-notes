@@ -65,6 +65,23 @@ html, body {
 .cm-searchMatch { background: var(--vscode-editor-findMatchHighlightBackground, rgba(234, 92, 0, 0.33)); }
 .cm-searchMatch-selected { background: var(--vscode-editor-findMatchBackground, rgba(255, 223, 0, 0.4)); }
 
+/* Handler classes must beat defaultHighlightStyle on markdown STRUCTURE
+   colors: both are plain single classes and CM injects the highlight rules
+   after ours, so bump specificity on everything that sets a color. (The
+   highlight style stays installed for nested fenced-code tokens.) */
+.cm-editor .cm-content .cm-md-marker { color: var(--marker); }
+.cm-editor .cm-content .cm-md-marker-revealed { color: var(--marker); }
+.cm-editor .cm-content .cm-md-h { color: var(--accent); }
+.cm-editor .cm-content .cm-md-h6 { color: var(--muted); }
+.cm-editor .cm-content .cm-md-listmark { color: var(--accent); }
+.cm-editor .cm-content .cm-md-italic { color: color-mix(in srgb, var(--fg) 82%, var(--accent)); }
+.cm-editor .cm-content .cm-md-code { color: color-mix(in srgb, var(--fg) 80%, var(--muted)); }
+.cm-editor .cm-content .cm-md-link-local { color: var(--accent); }
+.cm-editor .cm-content .cm-md-link-external { color: var(--info); }
+.cm-editor .cm-content .cm-md-quote { color: var(--muted); }
+.cm-editor .cm-content .cm-md-strike { color: var(--muted); }
+.cm-editor .cm-content .cm-md-hr { color: var(--marker); }
+
 /* tooltip + stub components */
 .cm-tooltip {
   background: var(--vscode-editorWidget-background);
