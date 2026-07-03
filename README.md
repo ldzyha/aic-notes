@@ -59,12 +59,13 @@ Two things, carried over from the [aic](https://github.com/ldzyha) editor:
 ## Build & install
 
 ```sh
-npm install
-npm run build        # dist/extension.js + dist/webview/* (lazy chunks)
-npm test             # node:test unit tests (paths/frontmatter/templates)
-npm run package      # aic-notes-<version>.vsix
-code --install-extension aic-notes-*.vsix
+npm ci
+npm run build        # dist/extension.cjs + dist/webview/* (lazy chunks)
+npm test             # node:test unit tests (paths/frontmatter/templates/preview-tracker)
+npm run install:vsix # build → aic-notes-<version>.vsix → code --install-extension
 ```
+
+Then reload the VS Code window (**Developer: Reload Window**).
 
 Development: open this folder in VS Code, F5 ("Run Extension") — the
 extension host opens `test-fixtures/`, a workspace exercising every feature.
