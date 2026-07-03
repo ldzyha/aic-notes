@@ -2,7 +2,7 @@
   "name": "aic-notes",
   "displayName": "AIC Notes",
   "description": "Sidecar *.note.md notes (file / folder / project / global levels) with a notes explorer, quick note creation, and an aic-style live markdown editor.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "ldzyha",
   "license": "MIT",
   "private": true,
@@ -14,7 +14,7 @@
     "Notebooks",
     "Other"
   ],
-  "main": "./dist/extension.js",
+  "main": "./dist/extension.cjs",
   "scripts": {
     "build": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",

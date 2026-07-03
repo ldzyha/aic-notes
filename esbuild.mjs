@@ -8,7 +8,9 @@ const watch = process.argv.includes("--watch");
 
 const host = {
   entryPoints: ["src/extension.js"],
-  outfile: "dist/extension.js",
+  // .cjs: package.json carries "type":"module" (ESM sources/tests), but the
+  // extension host require()s the bundle — a .js would be misread as ESM
+  outfile: "dist/extension.cjs",
   bundle: true,
   format: "cjs",
   platform: "node",
