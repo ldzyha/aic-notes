@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "module": "esnext",
+    "target": "es2022",
+    "moduleResolution": "bundler",
+    "checkJs": true,
+    "strict": false,
+    "noEmit": true,
+    "types": ["@types/vscode", "node"]
+  },
+  "include": ["src/**/*.js", "vendor/**/*.js", "test/**/*.js"]
+}

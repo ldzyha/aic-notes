@@ -1,0 +1,10 @@
+.vscode/**
+.gitignore
+src/**
+vendor/**
+test/**
+test-fixtures/**
+esbuild.mjs
+jsconfig.json
+package-lock.json
+**/*.map

@@ -1,0 +1,197 @@
+{
+  "name": "aic-notes",
+  "displayName": "AIC Notes",
+  "description": "Sidecar *.note.md notes (file / folder / project / global levels) with a notes explorer, quick note creation, and an aic-style live markdown editor.",
+  "version": "0.1.0",
+  "publisher": "ldzyha",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Notebooks",
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "test": "node --test \"test/*.test.js\"",
+    "package": "npm run build && vsce package"
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "aicNotes",
+          "title": "Notes",
+          "icon": "media/notes.svg"
+        }
+      ]
+    },
+    "views": {
+      "aicNotes": [
+        {
+          "id": "aicNotes.tree",
+          "name": "Notes",
+          "icon": "media/notes.svg"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "aicNotes.noteForCurrentFile",
+        "title": "Note for Current File",
+        "category": "AIC Notes",
+        "icon": "$(note)"
+      },
+      {
+        "command": "aicNotes.noteForExplorerItem",
+        "title": "AIC Notes: Create/Open Note",
+        "category": "AIC Notes"
+      },
+      {
+        "command": "aicNotes.openProjectNote",
+        "title": "Open Project Note",
+        "category": "AIC Notes"
+      },
+      {
+        "command": "aicNotes.openGlobalNote",
+        "title": "Open Global Note",
+        "category": "AIC Notes"
+      },
+      {
+        "command": "aicNotes.refreshTree",
+        "title": "Refresh",
+        "category": "AIC Notes",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "aicNotes.enableExplorerNesting",
+        "title": "Enable Explorer Nesting for Notes",
+        "category": "AIC Notes"
+      },
+      {
+        "command": "aicNotes.openTarget",
+        "title": "Open Target",
+        "category": "AIC Notes"
+      },
+      {
+        "command": "aicNotes.copyWikiLink",
+        "title": "Copy Wiki Link",
+        "category": "AIC Notes"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "aicNotes.noteForCurrentFile",
+        "key": "ctrl+alt+m",
+        "mac": "cmd+alt+m",
+        "when": "editorTextFocus || activeCustomEditorId == aicNotes.markdown"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "aicNotes.noteForCurrentFile",
+          "when": "resourceScheme == file",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "aicNotes.noteForExplorerItem",
+          "group": "2_workspace"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "aicNotes.noteForCurrentFile",
+          "when": "view == aicNotes.tree",
+          "group": "navigation@1"
+        },
+        {
+          "command": "aicNotes.refreshTree",
+          "when": "view == aicNotes.tree",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "aicNotes.openTarget",
+          "when": "view == aicNotes.tree && viewItem == note",
+          "group": "navigation@1"
+        },
+        {
+          "command": "aicNotes.copyWikiLink",
+          "when": "view == aicNotes.tree && viewItem =~ /note/",
+          "group": "1_copy@1"
+        }
+      ]
+    },
+    "customEditors": [
+      {
+        "viewType": "aicNotes.markdown",
+        "displayName": "AIC Markdown",
+        "selector": [
+          {
+            "filenamePattern": "*.md"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "configurationDefaults": {
+      "explorer.fileNesting.patterns": {
+        "*.js": "${capture}.note.md",
+        "*.mjs": "${capture}.note.md",
+        "*.cjs": "${capture}.note.md",
+        "*.ts": "${capture}.note.md",
+        "*.jsx": "${capture}.note.md",
+        "*.tsx": "${capture}.note.md",
+        "*.py": "${capture}.note.md",
+        "*.rs": "${capture}.note.md",
+        "*.go": "${capture}.note.md",
+        "*.java": "${capture}.note.md",
+        "*.rb": "${capture}.note.md",
+        "*.php": "${capture}.note.md",
+        "*.css": "${capture}.note.md",
+        "*.scss": "${capture}.note.md",
+        "*.html": "${capture}.note.md",
+        "*.isml": "${capture}.note.md",
+        "*.json": "${capture}.note.md",
+        "*.jsonc": "${capture}.note.md",
+        "*.toml": "${capture}.note.md",
+        "*.yml": "${capture}.note.md",
+        "*.yaml": "${capture}.note.md",
+        "*.md": "${capture}.note.md",
+        "*.sh": "${capture}.note.md",
+        "*.sql": "${capture}.note.md",
+        "*.xml": "${capture}.note.md",
+        "*.svg": "${capture}.note.md",
+        "*.txt": "${capture}.note.md",
+        "*.vue": "${capture}.note.md",
+        "*.svelte": "${capture}.note.md",
+        ".env": ".env.note.md",
+        ".gitignore": ".gitignore.note.md",
+        "Makefile": "Makefile.note.md",
+        "Dockerfile": "Dockerfile.note.md"
+      }
+    }
+  },
+  "devDependencies": {
+    "@codemirror/commands": "^6.10.3",
+    "@codemirror/language": "^6.12.3",
+    "@codemirror/search": "^6.5.8",
+    "@codemirror/state": "^6.6.0",
+    "@codemirror/view": "^6.43.1",
+    "@lezer/common": "^1.5.2",
+    "@lezer/highlight": "^1.2.3",
+    "@lezer/markdown": "^1.6.4",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.3.0",
+    "esbuild": "^0.28.0"
+  }
+}
