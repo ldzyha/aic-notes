@@ -183,6 +183,12 @@
   },
   "devDependencies": {
     "@codemirror/commands": "^6.10.3",
+    "@codemirror/lang-css": "^6.3.1",
+    "@codemirror/lang-html": "^6.4.11",
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/lang-python": "^6.2.1",
+    "@codemirror/lang-rust": "^6.0.2",
     "@codemirror/language": "^6.12.3",
     "@codemirror/search": "^6.5.8",
     "@codemirror/state": "^6.6.0",
@@ -192,6 +198,7 @@
     "@lezer/markdown": "^1.6.4",
     "@types/vscode": "^1.90.0",
     "@vscode/vsce": "^3.3.0",
-    "esbuild": "^0.28.0"
+    "esbuild": "^0.28.0",
+    "mermaid": "^11.16.0"
   }
 }

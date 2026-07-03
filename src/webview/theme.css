@@ -1,0 +1,88 @@
+/* Map aic's CSS variables onto the VS Code theme — colors are deliberately
+   system-driven (owner: "кольори не принципово, можуть бути системні"). */
+:root {
+  --fg: var(--vscode-editor-foreground);
+  --bg: var(--vscode-editor-background);
+  --marker: var(--vscode-editorLineNumber-foreground);
+  --accent: var(--vscode-textLink-foreground);
+  --info: var(--vscode-textLink-activeForeground);
+  --warn: var(--vscode-editorWarning-foreground, #cca700);
+  --chip: var(--vscode-textCodeBlock-background);
+  --muted: var(--vscode-descriptionForeground);
+  --border: var(--vscode-editorWidget-border, var(--vscode-panel-border));
+  --radius: 3px;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+#editor {
+  height: 100vh;
+}
+
+.cm-editor {
+  height: 100%;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: var(--vscode-editor-font-size, 14px);
+  background: var(--bg);
+  color: var(--fg);
+}
+.cm-editor .cm-content { caret-color: var(--vscode-editorCursor-foreground, var(--fg)); }
+.cm-editor .cm-cursor { border-left-color: var(--vscode-editorCursor-foreground, var(--fg)); }
+.cm-editor .cm-selectionBackground,
+.cm-editor.cm-focused .cm-selectionBackground {
+  background: var(--vscode-editor-selectionBackground) !important;
+}
+.cm-editor .cm-activeLine { background: transparent; }
+.cm-editor.cm-focused { outline: none; }
+.cm-scroller { line-height: 1.5; }
+
+/* CM panels (the @codemirror/search bar) on VS Code widget colors */
+.cm-panels {
+  background: var(--vscode-editorWidget-background);
+  color: var(--fg);
+  border-color: var(--border);
+}
+.cm-panels input, .cm-panels button, .cm-panels label {
+  font-family: var(--vscode-font-family);
+  color: var(--fg);
+}
+.cm-panels input {
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, var(--border));
+}
+.cm-panels button {
+  background: var(--vscode-button-secondaryBackground, var(--chip));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.cm-searchMatch { background: var(--vscode-editor-findMatchHighlightBackground, rgba(234, 92, 0, 0.33)); }
+.cm-searchMatch-selected { background: var(--vscode-editor-findMatchBackground, rgba(255, 223, 0, 0.4)); }
+
+/* tooltip + stub components */
+.cm-tooltip {
+  background: var(--vscode-editorWidget-background);
+  border: 1px solid var(--border);
+  color: var(--fg);
+}
+.aicn-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--fg);
+  padding: 0.1rem 0.4rem;
+  cursor: pointer;
+  font: inherit;
+}
+.aicn-iconbtn:hover { background: var(--chip); }
+.aicn-icon { color: var(--muted); }
+.cm-md-mermaid-loading { color: var(--muted); font-style: italic; }

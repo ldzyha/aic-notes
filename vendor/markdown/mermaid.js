@@ -1,0 +1,218 @@
+// ADAPTED from aic modules/markdown/web/src/mermaid.js (see PROVENANCE.md).
+// Kept: the in-place widget path — mermaidFences, MermaidWidget, renderInto,
+// makeMermaidExtension (StateField + scroll-refresh ViewPlugin), the lazy
+// mermaid chunk with the structured mermaid_bundle_missing error. Stripped:
+// the visual builder profiles/console, the float preview, the AI
+// error-explain (all coupled to aic's host.ui.console / host.providers). The
+// widget's error marker carries the parse detail in its title (aic shows it
+// in the preview float, which does not exist here). Theme picks dark/light
+// off the VS Code body class instead of a fixed "dark".
+
+import { Decoration, EditorView, WidgetType, ViewPlugin } from "@codemirror/view";
+import { StateField, StateEffect } from "@codemirror/state";
+import { syntaxTree } from "@codemirror/language";
+import { Icon } from "./components-stub.js";
+
+let mermaidPromise = null;
+let renderSeq = 0;
+
+function mermaidTheme() {
+  const cls = document.body?.classList;
+  if (cls?.contains("vscode-light")) return "default";
+  if (cls?.contains("vscode-high-contrast-light")) return "default";
+  return "dark";
+}
+
+function loadMermaid() {
+  mermaidPromise ??= import("mermaid")
+    .then((m) => {
+      const mermaid = m.default;
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme(),
+        securityLevel: "strict",
+        // never let mermaid inject its full-width error DOM into the page
+        suppressErrorRendering: true,
+      });
+      return mermaid;
+    })
+    .catch((e) => {
+      mermaidPromise = null;
+      throw Object.assign(new Error("mermaid_bundle_missing"), {
+        structured: {
+          error: "mermaid_bundle_missing",
+          detail: `the mermaid chunk failed to load: ${e}`,
+          fix: ["Rebuild the extension: npm run build", "then reload the window"],
+        },
+      });
+    });
+  return mermaidPromise;
+}
+
+async function renderInto(el, source) {
+  const id = `aicn-mmd-${renderSeq++}`;
+  const token = (el.__rseq = (el.__rseq || 0) + 1); // newest-render-wins guard
+  // keep the current diagram visible while the next one renders, then SWAP
+  // the <svg> in place; the loading chip shows only on first paint
+  if (!el.querySelector("svg")) {
+    el.innerHTML = "";
+    const loading = document.createElement("span");
+    loading.className = "cm-md-mermaid-loading";
+    loading.textContent = "loading mermaid…";
+    el.appendChild(loading);
+  }
+  try {
+    const mermaid = await loadMermaid();
+    const { svg } = await mermaid.render(id, source);
+    if (el.__rseq !== token) return true; // superseded by a newer render
+    const holder = document.createElement("div");
+    holder.innerHTML = svg;
+    const next = holder.firstElementChild;
+    const cur = el.querySelector("svg");
+    if (cur && next) cur.replaceWith(next);
+    else el.replaceChildren(next || holder);
+    return true;
+  } catch (e) {
+    // belt to suppressErrorRendering's suspenders: drop any orphan DOM
+    // mermaid attached outside our element
+    document.getElementById(id)?.remove();
+    document.getElementById(`d${id}`)?.remove();
+    if (el.__rseq !== token) return false;
+    const structured = e.structured ?? {
+      error: "mermaid_parse_error",
+      detail: String(e?.message ?? e),
+      fix: ["Put the cursor inside the fence to edit the source"],
+    };
+    const marker = document.createElement("span");
+    marker.className = "cm-md-mermaid-broken";
+    marker.append(Icon("warn"), ` mermaid: ${structured.error} — click to edit the source`);
+    marker.title = structured.detail;
+    el.replaceChildren(marker);
+    return false;
+  }
+}
+
+class MermaidWidget extends WidgetType {
+  constructor(source) {
+    super();
+    this.source = source;
+  }
+  eq(other) {
+    return other.source === this.source;
+  }
+  toDOM(view) {
+    const el = document.createElement("div");
+    el.className = "cm-md-mermaid";
+    // editing is in the CODE EDITOR: click / Enter / Space move the cursor
+    // INTO the fence, which swaps this preview widget back for the editable
+    // ```mermaid source. No separate edit dialog.
+    el.tabIndex = 0;
+    el.setAttribute("role", "button");
+    el.setAttribute("aria-label", "mermaid diagram — activate to edit its source");
+    el.title = "edit the source";
+    const revealSource = () => {
+      const pos = view.posAtDOM(el);
+      const fence = mermaidFences(view.state).find((f) => pos >= f.from && pos <= f.to);
+      view.dispatch({ selection: { anchor: fence ? fence.textFrom : pos } });
+      view.focus();
+    };
+    el.onclick = revealSource;
+    el.onkeydown = (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        revealSource();
+      }
+    };
+    renderInto(el, this.source);
+    return el;
+  }
+  ignoreEvent() {
+    return true; // the widget owns its activation — CM must not move the
+    // cursor into the fence (that would swap the widget for the source)
+  }
+}
+
+export function mermaidFences(state) {
+  const fences = [];
+  syntaxTree(state).iterate({
+    enter(nodeRef) {
+      if (nodeRef.name !== "FencedCode") return;
+      const info = nodeRef.node.getChild("CodeInfo");
+      if (!info || state.sliceDoc(info.from, info.to).trim().toLowerCase() !== "mermaid") return;
+      const text = nodeRef.node.getChild("CodeText");
+      // an empty fence has no CodeText — the writable point sits right
+      // after the opening line
+      const afterOpen = Math.min(state.doc.lineAt(nodeRef.from).to + 1, nodeRef.to);
+      fences.push({
+        from: nodeRef.from,
+        to: nodeRef.to,
+        textFrom: text ? text.from : afterOpen,
+        textTo: text ? text.to : afterOpen,
+        source: text ? state.sliceDoc(text.from, text.to) : "",
+      });
+    },
+  });
+  return fences;
+}
+
+// rebuild trigger for SCROLL. CM6 lazy-parses the syntax tree to the viewport,
+// so a mermaid fence scrolled into view isn't in mermaidFences() yet — and the
+// StateField below only rebuilds on doc/selection changes. The ViewPlugin
+// fires this effect on viewport changes so off-screen diagrams render on
+// scroll, not only on click.
+const refreshMermaid = StateEffect.define();
+
+export function makeMermaidExtension() {
+  // Block widgets live in a StateField mapped through changes (pinned:
+  // CM6 requires block decorations outside ViewPlugins).
+  const field = StateField.define({
+    create(state) {
+      return build(state);
+    },
+    update(value, tr) {
+      if (tr.docChanged || tr.selection || tr.effects.some((e) => e.is(refreshMermaid))) {
+        return build(tr.state);
+      }
+      return value;
+    },
+    provide: (f) => EditorView.decorations.from(f),
+  });
+
+  function build(state) {
+    const head = state.selection.main.head;
+    const decorations = [];
+    for (const fence of mermaidFences(state)) {
+      const inside = head >= fence.from && head <= fence.to;
+      if (!inside && fence.source.trim()) {
+        decorations.push(
+          Decoration.replace({
+            widget: new MermaidWidget(fence.source),
+            block: true,
+          }).range(fence.from, fence.to),
+        );
+      }
+    }
+    return Decoration.set(decorations, true);
+  }
+
+  // re-decorate when the viewport scrolls so newly-visible (newly-parsed)
+  // fences render without a click. Effect-only transaction (no doc/viewport
+  // change) so it can't loop; dispatched after the update settles.
+  const onScroll = ViewPlugin.fromClass(
+    class {
+      update(u) {
+        if (u.viewportChanged && !u.docChanged && !u.selectionSet) {
+          Promise.resolve().then(() => {
+            try {
+              u.view.dispatch({ effects: refreshMermaid.of(null) });
+            } catch {
+              /* view torn down */
+            }
+          });
+        }
+      }
+    },
+  );
+
+  return [field, onScroll];
+}

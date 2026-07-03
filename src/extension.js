@@ -14,6 +14,7 @@ import {
 } from "./notes/create.js";
 import { enableExplorerNesting, hintIfShadowed } from "./notes/nesting.js";
 import { resolveTarget } from "./notes/target.js";
+import { MarkdownEditorProvider } from "./editor/provider.js";
 import { structuredError } from "./errors.js";
 
 export function activate(context) {
@@ -21,6 +22,7 @@ export function activate(context) {
   context.subscriptions.push(
     tree,
     vscode.window.registerTreeDataProvider("aicNotes.tree", tree),
+    MarkdownEditorProvider.register(context),
 
     vscode.commands.registerCommand("aicNotes.noteForCurrentFile", commandHandler(noteForCurrentFile)),
     vscode.commands.registerCommand("aicNotes.noteForExplorerItem", commandHandler(noteForExplorerItem)),

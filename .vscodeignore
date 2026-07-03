@@ -1,5 +1,7 @@
 .vscode/**
 .gitignore
+node_modules/**
+.npm-cache/**
 src/**
 vendor/**
 test/**
