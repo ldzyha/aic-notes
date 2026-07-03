@@ -15,13 +15,22 @@ Two things, carried over from the [aic](https://github.com/ldzyha) editor:
    - global note: `~/.config/aic/note.md` (cross-project)
    Every note opens with a YAML props header (`title/level/scope/status/
    updated/created/agent`). Notes are byte-compatible with aic.
-2. **The note editor** — the default editor for `*.note.md` ONLY (owner
-   2026-07-03: regular markdown stays fully native VS Code). Deliberately
-   minimal: plain text editing with basic syntax colors, enhanced by exactly
-   three aic widgets — the live table grid, the frontmatter props table, and
-   mermaid diagrams rendered in place (lazy chunk). Cursor inside a rendered
+2. **The markdown editor** — the default editor for every `*.md` file
+   (notes included), replicating aic's markdown session: in-place reveal-rule
+   styling (headings, bold/italic/strikethrough, inline code, blockquote/hr),
+   clickable task checkboxes, list continue/renumber, links with an
+   open/edit/unlink tooltip, nested fenced-code highlighting (lazy chunks),
+   plus the three block widgets — the live table grid, the frontmatter props
+   table, and mermaid diagrams rendered in place. Cursor inside a rendered
    block reveals its raw source for editing; arrow keys enter blocks. Colors
-   ride the active VS Code theme.
+   ride the active VS Code theme. A live mermaid preview panel follows the
+   caret into ```mermaid fences and can float to its own OS window.
+
+   Escape hatches: per file, right-click the tab → **Reopen Editor With… →
+   Text Editor**; globally, run **AIC Notes: Use Native Editor for Plain
+   Markdown** (writes `workbench.editorAssociations` `"*.md": "default"` to
+   user settings, keeping `*.note.md` on the AIC editor). Note the built-in
+   markdown preview/lint features don't operate inside a custom editor.
 
 ## Usage
 
@@ -41,11 +50,11 @@ Two things, carried over from the [aic](https://github.com/ldzyha) editor:
 - **Templates** — fresh notes use the built-in level templates; a project can
   override them in `.aic/templates/{file-note,folder-note,project-note}.md`
   (must contain at least one `{{token}}`).
-- **Note editor** — default for `*.note.md` only; any other markdown opens
-  in the native VS Code editor. Escape hatch per file: right-click the tab →
-  **Reopen Editor With… → Text Editor**. Inside the editor: `ctrl+f` is the
-  CM search panel (the VS Code find widget can't reach webviews); undo/redo
-  route through VS Code's document stack.
+- **Markdown editor** — default for all `*.md`. Escape hatch per file:
+  right-click the tab → **Reopen Editor With… → Text Editor**; globally:
+  **AIC Notes: Use Native Editor for Plain Markdown**. Inside the editor:
+  `ctrl+f` is the CM search panel (the VS Code find widget can't reach
+  webviews); undo/redo route through VS Code's document stack.
 
 ## Build & install
 

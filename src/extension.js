@@ -53,6 +53,25 @@ export function activate(context) {
       }),
     ),
     vscode.commands.registerCommand("aicNotes.openNote", commandHandler(openNoteDocument)),
+
+    // Escape hatch for the *.md default claim: a static customEditors selector
+    // cannot be toggled by a setting, so this writes the user-level editor
+    // association instead — plain markdown back to native, notes stay ours.
+    vscode.commands.registerCommand(
+      "aicNotes.useNativeForMarkdown",
+      commandHandler(async () => {
+        const cfg = vscode.workspace.getConfiguration("workbench");
+        const current = cfg.get("editorAssociations") ?? {};
+        await cfg.update(
+          "editorAssociations",
+          { ...current, "*.md": "default", "*.note.md": "aicNotes.markdown" },
+          vscode.ConfigurationTarget.Global,
+        );
+        vscode.window.showInformationMessage(
+          "AIC Notes: plain *.md now opens in the native editor; *.note.md keeps the AIC editor. Undo via workbench.editorAssociations in user settings.",
+        );
+      }),
+    ),
   );
 
   hintIfShadowed(context);

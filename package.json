@@ -15,6 +15,16 @@
     "Other"
   ],
   "main": "./dist/extension.cjs",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true,
+      "description": "Renders and edits markdown only; no workspace code is executed."
+    },
+    "virtualWorkspaces": {
+      "supported": "limited",
+      "description": "Notes tree and editor use workspace.fs; wiki-link resolution needs stat support on the virtual filesystem."
+    }
+  },
   "scripts": {
     "build": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
@@ -82,6 +92,11 @@
         "command": "aicNotes.copyWikiLink",
         "title": "Copy Wiki Link",
         "category": "AIC Notes"
+      },
+      {
+        "command": "aicNotes.useNativeForMarkdown",
+        "title": "Use Native Editor for Plain Markdown",
+        "category": "AIC Notes"
       }
     ],
     "keybindings": [
@@ -137,7 +152,7 @@
         "displayName": "AIC Markdown",
         "selector": [
           {
-            "filenamePattern": "*.note.md"
+            "filenamePattern": "*.md"
           }
         ],
         "priority": "default"
