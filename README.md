@@ -113,6 +113,11 @@ extension host opens `test-fixtures/`, a workspace exercising every feature.
   render; right-click tab → Reopen Editor With → Text Editor restores
   native per file; **AIC Notes: Use Native Editor for Plain Markdown**
   flips the default for `*.md` while `*.note.md` stays on the AIC editor.
+- **Diagrams**: rendered mermaid spans the FULL editor width (escaping the
+  76ch text column); hovering shows a − / + / ↺ zoom bar (50–400%, wide
+  diagrams pan by horizontal scroll); the tree warn icon appears only on
+  true orphans — a note whose frontmatter claims `file-note`/`folder-note`
+  but whose target is gone; free-standing notes (no frontmatter) show plain.
 - **Mermaid editing preview**: caret into a ```mermaid fence → the raw
   source reveals AND the live diagram renders directly below the fence;
   typing re-renders after ~300ms (no blanking — the SVG swaps in place);

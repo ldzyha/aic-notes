@@ -184,14 +184,18 @@ export class NotesTree {
       element.forcedLevel ??
       level ??
       (kind === "folder" ? "folder-note" : kind === "file" ? "file-note" : undefined);
+    // "orphan" (warn icon) only when the note CLAIMS a target via its level
+    // and that target is gone. A free-standing note (ticket/topic notes have
+    // no frontmatter, or a non file/folder level) is legitimate — plain icon
+    // (owner 2026-07-06: ts-* ticket notes wrongly warned).
+    const claimsTarget = level === "file-note" || level === "folder-note";
+    const orphan = kind === null && !element.forcedLevel && claimsTarget;
     const item = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.None);
     item.resourceUri = element.uri;
-    item.description = [badge, kind === null && !element.forcedLevel ? "orphan" : null]
-      .filter(Boolean)
-      .join(" · ");
+    item.description = [badge, orphan ? "orphan" : null].filter(Boolean).join(" · ");
     item.iconPath = !visible
       ? new vscode.ThemeIcon("lock")
-      : kind === null && !element.forcedLevel
+      : orphan
         ? new vscode.ThemeIcon("warning")
         : new vscode.ThemeIcon("note");
     item.tooltip = element.relPath;

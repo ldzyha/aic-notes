@@ -104,6 +104,46 @@ export async function renderInto(el, source, context = "widget") {
   }
 }
 
+// zoom bar (owner 2026-07-06: diagrams full width + zoomable). Layout-only
+// zoom — the svg's CSS width rides --mmd-zoom, container pans via
+// overflow-x — no CSS transform (Crostini GPU rule). Lives on the WRAPPER,
+// outside renderInto's replaceChildren target, so it survives re-renders.
+// Buttons stop propagation so they never trigger the widget's reveal click.
+function attachZoom(el) {
+  let zoom = 100;
+  const bar = document.createElement("div");
+  bar.className = "cm-md-mermaid-zoom";
+  const apply = () => el.style.setProperty("--mmd-zoom", `${zoom}%`);
+  const btn = (label, title, fn) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = label;
+    b.title = title;
+    b.onmousedown = (event) => event.preventDefault(); // keep editor focus
+    b.onclick = (event) => {
+      event.stopPropagation();
+      fn();
+      apply();
+    };
+    bar.appendChild(b);
+  };
+  btn("−", "zoom out", () => (zoom = Math.max(50, zoom - 25)));
+  btn("+", "zoom in", () => (zoom = Math.min(400, zoom + 25)));
+  btn("↺", "reset zoom", () => (zoom = 100));
+  el.appendChild(bar);
+}
+
+// wrapper = .cm-md-mermaid (zoom bar + var); inner body = renderInto target
+function diagramShell(className) {
+  const el = document.createElement("div");
+  el.className = className;
+  const body = document.createElement("div");
+  body.className = "cm-md-mermaid-body";
+  el.appendChild(body);
+  attachZoom(el);
+  return { el, body };
+}
+
 class MermaidWidget extends WidgetType {
   constructor(source) {
     super();
@@ -113,8 +153,7 @@ class MermaidWidget extends WidgetType {
     return other.source === this.source;
   }
   toDOM(view) {
-    const el = document.createElement("div");
-    el.className = "cm-md-mermaid";
+    const { el, body } = diagramShell("cm-md-mermaid");
     // editing is in the CODE EDITOR: click / Enter / Space move the cursor
     // INTO the fence, which swaps this preview widget back for the editable
     // ```mermaid source. No separate edit dialog.
@@ -135,7 +174,7 @@ class MermaidWidget extends WidgetType {
         revealSource();
       }
     };
-    renderInto(el, this.source);
+    renderInto(body, this.source);
     return el;
   }
   ignoreEvent() {
@@ -159,15 +198,17 @@ class EditingPreviewWidget extends WidgetType {
     return other.source === this.source;
   }
   toDOM() {
-    const el = document.createElement("div");
-    el.className = "cm-md-mermaid cm-md-mermaid-editing";
+    const { el, body } = diagramShell("cm-md-mermaid cm-md-mermaid-editing");
     el.setAttribute("aria-label", "live mermaid preview");
-    renderInto(el, this.source, "float");
+    renderInto(body, this.source, "float");
     return el;
   }
   updateDOM(el) {
     clearTimeout(el.__aicnTimer);
-    el.__aicnTimer = setTimeout(() => renderInto(el, this.source, "float"), 300);
+    el.__aicnTimer = setTimeout(() => {
+      const body = el.querySelector(".cm-md-mermaid-body") ?? el;
+      renderInto(body, this.source, "float");
+    }, 300);
     return true;
   }
   destroy(el) {

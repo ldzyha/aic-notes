@@ -164,13 +164,50 @@ html, body {
 .aicn-icon { color: var(--muted); }
 .cm-md-mermaid-loading { color: var(--muted); font-style: italic; }
 
+/* diagrams: FULL-BLEED (span the whole editor pane, escaping the centered
+   76ch column) and zoomable. Zoom is layout-only — the svg's width rides
+   --mmd-zoom (set by the widget's zoom bar), the wrapper pans via
+   overflow-x — no CSS transform (Crostini GPU rule). */
+.cm-editor .cm-content .cm-md-mermaid {
+  margin-left: calc(50% - 50vw + 1rem);
+  margin-right: calc(50% - 50vw + 1rem);
+  overflow-x: auto;
+}
+.cm-editor .cm-content .cm-md-mermaid svg {
+  width: var(--mmd-zoom, 100%);
+  max-width: none;
+  height: auto;
+}
+.cm-md-mermaid-zoom {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  display: none;
+  gap: 0.2rem;
+}
+.cm-md-mermaid:hover .cm-md-mermaid-zoom { display: flex; }
+.cm-md-mermaid-zoom button {
+  background: var(--chip);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--fg);
+  width: 1.7rem;
+  height: 1.5rem;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+.cm-md-mermaid-zoom button:hover { border-color: var(--accent); }
+
 /* inline mermaid editing preview — the live diagram below a fence while its
    source is being edited; flat and compact, a hairline rule ties it to the
-   fence above (no shadows/animation — layout-only, Crostini-safe) */
+   fence above (no shadows/animation — layout-only, Crostini-safe).
+   Top/bottom margins only — the side margins carry the full-bleed calc. */
 .cm-md-mermaid-editing {
   border-left: 2px solid var(--border);
   padding: 0.2rem 0 0.2rem 0.5rem;
-  margin: 0.2rem 0 0.4rem;
+  margin-top: 0.2rem;
+  margin-bottom: 0.4rem;
 }
 
 /* structured error card the editing preview shows for a broken diagram */
