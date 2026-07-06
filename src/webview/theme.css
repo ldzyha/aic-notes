@@ -173,10 +173,14 @@ html, body {
   margin-right: calc(50% - 50vw + 1rem);
   overflow-x: auto;
 }
+/* !important is load-bearing: mermaid writes an INLINE style="max-width:
+   <natural>px" on every svg (useMaxWidth) — only an !important author rule
+   outranks an inline style, and without it the diagram stays capped at its
+   natural width no matter how wide the container is */
 .cm-editor .cm-content .cm-md-mermaid svg {
-  width: var(--mmd-zoom, 100%);
-  max-width: none;
-  height: auto;
+  width: var(--mmd-zoom, 100%) !important;
+  max-width: none !important;
+  height: auto !important;
 }
 .cm-md-mermaid-zoom {
   position: absolute;

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.1 — 2026-07-06
+
+- Fix: diagrams actually take the full available width — mermaid's inline
+  `max-width` on the svg was overriding the full-bleed layout; zoom now
+  scales from the true pane width.
+
 ## 0.7.0 — 2026-07-06
 
 - Diagrams render full editor width (escaping the 76ch text column) with a
