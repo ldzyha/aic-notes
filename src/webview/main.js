@@ -31,10 +31,9 @@ import {
   makeFrontmatterExtension,
   frontmatterEnterKeymap,
 } from "../../vendor/markdown/handlers/frontmatter.js";
-import { makeMermaidExtension, mermaidFences } from "../../vendor/markdown/mermaid.js";
+import { makeMermaidExtension } from "../../vendor/markdown/mermaid.js";
 import { MARKDOWN_CSS } from "../../vendor/markdown/styles.js";
 import { makeFencedMarkdown } from "./fenced-local.js";
-import { makePreviewTracker } from "./mermaid-preview.js";
 import { makeHost } from "./host-shim.js";
 import THEME_CSS from "./theme.css";
 
@@ -67,12 +66,6 @@ function fencedLang() {
     onError: (structured) => host.ui.toast.error("markdown", structured),
   });
 }
-
-// mermaid live preview: the tracker decides WHEN to notify (enter/adopt =
-// sync, same-fence edits = debounced); the extension host owns the panel
-const previewTracker = makePreviewTracker((kind, payload) =>
-  host.bus.publish(kind === "update" ? "mermaid.preview" : "mermaid.preview.close", payload),
-);
 
 function postEdit(update) {
   const changes = [];
@@ -122,9 +115,6 @@ function makeEditor(text) {
           if (update.selectionSet || update.docChanged) {
             const { anchor, head } = update.state.selection.main;
             api.setState({ anchor, head, path: docState.relativePath });
-            previewTracker.update(
-              mermaidFences(update.state).find((f) => head >= f.from && head <= f.to) ?? null,
-            );
           }
         }),
       ],

@@ -1,5 +1,4 @@
-// Shared webview HTML scaffold — one CSP shape for the editor and the
-// mermaid preview panel. style-src needs 'unsafe-inline': CodeMirror and
+// Webview HTML scaffold. style-src needs 'unsafe-inline': CodeMirror and
 // mermaid inject their style modules at runtime and the vendored aic CSS is
 // inlined by the entry script (documented exception; script-src stays nonce +
 // resource-origin for the lazy chunks).

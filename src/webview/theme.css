@@ -103,3 +103,23 @@ html, body {
 .aicn-iconbtn:hover { background: var(--chip); }
 .aicn-icon { color: var(--muted); }
 .cm-md-mermaid-loading { color: var(--muted); font-style: italic; }
+
+/* inline mermaid editing preview — the live diagram below a fence while its
+   source is being edited; flat and compact, a hairline rule ties it to the
+   fence above (no shadows/animation — layout-only, Crostini-safe) */
+.cm-md-mermaid-editing {
+  border-left: 2px solid var(--border);
+  padding: 0.2rem 0 0.2rem 0.5rem;
+  margin: 0.2rem 0 0.4rem;
+}
+
+/* structured error card the editing preview shows for a broken diagram */
+.aicn-error-card {
+  display: inline-block;
+  border: 1px dashed var(--warn);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.6rem;
+}
+.aicn-error-head { color: var(--warn); font-weight: 700; }
+.aicn-error-detail { color: var(--fg); white-space: pre-wrap; margin-top: 0.3rem; }
+.aicn-error-fix { color: var(--muted); margin-top: 0.2rem; }

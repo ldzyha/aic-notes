@@ -3,12 +3,15 @@
 // makeMermaidExtension (StateField + scroll-refresh ViewPlugin), the lazy
 // mermaid chunk with the structured mermaid_bundle_missing error. Stripped:
 // the visual builder profiles/console and the AI error-explain (coupled to
-// aic's host.ui.console / host.providers). renderInto keeps the upstream
-// context param: "widget" = in-editor block (one-line error marker, detail
-// in title), "float" = the preview panel (structured error card) — consumed
-// by src/webview/preview.js; the caret→preview state machine lives in
-// src/webview/mermaid-preview.js. Theme picks dark/light off the VS Code
-// body class instead of a fixed "dark".
+// aic's host.ui.console / host.providers). aic's caret-follow preview
+// (console slot / float) is reshaped as the ONE-PAGE inline editing preview
+// (owner 2026-07-06: no extra preview tab): while the caret edits a fence's
+// source, EditingPreviewWidget renders the live diagram directly below the
+// fence, debounced ~300ms, same DOM across keystrokes (no flicker).
+// renderInto keeps the upstream context param: "widget" = the read view
+// (one-line error marker, detail in title), "float" = the editing preview
+// (structured ErrorCard inline). Theme picks dark/light off the VS Code body
+// class instead of a fixed "dark".
 
 import { Decoration, EditorView, WidgetType, ViewPlugin } from "@codemirror/view";
 import { StateField, StateEffect } from "@codemirror/state";
@@ -141,6 +144,40 @@ class MermaidWidget extends WidgetType {
   }
 }
 
+// the inline editing preview — shown below a fence WHILE the caret edits its
+// source (the reveal rule shows raw text, so this is the only moment the
+// diagram is otherwise invisible). CM swaps widgets whose eq() differs by
+// calling updateDOM on the existing element: the debounce lives there, the
+// DOM persists, renderInto's newest-wins guard + in-place SVG swap keep it
+// flicker-free.
+class EditingPreviewWidget extends WidgetType {
+  constructor(source) {
+    super();
+    this.source = source;
+  }
+  eq(other) {
+    return other.source === this.source;
+  }
+  toDOM() {
+    const el = document.createElement("div");
+    el.className = "cm-md-mermaid cm-md-mermaid-editing";
+    el.setAttribute("aria-label", "live mermaid preview");
+    renderInto(el, this.source, "float");
+    return el;
+  }
+  updateDOM(el) {
+    clearTimeout(el.__aicnTimer);
+    el.__aicnTimer = setTimeout(() => renderInto(el, this.source, "float"), 300);
+    return true;
+  }
+  destroy(el) {
+    clearTimeout(el.__aicnTimer);
+  }
+  ignoreEvent() {
+    return true; // read-only surface — clicks must not move the caret
+  }
+}
+
 export function mermaidFences(state) {
   const fences = [];
   syntaxTree(state).iterate({
@@ -191,8 +228,18 @@ export function makeMermaidExtension() {
     const head = state.selection.main.head;
     const decorations = [];
     for (const fence of mermaidFences(state)) {
+      if (!fence.source.trim()) continue;
       const inside = head >= fence.from && head <= fence.to;
-      if (!inside && fence.source.trim()) {
+      if (inside) {
+        // editing: raw source stays visible, the live diagram renders below
+        decorations.push(
+          Decoration.widget({
+            widget: new EditingPreviewWidget(fence.source),
+            block: true,
+            side: 1,
+          }).range(fence.to),
+        );
+      } else {
         decorations.push(
           Decoration.replace({
             widget: new MermaidWidget(fence.source),

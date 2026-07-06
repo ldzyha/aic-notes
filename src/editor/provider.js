@@ -43,10 +43,10 @@ async function resolveWikiTarget(folder, fromRelPath, target) {
 }
 
 export class MarkdownEditorProvider {
-  static register(context, preview) {
+  static register(context) {
     return vscode.window.registerCustomEditorProvider(
       "aicNotes.markdown",
-      new MarkdownEditorProvider(context, preview),
+      new MarkdownEditorProvider(context),
       {
         webviewOptions: { retainContextWhenHidden: true },
         supportsMultipleEditorsPerDocument: false,
@@ -54,9 +54,8 @@ export class MarkdownEditorProvider {
     );
   }
 
-  constructor(context, preview) {
+  constructor(context) {
     this.context = context;
-    this.preview = preview; // MermaidPreviewManager
   }
 
   async resolveCustomTextEditor(document, webviewPanel) {
@@ -162,20 +161,11 @@ export class MarkdownEditorProvider {
     webviewPanel.onDidDispose(() => {
       changeSub.dispose();
       messageSub.dispose();
-      this.preview?.handleEditorClosed(relativePath);
     });
   }
 
   async _routeBus(msg, document, folder, relativePath) {
     const { topic, payload } = msg;
-    if (topic === "mermaid.preview") {
-      this.preview?.update({ source: String(payload?.source ?? ""), origin: relativePath });
-      return;
-    }
-    if (topic === "mermaid.preview.close") {
-      this.preview?.close();
-      return;
-    }
     if (topic === "link.external") {
       const url = String(payload?.url ?? "");
       if (!/^(?:https?:|mailto:|tel:|vscode:)/i.test(url)) {

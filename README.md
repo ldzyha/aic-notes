@@ -23,8 +23,10 @@ Two things, carried over from the [aic](https://github.com/ldzyha) editor:
    plus the three block widgets — the live table grid, the frontmatter props
    table, and mermaid diagrams rendered in place. Cursor inside a rendered
    block reveals its raw source for editing; arrow keys enter blocks. Colors
-   ride the active VS Code theme. A live mermaid preview panel follows the
-   caret into ```mermaid fences and can float to its own OS window.
+   ride the active VS Code theme. Everything lives on the one page: while
+   the caret edits a ```mermaid fence, the live diagram renders directly
+   below the fence (re-rendered ~300ms as you type, structured error card
+   when broken) — no separate preview tab.
 
    Escape hatches: per file, right-click the tab → **Reopen Editor With… →
    Text Editor**; globally, run **AIC Notes: Use Native Editor for Plain
@@ -61,7 +63,7 @@ Two things, carried over from the [aic](https://github.com/ldzyha) editor:
 ```sh
 npm ci
 npm run build        # dist/extension.cjs + dist/webview/* (lazy chunks)
-npm test             # node:test unit tests (paths/frontmatter/templates/preview-tracker)
+npm test             # node:test unit tests (paths/frontmatter/templates)
 npm run install:vsix # build → aic-notes-<version>.vsix → code --install-extension
 ```
 
@@ -98,15 +100,12 @@ extension host opens `test-fixtures/`, a workspace exercising every feature.
   render; right-click tab → Reopen Editor With → Text Editor restores
   native per file; **AIC Notes: Use Native Editor for Plain Markdown**
   flips the default for `*.md` while `*.note.md` stays on the AIC editor.
-- **Mermaid preview**: caret into a ```mermaid fence → the preview panel
-  opens beside WITHOUT stealing focus; typing re-renders after ~300ms
-  (no blanking — the SVG swaps in place); caret to a second fence → the
-  panel adopts it immediately; caret out of all fences → the panel shows
-  "no mermaid fence at the caret" but stays open; ✕ the panel, then move
-  within the same fence → it stays closed; leave and re-enter a fence → it
-  reopens; break the diagram → a structured error card (code + detail);
-  the ↗ float button (or dragging the tab out) moves it to a separate OS
-  window and live updates keep flowing there.
+- **Mermaid editing preview**: caret into a ```mermaid fence → the raw
+  source reveals AND the live diagram renders directly below the fence;
+  typing re-renders after ~300ms (no blanking — the SVG swaps in place);
+  break the diagram → a structured error card (code + detail + fix) in the
+  same spot; caret leaves → the fence collapses back to the single in-place
+  diagram; clicking the editing preview never moves the caret.
 - **Sync**: type in the editor → tab dirties → `ctrl+s` saves; run
   `git checkout -- <note>` while it is open → content updates without an
   echo loop; `ctrl+z` inside the editor undoes through VS Code's stack.

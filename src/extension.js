@@ -15,17 +15,14 @@ import {
 import { enableExplorerNesting, hintIfShadowed } from "./notes/nesting.js";
 import { resolveTarget } from "./notes/target.js";
 import { MarkdownEditorProvider } from "./editor/provider.js";
-import { MermaidPreviewManager } from "./preview/manager.js";
 import { structuredError } from "./errors.js";
 
 export function activate(context) {
   const tree = new NotesTree();
-  const preview = new MermaidPreviewManager(context);
   context.subscriptions.push(
     tree,
-    preview,
     vscode.window.registerTreeDataProvider("aicNotes.tree", tree),
-    MarkdownEditorProvider.register(context, preview),
+    MarkdownEditorProvider.register(context),
 
     vscode.commands.registerCommand("aicNotes.noteForCurrentFile", commandHandler(noteForCurrentFile)),
     vscode.commands.registerCommand("aicNotes.noteForExplorerItem", commandHandler(noteForExplorerItem)),
