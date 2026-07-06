@@ -8,6 +8,7 @@ const markerRevealed = Decoration.mark({ class: "cm-md-marker cm-md-marker-revea
 const quote = Decoration.mark({ class: "cm-md-quote" });
 const strike = Decoration.mark({ class: "cm-md-strike" });
 const hr = Decoration.mark({ class: "cm-md-hr" });
+const hrLine = Decoration.line({ class: "cm-md-hr-line" });
 
 export const blockquoteHandler = {
   id: "md.blockquote",
@@ -26,12 +27,22 @@ export const blockquoteHandler = {
   },
 };
 
+// hr renders as a REAL horizontal rule (owner 2026-07-06: "--- is not
+// visible"): the line gets .cm-md-hr-line (CSS draws a full-width rule) and
+// the dashes go transparent; the caret on the line reveals the raw source
 export const hrHandler = {
   id: "md.hr",
   nodes: ["HorizontalRule"],
   priority: 50,
-  decorate(nodeRef) {
-    return [{ from: nodeRef.from, to: nodeRef.to, deco: hr }];
+  decorate(nodeRef, view, revealed) {
+    const line = view.state.doc.lineAt(nodeRef.from);
+    if (revealed(line.from, line.to)) {
+      return [{ from: nodeRef.from, to: nodeRef.to, deco: markerRevealed }];
+    }
+    return [
+      { from: line.from, to: line.from, deco: hrLine, line: true },
+      { from: nodeRef.from, to: nodeRef.to, deco: hr },
+    ];
   },
 };
 

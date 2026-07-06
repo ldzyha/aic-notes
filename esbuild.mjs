@@ -2,7 +2,7 @@
 // browser, code-splitting so mermaid / @codemirror/lang-* land as lazy chunks
 // loaded on first use — the same shape as aic's build).
 import { build, context } from "esbuild";
-import { existsSync } from "node:fs";
+import { existsSync, cpSync } from "node:fs";
 
 const watch = process.argv.includes("--watch");
 
@@ -38,6 +38,14 @@ const webview = {
 
 const jobs = [host];
 if (existsSync(new URL("./src/webview/main.js", import.meta.url))) jobs.push(webview);
+
+// bundled JetBrains Mono (OFL) — plain static assets, no loader involved;
+// main.js builds the @font-face URLs against its own import.meta.url
+cpSync(
+  new URL("./src/webview/fonts", import.meta.url),
+  new URL("./dist/webview/fonts", import.meta.url),
+  { recursive: true },
+);
 
 if (watch) {
   for (const job of jobs) (await context(job)).watch();

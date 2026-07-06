@@ -1,16 +1,22 @@
-/* Map aic's CSS variables onto the VS Code theme — colors are deliberately
-   system-driven (owner: "кольори не принципово, можуть бути системні"). */
+/* Fixed DARK palette (owner 2026-07-06: "only dark mode" — a readable
+   document, not theme-following): near-white #E5E5E5 on charcoal #121212
+   (never pure white on pure black), body 16px, line-height 1.6, measure
+   capped at 76ch, JetBrains Mono (bundled woff2, OFL — fonts/OFL.txt;
+   @font-face is injected by main.js because the URLs must resolve against
+   the script's webview URI). Variable names stay aic's (--fg/--marker/…)
+   so the vendored MARKDOWN_CSS keeps resolving; the override block below
+   wins on specificity where the vendor defaults differ. */
 :root {
-  --fg: var(--vscode-editor-foreground);
-  --bg: var(--vscode-editor-background);
-  --marker: var(--vscode-editorLineNumber-foreground);
-  --accent: var(--vscode-textLink-foreground);
-  --info: var(--vscode-textLink-activeForeground);
-  --warn: var(--vscode-editorWarning-foreground, #cca700);
-  --chip: var(--vscode-textCodeBlock-background);
-  --muted: var(--vscode-descriptionForeground);
-  --border: var(--vscode-editorWidget-border, var(--vscode-panel-border));
-  --radius: 3px;
+  --fg: #e5e5e5;
+  --bg: #121212;
+  --marker: #6e7681;
+  --accent: #6cb6ff; /* headings, list marks, local links, checked boxes */
+  --info: #58a6ff; /* external links */
+  --warn: #d29922;
+  --chip: #1f242b; /* inline code / fence tint */
+  --muted: #9ba3ae;
+  --border: #30363d;
+  --radius: 4px;
 }
 
 html, body {
@@ -27,24 +33,31 @@ html, body {
 
 .cm-editor {
   height: 100%;
-  font-family: var(--vscode-editor-font-family, monospace);
-  font-size: var(--vscode-editor-font-size, 14px);
+  font-family: "JetBrains Mono", var(--vscode-editor-font-family, monospace);
+  font-size: 16px; /* document baseline; below 14px strains the eyes */
   background: var(--bg);
   color: var(--fg);
 }
-.cm-editor .cm-content { caret-color: var(--vscode-editorCursor-foreground, var(--fg)); }
-.cm-editor .cm-cursor { border-left-color: var(--vscode-editorCursor-foreground, var(--fg)); }
+/* document measure: 45–75 characters per line reads best — cap and center */
+.cm-editor .cm-content {
+  max-width: 76ch;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 33vh;
+  caret-color: #aeafad;
+}
+.cm-editor .cm-cursor { border-left-color: #aeafad; }
 .cm-editor .cm-selectionBackground,
 .cm-editor.cm-focused .cm-selectionBackground {
-  background: var(--vscode-editor-selectionBackground) !important;
+  background: #264f78 !important;
 }
 .cm-editor .cm-activeLine { background: transparent; }
 .cm-editor.cm-focused { outline: none; }
-.cm-scroller { line-height: 1.5; }
+.cm-scroller { line-height: 1.6; }
 
-/* CM panels (the @codemirror/search bar) on VS Code widget colors */
+/* CM panels (the @codemirror/search bar) — chrome stays on VS Code widget
+   colors so the bar matches the workbench, not the document */
 .cm-panels {
-  background: var(--vscode-editorWidget-background);
+  background: var(--vscode-editorWidget-background, #1e1e1e);
   color: var(--fg);
   border-color: var(--border);
 }
@@ -53,7 +66,7 @@ html, body {
   color: var(--fg);
 }
 .cm-panels input {
-  background: var(--vscode-input-background);
+  background: var(--vscode-input-background, #17191d);
   border: 1px solid var(--vscode-input-border, var(--border));
 }
 .cm-panels button {
@@ -62,29 +75,76 @@ html, body {
   border-radius: var(--radius);
   cursor: pointer;
 }
-.cm-searchMatch { background: var(--vscode-editor-findMatchHighlightBackground, rgba(234, 92, 0, 0.33)); }
-.cm-searchMatch-selected { background: var(--vscode-editor-findMatchBackground, rgba(255, 223, 0, 0.4)); }
+.cm-searchMatch { background: rgba(210, 153, 34, 0.28); }
+.cm-searchMatch-selected { background: rgba(255, 223, 0, 0.35); }
 
-/* Handler classes must beat defaultHighlightStyle on markdown STRUCTURE
-   colors: both are plain single classes and CM injects the highlight rules
-   after ours, so bump specificity on everything that sets a color. (The
-   highlight style stays installed for nested fenced-code tokens.) */
+/* ── markdown structure overrides ──────────────────────────────────────
+   Win over the vendored MARKDOWN_CSS (loaded after this file) via
+   specificity. Hierarchy comes from SIZE + one accent color; underline is
+   reserved for links; bold carries emphasis. */
 .cm-editor .cm-content .cm-md-marker { color: var(--marker); }
 .cm-editor .cm-content .cm-md-marker-revealed { color: var(--marker); }
-.cm-editor .cm-content .cm-md-h { color: var(--accent); }
-.cm-editor .cm-content .cm-md-h6 { color: var(--muted); }
-.cm-editor .cm-content .cm-md-listmark { color: var(--accent); }
-.cm-editor .cm-content .cm-md-italic { color: color-mix(in srgb, var(--fg) 82%, var(--accent)); }
-.cm-editor .cm-content .cm-md-code { color: color-mix(in srgb, var(--fg) 80%, var(--muted)); }
+.cm-editor .cm-content .cm-md-h {
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+.cm-editor .cm-content .cm-md-h1 { font-size: 1.8em; }
+.cm-editor .cm-content .cm-md-h2 { font-size: 1.45em; }
+.cm-editor .cm-content .cm-md-h3 { font-size: 1.25em; }
+.cm-editor .cm-content .cm-md-h4 { font-size: 1.1em; }
+.cm-editor .cm-content .cm-md-h5 { font-size: 1em; }
+.cm-editor .cm-content .cm-md-h6 { font-size: 0.9em; color: var(--muted); }
+.cm-editor .cm-content .cm-md-bold { font-weight: 700; color: #f0f6fc; }
+.cm-editor .cm-content .cm-md-italic { color: #d8dee9; }
+.cm-editor .cm-content .cm-md-code { background: var(--chip); color: #d19a66; }
+.cm-editor .cm-content .cm-md-link { text-decoration: underline; text-underline-offset: 3px; }
 .cm-editor .cm-content .cm-md-link-local { color: var(--accent); }
 .cm-editor .cm-content .cm-md-link-external { color: var(--info); }
 .cm-editor .cm-content .cm-md-quote { color: var(--muted); }
 .cm-editor .cm-content .cm-md-strike { color: var(--muted); }
-.cm-editor .cm-content .cm-md-hr { color: var(--marker); }
+.cm-editor .cm-content .cm-md-listmark { color: var(--accent); }
+
+/* hr: the dashes hide behind a real full-width rule; the caret on the line
+   swaps back to the raw source (markerRevealed, handler-side) */
+.cm-editor .cm-content .cm-md-hr { color: transparent; }
+.cm-md-hr-line { position: relative; }
+.cm-md-hr-line::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% - 1px);
+  border-top: 1px solid var(--border);
+}
+
+/* tables: the grid carries its own surface — header AND content cells get a
+   background so the table reads as one object on the page */
+.cm-editor .cm-content .cm-md-table table,
+.cm-editor .cm-content .cm-md-props table {
+  font-family: inherit;
+  font-size: 0.95em;
+}
+.cm-editor .cm-content .cm-md-table th,
+.cm-editor .cm-content .cm-md-table td,
+.cm-editor .cm-content .cm-md-props th,
+.cm-editor .cm-content .cm-md-props td {
+  border-color: var(--border);
+  padding: 0.3rem 0.6rem;
+}
+.cm-editor .cm-content .cm-md-table thead th,
+.cm-editor .cm-content .cm-md-props th { background: #1c2128; }
+.cm-editor .cm-content .cm-md-table td,
+.cm-editor .cm-content .cm-md-props td { background: #17191d; }
+.cm-editor .cm-content .cm-md-table td code.cm-md-code {
+  background: var(--chip);
+  color: #d19a66;
+  font: inherit;
+}
 
 /* tooltip + stub components */
 .cm-tooltip {
-  background: var(--vscode-editorWidget-background);
+  background: var(--vscode-editorWidget-background, #1e1e1e);
   border: 1px solid var(--border);
   color: var(--fg);
 }

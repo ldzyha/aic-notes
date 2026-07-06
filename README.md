@@ -22,11 +22,20 @@ Two things, carried over from the [aic](https://github.com/ldzyha) editor:
    open/edit/unlink tooltip, nested fenced-code highlighting (lazy chunks),
    plus the three block widgets — the live table grid, the frontmatter props
    table, and mermaid diagrams rendered in place. Cursor inside a rendered
-   block reveals its raw source for editing; arrow keys enter blocks. Colors
-   ride the active VS Code theme. Everything lives on the one page: while
-   the caret edits a ```mermaid fence, the live diagram renders directly
-   below the fence (re-rendered ~300ms as you type, structured error card
-   when broken) — no separate preview tab.
+   block reveals its raw source for editing; arrow keys enter blocks.
+   Everything lives on the one page: while the caret edits a ```mermaid
+   fence, the live diagram renders directly below the fence (re-rendered
+   ~300ms as you type, structured error card when broken) — no separate
+   preview tab.
+
+   Typography is a fixed DARK document theme (deliberately not
+   theme-following): #E5E5E5 on #121212, 16px body at 1.6 line-height,
+   measure capped at 76ch and centered, bundled JetBrains Mono (OFL,
+   `src/webview/fonts/`), heading hierarchy by size + accent color (no
+   underlines — those are reserved for links), `---` renders as a real
+   horizontal rule, tables carry their own cell backgrounds and render
+   inline markdown (code/links/bold/italic/strike) inside cells, fenced
+   code uses a Dark+-flavored highlight style.
 
    Escape hatches: per file, right-click the tab → **Reopen Editor With… →
    Text Editor**; globally, run **AIC Notes: Use Native Editor for Plain

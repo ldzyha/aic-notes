@@ -11,39 +11,54 @@ import { syntaxTree } from "@codemirror/language";
 import { mermaidFences } from "../mermaid.js";
 import { openLink } from "../link-tooltip.js";
 
-// render a cell's inline markdown LINKS as clickable <a> (owner 2026-06-19:
-// "show link in the md table as interactable link to navigate on click").
-// Scheme-less links open the local file via host.bus (the SAME routing as the
-// link tooltip); external/anchor links open a new tab. Non-link text stays
-// verbatim (other inline markdown in a cell stays literal for now).
-const CELL_LINK = /\[([^\]]*)\]\(([^)]+)\)/g;
+// render a cell's inline markdown (owner 2026-07-06: "syntax in the table"):
+// code spans, links, bold, strike, italic — recursive, so **[a](b)** nests.
+// Links stay clickable <a>: scheme-less open the local file via host.bus (the
+// SAME routing as the link tooltip); external/anchor links open a new tab.
+// Alternation order = precedence: code beats everything, links beat emphasis.
+const CELL_INLINE =
+  /(`([^`]+)`)|(\[([^\]]*)\]\(([^)]+)\))|(\*\*([^*]+)\*\*)|(__([^_]+)__)|(~~([^~]+)~~)|(\*([^*]+)\*)|(_([^_]+)_)/g;
 function fillCell(td, text, host) {
-  CELL_LINK.lastIndex = 0;
+  CELL_INLINE.lastIndex = 0;
   let last = 0;
   let match;
-  let any = false;
-  while ((match = CELL_LINK.exec(text)) !== null) {
-    any = true;
+  while ((match = CELL_INLINE.exec(text)) !== null) {
     if (match.index > last) td.appendChild(document.createTextNode(text.slice(last, match.index)));
-    const url = match[2];
-    const a = document.createElement("a");
-    a.className = "cm-md-table-link";
-    a.textContent = match[1] || url;
-    a.href = url;
-    a.title = url;
-    a.onclick = (event) => {
-      event.preventDefault();
-      event.stopPropagation(); // don't let CM place the cursor / reveal the row
-      openLink(url, host);
-    };
-    td.appendChild(a);
+    if (match[2] !== undefined) {
+      const code = document.createElement("code");
+      code.className = "cm-md-code";
+      code.textContent = match[2];
+      td.appendChild(code);
+    } else if (match[5] !== undefined) {
+      const url = match[5];
+      const a = document.createElement("a");
+      a.className = "cm-md-table-link";
+      a.href = url;
+      a.title = url;
+      a.onclick = (event) => {
+        event.preventDefault();
+        event.stopPropagation(); // don't let CM place the cursor / reveal the row
+        openLink(url, host);
+      };
+      if (match[4]) fillCell(a, match[4], host);
+      else a.textContent = url;
+      td.appendChild(a);
+    } else if (match[7] !== undefined || match[9] !== undefined) {
+      const strong = document.createElement("strong");
+      fillCell(strong, match[7] ?? match[9], host);
+      td.appendChild(strong);
+    } else if (match[11] !== undefined) {
+      const del = document.createElement("del");
+      fillCell(del, match[11], host);
+      td.appendChild(del);
+    } else {
+      const em = document.createElement("em");
+      fillCell(em, match[13] ?? match[15], host);
+      td.appendChild(em);
+    }
     last = match.index + match[0].length;
   }
-  if (any) {
-    if (last < text.length) td.appendChild(document.createTextNode(text.slice(last)));
-  } else {
-    td.textContent = text;
-  }
+  if (last < text.length) td.appendChild(document.createTextNode(text.slice(last)));
 }
 
 // split a pipe row into trimmed cells, dropping the empties the leading/trailing

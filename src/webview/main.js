@@ -20,7 +20,7 @@
 import { EditorView, keymap, drawSelection } from "@codemirror/view";
 import { EditorState, Annotation, Prec, Compartment } from "@codemirror/state";
 import { defaultKeymap } from "@codemirror/commands";
-import { syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language";
+import { syntaxHighlighting } from "@codemirror/language";
 import { search, searchKeymap } from "@codemirror/search";
 
 import { HANDLERS, decorationPlugin } from "../../vendor/markdown/session.js";
@@ -34,6 +34,7 @@ import {
 import { makeMermaidExtension } from "../../vendor/markdown/mermaid.js";
 import { MARKDOWN_CSS } from "../../vendor/markdown/styles.js";
 import { makeFencedMarkdown } from "./fenced-local.js";
+import { darkHighlight } from "./highlight.js";
 import { makeHost } from "./host-shim.js";
 import THEME_CSS from "./theme.css";
 
@@ -43,7 +44,21 @@ const remote = Annotation.define();
 const docState = { relativePath: "", generation: 0 };
 const host = makeHost(api, docState);
 
-for (const css of [THEME_CSS, MARKDOWN_CSS]) {
+// bundled JetBrains Mono (OFL, dist/webview/fonts): the @font-face URLs must
+// be built at runtime — they resolve against this script's own webview URI
+const FONT_CSS = [
+  ["JetBrainsMono-Regular.woff2", 400, "normal"],
+  ["JetBrainsMono-Italic.woff2", 400, "italic"],
+  ["JetBrainsMono-Bold.woff2", 700, "normal"],
+  ["JetBrainsMono-BoldItalic.woff2", 700, "italic"],
+]
+  .map(
+    ([file, weight, style]) =>
+      `@font-face { font-family: "JetBrains Mono"; src: url("${new URL(`./fonts/${file}`, import.meta.url)}") format("woff2"); font-weight: ${weight}; font-style: ${style}; font-display: swap; }`,
+  )
+  .join("\n");
+
+for (const css of [FONT_CSS, THEME_CSS, MARKDOWN_CSS]) {
   const style = document.createElement("style");
   style.textContent = css;
   document.head.appendChild(style);
@@ -86,7 +101,7 @@ function makeEditor(text) {
         langCompartment.of(fencedLang()),
         // colors nested fenced-code tokens; markdown structure styling is
         // owned by the handler classes (theme.css bumps their specificity)
-        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+        syntaxHighlighting(darkHighlight, { fallback: true }),
         decorationPlugin(HANDLERS),
         linkTooltip(host),
         makeTableExtension(host),
