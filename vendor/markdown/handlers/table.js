@@ -10,55 +10,13 @@ import { StateField } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { mermaidFences } from "../mermaid.js";
 import { openLink } from "../link-tooltip.js";
+import { fillCell } from "./cell-inline.js";
 
-// render a cell's inline markdown (owner 2026-07-06: "syntax in the table"):
-// code spans, links, bold, strike, italic — recursive, so **[a](b)** nests.
-// Links stay clickable <a>: scheme-less open the local file via host.bus (the
-// SAME routing as the link tooltip); external/anchor links open a new tab.
-// Alternation order = precedence: code beats everything, links beat emphasis.
-const CELL_INLINE =
-  /(`([^`]+)`)|(\[([^\]]*)\]\(([^)]+)\))|(\*\*([^*]+)\*\*)|(__([^_]+)__)|(~~([^~]+)~~)|(\*([^*]+)\*)|(_([^_]+)_)/g;
-function fillCell(td, text, host) {
-  CELL_INLINE.lastIndex = 0;
-  let last = 0;
-  let match;
-  while ((match = CELL_INLINE.exec(text)) !== null) {
-    if (match.index > last) td.appendChild(document.createTextNode(text.slice(last, match.index)));
-    if (match[2] !== undefined) {
-      const code = document.createElement("code");
-      code.className = "cm-md-code";
-      code.textContent = match[2];
-      td.appendChild(code);
-    } else if (match[5] !== undefined) {
-      const url = match[5];
-      const a = document.createElement("a");
-      a.className = "cm-md-table-link";
-      a.href = url;
-      a.title = url;
-      a.onclick = (event) => {
-        event.preventDefault();
-        event.stopPropagation(); // don't let CM place the cursor / reveal the row
-        openLink(url, host);
-      };
-      if (match[4]) fillCell(a, match[4], host);
-      else a.textContent = url;
-      td.appendChild(a);
-    } else if (match[7] !== undefined || match[9] !== undefined) {
-      const strong = document.createElement("strong");
-      fillCell(strong, match[7] ?? match[9], host);
-      td.appendChild(strong);
-    } else if (match[11] !== undefined) {
-      const del = document.createElement("del");
-      fillCell(del, match[11], host);
-      td.appendChild(del);
-    } else {
-      const em = document.createElement("em");
-      fillCell(em, match[13] ?? match[15], host);
-      td.appendChild(em);
-    }
-    last = match.index + match[0].length;
-  }
-  if (last < text.length) td.appendChild(document.createTextNode(text.slice(last)));
+// cell inline-markdown rendering lives in the CM-free cell-inline.js (so
+// node:test can cover it); links route through the SAME openLink as the
+// link tooltip — scheme-less open the local file, external opens a new tab
+function cell(el, text, host) {
+  fillCell(el, text, host, openLink);
 }
 
 // split a pipe row into trimmed cells, dropping the empties the leading/trailing
@@ -106,7 +64,7 @@ class TableWidget extends WidgetType {
     const htr = document.createElement("tr");
     data.header.forEach((c, i) => {
       const th = document.createElement("th");
-      fillCell(th, c, this.host);
+      cell(th, c, this.host);
       if (data.aligns[i]) th.style.textAlign = data.aligns[i];
       htr.appendChild(th);
     });
@@ -117,7 +75,7 @@ class TableWidget extends WidgetType {
       const tr = document.createElement("tr");
       data.header.forEach((_, i) => {
         const td = document.createElement("td");
-        fillCell(td, row[i] ?? "", this.host);
+        cell(td, row[i] ?? "", this.host);
         if (data.aligns[i]) td.style.textAlign = data.aligns[i];
         tr.appendChild(td);
       });
