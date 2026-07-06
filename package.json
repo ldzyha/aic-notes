@@ -2,7 +2,7 @@
   "name": "aic-notes",
   "displayName": "AIC Notes",
   "description": "Sidecar *.note.md notes (file / folder / project / global levels) with a notes explorer, quick note creation, and an aic-style live markdown editor.",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "publisher": "ldzyha",
   "icon": "media/icon.png",
   "license": "MIT",
@@ -99,6 +99,16 @@
         "command": "aicNotes.useNativeForMarkdown",
         "title": "Use Native Editor for Plain Markdown",
         "category": "AIC Notes"
+      },
+      {
+        "command": "aicNotes.deleteNote",
+        "title": "Delete Note",
+        "category": "AIC Notes"
+      },
+      {
+        "command": "aicNotes.deleteFolderNotes",
+        "title": "Delete All Notes in Folder",
+        "category": "AIC Notes"
       }
     ],
     "keybindings": [
@@ -145,6 +155,16 @@
           "command": "aicNotes.copyWikiLink",
           "when": "view == aicNotes.tree && viewItem =~ /note/",
           "group": "1_copy@1"
+        },
+        {
+          "command": "aicNotes.deleteNote",
+          "when": "view == aicNotes.tree && viewItem == note",
+          "group": "9_delete@1"
+        },
+        {
+          "command": "aicNotes.deleteFolderNotes",
+          "when": "view == aicNotes.tree && viewItem =~ /^(dir|bucket)$/",
+          "group": "9_delete@1"
         }
       ]
     },

@@ -54,6 +54,25 @@ export function activate(context) {
     ),
     vscode.commands.registerCommand("aicNotes.openNote", commandHandler(openNoteDocument)),
 
+    // Delete from the notes tree (owner 2026-07-06). Trash first (reversible);
+    // if the platform has no trash, the user explicitly chooses permanent —
+    // an offered choice, not a silent fallback.
+    vscode.commands.registerCommand(
+      "aicNotes.deleteNote",
+      commandHandler(async (item) => {
+        if (item?.uri) await deleteNotes([item.uri], `note "${item.relPath}"`, tree);
+      }),
+    ),
+    vscode.commands.registerCommand(
+      "aicNotes.deleteFolderNotes",
+      commandHandler(async (item) => {
+        const uris = (item?.children ?? []).map((c) => c.uri).filter(Boolean);
+        if (uris.length) {
+          await deleteNotes(uris, `${uris.length} note(s) under "${item.label}"`, tree);
+        }
+      }),
+    ),
+
     // Escape hatch for the *.md default claim: a static customEditors selector
     // cannot be toggled by a setting, so this writes the user-level editor
     // association instead — plain markdown back to native, notes stay ours.
@@ -75,6 +94,29 @@ export function activate(context) {
   );
 
   hintIfShadowed(context);
+}
+
+async function deleteNotes(uris, label, tree) {
+  const confirm = await vscode.window.showWarningMessage(
+    `Delete ${label}?`,
+    { modal: true, detail: uris.map((u) => vscode.workspace.asRelativePath(u, false)).join("\n") },
+    "Move to Trash",
+  );
+  if (confirm !== "Move to Trash") return;
+  for (const uri of uris) {
+    try {
+      await vscode.workspace.fs.delete(uri, { useTrash: true });
+    } catch {
+      const hard = await vscode.window.showWarningMessage(
+        `Trash is unavailable for ${vscode.workspace.asRelativePath(uri, false)}. Delete permanently?`,
+        { modal: true },
+        "Delete Permanently",
+      );
+      if (hard !== "Delete Permanently") return;
+      await vscode.workspace.fs.delete(uri);
+    }
+  }
+  tree.refresh();
 }
 
 export function deactivate() {}

@@ -53,6 +53,10 @@ Two things, carried over from the [aic](https://github.com/ldzyha) editor:
   beside). On a note it jumps back to the target. Also on the editor title
   bar and the explorer context menu (files AND folders — folders get
   `<dir>.note.md`).
+- **Delete from the tree** — right-click a note → **Delete Note**; right-click
+  a directory group (or the `.aic/notes` bucket) → **Delete All Notes in
+  Folder**. Modal confirmation, moves to trash (offers permanent delete only
+  if the platform has no trash).
 - **Explorer nesting** — notes nest under their target file in the regular
   explorer (shipped as `explorer.fileNesting.patterns` defaults). If you have
   your own `patterns` override it shadows ours wholesale — run

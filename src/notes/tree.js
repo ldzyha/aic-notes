@@ -174,6 +174,7 @@ export class NotesTree {
       const item = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
       item.iconPath =
         element.kind === "bucket" ? new vscode.ThemeIcon("archive") : vscode.ThemeIcon.Folder;
+      item.contextValue = element.kind; // "dir" | "bucket" — enables group delete
       return item;
     }
     // note
