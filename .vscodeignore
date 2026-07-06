@@ -10,3 +10,4 @@ esbuild.mjs
 jsconfig.json
 package-lock.json
 **/*.map
+*.vsix
