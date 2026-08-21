@@ -89,6 +89,28 @@ export class StandardNotesSync {
     return Boolean(state.remoteUuid && state.readOnly);
   }
 
+  async connectionState() {
+    try {
+      const status = await this._invoke({ operation: "status" });
+      return { connected: Boolean(status.connected), reconnect: false };
+    } catch (error) {
+      const code = error?.structured?.error;
+      if (code === "sn_not_connected") return { connected: false, reconnect: false };
+      if (code === "sn_vault_unreadable") return { connected: false, reconnect: true };
+      throw error;
+    }
+  }
+
+  async login() {
+    return this._connect();
+  }
+
+  async logout() {
+    await this._invoke({ operation: "disconnect" });
+    vscode.window.showInformationMessage("AIC Notes: local Standard Notes session removed");
+    return true;
+  }
+
   async _connect() {
     const email = await vscode.window.showInputBox({
       title: "Connect AIC Notes to Standard Notes",

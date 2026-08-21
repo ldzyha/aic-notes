@@ -8,7 +8,6 @@
 import { Decoration, EditorView, WidgetType } from "@codemirror/view";
 import { StateField } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
-import { mermaidFences } from "../mermaid.js";
 import { openLink } from "../link-tooltip.js";
 import { fillCell } from "./cell-inline.js";
 
@@ -42,21 +41,50 @@ function parseTable(src) {
   return { header, aligns, rows };
 }
 
+function previewHeader(label, onEdit) {
+  const header = document.createElement("div");
+  header.className = "cm-md-preview-header";
+  const title = document.createElement("span");
+  title.textContent = label;
+  const edit = document.createElement("button");
+  edit.type = "button";
+  edit.className = "cm-md-edit-source";
+  edit.textContent = "Edit source";
+  edit.onmousedown = (event) => event.preventDefault();
+  edit.onclick = (event) => {
+    event.stopPropagation();
+    onEdit();
+  };
+  header.append(title, edit);
+  return header;
+}
+
 class TableWidget extends WidgetType {
-  constructor(src, host) {
+  constructor(src, from, host) {
     super();
     this.src = src;
+    this.from = from;
     this.host = host;
   }
   eq(other) {
-    return other.src === this.src; // host is stable per session
+    return other.src === this.src && other.from === this.from; // host is stable per session
   }
-  toDOM() {
+  toDOM(view) {
     const wrap = document.createElement("div");
-    wrap.className = "cm-md-table";
+    wrap.className = "cm-md-table cm-md-block-preview";
+    wrap.setAttribute("role", "region");
+    wrap.setAttribute("aria-label", "Markdown table preview");
+    wrap.appendChild(
+      previewHeader("Table", () => {
+        view.dispatch({ selection: { anchor: this.from }, scrollIntoView: true });
+        view.focus();
+      }),
+    );
     const data = parseTable(this.src);
     if (!data) {
-      wrap.textContent = this.src; // unparseable — show it verbatim
+      const fallback = document.createElement("pre");
+      fallback.textContent = this.src; // unparseable — show it verbatim
+      wrap.appendChild(fallback);
       return wrap;
     }
     const table = document.createElement("table");
@@ -85,12 +113,11 @@ class TableWidget extends WidgetType {
     wrap.appendChild(table);
     return wrap;
   }
-  // a click on a LINK is handled by the link itself (navigate) — tell CM to
-  // IGNORE it so it does NOT place the cursor and reveal the raw table (owner
-  // 2026-06-19: a table-link click must OPEN, not edit). A click anywhere else
-  // passes through → cursor placement → reveal for editing.
-  ignoreEvent(event) {
-    return !!event?.target?.closest?.(".cm-md-table-link");
+  // Preview content is inert for source editing. Links and the explicit Edit
+  // source button own their DOM actions; CodeMirror must never translate a
+  // table-body click into a source selection.
+  ignoreEvent() {
+    return true;
   }
 }
 
@@ -117,7 +144,7 @@ export function makeTableExtension(host) {
       const src = state.sliceDoc(t.from, t.to);
       if (!inside && src.trim()) {
         decorations.push(
-          Decoration.replace({ widget: new TableWidget(src, host), block: true }).range(t.from, t.to),
+          Decoration.replace({ widget: new TableWidget(src, t.from, host), block: true }).range(t.from, t.to),
         );
       }
     }
@@ -132,46 +159,3 @@ export function makeTableExtension(host) {
     provide: (f) => EditorView.decorations.from(f),
   });
 }
-
-// arrow INTO a rendered block (owner 2026-06-19): moving the caret down/up onto
-// a table or mermaid block ENTERS it for editing — the same as clicking it —
-// instead of the caret skipping the replaced block. Landing the caret inside
-// the block's range fires its reveal (the table shows raw pipes; the mermaid
-// fence shows raw source). Bound at Prec.high in the session so it beats the
-// default cursorLineUp/Down.
-function blocksOutsideCursor(state) {
-  const head = state.selection.main.head;
-  const blocks = [];
-  for (const t of tableNodes(state)) blocks.push(t);
-  for (const f of mermaidFences(state)) {
-    if (state.sliceDoc(f.from, f.to).trim()) blocks.push({ from: f.from, to: f.to });
-  }
-  // only blocks the caret is NOT already inside (those are already revealed)
-  return blocks.filter((b) => head < b.from || head > b.to);
-}
-
-function arrowIntoBlock(view, dir) {
-  const { state } = view;
-  if (!state.selection.main.empty) return false; // a selection — leave default
-  const head = state.selection.main.head;
-  // where the DEFAULT vertical move would land — GEOMETRY, not doc lines, so a
-  // wrapped long line's intermediate rows don't teleport (review 2026-06-19).
-  const target = view.moveVertically(state.selection.main, dir === 1).head;
-  // intercept only when that move would reach/cross a rendered block (the caret
-  // is OUTSIDE it and the move arrives at or past its near edge) — then land the
-  // caret inside so the block's reveal fires; else let the default move run
-  const block = blocksOutsideCursor(state).find((b) =>
-    dir === 1 ? head < b.from && target >= b.from : head > b.to && target <= b.to,
-  );
-  if (!block) return false;
-  view.dispatch({
-    selection: { anchor: dir === 1 ? block.from : block.to },
-    scrollIntoView: true,
-  });
-  return true;
-}
-
-export const blockEnterKeymap = [
-  { key: "ArrowDown", run: (v) => arrowIntoBlock(v, 1) },
-  { key: "ArrowUp", run: (v) => arrowIntoBlock(v, -1) },
-];

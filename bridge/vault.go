@@ -145,6 +145,13 @@ func (v *sessionVault) Delete(service, user string) error {
 	if service != session.KeyringService || user != session.KeyringApplicationName {
 		return errors.New("vault identity is invalid")
 	}
+	info, err := os.Lstat(v.path)
+	if errors.Is(err, os.ErrNotExist) {
+		return keyring.ErrNotFound
+	}
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm()&0o077 != 0 {
+		return errors.New("vault file is unsafe")
+	}
 	if err := os.Remove(v.path); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return keyring.ErrNotFound

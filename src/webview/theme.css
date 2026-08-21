@@ -1,4 +1,4 @@
-/* Standard Notes AIC v0.1.1 visual contract, adapted to VS Code theme
+/* Standard Notes AIC v3.2.0 visual contract, adapted to VS Code theme
    tokens. The --aic-* names match the Standard Notes component; the short
    aliases keep the existing AIC Markdown renderer byte-compatible. */
 :root {
@@ -14,6 +14,8 @@
   --aic-chip: color-mix(in srgb, var(--aic-fg) 7%, transparent);
   --aic-marker: color-mix(in srgb, var(--aic-muted) 80%, var(--aic-fg));
   --aic-danger: var(--vscode-errorForeground, #c62828);
+  --aic-details-surface: color-mix(in srgb, var(--aic-contrast) 94%, var(--aic-contrast-fg) 6%);
+  --aic-details-border: color-mix(in srgb, var(--aic-border) 72%, var(--aic-contrast-fg) 28%);
   --fg: var(--aic-fg);
   --bg: var(--aic-bg);
   --marker: var(--aic-marker);
@@ -210,6 +212,51 @@ html, body {
 }
 .cm-md-mermaid-zoom button:hover { border-color: var(--accent); }
 
+/* Every replacement preview uses an explicit caption action. The preview
+   body is not an implicit source-edit target. */
+.cm-editor .cm-content .cm-md-block-preview {
+  box-sizing: border-box;
+  border: 1px solid var(--aic-details-border);
+  border-radius: var(--radius);
+  background: var(--aic-details-surface);
+  color: var(--aic-contrast-fg);
+  overflow: hidden;
+}
+.cm-editor .cm-content .cm-md-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 1.8rem;
+  padding: 0.12rem 0.25rem 0.12rem 0.55rem;
+  border-bottom: 1px solid var(--aic-details-border);
+  color: var(--aic-muted);
+  font: 650 0.76rem/1.2 var(--vscode-font-family, system-ui, sans-serif);
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+.cm-md-edit-source {
+  min-height: 1.45rem;
+  padding: 0 0.42rem;
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius) - 0.1rem);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: 600 0.74rem/1 var(--vscode-font-family, system-ui, sans-serif);
+  text-transform: none;
+}
+.cm-md-edit-source:hover,
+.cm-md-edit-source:focus-visible {
+  border-color: color-mix(in srgb, var(--aic-accent) 60%, var(--aic-details-border));
+  background: color-mix(in srgb, var(--aic-accent) 10%, transparent);
+  outline: none;
+}
+.cm-editor .cm-content .cm-md-table.cm-md-block-preview,
+.cm-editor .cm-content .cm-md-props.cm-md-block-preview { padding: 0; }
+.cm-editor .cm-content .cm-md-block-preview > table { margin: 0.35rem; }
+.cm-editor .cm-content .cm-md-mermaid.cm-md-block-preview { padding-top: 0; }
+.cm-md-mermaid.cm-md-block-preview .cm-md-mermaid-zoom { top: 2.25rem; }
+
 /* inline mermaid editing preview — the live diagram below a fence while its
    source is being edited; flat and compact, a hairline rule ties it to the
    fence above (no shadows/animation — layout-only, Crostini-safe).
@@ -254,19 +301,47 @@ html, body {
   color: var(--aic-contrast-fg);
 }
 
-.aic-pane-heading,
 .aic-pane-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.2rem;
   min-width: 0;
 }
 
-.aic-pane-heading strong {
-  flex: 1 1 auto;
+.aic-pane-context {
+  display: grid;
+  min-width: 0;
+}
+
+#pane-filename {
   overflow: hidden;
+  color: var(--aic-contrast-fg);
+  font: 650 0.84rem/1.2 var(--vscode-font-family, system-ui, sans-serif);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.aic-pane-breadcrumb {
+  justify-self: start;
+  max-width: 100%;
+  overflow: hidden;
+  padding-left: 0 !important;
+  color: var(--aic-muted) !important;
+  font-size: 0.76rem !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aic-pane-breadcrumb::before {
+  content: "";
+  display: inline-block;
+  width: 0.78rem;
+  height: 0.78rem;
+  margin-right: 0.25rem;
+  vertical-align: -0.08rem;
+  background: currentColor;
+  clip-path: polygon(4% 21%, 39% 21%, 49% 34%, 96% 34%, 96% 84%, 4% 84%);
 }
 
 #secondary-controls button {
@@ -288,6 +363,28 @@ html, body {
 }
 
 #secondary-controls button:disabled { cursor: not-allowed; opacity: 0.45; }
+.aic-pane-menu-wrap { position: relative; }
+#pane-note-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+}
+#pane-note-actions svg { width: 0.9rem; height: 0.9rem; fill: currentColor; }
+.aic-pane-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 0.2rem);
+  right: 0;
+  display: grid;
+  min-width: 9.5rem;
+  padding: 0.2rem;
+  border: 1px solid var(--vscode-menu-border, var(--aic-border));
+  border-radius: var(--radius);
+  background: var(--vscode-menu-background, var(--aic-contrast));
+  box-shadow: 0 4px 12px color-mix(in srgb, #000 28%, transparent);
+}
+.aic-pane-menu button { justify-content: flex-start; text-align: left; }
+.aic-pane-menu button.danger { color: var(--aic-danger) !important; }
 .aic-pane-auto { display: flex; align-items: center; gap: 0.25rem; color: var(--aic-muted); font-size: 0.84rem; }
 #pane-status { min-height: 1em; color: var(--aic-muted); font-size: 0.8rem; }
 
@@ -315,10 +412,16 @@ html, body {
   gap: 0.35rem;
   width: 100%;
   min-height: 1.75rem;
-  padding: 0.15rem 0.3rem;
+  padding: 0.16rem 0.28rem;
+  border: 1px solid var(--aic-details-border);
   border-left: 2px solid var(--aic-accent, var(--vscode-textLink-foreground));
+  border-radius: var(--radius);
   color: var(--aic-contrast-fg, var(--vscode-foreground));
-  background: color-mix(in srgb, var(--vscode-editor-background) 92%, var(--vscode-textLink-foreground));
+  background: var(--aic-details-surface);
+}
+.cm-aic-details-summary[data-open="true"][data-body="true"] {
+  border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
 }
 .cm-aic-details-summary button {
   color: inherit;
@@ -326,12 +429,26 @@ html, body {
 }
 .cm-aic-details-disclosure,
 .cm-aic-details-check,
-.cm-aic-details-link {
+.cm-aic-details-link,
+.cm-aic-details-title {
   border: 0;
   background: transparent;
   padding: 0.1rem;
 }
-.cm-aic-details-disclosure { width: 1.25rem; cursor: pointer; }
+.cm-aic-details-disclosure {
+  display: inline-grid;
+  width: 1.35rem;
+  height: 1.35rem;
+  place-items: center;
+  cursor: pointer;
+}
+.cm-aic-details-chevron {
+  width: 0.9rem;
+  height: 0.9rem;
+  transform: rotate(0deg);
+  transition: transform 120ms ease-out;
+}
+.cm-aic-details-summary[data-open="true"] .cm-aic-details-chevron { transform: rotate(90deg); }
 .cm-aic-details-check {
   width: 1rem;
   height: 1rem;
@@ -342,15 +459,40 @@ html, body {
 .cm-aic-details-check.checked::after { content: "✓"; display: block; line-height: 0.75rem; }
 .cm-aic-details-check:disabled { opacity: 0.55; cursor: default; }
 .cm-aic-details-link {
-  min-width: 0;
-  overflow: hidden;
+  display: inline-grid;
+  flex: 0 0 auto;
+  width: 1.45rem;
+  height: 1.45rem;
+  place-items: center;
   color: var(--vscode-textLink-foreground);
-  text-decoration: underline;
+  cursor: pointer;
+}
+.cm-aic-details-link svg { width: 0.9rem; height: 0.9rem; }
+.cm-aic-details-title {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  color: inherit;
+  text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
 }
-.cm-aic-details-title { overflow-wrap: anywhere; }
+.cm-aic-details-edit { flex: 0 0 auto; }
+.cm-editor .cm-content .cm-line.cm-aic-details-body {
+  box-sizing: border-box;
+  padding-right: 0.55rem;
+  padding-left: 0.55rem;
+  border-right: 1px solid var(--aic-details-border);
+  border-left: 2px solid var(--aic-accent);
+  background: var(--aic-details-surface);
+}
+.cm-editor .cm-content .cm-line.cm-aic-details-body-first { padding-top: 0.28rem; }
+.cm-editor .cm-content .cm-line.cm-aic-details-body-last {
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--aic-details-border);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
 .aic-secondary-surface .cm-editor .cm-content .cm-md-h1 { font-size: 1.45em; }
 .aic-secondary-surface .cm-editor .cm-content .cm-md-h2 { font-size: 1.25em; }
 .aic-secondary-surface .cm-editor .cm-content .cm-md-h3 { font-size: 1.12em; }

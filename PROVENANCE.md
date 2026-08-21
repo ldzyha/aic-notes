@@ -3,8 +3,8 @@
 ## AIC for Standard Notes contract
 
 - Source repository: `https://github.com/ldzyha/standard-notes-aic`
-- Version: `v0.1.1`
-- Commit: `010501fe03a0f06b114e0414caf556fee05c3418`
+- Version: `v3.2.0`
+- Commit: `5e8f000ca1dff2880ed1da5042a47bc511202ff7`
 - Authority files reviewed: `src/styles.css`, `src/editor.ts`, `src/language.ts`,
   `src/markdown-decorations.ts`, `src/block-views.ts`, `src/commands.ts`, `src/toolbar.ts`,
   `src/link-tooltip.ts`, and Mermaid modules.
@@ -12,7 +12,7 @@
 AIC Notes adapts that editor's observable contract to VS Code: exact Markdown source, styled
 in-place structures, task/table/frontmatter/Mermaid behavior, and its `--aic-*` visual tokens mapped
 to VS Code theme tokens. Standard Notes account/runtime code is not bundled. The existing AIC Notes
-Markdown implementation remains the runtime engine; the v5.3.1 adapter keeps the Secondary surface,
+Markdown implementation remains the runtime engine; the v6.6.1 adapter keeps the Secondary surface,
 adds the exact AIC details markers, and preserves the Standard Notes AIC theme/interaction contract.
 
 ## AIC selection-note contract

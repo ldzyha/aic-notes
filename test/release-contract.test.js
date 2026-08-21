@@ -6,8 +6,8 @@ const packageJson = JSON.parse(
   await readFile(new URL("../package.json", import.meta.url), "utf8"),
 );
 
-test("5.3.1 manifest separates Primary management from Secondary note content", () => {
-  assert.equal(packageJson.version, "5.3.1");
+test("6.6.1 manifest separates Primary management from Secondary note content", () => {
+  assert.equal(packageJson.version, "6.6.1");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.equal(packageJson.scripts.publish, undefined);
   assert.ok(packageJson.scripts["release:gate"]);
@@ -71,6 +71,10 @@ test("Secondary placeholder, compact density, edit focus, and theme-safe control
   const details = await readFile(new URL("../src/webview/details.js", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/webview/theme.css", import.meta.url), "utf8");
   assert.match(provider, /id="pane-create"/u);
+  assert.match(provider, /id="pane-breadcrumb"/u);
+  assert.match(provider, /id="pane-filename"/u);
+  assert.match(provider, /id="pane-auth"/u);
+  assert.match(provider, /id="pane-note-actions"/u);
   assert.match(provider, /ensureFileNoteForUri/u);
   assert.match(provider, /case "ready":[\s\S]*else await this\.followActive\(\)/u);
   assert.match(webview, /pane\.create/u);
@@ -84,6 +88,10 @@ test("Secondary placeholder, compact density, edit focus, and theme-safe control
   assert.match(css, /\.aic-secondary-surface \.cm-editor \{ font-size: 0\.875rem; \}/u);
   assert.match(css, /\.aic-secondary-surface \.cm-scroller \{ line-height: 1\.42; \}/u);
   assert.match(css, /\.cm-aic-details-summary/u);
+  assert.match(css, /--aic-details-surface:/u);
+  assert.match(details, /createElementNS\("http:\/\/www\.w3\.org\/2000\/svg"/u);
+  assert.match(details, /textContent = "Edit source"/u);
+  assert.doesNotMatch(details, /[▸▾]/u);
 });
 
 test("headless authorization uses SecretStorage plus the encrypted bridge vault", async () => {
@@ -96,6 +104,36 @@ test("headless authorization uses SecretStorage plus the encrypted bridge vault"
   assert.doesNotMatch(bridge, /session\.UpdateSession/u);
   assert.doesNotMatch(bridge, /session\.GetSessionFromKeyring/u);
   assert.match(bridge, /ReadOnly/u);
+  assert.match(bridge, /case "disconnect"/u);
+  assert.match(client, /async logout\(\)/u);
+});
+
+test("Secondary recovers closed documents and exposes local-only note actions", async () => {
+  const provider = await readFile(new URL("../src/secondary/provider.js", import.meta.url), "utf8");
+  const actions = await readFile(new URL("../src/secondary/note-actions.js", import.meta.url), "utf8");
+  const deletion = await readFile(new URL("../src/notes/delete.js", import.meta.url), "utf8");
+  assert.match(provider, /this\.documentUri/u);
+  assert.match(provider, /this\.document\.isClosed/u);
+  assert.match(provider, /workspace\.openTextDocument\(uri\)/u);
+  assert.match(provider, /clearNoteContent/u);
+  assert.match(provider, /deleteCurrentNote/u);
+  assert.match(actions, /CHECKLIST_BODY = "- \[ \]\\n"/u);
+  assert.match(deletion, /useTrash: true/u);
+  assert.match(deletion, /"Delete Permanently"/u);
+});
+
+test("portable agent workflow uses only a thin .vscode marker and typed AIC commands", async () => {
+  const contract = await readFile(new URL("../src/agents/contract.js", import.meta.url), "utf8");
+  const bootstrap = await readFile(new URL("../src/agents/bootstrap.js", import.meta.url), "utf8");
+  assert.match(contract, /\["\.vscode", "aic-agent\.json"\]/u);
+  assert.match(contract, /guideCommand: "aic guide --json"/u);
+  assert.match(contract, /ownerNotes: "\*\.note\.md"/u);
+  assert.match(contract, /taskArtifacts: "\*\.ai\.md"/u);
+  assert.doesNotMatch(contract, /instructionPack|English practice/u);
+  assert.match(bootstrap, /\["rules", "status", "--json"\]/u);
+  assert.match(bootstrap, /\["rules", "sync", "--json"\]/u);
+  assert.match(bootstrap, /workspace\.isTrusted/u);
+  assert.doesNotMatch(bootstrap, /AGENTS\.md.*writeFile|\.aic\//u);
 });
 
 test("release packaging includes the helper but excludes helper source", async () => {
@@ -105,6 +143,6 @@ test("release packaging includes the helper but excludes helper source", async (
   const goMod = await readFile(new URL("../bridge/go.mod", import.meta.url), "utf8");
   assert.match(goMod, /28e3820a341f/u);
   const provenance = await readFile(new URL("../PROVENANCE.md", import.meta.url), "utf8");
-  assert.match(provenance, /010501fe03a0f06b114e0414caf556fee05c3418/u);
+  assert.match(provenance, /5e8f000ca1dff2880ed1da5042a47bc511202ff7/u);
   assert.match(provenance, /7716a0d940a0f6ae8e1f3b3f4f36299dc53e31b16840dbd171254312c41ca12e/u);
 });

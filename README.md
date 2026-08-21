@@ -7,12 +7,12 @@ with Standard Notes.
 
 ## Install on code-server
 
-Download `aic-notes-5.3.1-linux-x64.vsix` and its `.sha256` file from the
-[v5.3.1 release](https://github.com/ldzyha/aic-notes/releases/tag/v5.3.1), then verify and install:
+Download `aic-notes-6.6.1-linux-x64.vsix` and its `.sha256` file from the
+[v6.6.1 release](https://github.com/ldzyha/aic-notes/releases/tag/v6.6.1), then verify and install:
 
 ```sh
-sha256sum -c aic-notes-5.3.1-linux-x64.vsix.sha256
-code-server --install-extension aic-notes-5.3.1-linux-x64.vsix --force
+sha256sum -c aic-notes-6.6.1-linux-x64.vsix.sha256
+code-server --install-extension aic-notes-6.6.1-linux-x64.vsix --force
 ```
 
 Reload the browser window after installation. The extension targets Code/VS Code 1.106 or newer;
@@ -28,7 +28,9 @@ the bundled Standard Notes helper in this release targets Linux x64.
 - Keep **Auto-open linked note** checked to reveal an existing sidecar when its source becomes
   active. The checkbox is workspace-scoped and defaults to checked. Uncheck it to stop forced
   reveals.
-- Use **Pin/Unpin** and **Source** in the Secondary panel. There is no Preview/Edit mode switch:
+- The Secondary view title follows the current note filename. Its parent-folder breadcrumb reveals
+  that location in VS Code Explorer. Use compact **Pin/Unpin**, **Source**, **Sync**, and
+  **Log in/Log out** controls. There is no Preview/Edit mode switch:
   an attached note is an editor unless Standard Notes reports its item or session as read-only.
   Opening a `*.note.md` through Explorer, Quick Open, a link, a restored tab, or a command is
   intercepted and routed to this panel; the note is not left in an editor tab.
@@ -40,6 +42,10 @@ the bundled Standard Notes helper in this release targets Linux x64.
   adds one deduplicated, initially open details block under `## Linked code`. Its summary contains a
   checkbox and compact `file · Lx–Ly` link; the copied selection and an editable comment live inside.
   Clicking the link returns to the exact source lines. The source file is never modified.
+- Use the compact **Note** menu to **Clear content** or **Delete note**. Clear preserves a strictly
+  valid leading properties block byte-for-byte and resets the remaining local body to `- [ ]`.
+  Delete saves current bytes and moves only the local sidecar to Trash, with a separate permanent
+  confirmation only when Trash is unavailable. Neither action changes a remote Standard Notes item.
 
 The sidecar mapping remains AIC-compatible:
 
@@ -66,9 +72,15 @@ narrow pane while preserving visible theme-derived foregrounds. The Secondary vi
 the Markdown editor and persists changes through the VS Code document model. If the linked remote
 item is locked, the same view becomes fixed read-only after manual synchronization; there is no
 local mode toggle. The
-visual/editor contract follows AIC for Standard Notes v0.1.1: exact
+visual/editor contract follows AIC for Standard Notes v3.2.0: exact
 Markdown remains the only persisted value while headings, emphasis, tasks, lists, links,
 frontmatter properties, tables, fenced code, and Mermaid are rendered in place.
+
+Details use exact `>>>|open| Title` / `>>> Title` / standalone `<<<` markers. The title and real SVG
+chevron toggle disclosure; open cards join their summary and body on a dedicated sidebar-derived
+surface. **Details**, **Mermaid**, **Table**, and **Properties** each expose **Edit source**. Clicking
+preview content never reveals raw Markdown; explicit links, checkboxes, zoom, and disclosure keep
+their own actions. In read-only notes, **Edit source** still reveals exact non-editable Markdown.
 
 Run **AIC Notes: Use Native Editor for Plain Markdown** if ordinary Markdown should use VS Code's
 text editor. This does not relax the `*.note.md` Secondary-only rule.
@@ -77,8 +89,9 @@ text editor. This does not relax the `*.note.md` Secondary-only rule.
 
 Synchronization is manual and sidecars only:
 
-1. Open a sidecar in the Secondary panel and choose **Sync**.
-2. On first use, choose **Connect** and enter the Standard Notes account email/password. MFA is
+1. Open a sidecar in the Secondary panel and choose **Log in**, or choose **Sync** and accept its
+   connection prompt.
+2. Enter the Standard Notes account email/password. MFA is
    requested when the server requires it.
 3. Credentials are sent only to the local Go helper for authentication and are not persisted.
    Session tokens and encryption material are stored in an AES-256-GCM encrypted file under the
@@ -92,6 +105,10 @@ Synchronization is manual and sidecars only:
    authoritative. Nothing is merged silently.
 6. A Standard Notes `locked` item or read-only account session never receives a push. The Secondary
    editor becomes read-only and remains so until a later manual sync reports write access again.
+
+**Log out** removes only the encrypted local Standard Notes session after confirmation. It does not
+revoke remote tokens, delete the SecretStorage wrapping key, remove local notes or workspace sync
+bindings, or alter Standard Notes items.
 
 Each synchronized note receives exactly these managed tags:
 
@@ -114,6 +131,26 @@ requests. Connection failures are classified without echoing server responses or
 unreachable server, TLS verification, incompatible endpoint, unsupported client, and rejected
 authentication each produce a specific corrective action. The generic `sn_connect_failed` remains
 only for failures that cannot be safely classified.
+
+## Portable AIC agent workflow
+
+AIC Notes can connect coding agents to the same provider-neutral AIC process on every project and
+device without copying prompt text:
+
+1. Install AIC on the device so `aic guide --json` and `aic rules` are available. If code-server
+   cannot find it on `PATH`, set `aicNotes.agentWorkflow.aicPath` to the absolute executable path.
+2. Run **AIC Notes: Enable AIC Agent Workflow** once for a trusted workspace and commit
+   `.vscode/aic-agent.json` with the project.
+3. New devices detect that marker when the project is cloned. Installation/update checks
+   `aic rules status --json` and safely synchronizes missing or stale AIC-owned rules through
+   `aic rules sync --json`. Start a new agent session after a sync.
+
+The `.vscode` marker contains only schema/version and canonical discovery commands. It never copies
+the global instruction pack, stores agent/user identity, or rewrites owner-authored `AGENTS.md`.
+Agents obtain English practice, documentation/diagram rules, broad-to-specific `AGENTS.md` /
+`*.note.md` / `*.ai.md` context, recovery, bounded waves, and literal `GO` to verified `DONE` from
+the live versioned AIC guide. If existing global instruction files are not AIC-managed, the
+extension fails closed and asks the owner to use the official AIC installer or review replacement.
 
 ## Build and verify
 
@@ -139,7 +176,7 @@ Standard Notes account is intentionally not mutated by unattended tests.
 ## Release accounting
 
 This project uses the global `R.F.B` convention: release sequence, release-local feature outcomes,
-release-local fixed-bug outcomes. `5.3.1` is sequence 5 with three feature outcomes and one
+release-local fixed-bug outcomes. `6.6.1` is sequence 6 with six feature outcomes and one
 fixed-bug outcome. It is not a SemVer compatibility claim. See [`CHANGELOG.md`](CHANGELOG.md).
 
 ## License and provenance

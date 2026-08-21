@@ -85,11 +85,24 @@ func handle(payload []byte) response {
 		return status(input)
 	case "connect":
 		return connect(input)
+	case "disconnect":
+		return disconnect(input)
 	case "sync":
 		return syncNote(input)
 	default:
 		return response{OK: false, Code: "sn_bridge_operation", Message: "unsupported bridge operation"}
 	}
+}
+
+func disconnect(input request) response {
+	vault, err := vaultFromRequest(input)
+	if err != nil {
+		return failure("sn_vault_unavailable", err, "Reload code-server and retry")
+	}
+	if err := vault.Delete(session.KeyringService, session.KeyringApplicationName); err != nil && !errors.Is(err, keyring.ErrNotFound) {
+		return failure("sn_vault_delete_failed", err, "Check extension storage permissions and retry")
+	}
+	return response{OK: true, Connected: false, Action: "disconnected"}
 }
 
 func write(output response) {

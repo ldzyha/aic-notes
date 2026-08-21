@@ -171,3 +171,41 @@ func TestSessionVaultPreservesReadOnlyState(t *testing.T) {
 		t.Fatalf("status did not preserve read-only state: %#v", statusResponse)
 	}
 }
+
+func TestDisconnectRemovesOnlyTheValidatedLocalVaultAndIsIdempotent(t *testing.T) {
+	input := testVaultRequest(t)
+	if got := disconnect(input); !got.OK || got.Action != "disconnected" {
+		t.Fatalf("missing-vault disconnect failed: %#v", got)
+	}
+	vault, _ := vaultFromRequest(input)
+	if err := vault.Set(session.KeyringService, session.KeyringApplicationName, "secret"); err != nil {
+		t.Fatal(err)
+	}
+	if got := disconnect(input); !got.OK || got.Action != "disconnected" {
+		t.Fatalf("disconnect failed: %#v", got)
+	}
+	if _, err := os.Lstat(input.VaultPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("vault remains after disconnect: %v", err)
+	}
+	if got := disconnect(input); !got.OK {
+		t.Fatalf("repeated disconnect was not idempotent: %#v", got)
+	}
+}
+
+func TestDisconnectRefusesUnsafeVaultObjects(t *testing.T) {
+	input := testVaultRequest(t)
+	target := filepath.Join(t.TempDir(), "owner-file")
+	if err := os.WriteFile(target, []byte("keep"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, input.VaultPath); err != nil {
+		t.Fatal(err)
+	}
+	got := disconnect(input)
+	if got.OK || got.Code != "sn_vault_delete_failed" {
+		t.Fatalf("unsafe vault disconnect got %#v", got)
+	}
+	if payload, err := os.ReadFile(target); err != nil || string(payload) != "keep" {
+		t.Fatalf("unsafe target changed: %q, %v", payload, err)
+	}
+}

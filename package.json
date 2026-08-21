@@ -2,7 +2,7 @@
   "name": "aic-notes",
   "displayName": "AIC Notes",
   "description": "AIC Markdown plus Secondary-Side-Bar-only *.note.md sidecars with manual encrypted Standard Notes sync.",
-  "version": "5.3.1",
+  "version": "6.6.1",
   "publisher": "ldzyha",
   "icon": "media/icon.png",
   "license": "MIT",
@@ -157,6 +157,18 @@
         "command": "aicNotes.deleteFolderNotes",
         "title": "Delete All Notes in Folder",
         "category": "AIC Notes"
+      },
+      {
+        "command": "aicNotes.enableAgentWorkflow",
+        "title": "Enable AIC Agent Workflow",
+        "category": "AIC Notes",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "aicNotes.syncAgentInstructions",
+        "title": "Sync Agent Instructions",
+        "category": "AIC Notes",
+        "icon": "$(sync)"
       }
     ],
     "keybindings": [
@@ -204,6 +216,11 @@
           "command": "aicNotes.refreshTree",
           "when": "view == aicNotes.tree",
           "group": "navigation@2"
+        },
+        {
+          "command": "aicNotes.enableAgentWorkflow",
+          "when": "view == aicNotes.tree && workspaceFolderCount > 0",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
@@ -304,6 +321,12 @@
           "type": "string",
           "default": "",
           "description": "Optional absolute path to a compatible aic-notes-sn-bridge. Empty uses the bundled Linux x64 helper."
+        },
+        "aicNotes.agentWorkflow.aicPath": {
+          "type": "string",
+          "default": "aic",
+          "scope": "machine",
+          "description": "AIC executable used only for typed agent-rule status and sync commands. Use an absolute path when AIC is not on code-server's PATH."
         }
       }
     }

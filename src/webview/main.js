@@ -26,11 +26,8 @@ import { search, searchKeymap } from "@codemirror/search";
 import { HANDLERS, decorationPlugin } from "../../vendor/markdown/session.js";
 import { linkTooltip } from "../../vendor/markdown/link-tooltip.js";
 import { listKeymap } from "../../vendor/markdown/handlers/list.js";
-import { makeTableExtension, blockEnterKeymap } from "../../vendor/markdown/handlers/table.js";
-import {
-  makeFrontmatterExtension,
-  frontmatterEnterKeymap,
-} from "../../vendor/markdown/handlers/frontmatter.js";
+import { makeTableExtension } from "../../vendor/markdown/handlers/table.js";
+import { makeFrontmatterExtension } from "../../vendor/markdown/handlers/frontmatter.js";
 import { makeMermaidExtension } from "../../vendor/markdown/mermaid.js";
 import { MARKDOWN_CSS } from "../../vendor/markdown/styles.js";
 import { makeFencedMarkdown } from "./fenced-local.js";
@@ -94,6 +91,44 @@ function wirePaneControls() {
   document.getElementById("pane-sync")?.addEventListener("click", () =>
     api.postMessage({ type: "pane.sync" }),
   );
+  document.getElementById("pane-auth")?.addEventListener("click", () =>
+    api.postMessage({ type: "pane.auth" }),
+  );
+  document.getElementById("pane-breadcrumb")?.addEventListener("click", () =>
+    api.postMessage({ type: "pane.reveal" }),
+  );
+  const menuButton = document.getElementById("pane-note-actions");
+  const menu = document.getElementById("pane-note-menu");
+  const closeMenu = () => {
+    if (!menu || !menuButton) return;
+    menu.hidden = true;
+    menuButton.setAttribute("aria-expanded", "false");
+  };
+  menuButton?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (!menu) return;
+    menu.hidden = !menu.hidden;
+    menuButton.setAttribute("aria-expanded", String(!menu.hidden));
+    if (!menu.hidden) menu.querySelector("button:not(:disabled)")?.focus();
+  });
+  document.getElementById("pane-clear")?.addEventListener("click", () => {
+    closeMenu();
+    api.postMessage({ type: "pane.clear" });
+  });
+  document.getElementById("pane-delete")?.addEventListener("click", () => {
+    closeMenu();
+    api.postMessage({ type: "pane.delete" });
+  });
+  document.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!menu?.hidden && !target?.closest(".aic-pane-menu-wrap")) closeMenu();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !menu?.hidden) {
+      closeMenu();
+      menuButton?.focus();
+    }
+  });
   document.getElementById("pane-create")?.addEventListener("click", () =>
     api.postMessage({ type: "pane.create" }),
   );
@@ -148,10 +183,10 @@ function makeEditor(text) {
         ...detailsExtension(host),
         drawSelection(),
         search({ top: true }),
-        // arrow-into-block must win over defaultKeymap's cursor moves —
-        // it is how the caret ENTERS a rendered table/props/mermaid block;
-        // list Enter/Space (continue, renumber, task toggle) same story
-        Prec.high(keymap.of([...blockEnterKeymap, ...frontmatterEnterKeymap, ...listKeymap])),
+        // List Enter/Space must win over defaultKeymap for continuation,
+        // renumbering, and task toggling. Replacement previews expose their
+        // source only through the visible Edit source button.
+        Prec.high(keymap.of(listKeymap)),
         keymap.of([
           // the TextDocument owns the undo stack — route the chords host-side
           { key: "Mod-z", run: () => (api.postMessage({ type: "undo" }), true) },
@@ -225,8 +260,15 @@ window.addEventListener("message", (event) => {
       break;
     }
     case "paneState": {
-      const title = document.getElementById("pane-title");
-      if (title) title.textContent = msg.title;
+      document.title = msg.title;
+      const filename = document.getElementById("pane-filename");
+      if (filename) filename.textContent = msg.title || "Linked Note";
+      const breadcrumb = document.getElementById("pane-breadcrumb");
+      if (breadcrumb) {
+        breadcrumb.textContent = msg.breadcrumb || "Workspace";
+        breadcrumb.disabled = !msg.breadcrumb;
+        breadcrumb.title = msg.breadcrumb ? `Reveal ${msg.breadcrumb} in Explorer` : "";
+      }
       const pin = document.getElementById("pane-pin");
       if (pin) {
         pin.textContent = msg.pinned ? "Unpin" : "Pin";
@@ -237,6 +279,16 @@ window.addEventListener("message", (event) => {
       const status = document.getElementById("pane-status");
       if (status) status.textContent = msg.status || "";
       if (secondarySurface) setReadOnly(Boolean(msg.readOnly));
+      const auth = document.getElementById("pane-auth");
+      if (auth) {
+        auth.textContent = msg.authPending
+          ? msg.authConnected ? "Logging out…" : "Logging in…"
+          : msg.authConnected ? "Log out" : "Log in";
+        auth.disabled = Boolean(msg.authPending);
+        auth.title = msg.authReconnect
+          ? "Replace the unreadable local session by logging in again"
+          : msg.authConnected ? "Remove only the encrypted local session" : "Log in to Standard Notes";
+      }
       const detail = document.getElementById("pane-empty-detail");
       if (detail) {
         detail.textContent = msg.candidatePath
@@ -254,6 +306,20 @@ window.addEventListener("message", (event) => {
         const control = document.getElementById(id);
         if (control) control.disabled = !msg.hasNote;
       }
+      const noteActions = document.getElementById("pane-note-actions");
+      if (noteActions) {
+        noteActions.disabled = !msg.hasNote || Boolean(msg.actionPending);
+        noteActions.closest(".aic-pane-menu-wrap").hidden = !msg.hasNote;
+      }
+      if (!msg.hasNote || msg.actionPending) {
+        const menu = document.getElementById("pane-note-menu");
+        if (menu) menu.hidden = true;
+        noteActions?.setAttribute("aria-expanded", "false");
+      }
+      const clear = document.getElementById("pane-clear");
+      if (clear) clear.disabled = Boolean(msg.readOnly) || Boolean(msg.actionPending);
+      const remove = document.getElementById("pane-delete");
+      if (remove) remove.disabled = Boolean(msg.actionPending);
       const empty = document.getElementById("pane-empty");
       const editor = document.getElementById("editor");
       if (empty) empty.hidden = Boolean(msg.hasNote);

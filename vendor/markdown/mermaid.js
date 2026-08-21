@@ -97,7 +97,7 @@ export async function renderInto(el, source, context = "widget") {
     }
     const marker = document.createElement("span");
     marker.className = "cm-md-mermaid-broken";
-    marker.append(Icon("warn"), ` mermaid: ${structured.error} — click to edit the source`);
+    marker.append(Icon("warn"), ` mermaid: ${structured.error} — use Edit source`);
     marker.title = structured.detail;
     el.replaceChildren(marker);
     return false;
@@ -108,7 +108,7 @@ export async function renderInto(el, source, context = "widget") {
 // zoom — the svg's CSS width rides --mmd-zoom, container pans via
 // overflow-x — no CSS transform (Crostini GPU rule). Lives on the WRAPPER,
 // outside renderInto's replaceChildren target, so it survives re-renders.
-// Buttons stop propagation so they never trigger the widget's reveal click.
+// Buttons stop propagation so they never move the editor selection.
 function attachZoom(el) {
   let zoom = 100;
   const bar = document.createElement("div");
@@ -145,35 +145,36 @@ function diagramShell(className) {
 }
 
 class MermaidWidget extends WidgetType {
-  constructor(source) {
+  constructor(source, from, textFrom) {
     super();
     this.source = source;
+    this.from = from;
+    this.textFrom = textFrom;
   }
   eq(other) {
-    return other.source === this.source;
+    return other.source === this.source && other.from === this.from;
   }
   toDOM(view) {
     const { el, body } = diagramShell("cm-md-mermaid");
-    // editing is in the CODE EDITOR: click / Enter / Space move the cursor
-    // INTO the fence, which swaps this preview widget back for the editable
-    // ```mermaid source. No separate edit dialog.
-    el.tabIndex = 0;
-    el.setAttribute("role", "button");
-    el.setAttribute("aria-label", "mermaid diagram — activate to edit its source");
-    el.title = "edit the source";
-    const revealSource = () => {
-      const pos = view.posAtDOM(el);
-      const fence = mermaidFences(view.state).find((f) => pos >= f.from && pos <= f.to);
-      view.dispatch({ selection: { anchor: fence ? fence.textFrom : pos } });
+    el.classList.add("cm-md-block-preview");
+    el.setAttribute("role", "region");
+    el.setAttribute("aria-label", "Mermaid diagram preview");
+    const header = document.createElement("div");
+    header.className = "cm-md-preview-header";
+    const title = document.createElement("span");
+    title.textContent = "Mermaid";
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.className = "cm-md-edit-source";
+    edit.textContent = "Edit source";
+    edit.onmousedown = (event) => event.preventDefault();
+    edit.onclick = (event) => {
+      event.stopPropagation();
+      view.dispatch({ selection: { anchor: this.textFrom }, scrollIntoView: true });
       view.focus();
     };
-    el.onclick = revealSource;
-    el.onkeydown = (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        revealSource();
-      }
-    };
+    header.append(title, edit);
+    el.prepend(header);
     renderInto(body, this.source);
     return el;
   }
@@ -283,7 +284,7 @@ export function makeMermaidExtension() {
       } else {
         decorations.push(
           Decoration.replace({
-            widget: new MermaidWidget(fence.source),
+            widget: new MermaidWidget(fence.source, fence.from, fence.textFrom),
             block: true,
           }).range(fence.from, fence.to),
         );

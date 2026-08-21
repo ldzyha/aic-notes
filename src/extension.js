@@ -19,8 +19,11 @@ import { structuredError } from "./errors.js";
 import { SecondaryNotePane } from "./secondary/provider.js";
 import { StandardNotesSync } from "./sync/client.js";
 import { linkSelectionToNote } from "./notes/selection.js";
+import { deleteNotes } from "./notes/delete.js";
+import { AgentWorkflowBootstrap } from "./agents/bootstrap.js";
 
 export function activate(context) {
+  AgentWorkflowBootstrap.register(context);
   const tree = new NotesTree();
   const sync = new StandardNotesSync(context);
   const secondary = SecondaryNotePane.register(context, sync);
@@ -108,29 +111,6 @@ export function activate(context) {
   );
 
   hintIfShadowed(context);
-}
-
-async function deleteNotes(uris, label, tree) {
-  const confirm = await vscode.window.showWarningMessage(
-    `Delete ${label}?`,
-    { modal: true, detail: uris.map((u) => vscode.workspace.asRelativePath(u, false)).join("\n") },
-    "Move to Trash",
-  );
-  if (confirm !== "Move to Trash") return;
-  for (const uri of uris) {
-    try {
-      await vscode.workspace.fs.delete(uri, { useTrash: true });
-    } catch {
-      const hard = await vscode.window.showWarningMessage(
-        `Trash is unavailable for ${vscode.workspace.asRelativePath(uri, false)}. Delete permanently?`,
-        { modal: true },
-        "Delete Permanently",
-      );
-      if (hard !== "Delete Permanently") return;
-      await vscode.workspace.fs.delete(uri);
-    }
-  }
-  tree.refresh();
 }
 
 export function deactivate() {}

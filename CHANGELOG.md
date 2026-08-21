@@ -1,5 +1,32 @@
 # Changelog
 
+## 6.6.1 — 2026-08-21
+
+Release sequence 6 · 6 feature outcomes · 1 fixed-bug outcome.
+
+- F01: Details now renders as one continuous sidebar-contrast card. Its title and real rotating SVG
+  chevron toggle the exact marker, while checkbox, linked-source, and **Edit source** remain separate
+  controls; read-only disclosure is visual only.
+- F02: the Secondary toolbar is compact, wraps at narrow widths, uses the current note filename as
+  its native title, and exposes a clickable parent-folder breadcrumb plus Pin/Unpin, Source, and Sync.
+- F03: explicit **Log in/Log out** reflects the readable local encrypted session. Logout confirms and
+  removes only that local vault, preserving the SecretStorage key, bindings, notes, and remote data.
+- F04: **Edit source** is now the only source-entry action for Details, Mermaid, Table, and
+  Properties; preview content clicks and synthetic container keyboard activation stay in preview.
+- F05: a compact Note menu adds confirmed frontmatter-preserving **Clear content** and Trash-first
+  local **Delete note**, without remote mutation.
+- F06: install/update integrates the canonical AIC agent workflow. A committed thin
+  `.vscode/aic-agent.json` marker travels with a project, while typed `aic rules` commands provide
+  current English practice, context-file lifecycle, documentation/diagram rules, bounded waves,
+  and the literal GO-to-DONE gate across agents and devices without duplicated prompt text.
+- B01: redirected or otherwise closed `*.note.md` documents retain their URI and reopen before
+  edit/save/sync/replace, eliminating the observed `Document has been closed` failure without
+  leaving a Primary editor tab.
+
+Compatibility: VS Code/Code 1.106 or newer; bundled Standard Notes bridge is Linux x64. AIC agent
+workflow integration requires an independently installed compatible AIC executable. No
+Marketplace/Open VSX publication is implied.
+
 ## 5.3.1 — 2026-08-21
 
 Release sequence 5 · 3 feature outcomes · 1 fixed-bug outcome.
