@@ -8,6 +8,11 @@ Protocol: one JSON object on stdin and one JSON object on stdout. Supported oper
 output to 4 MiB and execution to 45 seconds. Credentials are accepted only for `connect`, passed
 over stdin, and persisted by `gosn-v2` only through the operating-system keychain.
 
+The pinned client sends Standard Notes client/version headers on authentication and sync. Server
+URLs must be absolute HTTP(S) endpoints without embedded credentials, query strings, or fragments.
+Connection errors are reduced to sanitized actionable categories; upstream bodies, email addresses,
+passwords, and tokens never cross the helper response boundary.
+
 Build with Go 1.25.1:
 
 ```sh

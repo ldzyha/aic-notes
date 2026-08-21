@@ -104,9 +104,14 @@ func connect(input request) response {
 	if strings.TrimSpace(input.Email) == "" || input.Password == "" {
 		return response{OK: false, Code: "sn_credentials_required", Message: "email and password are required"}
 	}
-	server := strings.TrimRight(strings.TrimSpace(input.Server), "/")
-	if server == "" {
-		server = common.APIServer
+	server, serverErr := normalizeServer(input.Server, common.APIServer)
+	if serverErr != nil {
+		return response{
+			OK:      false,
+			Code:    "sn_server_invalid",
+			Message: "the configured Standard Notes server URL is invalid",
+			Fixes:   []string{"Use an absolute http:// or https:// sync-server URL without credentials, query, or fragment"},
+		}
 	}
 	result, err := auth.SignIn(auth.SignInInput{
 		HTTPClient: common.NewHTTPClient(),
@@ -118,13 +123,13 @@ func connect(input request) response {
 		Debug:      false,
 	})
 	if err != nil {
-		return failure("sn_connect_failed", err, "Check the server, credentials, and network connection")
+		return connectFailure(err)
 	}
 	if result.TokenName != "" {
 		return response{OK: true, MFARequired: true, TokenName: result.TokenName}
 	}
 	if result.Session.AccessToken == "" {
-		return response{OK: false, Code: "sn_connect_failed", Message: "Standard Notes returned no access token"}
+		return response{OK: false, Code: "sn_auth_response_invalid", Message: "Standard Notes returned no access token", Fixes: []string{"Verify the server endpoint and retry"}}
 	}
 	s := sessionFromAuth(result.Session, server)
 	if err := session.UpdateSession(&s, nil, false); err != nil {

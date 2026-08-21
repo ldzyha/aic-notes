@@ -2,7 +2,7 @@
   "name": "aic-notes",
   "displayName": "AIC Notes",
   "description": "AIC Markdown plus Secondary-Side-Bar-only *.note.md sidecars with manual encrypted Standard Notes sync.",
-  "version": "3.4.0",
+  "version": "4.3.3",
   "publisher": "ldzyha",
   "icon": "media/icon.png",
   "license": "MIT",
@@ -97,6 +97,12 @@
         "icon": "$(note)"
       },
       {
+        "command": "aicNotes.linkSelectionToNote",
+        "title": "Link Selection to Note",
+        "category": "AIC Notes",
+        "icon": "$(comment-discussion)"
+      },
+      {
         "command": "aicNotes.openInSecondary",
         "title": "Open Note in Secondary Side Bar",
         "category": "AIC Notes"
@@ -159,6 +165,12 @@
         "key": "ctrl+alt+n",
         "mac": "cmd+alt+n",
         "when": "editorTextFocus || activeCustomEditorId == aicNotes.markdown || focusedView == aicNotes.secondary"
+      },
+      {
+        "command": "aicNotes.linkSelectionToNote",
+        "key": "ctrl+shift+/",
+        "mac": "cmd+shift+/",
+        "when": "editorTextFocus && editorHasSelection && resourceScheme == file && resourceFilename not =~ /\\.note\\.md$/"
       }
     ],
     "menus": {
@@ -173,6 +185,13 @@
         {
           "command": "aicNotes.noteForExplorerItem",
           "group": "2_workspace"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "aicNotes.linkSelectionToNote",
+          "when": "editorHasSelection && resourceScheme == file && resourceFilename not =~ /\\.note\\.md$/",
+          "group": "navigation@10"
         }
       ],
       "view/title": [

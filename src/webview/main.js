@@ -87,6 +87,7 @@ function setPaneMode(mode) {
     button.setAttribute("aria-pressed", String(paneMode === "edit"));
   }
   document.body.dataset.paneMode = paneMode;
+  if (view && paneMode === "edit") requestAnimationFrame(() => view?.focus());
 }
 
 function wirePaneControls() {
@@ -102,6 +103,9 @@ function wirePaneControls() {
   );
   document.getElementById("pane-sync")?.addEventListener("click", () =>
     api.postMessage({ type: "pane.sync" }),
+  );
+  document.getElementById("pane-create")?.addEventListener("click", () =>
+    api.postMessage({ type: "pane.create" }),
   );
   document.getElementById("pane-auto")?.addEventListener("change", (event) =>
     api.postMessage({ type: "pane.autoOpen", value: event.currentTarget.checked }),
@@ -190,13 +194,18 @@ window.addEventListener("message", (event) => {
       docState.generation = msg.generation;
       view?.destroy();
       view = makeEditor(msg.text);
-      if (secondarySurface) setPaneMode("preview");
+      if (secondarySurface) setPaneMode(msg.mode);
+      const requested = msg.selection;
       const saved = api.getState();
-      if (saved && saved.path === msg.relativePath) {
+      const selection = requested ?? (saved?.path === msg.relativePath ? saved : null);
+      if (selection) {
         const len = view.state.doc.length;
         try {
           view.dispatch({
-            selection: { anchor: Math.min(saved.anchor, len), head: Math.min(saved.head, len) },
+            selection: {
+              anchor: Math.max(0, Math.min(selection.anchor, len)),
+              head: Math.max(0, Math.min(selection.head, len)),
+            },
             scrollIntoView: true,
             annotations: [remote.of(true)],
           });
@@ -204,7 +213,7 @@ window.addEventListener("message", (event) => {
           /* stale saved selection — keep the default */
         }
       }
-      if (!secondarySurface) view.focus();
+      if (!secondarySurface) requestAnimationFrame(() => view?.focus());
       break;
     }
     case "external": {
@@ -225,12 +234,6 @@ window.addEventListener("message", (event) => {
       });
       break;
     }
-    case "empty": {
-      document.getElementById("pane-empty")?.removeAttribute("hidden");
-      const editor = document.getElementById("editor");
-      if (editor) editor.hidden = true;
-      break;
-    }
     case "paneState": {
       const title = document.getElementById("pane-title");
       if (title) title.textContent = msg.title;
@@ -243,6 +246,19 @@ window.addEventListener("message", (event) => {
       if (auto) auto.checked = Boolean(msg.autoOpen);
       const status = document.getElementById("pane-status");
       if (status) status.textContent = msg.status || "";
+      const detail = document.getElementById("pane-empty-detail");
+      if (detail) {
+        detail.textContent = msg.candidatePath
+          ? "Create the canonical sidecar for the focused source:"
+          : "Focus a saved workspace source file.";
+      }
+      const candidate = document.getElementById("pane-candidate");
+      if (candidate) candidate.textContent = msg.candidatePath || "";
+      const create = document.getElementById("pane-create");
+      if (create) {
+        create.hidden = !msg.candidatePath;
+        create.disabled = !msg.canCreate;
+      }
       for (const id of ["pane-mode", "pane-target", "pane-sync"]) {
         const control = document.getElementById(id);
         if (control) control.disabled = !msg.hasNote;

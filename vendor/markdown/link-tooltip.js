@@ -24,7 +24,13 @@ function resolveLocal(url, host) {
   if (clean.startsWith("/")) return clean.replace(/^\/+/, "");
   const base = host?.editor?.getActiveBuffer?.()?.path ?? "";
   const parts = base.includes("/") ? base.slice(0, base.lastIndexOf("/")).split("/") : [];
-  for (const seg of clean.split("/")) {
+  for (const encodedSegment of clean.split("/")) {
+    let seg = encodedSegment;
+    try {
+      seg = decodeURIComponent(encodedSegment);
+    } catch {
+      // Keep malformed input literal; the host's bounded stat will fail safely.
+    }
     if (seg === "" || seg === ".") continue;
     if (seg === "..") parts.pop();
     else parts.push(seg);
@@ -42,7 +48,7 @@ export function openLink(url, host) {
   // a scheme-less link with a path — open the local file in the editor
   const path = resolveLocal(dest, host);
   if (!path) return; // nothing resolvable — never publish an empty path
-  host.bus.publish("file.open", { path });
+  host.bus.publish("file.open", { path, href: dest });
 }
 
 function linkAt(state, pos) {

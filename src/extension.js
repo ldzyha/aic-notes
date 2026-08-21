@@ -18,6 +18,7 @@ import { MarkdownEditorProvider } from "./editor/provider.js";
 import { structuredError } from "./errors.js";
 import { SecondaryNotePane } from "./secondary/provider.js";
 import { StandardNotesSync } from "./sync/client.js";
+import { linkSelectionToNote } from "./notes/selection.js";
 
 export function activate(context) {
   const tree = new NotesTree();
@@ -34,6 +35,10 @@ export function activate(context) {
     ),
 
     vscode.commands.registerCommand("aicNotes.noteForCurrentFile", commandHandler(noteForCurrentFile)),
+    vscode.commands.registerCommand(
+      "aicNotes.linkSelectionToNote",
+      commandHandler(() => linkSelectionToNote(secondary)),
+    ),
     vscode.commands.registerCommand("aicNotes.noteForExplorerItem", commandHandler(noteForExplorerItem)),
     vscode.commands.registerCommand("aicNotes.openProjectNote", commandHandler(openProjectNote)),
     vscode.commands.registerCommand("aicNotes.openGlobalNote", commandHandler(openGlobalNote)),

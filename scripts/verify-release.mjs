@@ -7,7 +7,7 @@ const root = path.resolve(import.meta.dirname, "..");
 const manifest = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
 const version = manifest.version;
 if (!/^\d+\.\d+\.\d+$/u.test(version)) throw new Error(`invalid R.F.B version: ${version}`);
-if (version !== "3.4.0") throw new Error(`release gate expects 3.4.0, got ${version}`);
+if (version !== "4.3.3") throw new Error(`release gate expects 4.3.3, got ${version}`);
 
 const binary = path.join(root, "bin", "linux-x64", "aic-notes-sn-bridge");
 await access(binary);
@@ -48,6 +48,16 @@ if (
   "aicNotes.noteRedirect"
 ) {
   throw new Error("packaged note redirect association is missing");
+}
+const selectionCommand = packagedManifest.contributes.commands.find(
+  (value) => value.command === "aicNotes.linkSelectionToNote",
+);
+if (!selectionCommand) throw new Error("packaged selection-link command is missing");
+const selectionBinding = packagedManifest.contributes.keybindings.find(
+  (value) => value.command === "aicNotes.linkSelectionToNote",
+);
+if (selectionBinding?.key !== "ctrl+shift+/" || selectionBinding?.mac !== "cmd+shift+/") {
+  throw new Error("packaged selection-link keybinding is missing");
 }
 
 const secretPattern = /(?:BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY|(?:access|refresh)[_-]?token["']?\s*[:=]\s*["'][A-Za-z0-9._-]{24,}|password["']?\s*[:=]\s*["'][^"']{8,}["'])/iu;

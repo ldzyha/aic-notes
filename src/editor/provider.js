@@ -18,6 +18,7 @@
 import * as vscode from "vscode";
 import { formatError } from "../errors.js";
 import { webviewHtml } from "./webview-html.js";
+import { openSourceAtHref } from "../notes/navigation.js";
 
 // [[target]] → note path candidates, aic LINK_RE semantics (sync.js:913):
 // a *.md target is used as-is, anything else gets `.note.md`; tried both
@@ -192,7 +193,7 @@ export class MarkdownEditorProvider {
           reveal: true,
         });
       } else {
-        await vscode.commands.executeCommand("vscode.open", uri);
+        await openSourceAtHref(uri, payload?.href ?? "");
       }
       return;
     }

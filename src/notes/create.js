@@ -36,8 +36,10 @@ export async function openNoteDocument(uri, options = {}) {
   await vscode.commands.executeCommand("vscode.open", uri);
 }
 
-// create <notePath> with header+template if missing, then open it
-async function ensureNote(folder, relNotePath, level, titleName, sourceUri) {
+// Create <notePath> with header+template if missing. Keeping creation separate
+// from navigation lets the Secondary placeholder and selection-link action use
+// the same deterministic seed without opening an intermediate editor.
+export async function ensureNoteFile(folder, relNotePath, level, titleName) {
   const uri = vscode.Uri.joinPath(folder.uri, relNotePath);
   if (!(await exists(uri))) {
     const template = await loadTemplate(level, workspaceReader(folder));
@@ -45,8 +47,44 @@ async function ensureNote(folder, relNotePath, level, titleName, sourceUri) {
     const text = stringifyFrontmatter(body, noteMeta(titleName, level));
     await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(text));
   }
+  return uri;
+}
+
+// create <notePath> with header+template if missing, then open it
+async function ensureNote(folder, relNotePath, level, titleName, sourceUri) {
+  const uri = await ensureNoteFile(folder, relNotePath, level, titleName);
   await openNoteDocument(uri, { pin: false, sourceUri });
   return uri;
+}
+
+export async function ensureFileNoteForUri(uri) {
+  if (!uri || uri.scheme !== "file" || uri.path.endsWith(".note.md")) {
+    throw structuredError("notes_no_active_file", "no file-backed source is available", [
+      "Focus a workspace source file, then retry",
+    ]);
+  }
+  const folder = vscode.workspace.getWorkspaceFolder(uri);
+  if (!folder) {
+    throw structuredError("notes_outside_workspace", `${uri.fsPath} is not inside the workspace`, [
+      "Open the file's folder as a workspace first",
+    ]);
+  }
+  try {
+    const stat = await vscode.workspace.fs.stat(uri);
+    if (stat.type & vscode.FileType.Directory) {
+      throw structuredError("notes_source_not_file", `${uri.fsPath} is not a file`, [
+        "Choose a source file",
+      ]);
+    }
+  } catch (error) {
+    if (error?.structured) throw error;
+    throw structuredError("notes_source_missing", `${uri.fsPath} no longer exists`, [
+      "Restore the source or focus another file",
+    ]);
+  }
+  const relPath = vscode.workspace.asRelativePath(uri, false).replaceAll("\\", "/");
+  const notePath = notePathFor(relPath);
+  return ensureNoteFile(folder, notePath, "file-note", path.basename(relPath));
 }
 
 export async function noteForCurrentFile() {
@@ -57,6 +95,12 @@ export async function noteForCurrentFile() {
       "Focus a file editor, then run the command again",
     ]);
   }
+  if (!uri.path.endsWith(".note.md")) {
+    const noteUri = await ensureFileNoteForUri(uri);
+    await openNoteDocument(noteUri, { pin: false, sourceUri: uri });
+    return;
+  }
+
   const folder = vscode.workspace.getWorkspaceFolder(uri);
   if (!folder) {
     throw structuredError("notes_outside_workspace", `${uri.fsPath} is not inside the workspace`, [
@@ -64,22 +108,14 @@ export async function noteForCurrentFile() {
     ]);
   }
   const relPath = vscode.workspace.asRelativePath(uri, false).replaceAll("\\", "/");
-
-  // on a note → toggle back to its target
-  if (relPath.endsWith(".note.md")) {
-    const { resolveTarget } = await import("./target.js");
-    const target = await resolveTarget(folder, relPath);
-    if (!target) {
-      throw structuredError("notes_orphan", `${relPath} has no existing target`, [
-        "The annotated file/folder was moved or deleted — restore it or delete the note",
-      ]);
-    }
-    await vscode.window.showTextDocument(target, { viewColumn: vscode.ViewColumn.Beside });
-    return;
+  const { resolveTarget } = await import("./target.js");
+  const target = await resolveTarget(folder, relPath);
+  if (!target) {
+    throw structuredError("notes_orphan", `${relPath} has no existing target`, [
+      "The annotated file/folder was moved or deleted — restore it or delete the note",
+    ]);
   }
-
-  const notePath = notePathFor(relPath);
-  await ensureNote(folder, notePath, "file-note", path.basename(relPath), uri);
+  await vscode.window.showTextDocument(target, { viewColumn: vscode.ViewColumn.Beside });
 }
 
 export async function noteForExplorerItem(uri) {

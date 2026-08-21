@@ -3,6 +3,8 @@ import { webviewHtml } from "../editor/webview-html.js";
 import { formatError, structuredError } from "../errors.js";
 import { linkedNotePath, isNotePath } from "./model.js";
 import { resolveTarget } from "../notes/target.js";
+import { ensureFileNoteForUri } from "../notes/create.js";
+import { openSourceAtHref } from "../notes/navigation.js";
 
 export const SECONDARY_VIEW_ID = "aicNotes.secondary";
 const AUTO_OPEN_KEY = "aicNotes.secondary.autoOpenExisting";
@@ -53,6 +55,9 @@ export class SecondaryNotePane {
     this.ready = false;
     this.generation = 0;
     this.applying = 0;
+    this.editQueue = Promise.resolve();
+    this.pendingViewState = undefined;
+    this.creating = false;
     this.disposables = [];
     this.routingTabs = false;
     this.autoOpen = context.workspaceState.get(AUTO_OPEN_KEY, true);
@@ -83,7 +88,12 @@ export class SecondaryNotePane {
         <label class="aic-pane-auto"><input id="pane-auto" type="checkbox"> Auto-open linked note</label>
         <span id="pane-status" role="status"></span>
       </section>
-      <div id="pane-empty" class="aic-pane-empty">Focus a workspace file with an existing sidecar, or use the note icon to create one.</div>
+      <div id="pane-empty" class="aic-pane-empty">
+        <strong>No linked note yet</strong>
+        <span id="pane-empty-detail">Focus a workspace source file.</span>
+        <code id="pane-candidate"></code>
+        <button id="pane-create" type="button">Create note</button>
+      </div>
       <div id="editor"></div>`,
       "aic-secondary-surface",
     );
@@ -106,7 +116,7 @@ export class SecondaryNotePane {
     }
   }
 
-  async open(uri, { pin = true, reveal = true, sourceUri } = {}) {
+  async open(uri, { pin = true, reveal = true, sourceUri, mode = "preview", selection } = {}) {
     if (!uri || uri.scheme !== "file" || !isNotePath(uri.path)) {
       throw structuredError("notes_not_sidecar", `${uri?.fsPath ?? "resource"} is not a *.note.md sidecar`, [
         "Choose a sidecar note",
@@ -114,6 +124,7 @@ export class SecondaryNotePane {
     }
     this.pinned = pin;
     this.sourceUri = sourceUri;
+    this.pendingViewState = { mode, selection };
     await this.attach(uri);
     if (reveal) await this.focus(false);
     await this.closeExactNoteTabs(uri);
@@ -121,7 +132,7 @@ export class SecondaryNotePane {
 
   async attach(uri) {
     if (this.document?.uri.toString() === uri.toString()) {
-      await this.sendPaneState();
+      await this.sendInit();
       return;
     }
     this.document = await vscode.workspace.openTextDocument(uri);
@@ -140,11 +151,12 @@ export class SecondaryNotePane {
     this.sourceUri = uri;
     if (!(await exists(noteUri))) {
       this.document = undefined;
+      this.pendingViewState = undefined;
       this.generation++;
-      await this.view?.webview.postMessage({ type: "empty" });
       await this.sendPaneState();
       return false;
     }
+    this.pendingViewState = { mode: "preview" };
     await this.attach(noteUri);
     if (forceReveal || this.autoOpen) await this.focus(true);
     return true;
@@ -209,13 +221,17 @@ export class SecondaryNotePane {
       return;
     }
     const relativePath = vscode.workspace.asRelativePath(this.document.uri, false).replaceAll("\\", "/");
+    const viewState = this.pendingViewState;
     await this.view.webview.postMessage({
       type: "init",
       text: this.document.getText(),
       generation: this.generation,
       relativePath,
       surface: "secondary",
+      mode: viewState?.mode ?? "preview",
+      selection: viewState?.selection,
     });
+    this.pendingViewState = undefined;
     await this.sendPaneState();
   }
 
@@ -224,12 +240,22 @@ export class SecondaryNotePane {
     const relativePath = this.document
       ? vscode.workspace.asRelativePath(this.document.uri, false).replaceAll("\\", "/")
       : "";
+    let candidatePath = "";
+    if (!this.document && this.sourceUri) {
+      const folder = vscode.workspace.getWorkspaceFolder(this.sourceUri);
+      if (folder) {
+        const sourcePath = vscode.workspace.asRelativePath(this.sourceUri, false).replaceAll("\\", "/");
+        candidatePath = linkedNotePath(sourcePath) ?? "";
+      }
+    }
     await this.view.webview.postMessage({
       type: "paneState",
-      title: relativePath || "Linked note",
+      title: relativePath || candidatePath || "Linked note",
       pinned: this.pinned,
       autoOpen: this.autoOpen,
       hasNote: Boolean(this.document),
+      canCreate: Boolean(candidatePath) && !this.creating,
+      candidatePath,
       status,
     });
   }
@@ -286,10 +312,14 @@ export class SecondaryNotePane {
       switch (message.type) {
         case "ready":
           this.ready = true;
-          await this.sendInit();
+          if (this.document) await this.sendInit();
+          else await this.followActive();
           break;
         case "edit":
-          await this.applyChanges(message.changes ?? [], message.generation);
+          this.editQueue = this.editQueue.catch(() => undefined).then(() =>
+            this.applyChanges(message.changes ?? [], message.generation),
+          );
+          await this.editQueue;
           break;
         case "save":
           await this.document?.save();
@@ -308,6 +338,25 @@ export class SecondaryNotePane {
           await this.sendPaneState();
           if (!this.pinned) await this.followActive();
           break;
+        case "pane.create": {
+          if (this.document || !this.sourceUri || this.creating) return;
+          const sourceUri = this.sourceUri;
+          this.creating = true;
+          await this.sendPaneState("Creating…");
+          try {
+            const noteUri = await ensureFileNoteForUri(sourceUri);
+            await this.open(noteUri, {
+              pin: false,
+              reveal: true,
+              sourceUri,
+              mode: "edit",
+            });
+          } finally {
+            this.creating = false;
+            await this.sendPaneState("");
+          }
+          break;
+        }
         case "pane.target": {
           if (!this.document) return;
           const folder = vscode.workspace.getWorkspaceFolder(this.document.uri);
@@ -338,7 +387,7 @@ export class SecondaryNotePane {
           break;
       }
     } catch (error) {
-      await this.sendPaneState("Sync failed");
+      await this.sendPaneState(message.type === "pane.sync" ? "Sync failed" : "Action failed");
       vscode.window.showErrorMessage(`AIC Notes — ${formatError(error)}`);
     }
   }
@@ -354,8 +403,11 @@ export class SecondaryNotePane {
       const folder = vscode.workspace.getWorkspaceFolder(this.document.uri);
       if (!folder) return;
       const uri = vscode.Uri.joinPath(folder.uri, payload.path);
-      if (isNotePath(uri.path)) await this.open(uri, { pin: true, reveal: true });
-      else await vscode.window.showTextDocument(uri);
+      if (isNotePath(uri.path)) {
+        await this.open(uri, { pin: true, reveal: true });
+      } else {
+        await openSourceAtHref(uri, payload?.href ?? "");
+      }
     }
   }
 }

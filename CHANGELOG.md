@@ -1,5 +1,27 @@
 # Changelog
 
+## 4.3.3 — 2026-08-21
+
+Release sequence 4 · 3 feature outcomes · 3 fixed-bug outcomes.
+
+- F01: a compact Secondary layout keeps controls and Markdown readable in the narrow pane while
+  retaining the AIC visual contract.
+- F02: following a source without a sidecar shows a non-writing placeholder with the candidate path
+  and an explicit **Create note** action.
+- F03: a saved source selection can add one deduplicated linked-code annotation to the canonical
+  sidecar and navigate back to the exact lines without modifying source bytes; `*.ai.md` ownership
+  is verified fail-closed.
+- B01: Secondary Edit now reliably focuses the input, accepts changes, serializes overlapping
+  updates, and saves through the VS Code document model.
+- B02: toolbar labels and actions now use explicit theme-safe foreground fallbacks, so controls no
+  longer disappear on dark side-bar themes.
+- B03: the Standard Notes helper now sends the current mandatory client headers, validates server
+  URLs, preserves MFA, and returns sanitized actionable connection categories instead of the
+  unhelpful generic `sn_connect_failed` path where a safe classification exists.
+
+Compatibility: VS Code/Code 1.106 or newer. Standard Notes sync remains Linux x64 only. Selection
+links use persisted one-based line anchors. No Marketplace/Open VSX publication is implied.
+
 ## 3.4.0 — 2026-08-21
 
 Release sequence 3 · 4 feature outcomes · 0 fixed-bug outcomes.
