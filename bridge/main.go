@@ -17,45 +17,49 @@ import (
 )
 
 const (
-	maxRequestBytes = 2 * 1024 * 1024
-	aicEditorID     = "com.dzyha.standard-notes-aic"
+	maxRequestBytes          = 2 * 1024 * 1024
+	aicEditorID              = "com.dzyha.standard-notes-aic"
+	tagToParentReferenceType = "TagToParentTag"
+	supportsNativeNestedTags = true
 )
 
 type request struct {
-	Operation    string   `json:"operation"`
-	Email        string   `json:"email,omitempty"`
-	Password     string   `json:"password,omitempty"`
-	Server       string   `json:"server,omitempty"`
-	TokenName    string   `json:"tokenName,omitempty"`
-	Token        string   `json:"token,omitempty"`
-	LocalContent string   `json:"localContent,omitempty"`
-	Title        string   `json:"title,omitempty"`
-	Tags         []string `json:"tags,omitempty"`
-	PreviousTags []string `json:"previousTags,omitempty"`
-	RemoteUUID   string   `json:"remoteUuid,omitempty"`
-	BaseHash     string   `json:"baseHash,omitempty"`
-	Resolution   string   `json:"resolution,omitempty"`
-	VaultPath    string   `json:"vaultPath,omitempty"`
-	VaultKey     string   `json:"vaultKey,omitempty"`
+	Operation        string   `json:"operation"`
+	Email            string   `json:"email,omitempty"`
+	Password         string   `json:"password,omitempty"`
+	Server           string   `json:"server,omitempty"`
+	TokenName        string   `json:"tokenName,omitempty"`
+	Token            string   `json:"token,omitempty"`
+	LocalContent     string   `json:"localContent,omitempty"`
+	Title            string   `json:"title,omitempty"`
+	Tags             []string `json:"tags,omitempty"`
+	PreviousTags     []string `json:"previousTags,omitempty"`
+	PreviousTagUUIDs []string `json:"previousTagUuids,omitempty"`
+	RemoteUUID       string   `json:"remoteUuid,omitempty"`
+	BaseHash         string   `json:"baseHash,omitempty"`
+	Resolution       string   `json:"resolution,omitempty"`
+	VaultPath        string   `json:"vaultPath,omitempty"`
+	VaultKey         string   `json:"vaultKey,omitempty"`
 }
 
 type response struct {
-	OK            bool     `json:"ok"`
-	Code          string   `json:"code,omitempty"`
-	Message       string   `json:"message,omitempty"`
-	Fixes         []string `json:"fixes,omitempty"`
-	Connected     bool     `json:"connected,omitempty"`
-	Email         string   `json:"email,omitempty"`
-	MFARequired   bool     `json:"mfaRequired,omitempty"`
-	TokenName     string   `json:"tokenName,omitempty"`
-	Action        string   `json:"action,omitempty"`
-	LocalContent  string   `json:"localContent"`
-	RemoteUUID    string   `json:"remoteUuid,omitempty"`
-	BaseHash      string   `json:"baseHash,omitempty"`
-	SyncedAt      string   `json:"syncedAt,omitempty"`
-	ManagedTags   []string `json:"managedTags,omitempty"`
-	RemoteChanged bool     `json:"remoteChanged,omitempty"`
-	ReadOnly      bool     `json:"readOnly,omitempty"`
+	OK              bool     `json:"ok"`
+	Code            string   `json:"code,omitempty"`
+	Message         string   `json:"message,omitempty"`
+	Fixes           []string `json:"fixes,omitempty"`
+	Connected       bool     `json:"connected,omitempty"`
+	Email           string   `json:"email,omitempty"`
+	MFARequired     bool     `json:"mfaRequired,omitempty"`
+	TokenName       string   `json:"tokenName,omitempty"`
+	Action          string   `json:"action,omitempty"`
+	LocalContent    string   `json:"localContent"`
+	RemoteUUID      string   `json:"remoteUuid,omitempty"`
+	BaseHash        string   `json:"baseHash,omitempty"`
+	SyncedAt        string   `json:"syncedAt,omitempty"`
+	ManagedTags     []string `json:"managedTags,omitempty"`
+	ManagedTagUUIDs []string `json:"managedTagUuids,omitempty"`
+	RemoteChanged   bool     `json:"remoteChanged,omitempty"`
+	ReadOnly        bool     `json:"readOnly,omitempty"`
 }
 
 func main() {
@@ -297,12 +301,19 @@ func syncNote(input request) response {
 	}
 
 	tags := decrypted.Tags()
-	tagItems, err := reconcileTags(tags, remote.UUID, input.Tags, input.PreviousTags)
+	tagResult, err := reconcileTagHierarchy(
+		tags,
+		remote.UUID,
+		input.Tags,
+		input.PreviousTags,
+		input.PreviousTagUUIDs,
+		supportsNativeNestedTags,
+	)
 	if err != nil {
-		return failure("sn_tags_failed", err, "Remove duplicate managed tags and retry")
+		return failure("sn_tags_failed", err, "Resolve duplicate or malformed managed tags and retry")
 	}
-	for index := range tagItems {
-		outgoing = append(outgoing, &tagItems[index])
+	for index := range tagResult.Changed {
+		outgoing = append(outgoing, &tagResult.Changed[index])
 	}
 	if len(outgoing) > 0 {
 		encrypted, encryptErr := outgoing.Encrypt(&s, s.DefaultItemsKey)
@@ -327,18 +338,19 @@ func syncNote(input request) response {
 		baseHash = remoteHash
 	}
 	return response{
-		OK:           true,
-		Action:       action,
-		LocalContent: content,
-		RemoteUUID:   remote.UUID,
-		BaseHash:     baseHash,
-		SyncedAt:     time.Now().UTC().Format(time.RFC3339),
-		ManagedTags:  input.Tags,
-		ReadOnly:     false,
+		OK:              true,
+		Action:          action,
+		LocalContent:    content,
+		RemoteUUID:      remote.UUID,
+		BaseHash:        baseHash,
+		SyncedAt:        time.Now().UTC().Format(time.RFC3339),
+		ManagedTags:     tagResult.Titles,
+		ManagedTagUUIDs: tagResult.UUIDs,
+		ReadOnly:        false,
 	}
 }
 
-func prepareRemoteTrash(remote *items.Note, tags items.Tags, previousTags []string, now time.Time) (items.Items, string, error) {
+func prepareRemoteTrash(remote *items.Note, tags items.Tags, previousTags, previousTagUUIDs []string, now time.Time) (items.Items, string, error) {
 	if remote == nil {
 		return nil, "", errors.New("remote note is missing")
 	}
@@ -350,7 +362,7 @@ func prepareRemoteTrash(remote *items.Note, tags items.Tags, previousTags []stri
 		outgoing = append(outgoing, remote)
 		action = "trashed"
 	}
-	tagItems, err := reconcileTags(tags, remote.UUID, nil, previousTags)
+	tagItems, err := detachManagedTagReferences(tags, remote.UUID, previousTags, previousTagUUIDs)
 	if err != nil {
 		return nil, "", err
 	}
@@ -400,7 +412,13 @@ func trashNote(input request) response {
 		return response{OK: false, Code: "sn_note_read_only", Message: "the linked Standard Notes item is locked or read-only", Fixes: []string{"Unlock it in Standard Notes before deleting the local sidecar"}, RemoteUUID: remote.UUID, ReadOnly: true}
 	}
 
-	outgoing, action, err := prepareRemoteTrash(remote, decrypted.Tags(), input.PreviousTags, time.Now().UTC())
+	outgoing, action, err := prepareRemoteTrash(
+		remote,
+		decrypted.Tags(),
+		input.PreviousTags,
+		input.PreviousTagUUIDs,
+		time.Now().UTC(),
+	)
 	if err != nil {
 		return failure("sn_tags_failed", err, "Remove duplicate managed tags and retry")
 	}
@@ -418,75 +436,246 @@ func trashNote(input request) response {
 		}
 	}
 	return response{
-		OK:          true,
-		Action:      action,
-		RemoteUUID:  remote.UUID,
-		SyncedAt:    time.Now().UTC().Format(time.RFC3339),
-		ManagedTags: []string{},
-		ReadOnly:    false,
+		OK:              true,
+		Action:          action,
+		RemoteUUID:      remote.UUID,
+		SyncedAt:        time.Now().UTC().Format(time.RFC3339),
+		ManagedTags:     []string{},
+		ManagedTagUUIDs: []string{},
+		ReadOnly:        false,
 	}
 }
 
-func reconcileTags(existing items.Tags, noteUUID string, required, previous []string) (items.Tags, error) {
-	seen := map[string]int{}
-	for _, tag := range existing {
-		if isManagedTag(tag.Content.Title, previous, required) {
-			seen[tag.Content.Title]++
+type tagReconciliation struct {
+	Changed items.Tags
+	Titles  []string
+	UUIDs   []string
+}
+
+func reconcileTagHierarchy(
+	existing items.Tags,
+	noteUUID string,
+	requiredPath, previousTitles, previousUUIDs []string,
+	nestedSupported bool,
+) (tagReconciliation, error) {
+	path, err := normalizedTagPath(requiredPath, nestedSupported)
+	if err != nil {
+		return tagReconciliation{}, err
+	}
+	working := append(items.Tags(nil), existing...)
+	changed := map[string]bool{}
+	pathIndexes := make([]int, 0, len(path))
+	pathUUIDs := map[string]bool{}
+	parentUUID := ""
+	for _, title := range path {
+		index, findErr := findTagByParentAndTitle(working, parentUUID, title)
+		if findErr != nil {
+			return tagReconciliation{}, findErr
+		}
+		if index < 0 {
+			refs := items.ItemReferences{}
+			if parentUUID != "" {
+				refs = append(refs, items.ItemReference{
+					UUID:          parentUUID,
+					ContentType:   common.SNItemTypeTag,
+					ReferenceType: tagToParentReferenceType,
+				})
+			}
+			created, createErr := items.NewTag(title, refs)
+			if createErr != nil {
+				return tagReconciliation{}, createErr
+			}
+			working = append(working, created)
+			index = len(working) - 1
+			changed[created.UUID] = true
+		}
+		if pathUUIDs[working[index].UUID] {
+			return tagReconciliation{}, fmt.Errorf("managed tag hierarchy contains a cycle at %q", title)
+		}
+		pathUUIDs[working[index].UUID] = true
+		pathIndexes = append(pathIndexes, index)
+		parentUUID = working[index].UUID
+	}
+	leafUUID := working[pathIndexes[len(pathIndexes)-1]].UUID
+	if err := reconcileManagedTagReferences(
+		working,
+		changed,
+		noteUUID,
+		leafUUID,
+		previousTitles,
+		previousUUIDs,
+	); err != nil {
+		return tagReconciliation{}, err
+	}
+	result := tagReconciliation{
+		Titles: make([]string, 0, len(pathIndexes)),
+		UUIDs:  make([]string, 0, len(pathIndexes)),
+	}
+	for _, index := range pathIndexes {
+		result.Titles = append(result.Titles, working[index].Content.Title)
+		result.UUIDs = append(result.UUIDs, working[index].UUID)
+	}
+	for index := range working {
+		if changed[working[index].UUID] {
+			result.Changed = append(result.Changed, working[index])
 		}
 	}
-	for title, count := range seen {
-		if count > 1 && (contains(required, title) || tagReferences(existing, title, noteUUID)) {
-			return nil, fmt.Errorf("managed tag %q is duplicated", title)
+	return result, nil
+}
+
+func normalizedTagPath(input []string, nestedSupported bool) ([]string, error) {
+	path := make([]string, 0, len(input))
+	for _, value := range input {
+		if title := strings.TrimSpace(value); title != "" && title != "." {
+			path = append(path, title)
 		}
 	}
-	var changed items.Tags
-	found := map[string]bool{}
-	now := time.Now().UTC()
-	for index := range existing {
-		tag := existing[index]
-		title := tag.Content.Title
-		if !isManagedTag(title, previous, required) {
+	if len(path) == 0 {
+		return nil, errors.New("managed project tag is empty")
+	}
+	if !nestedSupported && len(path) > 1 {
+		path = path[:1]
+	}
+	return path, nil
+}
+
+func findTagByParentAndTitle(tags items.Tags, parentUUID, title string) (int, error) {
+	found := -1
+	for index := range tags {
+		if tags[index].IsDeleted() || tags[index].Content.Title != title {
 			continue
 		}
-		wanted := contains(required, title)
-		if wanted {
-			found[title] = true
+		candidateParent, err := tagParentUUID(tags[index])
+		if err != nil {
+			return -1, err
+		}
+		if candidateParent != parentUUID {
+			continue
+		}
+		if found >= 0 {
+			return -1, fmt.Errorf("managed tag %q has duplicate children under one parent", title)
+		}
+		found = index
+	}
+	return found, nil
+}
+
+func tagParentUUID(tag items.Tag) (string, error) {
+	parentUUID := ""
+	parentReferences := 0
+	for _, ref := range tag.Content.References() {
+		if ref.ReferenceType != tagToParentReferenceType {
+			continue
+		}
+		parentReferences++
+		if ref.ContentType != common.SNItemTypeTag || strings.TrimSpace(ref.UUID) == "" {
+			return "", fmt.Errorf("tag %q has an invalid parent reference", tag.Content.Title)
+		}
+		if parentReferences > 1 {
+			return "", fmt.Errorf("tag %q has multiple parent references", tag.Content.Title)
+		}
+		parentUUID = ref.UUID
+	}
+	if tag.Content.ParentId != "" {
+		if parentUUID != "" && parentUUID != tag.Content.ParentId {
+			return "", fmt.Errorf("tag %q has contradictory parent identities", tag.Content.Title)
+		}
+		parentUUID = tag.Content.ParentId
+	}
+	return parentUUID, nil
+}
+
+func reconcileManagedTagReferences(
+	tags items.Tags,
+	changed map[string]bool,
+	noteUUID, keepUUID string,
+	previousTitles, previousUUIDs []string,
+) error {
+	if len(previousUUIDs) == 0 {
+		for _, title := range previousTitles {
+			matches := 0
+			for _, tag := range tags {
+				if tag.Content.Title == title && tagHasReference(tag, noteUUID) {
+					matches++
+				}
+			}
+			if matches > 1 {
+				return fmt.Errorf("previous managed tag %q is ambiguous", title)
+			}
+		}
+	}
+	now := time.Now().UTC()
+	for index := range tags {
+		tag := tags[index]
+		keep := tag.UUID == keepUUID
+		exactPrevious := contains(previousUUIDs, tag.UUID)
+		legacyTitle := isLegacyManagedTag(tag.Content.Title)
+		migrationTitle := len(previousUUIDs) == 0 && contains(previousTitles, tag.Content.Title)
+		if !keep && !exactPrevious && !legacyTitle && !migrationTitle {
+			continue
 		}
 		refs := tag.Content.References()
 		next := make(items.ItemReferences, 0, len(refs)+1)
-		had := false
+		hadNote := false
 		for _, ref := range refs {
 			if ref.UUID == noteUUID {
-				had = true
-				if !wanted {
+				hadNote = true
+				if !keep {
 					continue
 				}
 			}
 			next = append(next, ref)
 		}
-		if wanted && !had {
+		if keep && !hadNote {
 			next = append(next, items.ItemReference{UUID: noteUUID, ContentType: common.SNItemTypeNote})
 		}
-		if had != wanted {
-			tag.Content.SetReferences(next)
-			tag.Content.SetUpdateTime(now)
-			if !wanted && len(next) == 0 && (isLegacyManagedTag(title) || contains(previous, title)) {
-				tag.SetDeleted(true)
-			}
-			changed = append(changed, tag)
-		}
-	}
-	for _, title := range required {
-		if found[title] {
+		if keep == hadNote {
 			continue
 		}
-		tag, err := items.NewTag(title, items.ItemReferences{{UUID: noteUUID, ContentType: common.SNItemTypeNote}})
-		if err != nil {
-			return nil, err
+		tag.Content.SetReferences(next)
+		tag.Content.SetUpdateTime(now)
+		if !keep && len(previousUUIDs) == 0 && len(next) == 0 && (legacyTitle || migrationTitle) {
+			tag.SetDeleted(true)
 		}
-		changed = append(changed, tag)
+		tags[index] = tag
+		changed[tag.UUID] = true
 	}
-	return changed, nil
+	return nil
+}
+
+func detachManagedTagReferences(
+	existing items.Tags,
+	noteUUID string,
+	previousTitles, previousUUIDs []string,
+) (items.Tags, error) {
+	working := append(items.Tags(nil), existing...)
+	changed := map[string]bool{}
+	if err := reconcileManagedTagReferences(
+		working,
+		changed,
+		noteUUID,
+		"",
+		previousTitles,
+		previousUUIDs,
+	); err != nil {
+		return nil, err
+	}
+	result := items.Tags{}
+	for index := range working {
+		if changed[working[index].UUID] {
+			result = append(result, working[index])
+		}
+	}
+	return result, nil
+}
+
+func tagHasReference(tag items.Tag, itemUUID string) bool {
+	for _, ref := range tag.Content.References() {
+		if ref.UUID == itemUUID {
+			return true
+		}
+	}
+	return false
 }
 
 func tagReferences(tags items.Tags, title, noteUUID string) bool {

@@ -4,7 +4,7 @@ This Linux x64 helper is the only process that handles Standard Notes authentica
 item sync, and tag references. It uses the pinned MIT `gosn-v2` module in `go.mod` directly.
 
 Protocol: one JSON object on stdin and one JSON object on stdout. Supported operations are
-`status`, `connect`, and `sync`. Input is limited to 2 MiB. The VS Code host additionally limits
+`status`, `connect`, `disconnect`, `sync`, and `trash`. Input is limited to 2 MiB. The VS Code host additionally limits
 output to 4 MiB and execution to 45 seconds. Credentials are accepted only for `connect`, passed
 over stdin, and never persisted. Session tokens and encryption material are serialized by this
 bridge into an AES-256-GCM vault supplied by the extension. The vault file is restricted to `0600`
@@ -20,6 +20,12 @@ The pinned client sends Standard Notes client/version headers on authentication 
 URLs must be absolute HTTP(S) endpoints without embedded credentials, query strings, or fragments.
 Connection errors are reduced to sanitized actionable categories; upstream bodies, email addresses,
 passwords, and tokens never cross the helper response boundary.
+
+The sync request supplies an ordered project/folder tag path. The bridge creates or reuses native
+Standard Notes `TagToParentTag` references, attaches the note only to the leaf, returns the exact
+managed UUID path, and uses those UUIDs for later migration and Trash cleanup. If native nesting is
+disabled in a compatible build, the same planner emits only the project root; it never encodes a
+hierarchy into one dotted title.
 
 Build with Go 1.25.1:
 

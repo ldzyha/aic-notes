@@ -56,45 +56,159 @@ func TestReadOnlySyncDecisionNeverPushes(t *testing.T) {
 	}
 }
 
-func TestManagedTagBoundary(t *testing.T) {
-	for _, value := range []string{"aic", "project:demo", "path:src/lib"} {
-		if !isManagedTag(value, nil, nil) {
-			t.Fatalf("expected managed tag %q", value)
-		}
+func TestReconcileTagHierarchyCreatesNativeLeafPath(t *testing.T) {
+	result, err := reconcileTagHierarchy(
+		nil,
+		"note",
+		[]string{"demo", "src", "lib"},
+		nil,
+		nil,
+		true,
+	)
+	if err != nil {
+		t.Fatal(err)
 	}
-	for _, value := range []string{"aic-user", "project", "pathology", "topic:demo"} {
-		if isManagedTag(value, nil, nil) {
-			t.Fatalf("must preserve unrelated tag %q", value)
-		}
+	if len(result.Changed) != 3 || len(result.Titles) != 3 || len(result.UUIDs) != 3 {
+		t.Fatalf("unexpected hierarchy result: %#v", result)
 	}
-	if !isManagedTag("demo.src", []string{"demo.src"}, nil) {
-		t.Fatal("previously bound hierarchical tag must remain managed for migration")
+	if strings.Join(result.Titles, "/") != "demo/src/lib" {
+		t.Fatalf("unexpected title path: %#v", result.Titles)
 	}
-	if !isManagedTag("demo.docs", nil, []string{"demo.docs"}) {
-		t.Fatal("required hierarchical tag must be managed for attachment")
+	byUUID := map[string]items.Tag{}
+	for _, tag := range result.Changed {
+		byUUID[tag.UUID] = tag
+	}
+	root := byUUID[result.UUIDs[0]]
+	src := byUUID[result.UUIDs[1]]
+	leaf := byUUID[result.UUIDs[2]]
+	if parent, parentErr := tagParentUUID(root); parentErr != nil || parent != "" {
+		t.Fatalf("root parent = %q, err = %v", parent, parentErr)
+	}
+	if parent, parentErr := tagParentUUID(src); parentErr != nil || parent != root.UUID {
+		t.Fatalf("src parent = %q, err = %v", parent, parentErr)
+	}
+	if parent, parentErr := tagParentUUID(leaf); parentErr != nil || parent != src.UUID {
+		t.Fatalf("leaf parent = %q, err = %v", parent, parentErr)
+	}
+	if tagHasReference(root, "note") || tagHasReference(src, "note") || !tagHasReference(leaf, "note") {
+		t.Fatal("the note must be referenced only by the leaf tag")
+	}
+	payload, err := json.Marshal(leaf.Content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(payload), `"reference_type":"TagToParentTag"`) ||
+		!strings.Contains(string(payload), `"content_type":"Tag"`) {
+		t.Fatalf("native parent reference is missing: %s", payload)
 	}
 }
 
-func TestReconcileTagsMigratesOnlyOwnedReferences(t *testing.T) {
+func TestReconcileTagHierarchyFallsBackToProjectOnly(t *testing.T) {
+	result, err := reconcileTagHierarchy(
+		nil,
+		"note",
+		[]string{"demo", "src", "lib"},
+		nil,
+		nil,
+		false,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Titles) != 1 || result.Titles[0] != "demo" || len(result.Changed) != 1 {
+		t.Fatalf("fallback created more than the project tag: %#v", result)
+	}
+	if !tagHasReference(result.Changed[0], "note") {
+		t.Fatal("project-only fallback did not attach the note")
+	}
+}
+
+func TestReconcileTagHierarchyReusesSameTitleUnderExactParent(t *testing.T) {
+	root, _ := items.NewTag("demo", nil)
+	one, _ := items.NewTag("one", items.ItemReferences{parentTagReference(root.UUID)})
+	two, _ := items.NewTag("two", items.ItemReferences{parentTagReference(root.UUID)})
+	otherLeaf, _ := items.NewTag("shared", items.ItemReferences{
+		parentTagReference(one.UUID),
+		{UUID: "other", ContentType: common.SNItemTypeNote},
+	})
+	targetLeaf, _ := items.NewTag("shared", items.ItemReferences{parentTagReference(two.UUID)})
+	result, err := reconcileTagHierarchy(
+		items.Tags{root, one, two, otherLeaf, targetLeaf},
+		"note",
+		[]string{"demo", "two", "shared"},
+		nil,
+		nil,
+		true,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.UUIDs[2] != targetLeaf.UUID || len(result.Changed) != 1 {
+		t.Fatalf("wrong same-title child selected: %#v", result)
+	}
+	if !tagHasReference(result.Changed[0], "note") || tagHasReference(otherLeaf, "note") {
+		t.Fatal("leaf attachment escaped its exact parent")
+	}
+}
+
+func TestReconcileTagHierarchyRejectsDuplicateRoot(t *testing.T) {
+	first, _ := items.NewTag("demo", nil)
+	second, _ := items.NewTag("demo", nil)
+	_, err := reconcileTagHierarchy(
+		items.Tags{first, second},
+		"note",
+		[]string{"demo"},
+		nil,
+		nil,
+		true,
+	)
+	if err == nil || !strings.Contains(err.Error(), "duplicate") {
+		t.Fatalf("duplicate root did not fail closed: %v", err)
+	}
+}
+
+func TestReconcileTagHierarchyRejectsMalformedParent(t *testing.T) {
+	root, _ := items.NewTag("demo", nil)
+	child, _ := items.NewTag("src", items.ItemReferences{
+		parentTagReference(root.UUID),
+		parentTagReference(root.UUID),
+	})
+	_, err := reconcileTagHierarchy(
+		items.Tags{root, child},
+		"note",
+		[]string{"demo", "src"},
+		nil,
+		nil,
+		true,
+	)
+	if err == nil || !strings.Contains(err.Error(), "multiple parent") {
+		t.Fatalf("malformed parent did not fail closed: %v", err)
+	}
+}
+
+func TestReconcileTagHierarchyMigratesOnlyOwnedReferences(t *testing.T) {
 	noteRef := items.ItemReference{UUID: "note", ContentType: common.SNItemTypeNote}
 	otherRef := items.ItemReference{UUID: "other", ContentType: common.SNItemTypeNote}
 	legacy, _ := items.NewTag("aic", items.ItemReferences{noteRef})
 	sharedLegacy, _ := items.NewTag("path:docs", items.ItemReferences{noteRef, otherRef})
 	previous, _ := items.NewTag("demo.old", items.ItemReferences{noteRef})
-	required, _ := items.NewTag("demo.docs", items.ItemReferences{otherRef})
+	root, _ := items.NewTag("demo", nil)
+	required, _ := items.NewTag("docs", items.ItemReferences{parentTagReference(root.UUID), otherRef})
 	personal, _ := items.NewTag("personal", items.ItemReferences{noteRef})
 
-	changed, err := reconcileTags(
-		items.Tags{legacy, sharedLegacy, previous, required, personal},
+	result, err := reconcileTagHierarchy(
+		items.Tags{legacy, sharedLegacy, previous, root, required, personal},
 		"note",
-		[]string{"demo.docs"},
+		[]string{"demo", "docs"},
 		[]string{"demo.old"},
+		nil,
+		true,
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	byTitle := map[string]items.Tag{}
-	for _, tag := range changed {
+	for _, tag := range result.Changed {
 		byTitle[tag.Content.Title] = tag
 	}
 	if !byTitle["aic"].IsDeleted() || !byTitle["demo.old"].IsDeleted() {
@@ -103,11 +217,50 @@ func TestReconcileTagsMigratesOnlyOwnedReferences(t *testing.T) {
 	if byTitle["path:docs"].IsDeleted() || tagReferences(items.Tags{byTitle["path:docs"]}, "path:docs", "note") {
 		t.Fatal("shared legacy tag must keep other references and drop only this note")
 	}
-	if !tagReferences(items.Tags{byTitle["demo.docs"]}, "demo.docs", "note") {
-		t.Fatal("required hierarchy tag must reference the synchronized note")
+	if !tagHasReference(byTitle["docs"], "note") {
+		t.Fatal("required native leaf must reference the synchronized note")
+	}
+	if parent, parentErr := tagParentUUID(byTitle["docs"]); parentErr != nil || parent != root.UUID {
+		t.Fatalf("native leaf parent = %q, err = %v", parent, parentErr)
 	}
 	if _, touched := byTitle["personal"]; touched {
 		t.Fatal("unrelated user tag must not be changed")
+	}
+}
+
+func TestReconcileTagHierarchyUsesExactPreviousUUIDs(t *testing.T) {
+	noteRef := items.ItemReference{UUID: "note", ContentType: common.SNItemTypeNote}
+	root, _ := items.NewTag("demo", nil)
+	oldLeaf, _ := items.NewTag("src", items.ItemReferences{parentTagReference(root.UUID), noteRef})
+	newLeaf, _ := items.NewTag("docs", items.ItemReferences{parentTagReference(root.UUID)})
+	otherRoot, _ := items.NewTag("other", nil)
+	sameTitleUserTag, _ := items.NewTag("src", items.ItemReferences{
+		parentTagReference(otherRoot.UUID),
+		noteRef,
+	})
+	result, err := reconcileTagHierarchy(
+		items.Tags{root, oldLeaf, newLeaf, otherRoot, sameTitleUserTag},
+		"note",
+		[]string{"demo", "docs"},
+		[]string{"demo", "src"},
+		[]string{root.UUID, oldLeaf.UUID},
+		true,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed := map[string]items.Tag{}
+	for _, tag := range result.Changed {
+		changed[tag.UUID] = tag
+	}
+	if tagHasReference(changed[oldLeaf.UUID], "note") || !tagHasReference(changed[newLeaf.UUID], "note") {
+		t.Fatal("exact previous leaf was not replaced")
+	}
+	if _, touched := changed[sameTitleUserTag.UUID]; touched || !tagHasReference(sameTitleUserTag, "note") {
+		t.Fatal("same-title user tag under another parent was changed")
+	}
+	if changed[oldLeaf.UUID].IsDeleted() {
+		t.Fatal("native hierarchy tags are not deleted without ownership proof")
 	}
 }
 
@@ -118,14 +271,14 @@ func TestPrepareRemoteTrashIsRecoverableAndIdempotent(t *testing.T) {
 	}
 	note.UUID = "note"
 	now := time.Date(2026, 8, 21, 12, 0, 0, 0, time.UTC)
-	outgoing, action, err := prepareRemoteTrash(&note, nil, nil, now)
+	outgoing, action, err := prepareRemoteTrash(&note, nil, nil, nil, now)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if action != "trashed" || len(outgoing) != 1 || note.Content.Trashed == nil || !*note.Content.Trashed {
 		t.Fatalf("first Trash transition failed: action=%q outgoing=%d trashed=%v", action, len(outgoing), note.Content.Trashed)
 	}
-	outgoing, action, err = prepareRemoteTrash(&note, nil, nil, now.Add(time.Minute))
+	outgoing, action, err = prepareRemoteTrash(&note, nil, nil, nil, now.Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,12 +291,13 @@ func TestPrepareRemoteTrashRemovesOnlyManagedTagReferences(t *testing.T) {
 	note, _ := items.NewNote("Example", "body", items.ItemReferences{})
 	note.UUID = "note"
 	noteRef := items.ItemReference{UUID: note.UUID, ContentType: common.SNItemTypeNote}
-	managed, _ := items.NewTag("demo.src", items.ItemReferences{noteRef})
+	managed, _ := items.NewTag("src", items.ItemReferences{noteRef})
 	personal, _ := items.NewTag("personal", items.ItemReferences{noteRef})
 	outgoing, _, err := prepareRemoteTrash(
 		&note,
 		items.Tags{managed, personal},
-		[]string{"demo.src"},
+		[]string{"demo", "src"},
+		[]string{"root-uuid", managed.UUID},
 		time.Now().UTC(),
 	)
 	if err != nil {
@@ -153,11 +307,19 @@ func TestPrepareRemoteTrashRemovesOnlyManagedTagReferences(t *testing.T) {
 		t.Fatalf("expected remote note plus one managed tag update, got %d items", len(outgoing))
 	}
 	tag, ok := outgoing[1].(*items.Tag)
-	if !ok || !tag.IsDeleted() {
-		t.Fatal("the now-empty managed hierarchy tag was not retired")
+	if !ok || tag.IsDeleted() || tagHasReference(*tag, "note") {
+		t.Fatal("exact native leaf reference was not removed safely")
 	}
 	if tag.Content.Title == "personal" {
 		t.Fatal("an unrelated user tag was changed")
+	}
+}
+
+func parentTagReference(uuid string) items.ItemReference {
+	return items.ItemReference{
+		UUID:          uuid,
+		ContentType:   common.SNItemTypeTag,
+		ReferenceType: tagToParentReferenceType,
 	}
 }
 

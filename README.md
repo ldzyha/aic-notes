@@ -7,12 +7,12 @@ with Standard Notes.
 
 ## Install on code-server
 
-Download `aic-notes-8.1.3-linux-x64.vsix` and its `.sha256` file from the
-[v8.1.3 release](https://github.com/ldzyha/aic-notes/releases/tag/v8.1.3), then verify and install:
+Download `aic-notes-9.0.1-linux-x64.vsix` and its `.sha256` file from the
+[v9.0.1 release](https://github.com/ldzyha/aic-notes/releases/tag/v9.0.1), then verify and install:
 
 ```sh
-sha256sum -c aic-notes-8.1.3-linux-x64.vsix.sha256
-code-server --install-extension aic-notes-8.1.3-linux-x64.vsix --force
+sha256sum -c aic-notes-9.0.1-linux-x64.vsix.sha256
+code-server --install-extension aic-notes-9.0.1-linux-x64.vsix --force
 ```
 
 Reload the browser window after installation. The extension targets Code/VS Code 1.106 or newer;
@@ -106,7 +106,7 @@ For substantive notes:
    repository. This works in headless code-server without Secret Service, GNOME Keyring, or
    `secret-tool`.
 4. The workspace stores only the remote item UUID, last common content hash, sync timestamp, and
-   exact last AIC-managed tag title.
+   exact titles plus UUIDs of the last AIC-managed native tag path.
 5. `Ctrl/Cmd+S`, a VS Code save event for the attached sidecar, or leaving the Secondary editor
    drains pending edits, saves locally, and schedules one serialized sync. Save/blur bursts collapse
    to the newest persisted Markdown. Automatic sync never opens a login prompt: a disconnected note
@@ -128,15 +128,20 @@ deletes remote content. Missing, ambiguous, locked, or read-only remote identity
 revoke remote tokens, delete the SecretStorage wrapping key, remove local notes or workspace sync
 bindings, or alter Standard Notes items.
 
-Each synchronized note receives exactly one AIC-managed hierarchical tag:
+Each synchronized note is assigned to exactly one leaf in a native Standard Notes tag hierarchy:
 
 - root note: `<workspace-root-name>`
-- nested note: `<workspace-root-name>.<parent>.<child>`
+- nested note: `<workspace-root-name> → <parent> → <child>`
 
-The filename is not included. A successful migration removes that note's legacy `aic`,
-`project:*`, and `path:*` references, retires an emptied legacy tag, and records the new exact title
-for safe future moves. Shared references and every unrelated Standard Notes tag are preserved.
-Deleted or ambiguous remote identity stops synchronization instead of creating a duplicate.
+Every child carries the official `TagToParentTag` reference to its exact parent UUID; only the leaf
+references the note. The filename is not included. If the bundled bridge cannot express native
+nesting, it keeps only `<workspace-root-name>` and never creates a dotted pseudo-hierarchy.
+
+A successful migration removes only that note's legacy `aic`, `project:*`, `path:*`, and previously
+recorded dotted-tag references, retires an emptied legacy tag, and records the exact native UUID
+path for safe future sync and Trash cleanup. Same-title children under different parents remain
+distinct. Shared references and every unrelated Standard Notes tag are preserved; duplicate or
+contradictory candidates fail closed instead of guessing.
 
 The default server is `https://api.standardnotes.com`. Self-hosted users can change
 `aicNotes.standardNotes.server`. Upgrading from 4.3.3 requires one new **Connect** because the new
@@ -195,8 +200,8 @@ Standard Notes account is intentionally not mutated by unattended tests.
 ## Release accounting
 
 This project uses the global `R.F.B` convention: release sequence, release-local feature outcomes,
-release-local fixed-bug outcomes. `8.1.3` is sequence 8 with one feature outcome and three
-fixed-bug outcomes. It is not a SemVer compatibility claim. See [`CHANGELOG.md`](CHANGELOG.md).
+release-local fixed-bug outcomes. `9.0.1` is sequence 9 with zero feature outcomes and one
+fixed-bug outcome. It is not a SemVer compatibility claim. See [`CHANGELOG.md`](CHANGELOG.md).
 
 ## License and provenance
 

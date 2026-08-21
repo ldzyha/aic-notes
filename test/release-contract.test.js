@@ -6,8 +6,8 @@ const packageJson = JSON.parse(
   await readFile(new URL("../package.json", import.meta.url), "utf8"),
 );
 
-test("8.1.3 manifest separates Primary management from Secondary note content", () => {
-  assert.equal(packageJson.version, "8.1.3");
+test("9.0.1 manifest separates Primary management from Secondary note content", () => {
+  assert.equal(packageJson.version, "9.0.1");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.equal(packageJson.scripts.publish, undefined);
   assert.ok(packageJson.scripts["release:gate"]);
@@ -132,6 +132,21 @@ test("headless authorization uses SecretStorage plus the encrypted bridge vault"
   assert.match(bridge, /ReadOnly/u);
   assert.match(bridge, /case "disconnect"/u);
   assert.match(client, /async logout\(\)/u);
+});
+
+test("Standard Notes tags use a native parent graph and exact managed identities", async () => {
+  const model = await readFile(new URL("../src/secondary/model.js", import.meta.url), "utf8");
+  const client = await readFile(new URL("../src/sync/client.js", import.meta.url), "utf8");
+  const bridge = await readFile(new URL("../bridge/main.go", import.meta.url), "utf8");
+  assert.match(model, /supportsNestedTags \? \[project, \.\.\.parents\] : \[project\]/u);
+  assert.doesNotMatch(model, /join\("\."\)/u);
+  assert.match(client, /previousTagUuids/u);
+  assert.match(client, /managedTagUuids/u);
+  assert.match(bridge, /tagToParentReferenceType\s+= "TagToParentTag"/u);
+  assert.match(bridge, /ReferenceType:\s+tagToParentReferenceType/u);
+  assert.match(bridge, /leafUUID/u);
+  assert.match(bridge, /PreviousTagUUIDs/u);
+  assert.match(bridge, /ManagedTagUUIDs/u);
 });
 
 test("Secondary rejects non-substantive sync before API access and exposes one two-sided Trash action", async () => {

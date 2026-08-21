@@ -3,8 +3,7 @@ import assert from "node:assert/strict";
 import {
   isNotePath,
   linkedNotePath,
-  managedTags,
-  reconcileTagNames,
+  managedTagPath,
   applyTextChanges,
   threeWayDecision,
 } from "../src/secondary/model.js";
@@ -17,21 +16,16 @@ test("note paths are Secondary-only candidates without note-of-note recursion", 
   assert.equal(linkedNotePath("src/app.note.md"), "src/app.note.md");
 });
 
-test("managed tags are exact and root-aware", () => {
-  assert.deepEqual(managedTags("demo", "src/lib"), ["demo.src.lib"]);
-  assert.deepEqual(managedTags("demo", "."), ["demo"]);
-  assert.deepEqual(managedTags(" demo ", "src\\feature / child"), ["demo.src.feature.child"]);
-});
-
-test("tag reconciliation replaces only AIC-managed names", () => {
-  assert.deepEqual(
-    reconcileTagNames(
-      ["personal", "aic", "project:old", "path:old", "demo.old", "topic:aic"],
-      ["demo.src"],
-      ["demo.old"],
-    ),
-    ["personal", "topic:aic", "demo.src"],
-  );
+test("managed tag paths are native, root-aware, and project-only without nesting", () => {
+  assert.deepEqual(managedTagPath("demo", "src/lib"), ["demo", "src", "lib"]);
+  assert.deepEqual(managedTagPath("demo", "."), ["demo"]);
+  assert.deepEqual(managedTagPath(" demo ", "src\\feature / child"), [
+    "demo",
+    "src",
+    "feature",
+    "child",
+  ]);
+  assert.deepEqual(managedTagPath("demo", "src/lib", false), ["demo"]);
 });
 
 test("placeholder changes apply atomically against one source generation", () => {

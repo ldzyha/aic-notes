@@ -1,5 +1,21 @@
 # Changelog
 
+## 9.0.1 — 2026-08-21
+
+Release sequence 9 · 0 feature outcomes · 1 fixed-bug outcome.
+
+- B01: Standard Notes tagging now creates or reuses the native
+  `<project> → <parent> → <child>` graph with official `TagToParentTag` references. Only the leaf
+  references the note, exact managed UUIDs drive later migration and Trash cleanup, and same-title
+  children under different parents remain distinct. Existing dotted/legacy AIC references migrate
+  without touching shared or unrelated tags; duplicate or malformed candidates fail closed. A
+  bridge without native nesting support falls back to the project tag only and never recreates a
+  dotted pseudo-hierarchy.
+
+Compatibility: VS Code/Code 1.106 or newer; bundled Standard Notes bridge is Linux x64. Existing
+`8.1.3` bindings migrate on their next successful writable sync. No Marketplace/Open VSX
+publication is implied.
+
 ## 8.1.3 — 2026-08-21
 
 Release sequence 8 · 1 feature outcome · 3 fixed-bug outcomes.

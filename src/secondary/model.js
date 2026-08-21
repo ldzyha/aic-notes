@@ -25,26 +25,14 @@ export function noteTitle(relativePath, markdown = "") {
   return path.posix.basename(relativePath, NOTE_SUFFIX) || "AIC note";
 }
 
-export function managedTags(folderName, parentPath) {
+export function managedTagPath(folderName, parentPath, supportsNestedTags = true) {
   const project = String(folderName ?? "").trim() || "workspace";
   const parents = String(parentPath ?? "")
     .replaceAll("\\", "/")
     .split("/")
     .map((value) => value.trim())
     .filter((value) => value && value !== ".");
-  return [[project, ...parents].join(".")];
-}
-
-export function reconcileTagNames(existing, required, previous = []) {
-  const managed = (value) =>
-    value === "aic" || value.startsWith("project:") || value.startsWith("path:") ||
-    previous.includes(value);
-  return [
-    ...new Set([
-      ...existing.filter((value) => !managed(value)),
-      ...required,
-    ]),
-  ];
+  return supportsNestedTags ? [project, ...parents] : [project];
 }
 
 // CodeMirror change coordinates refer to the same pre-transaction document.

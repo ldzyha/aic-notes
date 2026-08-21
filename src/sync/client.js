@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { execFile } from "node:child_process";
 import * as path from "node:path";
-import { managedTags, noteTitle, workspaceStateKey } from "../secondary/model.js";
+import { managedTagPath, noteTitle, workspaceStateKey } from "../secondary/model.js";
 import { structuredError } from "../errors.js";
 import { sessionVaultConfig } from "./vault.js";
 
@@ -196,6 +196,7 @@ export class StandardNotesSync {
         operation: "trash",
         remoteUuid: previous.remoteUuid,
         previousTags: Array.isArray(previous.managedTags) ? previous.managedTags : [],
+        previousTagUuids: Array.isArray(previous.managedTagUuids) ? previous.managedTagUuids : [],
       }),
     );
     if (result.remoteUuid !== previous.remoteUuid) {
@@ -235,8 +236,9 @@ export class StandardNotesSync {
       operation: "sync",
       localContent: markdown,
       title: noteTitle(relativePath, markdown),
-      tags: managedTags(folder.name, parentPath),
+      tags: managedTagPath(folder.name, parentPath),
       previousTags: Array.isArray(previous.managedTags) ? previous.managedTags : [],
+      previousTagUuids: Array.isArray(previous.managedTagUuids) ? previous.managedTagUuids : [],
       remoteUuid: previous.remoteUuid || "",
       baseHash: previous.baseHash || "",
     };
@@ -274,6 +276,9 @@ export class StandardNotesSync {
       managedTags: Array.isArray(result.managedTags)
         ? result.managedTags
         : Array.isArray(previous.managedTags) ? previous.managedTags : [],
+      managedTagUuids: Array.isArray(result.managedTagUuids)
+        ? result.managedTagUuids
+        : Array.isArray(previous.managedTagUuids) ? previous.managedTagUuids : [],
     });
     return result;
   }

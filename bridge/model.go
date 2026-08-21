@@ -49,11 +49,6 @@ func readOnlySyncDecision(localHash, remoteHash, baseHash string) (action string
 	}
 }
 
-func isManagedTag(value string, previous, required []string) bool {
-	return isLegacyManagedTag(value) ||
-		contains(previous, value) || contains(required, value)
-}
-
 func isLegacyManagedTag(value string) bool {
 	return value == "aic" || strings.HasPrefix(value, "project:") || strings.HasPrefix(value, "path:")
 }
