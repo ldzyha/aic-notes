@@ -13,6 +13,7 @@ esbuild.mjs
 jsconfig.json
 package-lock.json
 *.vsix
+*.vsix.sha256
 !dist/**
 !bin/linux-x64/aic-notes-sn-bridge
 **/*.map

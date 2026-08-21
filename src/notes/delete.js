@@ -1,13 +1,6 @@
 import * as vscode from "vscode";
 
-export async function deleteNotes(uris, label, tree, detail = "", beforeDelete) {
-  const paths = uris.map((uri) => vscode.workspace.asRelativePath(uri, false)).join("\n");
-  const confirm = await vscode.window.showWarningMessage(
-    `Delete ${label}?`,
-    { modal: true, detail: [paths, detail].filter(Boolean).join("\n\n") },
-    "Move to Trash",
-  );
-  if (confirm !== "Move to Trash") return false;
+export async function trashNotesLocally(uris, { beforeDelete, detail = "" } = {}) {
   await beforeDelete?.();
   for (const uri of uris) {
     try {
@@ -22,6 +15,18 @@ export async function deleteNotes(uris, label, tree, detail = "", beforeDelete) 
       await vscode.workspace.fs.delete(uri);
     }
   }
-  tree?.refresh();
   return true;
+}
+
+export async function deleteNotes(uris, label, tree, detail = "", beforeDelete) {
+  const paths = uris.map((uri) => vscode.workspace.asRelativePath(uri, false)).join("\n");
+  const confirm = await vscode.window.showWarningMessage(
+    `Delete ${label}?`,
+    { modal: true, detail: [paths, detail].filter(Boolean).join("\n\n") },
+    "Move to Trash",
+  );
+  if (confirm !== "Move to Trash") return false;
+  const deleted = await trashNotesLocally(uris, { beforeDelete, detail });
+  if (deleted) tree?.refresh();
+  return deleted;
 }

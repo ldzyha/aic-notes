@@ -90,6 +90,8 @@ func handle(payload []byte) response {
 		return disconnect(input)
 	case "sync":
 		return syncNote(input)
+	case "trash":
+		return trashNote(input)
 	default:
 		return response{OK: false, Code: "sn_bridge_operation", Message: "unsupported bridge operation"}
 	}
@@ -333,6 +335,95 @@ func syncNote(input request) response {
 		SyncedAt:     time.Now().UTC().Format(time.RFC3339),
 		ManagedTags:  input.Tags,
 		ReadOnly:     false,
+	}
+}
+
+func prepareRemoteTrash(remote *items.Note, tags items.Tags, previousTags []string, now time.Time) (items.Items, string, error) {
+	if remote == nil {
+		return nil, "", errors.New("remote note is missing")
+	}
+	action := "already-trashed"
+	var outgoing items.Items
+	if remote.Content.Trashed == nil || !*remote.Content.Trashed {
+		remote.Content.SetTrashed(true)
+		remote.Content.SetUpdateTime(now)
+		outgoing = append(outgoing, remote)
+		action = "trashed"
+	}
+	tagItems, err := reconcileTags(tags, remote.UUID, nil, previousTags)
+	if err != nil {
+		return nil, "", err
+	}
+	for index := range tagItems {
+		outgoing = append(outgoing, &tagItems[index])
+	}
+	return outgoing, action, nil
+}
+
+func trashNote(input request) response {
+	if strings.TrimSpace(input.RemoteUUID) == "" {
+		return response{OK: false, Code: "sn_remote_binding_required", Message: "the note has no exact Standard Notes binding", Fixes: []string{"Keep the local note or synchronize it before retrying"}}
+	}
+	s, vault, err := loadSession(input)
+	if err != nil {
+		return failure("sn_not_connected", err, "Reconnect AIC Notes to Standard Notes")
+	}
+	pull, err := items.Sync(items.SyncInput{Session: &s})
+	if err != nil {
+		return failure("sn_sync_failed", err, "Check the network connection and reconnect if the session expired")
+	}
+	if err := saveSession(vault, s); err != nil {
+		return failure("sn_vault_write_failed", err, "Check extension storage permissions and retry")
+	}
+	rawItems, err := items.DecryptItems(&s, pull.Items, []session.SessionItemsKey{})
+	if err != nil {
+		return failure("sn_decrypt_failed", err, "Reconnect to refresh account encryption keys")
+	}
+	lockedNotes := lockedNoteUUIDs(rawItems)
+	decrypted, err := rawItems.Parse()
+	if err != nil {
+		return failure("sn_decrypt_failed", err, "Reconnect to refresh account encryption keys")
+	}
+
+	var remote *items.Note
+	for _, note := range decrypted.Notes() {
+		if note.UUID == input.RemoteUUID {
+			candidate := note
+			remote = &candidate
+			break
+		}
+	}
+	if remote == nil {
+		return response{OK: false, Code: "sn_remote_missing", Message: "the exactly bound Standard Notes item no longer exists", Fixes: []string{"Keep the local note and review the Standard Notes Trash before retrying"}}
+	}
+	if s.ReadOnlyAccess || lockedNotes[remote.UUID] {
+		return response{OK: false, Code: "sn_note_read_only", Message: "the linked Standard Notes item is locked or read-only", Fixes: []string{"Unlock it in Standard Notes before deleting the local sidecar"}, RemoteUUID: remote.UUID, ReadOnly: true}
+	}
+
+	outgoing, action, err := prepareRemoteTrash(remote, decrypted.Tags(), input.PreviousTags, time.Now().UTC())
+	if err != nil {
+		return failure("sn_tags_failed", err, "Remove duplicate managed tags and retry")
+	}
+	if len(outgoing) > 0 {
+		encrypted, encryptErr := outgoing.Encrypt(&s, s.DefaultItemsKey)
+		if encryptErr != nil {
+			return failure("sn_encrypt_failed", encryptErr, "Reconnect to refresh account encryption keys")
+		}
+		pushed, pushErr := items.Sync(items.SyncInput{Session: &s, Items: encrypted})
+		if pushErr != nil {
+			return failure("sn_sync_failed", pushErr, "Retry after checking the network connection")
+		}
+		if len(pushed.Conflicts) > 0 || len(pushed.Unsaved) > 0 {
+			return response{OK: false, Code: "sn_server_conflict", Message: "Standard Notes rejected the Trash update", Fixes: []string{"Retry after reviewing the current remote note"}, RemoteUUID: remote.UUID}
+		}
+	}
+	return response{
+		OK:          true,
+		Action:      action,
+		RemoteUUID:  remote.UUID,
+		SyncedAt:    time.Now().UTC().Format(time.RFC3339),
+		ManagedTags: []string{},
+		ReadOnly:    false,
 	}
 }
 

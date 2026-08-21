@@ -1,5 +1,27 @@
 # Changelog
 
+## 8.1.3 — 2026-08-21
+
+Release sequence 8 · 1 feature outcome · 3 fixed-bug outcomes.
+
+- F01: the pinned footer now has one confirmed two-sided **Move note to Trash** action. It targets
+  only the exact bound Standard Notes UUID, moves that item to recoverable Trash, removes its
+  AIC-managed tag reference, then trashes the local sidecar. Remote-first ordering, idempotent
+  retries, and delayed binding cleanup prevent either side from being silently orphaned.
+- B01: the Secondary note pane now uses the current Agents Window theme layers: an
+  `agents.background` shell around an `agentsPanel.background` card with explicit border and
+  foreground fallbacks, so notes remain visually separate from the editor across compatible themes.
+- B02: raw Space is no longer captured as a task toggle. Typing `- [ ]` can now receive the
+  required trailing space or task text and become a rendered checkbox; rendered checkbox clicks
+  remain independently actionable.
+- B03: empty/frontmatter-only notes, unchanged generated placeholders, and headings with only empty
+  unchecked tasks are rejected before authentication or API access. Save, blur, and explicit sync
+  therefore cannot create or overwrite remote content from a non-substantive scaffold.
+
+Compatibility: VS Code/Code 1.106 or newer; bundled Standard Notes bridge is Linux x64. Remote
+Trash is recoverable Standard Notes state, never permanent deletion. No Marketplace/Open VSX
+publication is implied.
+
 ## 7.3.2 — 2026-08-21
 
 Release sequence 7 · 3 feature outcomes · 2 fixed-bug outcomes.

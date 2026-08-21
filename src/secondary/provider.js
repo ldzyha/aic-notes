@@ -6,9 +6,9 @@ import { applyTextChanges, linkedNotePath, isNotePath } from "./model.js";
 import { resolveTarget } from "../notes/target.js";
 import { fileNotePlaceholderForUri } from "../notes/create.js";
 import { openSourceAtHref } from "../notes/navigation.js";
-import { clearNoteContent } from "./note-actions.js";
-import { deleteNotes } from "../notes/delete.js";
+import { trashNotesLocally } from "../notes/delete.js";
 import { CoalescingQueue, mergeSyncRequests } from "../sync/coalescing-queue.js";
+import { syncAdmission } from "../sync/admission.js";
 
 export const SECONDARY_VIEW_ID = "aicNotes.secondary";
 
@@ -113,10 +113,7 @@ export class SecondaryNotePane {
         <button id="pane-target" class="aic-pane-icon" type="button" title="Open source" aria-label="Open source" hidden>
           <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m7.25 6-4 4 4 4M12.75 6l4 4-4 4M11.25 3.75l-2.5 12.5"/></svg>
         </button>
-        <button id="pane-clear" class="aic-pane-icon" type="button" title="Clear note content" aria-label="Clear note content" hidden>
-          <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m4.25 12.25 6.8-7.55a1.4 1.4 0 0 1 2-.08l2.35 2.12a1.4 1.4 0 0 1 .08 2l-6.8 7.55H5.5l-1.25-1.12a2 2 0 0 1 0-2.92ZM9 16.25h7"/></svg>
-        </button>
-        <button id="pane-delete" class="aic-pane-icon danger" type="button" title="Delete note" aria-label="Delete note" hidden>
+        <button id="pane-clear" class="aic-pane-icon danger" type="button" title="Move note to Trash" aria-label="Move note to Trash" hidden>
           <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M3.75 5.5h12.5M8 3.5h4M6 5.5l.65 11h6.7l.65-11M8.25 8.25v5.5M11.75 8.25v5.5"/></svg>
         </button>
         <span class="aic-pane-footer-spacer"></span>
@@ -291,10 +288,42 @@ export class SecondaryNotePane {
     return this.syncRequests.enqueue(key, { uri, interactive, markdown });
   }
 
+  async placeholderForSync(uri) {
+    const folder = vscode.workspace.getWorkspaceFolder(uri);
+    if (!folder) return "";
+    const notePath = vscode.workspace.asRelativePath(uri, false).replaceAll("\\", "/");
+    let source = this.sourceUri;
+    if (source) {
+      const sourceFolder = vscode.workspace.getWorkspaceFolder(source);
+      const sourcePath = sourceFolder
+        ? vscode.workspace.asRelativePath(source, false).replaceAll("\\", "/")
+        : "";
+      if (sourceFolder?.uri.toString() !== folder.uri.toString() || linkedNotePath(sourcePath) !== notePath) {
+        source = undefined;
+      }
+    }
+    source ??= await resolveTarget(folder, notePath);
+    if (!source) return "";
+    const stat = await vscode.workspace.fs.stat(source);
+    if (stat.type & vscode.FileType.Directory) return "";
+    return (await fileNotePlaceholderForUri(source)).text;
+  }
+
   async performSync(uri, { interactive, markdown }) {
     const document = await vscode.workspace.openTextDocument(uri);
     const attached = this.documentUri?.toString() === uri.toString();
     const captured = typeof markdown === "string" ? markdown : document.getText();
+    const admission = syncAdmission(captured, await this.placeholderForSync(document.uri));
+    if (!admission.admit) {
+      if (attached) {
+        await this.sendPaneState(
+          admission.reason === "placeholder"
+            ? "Not synced · unchanged placeholder"
+            : "Not synced · empty note",
+        );
+      }
+      return { action: `skipped-${admission.reason}`, skipped: true, admission: true };
+    }
     if (attached) await this.sendPaneState("Synchronizing…");
     const result = await this.syncService.sync(
       document.uri,
@@ -344,7 +373,12 @@ export class SecondaryNotePane {
   async saveCurrent({ interactive = false } = {}) {
     await this.editQueue.catch(() => undefined);
     const document = await this.currentDocument();
-    if (!document) return null;
+    if (!document) {
+      if (this.placeholderUri) await this.sendPaneState("Not synced · unchanged placeholder");
+      return this.placeholderUri
+        ? { action: "skipped-placeholder", skipped: true, admission: true }
+        : null;
+    }
     const key = document.uri.toString();
     this.suppressedSaveSync.add(key);
     try {
@@ -572,56 +606,56 @@ export class SecondaryNotePane {
     }
   }
 
-  async clearContent() {
-    if (this.actionPending || this.readOnly) return;
-    const document = await this.currentDocument();
-    if (!document) return;
-    const relativePath = vscode.workspace.asRelativePath(document.uri, false);
-    const choice = await vscode.window.showWarningMessage(
-      `Clear local content in ${relativePath}?`,
-      {
-        modal: true,
-        detail: "Valid leading properties stay byte-for-byte. The remaining body becomes one empty checklist item. This destructive local action does not auto-sync; use AIC Notes: Sync Current Note if the remote copy must also be cleared.",
-      },
-      "Clear Content",
-    );
-    if (choice !== "Clear Content") return;
-    this.actionPending = true;
-    await this.sendPaneState("Clearing…");
-    try {
-      await this.replaceDocument(clearNoteContent(document.getText()));
-      await this.sendPaneState("Content cleared locally");
-    } finally {
-      this.actionPending = false;
-      await this.sendPaneState();
-    }
-  }
-
-  async deleteCurrentNote() {
+  async trashCurrentNote() {
     if (this.actionPending) return;
+    await this.editQueue.catch(() => undefined);
     const document = await this.currentDocument();
     if (!document) return;
     const uri = document.uri;
+    const relativePath = vscode.workspace.asRelativePath(uri, false);
+    const binding = this.syncService.bindingState(uri);
+    const choice = await vscode.window.showWarningMessage(
+      `Move note "${relativePath}" to Trash?`,
+      {
+        modal: true,
+        detail: binding.bound
+          ? "The exact bound note moves to Standard Notes Trash first, then the local sidecar moves to the system Trash. The sync binding is removed only after both operations succeed."
+          : "This note has no Standard Notes binding. Only the local sidecar moves to the system Trash.",
+      },
+      "Move to Trash",
+    );
+    if (choice !== "Move to Trash") return;
     this.actionPending = true;
-    await this.sendPaneState("Waiting for confirmation…");
+    let finalStatus = "";
+    await this.sendPaneState(binding.bound ? "Moving remote note to Trash…" : "Moving local note to Trash…");
     try {
-      const relativePath = vscode.workspace.asRelativePath(uri, false);
-      const deleted = await deleteNotes(
-        [uri],
-        `note "${relativePath}"`,
-        undefined,
-        "This removes only the local sidecar. The Standard Notes item, lock state, and workspace sync binding are unchanged.",
-        async () => {
-          const key = document.uri.toString();
-          this.suppressedSaveSync.add(key);
-          try {
-            await document.save();
-          } finally {
-            this.suppressedSaveSync.delete(key);
-          }
-        },
-      );
+      const key = document.uri.toString();
+      this.suppressedSaveSync.add(key);
+      try {
+        if (!(await document.save())) {
+          throw structuredError("notes_save_failed", "the note could not be saved before moving it to Trash", [
+            "Resolve the file-system error and retry",
+          ]);
+        }
+      } finally {
+        this.suppressedSaveSync.delete(key);
+      }
+
+      if (binding.bound) {
+        const remote = await this.syncService.trash(uri);
+        if (!remote) {
+          finalStatus = "Trash cancelled · note kept locally";
+          return;
+        }
+        await this.sendPaneState("Remote in Trash · moving local note…");
+      }
+
+      const deleted = await trashNotesLocally([uri]);
+      if (!deleted && binding.bound) {
+        finalStatus = "Remote in Trash · local note kept for retry";
+      }
       if (!deleted) return;
+      await this.syncService.completeTrash(uri);
       this.document = undefined;
       this.documentUri = undefined;
       this.readOnly = false;
@@ -637,10 +671,12 @@ export class SecondaryNotePane {
       this.generation++;
       await vscode.commands.executeCommand("aicNotes.refreshTree");
       if (this.placeholderUri) await this.sendInit();
-      else await this.sendPaneState("Note moved to Trash");
+      finalStatus = binding.bound
+        ? "Moved to Trash locally and in Standard Notes"
+        : "Moved local note to Trash";
     } finally {
       this.actionPending = false;
-      await this.sendPaneState();
+      await this.sendPaneState(finalStatus);
     }
   }
 
@@ -675,10 +711,8 @@ export class SecondaryNotePane {
           await this.authenticate();
           break;
         case "pane.clear":
-          await this.clearContent();
-          break;
         case "pane.delete":
-          await this.deleteCurrentNote();
+          await this.trashCurrentNote();
           break;
         case "pane.target": {
           const document = await this.currentDocument();

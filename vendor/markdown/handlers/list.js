@@ -1,8 +1,10 @@
 // list — bullet/ordered/task markers; toggles for the three list kinds
 // (Mod-Shift-7/8/9); Enter continues a list (ordered runs renumber); the
-// task marker renders as a real checkbox. The widget is the ONE sanctioned
-// replace decoration: it spans exactly the 3 source chars and its advance
-// width is exactly 3ch, so reveal cannot shift glyphs (guide §1).
+// task marker renders as a real checkbox. Raw Space remains ordinary text so
+// typing after "- [ ]" can complete the parser-required whitespace. The
+// widget is the ONE sanctioned replace decoration: it spans exactly the 3
+// source chars and its advance width is exactly 3ch, so reveal cannot shift
+// glyphs (guide §1).
 
 import { Decoration, WidgetType } from "@codemirror/view";
 
@@ -164,27 +166,8 @@ function continueList(view) {
   return true;
 }
 
-// Space toggles the box ONLY when the cursor sits on the marker (exactly
-// the zone where the reveal rule already shows the source); anywhere else
-// it falls through and types a space.
-function spaceToggle(view) {
-  const sel = view.state.selection.main;
-  if (!sel.empty) return false;
-  const line = view.state.doc.lineAt(sel.head);
-  const m = /^(\s*(?:[-*+]|\d+[.)])\s+)\[([ xX])\]/.exec(line.text);
-  if (!m) return false;
-  const markerFrom = line.from + m[1].length;
-  if (sel.head < markerFrom || sel.head > markerFrom + 3) return false;
-  view.dispatch({
-    changes: { from: markerFrom + 1, to: markerFrom + 2, insert: m[2] === " " ? "x" : " " },
-    userEvent: "input",
-  });
-  return true;
-}
-
 export const listKeymap = [
   { key: "Enter", run: continueList },
-  { key: " ", run: spaceToggle },
 ];
 
 export const listHandler = {

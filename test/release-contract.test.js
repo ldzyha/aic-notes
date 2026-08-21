@@ -6,8 +6,8 @@ const packageJson = JSON.parse(
   await readFile(new URL("../package.json", import.meta.url), "utf8"),
 );
 
-test("7.3.2 manifest separates Primary management from Secondary note content", () => {
-  assert.equal(packageJson.version, "7.3.2");
+test("8.1.3 manifest separates Primary management from Secondary note content", () => {
+  assert.equal(packageJson.version, "8.1.3");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.equal(packageJson.scripts.publish, undefined);
   assert.ok(packageJson.scripts["release:gate"]);
@@ -43,6 +43,8 @@ test("note association, global open hotkey, and footer surface are explicit", as
   const extension = await readFile(new URL("../src/extension.js", import.meta.url), "utf8");
   assert.match(provider, /id="secondary-footer"/u);
   assert.match(provider, /id="pane-pin"/u);
+  assert.match(provider, /id="pane-clear"/u);
+  assert.doesNotMatch(provider, /id="pane-delete"/u);
   assert.doesNotMatch(provider, /id="pane-(?:auto|sync|create|note-actions)"/u);
   assert.match(provider, /tabGroups\.close/u);
   assert.match(create, /secondary\.followSource\(uri, \{ force: true, preserveFocus: false \}\)/u);
@@ -102,6 +104,12 @@ test("Secondary editable placeholder, pinned footer, blur save, and theme-safe c
   assert.match(details, /EditorView\.decorations\.from\(field\)/u);
   assert.doesNotMatch(details, /ViewPlugin/u);
   assert.match(css, /--aic-contrast-fg:[^;]*--vscode-foreground/u);
+  assert.match(css, /--aic-agent-shell:[^;]*--vscode-agents-background/u);
+  assert.match(css, /--aic-agent-panel:[^;]*--vscode-agentsPanel-background[^;]*--vscode-sideBar-background/u);
+  assert.match(css, /--aic-agent-panel-border:[^;]*--vscode-agentsPanel-border[^;]*--vscode-sideBar-border/u);
+  assert.match(css, /html\.aic-secondary-shell/u);
+  assert.match(css, /body\.aic-secondary-surface/u);
+  assert.match(css, /margin: 5px/u);
   assert.match(css, /\.aic-secondary-surface \.cm-editor \{ font-size: 0\.875rem; \}/u);
   assert.match(css, /\.aic-secondary-surface \.cm-scroller \{ line-height: 1\.42; \}/u);
   assert.match(css, /#secondary-footer/u);
@@ -126,16 +134,34 @@ test("headless authorization uses SecretStorage plus the encrypted bridge vault"
   assert.match(client, /async logout\(\)/u);
 });
 
-test("Secondary recovers closed documents and exposes local-only note actions", async () => {
+test("Secondary rejects non-substantive sync before API access and exposes one two-sided Trash action", async () => {
   const provider = await readFile(new URL("../src/secondary/provider.js", import.meta.url), "utf8");
-  const actions = await readFile(new URL("../src/secondary/note-actions.js", import.meta.url), "utf8");
+  const admission = await readFile(new URL("../src/sync/admission.js", import.meta.url), "utf8");
+  const client = await readFile(new URL("../src/sync/client.js", import.meta.url), "utf8");
+  const bridge = await readFile(new URL("../bridge/main.go", import.meta.url), "utf8");
   const deletion = await readFile(new URL("../src/notes/delete.js", import.meta.url), "utf8");
   assert.match(provider, /this\.documentUri/u);
   assert.match(provider, /this\.document\.isClosed/u);
   assert.match(provider, /workspace\.openTextDocument\(uri\)/u);
-  assert.match(provider, /clearNoteContent/u);
-  assert.match(provider, /deleteCurrentNote/u);
-  assert.match(actions, /CHECKLIST_BODY = "- \[ \]\\n"/u);
+  const performSync = provider.slice(
+    provider.indexOf("async performSync"),
+    provider.indexOf("async saveCurrent"),
+  );
+  assert.ok(performSync.indexOf("syncAdmission") < performSync.indexOf("this.syncService.sync"));
+  assert.match(admission, /reason: "empty"/u);
+  assert.match(admission, /reason: "placeholder"/u);
+  assert.match(provider, /trashCurrentNote/u);
+  assert.match(provider, /this\.syncService\.trash\(uri\)/u);
+  assert.match(provider, /trashNotesLocally\(\[uri\]\)/u);
+  assert.match(provider, /this\.syncService\.completeTrash\(uri\)/u);
+  assert.doesNotMatch(provider, /clearNoteContent/u);
+  assert.match(client, /operation: "trash"/u);
+  assert.match(client, /remoteUuid: previous\.remoteUuid/u);
+  assert.match(client, /workspaceState\.update\(workspaceStateKey\(uri\), undefined\)/u);
+  assert.match(bridge, /case "trash"/u);
+  assert.match(bridge, /remote\.Content\.SetTrashed\(true\)/u);
+  assert.match(bridge, /note\.UUID == input\.RemoteUUID/u);
+  assert.match(deletion, /trashNotesLocally\(uris, \{ beforeDelete, detail = "" \} = \{\}\)/u);
   assert.match(deletion, /useTrash: true/u);
   assert.match(deletion, /"Delete Permanently"/u);
 });
@@ -157,6 +183,7 @@ test("portable agent workflow uses only a thin .vscode marker and typed AIC comm
 test("release packaging includes the helper but excludes helper source", async () => {
   const ignore = await readFile(new URL("../.vscodeignore", import.meta.url), "utf8");
   assert.match(ignore, /^bridge\/\*\*$/mu);
+  assert.match(ignore, /^\*\.vsix\.sha256$/mu);
   assert.doesNotMatch(ignore, /^bin\//mu);
   const goMod = await readFile(new URL("../bridge/go.mod", import.meta.url), "utf8");
   assert.match(goMod, /28e3820a341f/u);

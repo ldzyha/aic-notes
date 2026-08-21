@@ -7,12 +7,12 @@ with Standard Notes.
 
 ## Install on code-server
 
-Download `aic-notes-7.3.2-linux-x64.vsix` and its `.sha256` file from the
-[v7.3.2 release](https://github.com/ldzyha/aic-notes/releases/tag/v7.3.2), then verify and install:
+Download `aic-notes-8.1.3-linux-x64.vsix` and its `.sha256` file from the
+[v8.1.3 release](https://github.com/ldzyha/aic-notes/releases/tag/v8.1.3), then verify and install:
 
 ```sh
-sha256sum -c aic-notes-7.3.2-linux-x64.vsix.sha256
-code-server --install-extension aic-notes-7.3.2-linux-x64.vsix --force
+sha256sum -c aic-notes-8.1.3-linux-x64.vsix.sha256
+code-server --install-extension aic-notes-8.1.3-linux-x64.vsix --force
 ```
 
 Reload the browser window after installation. The extension targets Code/VS Code 1.106 or newer;
@@ -27,8 +27,9 @@ the bundled Standard Notes helper in this release targets Linux x64.
   create one. Merely focusing a file never creates a note.
 - An unpinned Secondary pane always follows the active source; **Pin** freezes the current
   relationship. The title follows the note filename and its parent path is a read-only breadcrumb.
-  The icon-only footer exposes **Log in/Log out** and **Pin**. **Source**, **Clear**, and **Delete**
-  appear only for a pinned existing note. There is no manual Sync button or Preview/Edit switch:
+  The icon-only footer exposes **Log in/Log out** and **Pin**. **Source** and one **Move note to
+  Trash** action appear only for a pinned existing note. There is no manual Sync button or
+  Preview/Edit switch:
   an attached note is an editor unless Standard Notes reports its item or session as read-only.
   Opening a `*.note.md` through Explorer, Quick Open, a link, a restored tab, or a command is
   intercepted and routed to this panel; the note is not left in an editor tab.
@@ -42,10 +43,11 @@ the bundled Standard Notes helper in this release targets Linux x64.
   `## Linked code`. Its summary contains a
   checkbox and compact `file · Lx–Ly` link; the copied selection and an editable comment live inside.
   Clicking the link returns to the exact source lines. The source file is never modified.
-- Pin a note to expose the footer **Clear content** and **Delete note** icons. Clear preserves a
-  strictly valid leading properties block byte-for-byte and resets the remaining local body to `- [ ]`.
-  Delete saves current bytes and moves only the local sidecar to Trash, with a separate permanent
-  confirmation only when Trash is unavailable. Neither action changes a remote Standard Notes item.
+- Pin a note to expose the footer **Move note to Trash** icon. One confirmation moves the exact
+  bound Standard Notes item to its recoverable Trash first, then moves the local sidecar to the
+  operating-system Trash. An unbound note is local-only. Remote failure leaves the local file in
+  place; local failure after remote success retains the binding so the idempotent action can be
+  retried safely. Permanent local deletion is offered separately only when Trash is unavailable.
 
 The sidecar mapping remains AIC-compatible:
 
@@ -72,7 +74,7 @@ Secondary Side Bar. Its compact layout keeps controls, headings, tables, and bod
 narrow pane while preserving visible theme-derived foregrounds. The Secondary view always exposes
 the Markdown editor and persists changes through the VS Code document model. If the linked remote
 item is locked, the same view becomes fixed read-only after synchronization; there is no
-local mode toggle. The visual/editor contract follows AIC for Standard Notes v3.2.0: exact
+local mode toggle. The visual/editor contract follows AIC for Standard Notes v4.0.1: exact
 Markdown remains the only persisted value while headings, emphasis, tasks, lists, links,
 frontmatter properties, tables, fenced code, and Mermaid are rendered in place.
 
@@ -87,7 +89,12 @@ text editor. This does not relax the `*.note.md` Secondary-only rule.
 
 ## Standard Notes synchronization
 
-Synchronization is save-driven and sidecars only:
+Synchronization is save-driven and sidecars only. Before authentication or any API request, AIC
+Notes rejects empty/frontmatter-only content, an unchanged generated placeholder, and a scaffold
+containing only headings plus empty unchecked tasks. These states remain local and do not create or
+modify a Standard Notes item; the explicit recovery sync command applies the same admission gate.
+
+For substantive notes:
 
 1. Open a sidecar in the Secondary panel and choose the footer **Log in** icon.
 2. Enter the Standard Notes account email/password. MFA is
@@ -111,6 +118,11 @@ Synchronization is save-driven and sidecars only:
    its network request was in flight.
 7. A Standard Notes `locked` item or read-only account session never receives a push. The Secondary
    editor becomes read-only and remains so until a later sync reports write access again.
+
+The pinned footer's single Trash action is also two-sided. It targets only the UUID stored in the
+sidecar binding, marks that exact Standard Notes note as trashed, removes its AIC-managed tag
+reference, then trashes the local file. It never title-matches, creates a replacement, or permanently
+deletes remote content. Missing, ambiguous, locked, or read-only remote identity fails closed.
 
 **Log out** removes only the encrypted local Standard Notes session after confirmation. It does not
 revoke remote tokens, delete the SecretStorage wrapping key, remove local notes or workspace sync
@@ -174,15 +186,16 @@ The bridge is built directly on the MIT `gosn-v2` commit recorded in
 helper with `execFile`, no shell, bounded JSON, a 45-second timeout, and bounded output.
 
 Focused unit tests cover sidecar paths/templates/frontmatter, selection range/link/deduplication
-rules, placeholder creation, serialized sync coalescing, release manifest invariants, three-way
-decisions, managed-tag migration boundaries, sanitized connection failures, mandatory client
-headers on auth/sync, and the bridge protocol. A live
+rules, placeholder creation and pre-auth sync admission, raw checkbox authoring, serialized sync
+coalescing, exact-binding two-sided Trash, release manifest invariants, three-way decisions,
+managed-tag migration boundaries, sanitized connection failures, mandatory client headers on
+auth/sync, and the bridge protocol. A live
 Standard Notes account is intentionally not mutated by unattended tests.
 
 ## Release accounting
 
 This project uses the global `R.F.B` convention: release sequence, release-local feature outcomes,
-release-local fixed-bug outcomes. `7.3.2` is sequence 7 with three feature outcomes and two
+release-local fixed-bug outcomes. `8.1.3` is sequence 8 with one feature outcome and three
 fixed-bug outcomes. It is not a SemVer compatibility claim. See [`CHANGELOG.md`](CHANGELOG.md).
 
 ## License and provenance

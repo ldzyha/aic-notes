@@ -16,6 +16,10 @@
   --aic-danger: var(--vscode-errorForeground, #c62828);
   --aic-details-surface: color-mix(in srgb, var(--aic-contrast) 94%, var(--aic-contrast-fg) 6%);
   --aic-details-border: color-mix(in srgb, var(--aic-border) 72%, var(--aic-contrast-fg) 28%);
+  --aic-agent-shell: var(--vscode-agents-background, var(--vscode-editor-background, #121314));
+  --aic-agent-panel: var(--vscode-agentsPanel-background, var(--vscode-sideBar-background, var(--vscode-editor-background, #191a1b)));
+  --aic-agent-panel-fg: var(--vscode-agentsPanel-foreground, var(--vscode-sideBar-foreground, var(--vscode-editor-foreground, #bfbfbf)));
+  --aic-agent-panel-border: var(--vscode-agentsPanel-border, var(--vscode-sideBar-border, var(--vscode-panel-border, #2a2b2c)));
   --fg: var(--aic-fg);
   --bg: var(--aic-bg);
   --marker: var(--aic-marker);
@@ -282,11 +286,28 @@ html, body {
 /* Secondary Side Bar chrome stays compact and uses the same controls/tokens
    as the Standard Notes AIC toolbar. The Markdown document remains the only
    persisted value; remote lock state alone can make the editor read-only. */
-.aic-secondary-surface {
+html.aic-secondary-shell {
+  background: var(--aic-agent-shell);
+}
+
+body.aic-secondary-surface {
+  --aic-bg: var(--aic-agent-panel);
+  --aic-fg: var(--aic-agent-panel-fg);
+  --aic-border: var(--aic-agent-panel-border);
+  --aic-contrast: var(--aic-agent-panel);
+  --aic-contrast-fg: var(--aic-agent-panel-fg);
+  --bg: var(--aic-bg);
+  --fg: var(--aic-fg);
+  --border: var(--aic-border);
+  box-sizing: border-box;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  width: 100%;
-  height: 100vh;
+  width: calc(100% - 10px);
+  height: calc(100vh - 10px);
+  margin: 5px;
+  border: 1px solid var(--aic-agent-panel-border);
+  border-radius: 0.5rem;
+  background: var(--aic-agent-panel);
   overflow: hidden;
 }
 

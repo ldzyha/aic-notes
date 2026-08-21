@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jonhadfield/gosn-v2/common"
 	"github.com/jonhadfield/gosn-v2/items"
@@ -107,6 +108,56 @@ func TestReconcileTagsMigratesOnlyOwnedReferences(t *testing.T) {
 	}
 	if _, touched := byTitle["personal"]; touched {
 		t.Fatal("unrelated user tag must not be changed")
+	}
+}
+
+func TestPrepareRemoteTrashIsRecoverableAndIdempotent(t *testing.T) {
+	note, err := items.NewNote("Example", "body", items.ItemReferences{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	note.UUID = "note"
+	now := time.Date(2026, 8, 21, 12, 0, 0, 0, time.UTC)
+	outgoing, action, err := prepareRemoteTrash(&note, nil, nil, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if action != "trashed" || len(outgoing) != 1 || note.Content.Trashed == nil || !*note.Content.Trashed {
+		t.Fatalf("first Trash transition failed: action=%q outgoing=%d trashed=%v", action, len(outgoing), note.Content.Trashed)
+	}
+	outgoing, action, err = prepareRemoteTrash(&note, nil, nil, now.Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if action != "already-trashed" || len(outgoing) != 0 {
+		t.Fatalf("idempotent retry changed the remote again: action=%q outgoing=%d", action, len(outgoing))
+	}
+}
+
+func TestPrepareRemoteTrashRemovesOnlyManagedTagReferences(t *testing.T) {
+	note, _ := items.NewNote("Example", "body", items.ItemReferences{})
+	note.UUID = "note"
+	noteRef := items.ItemReference{UUID: note.UUID, ContentType: common.SNItemTypeNote}
+	managed, _ := items.NewTag("demo.src", items.ItemReferences{noteRef})
+	personal, _ := items.NewTag("personal", items.ItemReferences{noteRef})
+	outgoing, _, err := prepareRemoteTrash(
+		&note,
+		items.Tags{managed, personal},
+		[]string{"demo.src"},
+		time.Now().UTC(),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(outgoing) != 2 {
+		t.Fatalf("expected remote note plus one managed tag update, got %d items", len(outgoing))
+	}
+	tag, ok := outgoing[1].(*items.Tag)
+	if !ok || !tag.IsDeleted() {
+		t.Fatal("the now-empty managed hierarchy tag was not retired")
+	}
+	if tag.Content.Title == "personal" {
+		t.Fatal("an unrelated user tag was changed")
 	}
 }
 

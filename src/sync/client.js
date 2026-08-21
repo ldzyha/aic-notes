@@ -89,6 +89,14 @@ export class StandardNotesSync {
     return Boolean(state.remoteUuid && state.readOnly);
   }
 
+  bindingState(uri) {
+    const state = this.context.workspaceState.get(workspaceStateKey(uri), {});
+    return {
+      bound: Boolean(state.remoteUuid),
+      readOnly: Boolean(state.remoteUuid && state.readOnly),
+    };
+  }
+
   async connectionState() {
     try {
       const status = await this._invoke({ operation: "status" });
@@ -174,6 +182,32 @@ export class StandardNotesSync {
       reconnect ? "Reconnect" : "Connect",
     );
     return choice === "Connect" || choice === "Reconnect" ? this._connect() : false;
+  }
+
+  async trash(uri) {
+    const key = workspaceStateKey(uri);
+    const previous = this.context.workspaceState.get(key, {});
+    if (!previous.remoteUuid) return { action: "unbound", bound: false };
+    if (!(await this.ensureConnected())) return null;
+
+    const result = await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: "AIC Notes: moving remote note to Trash", cancellable: false },
+      () => this._invoke({
+        operation: "trash",
+        remoteUuid: previous.remoteUuid,
+        previousTags: Array.isArray(previous.managedTags) ? previous.managedTags : [],
+      }),
+    );
+    if (result.remoteUuid !== previous.remoteUuid) {
+      throw structuredError("sn_remote_identity_changed", "Standard Notes returned a different note identity", [
+        "Keep the local note and retry after reconnecting",
+      ]);
+    }
+    return { ...result, bound: true };
+  }
+
+  async completeTrash(uri) {
+    await this.context.workspaceState.update(workspaceStateKey(uri), undefined);
   }
 
   async sync(uri, markdown, { interactive = true, acceptResult } = {}) {

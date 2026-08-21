@@ -41,6 +41,7 @@ const remote = Annotation.define();
 const readOnlyCompartment = new Compartment();
 const editableCompartment = new Compartment();
 const secondarySurface = Boolean(document.getElementById("secondary-controls"));
+if (secondarySurface) document.documentElement.classList.add("aic-secondary-shell");
 
 const docState = { relativePath: "", generation: 0, readOnly: false, placeholder: false };
 const host = makeHost(api, docState);
@@ -93,9 +94,6 @@ function wirePaneControls() {
   document.getElementById("pane-clear")?.addEventListener("click", () =>
     api.postMessage({ type: "pane.clear" }),
   );
-  document.getElementById("pane-delete")?.addEventListener("click", () =>
-    api.postMessage({ type: "pane.delete" }),
-  );
 }
 
 // Nested fenced-code highlighting: the language sits in a Compartment so a
@@ -144,8 +142,8 @@ function makeEditor(text) {
         ...detailsExtension(host),
         drawSelection(),
         search({ top: true }),
-        // List Enter/Space must win over defaultKeymap for continuation,
-        // renumbering, and task toggling. Replacement previews expose their
+        // List Enter must win over defaultKeymap for continuation and
+        // renumbering. Replacement previews expose their
         // source only through the visible Edit source button.
         Prec.high(keymap.of(listKeymap)),
         keymap.of([
@@ -268,11 +266,6 @@ window.addEventListener("message", (event) => {
       if (clear) {
         clear.hidden = !msg.showPinnedActions;
         clear.disabled = !msg.showPinnedActions || Boolean(msg.readOnly) || Boolean(msg.actionPending);
-      }
-      const remove = document.getElementById("pane-delete");
-      if (remove) {
-        remove.hidden = !msg.showPinnedActions;
-        remove.disabled = !msg.showPinnedActions || Boolean(msg.actionPending);
       }
       const empty = document.getElementById("pane-empty");
       const editor = document.getElementById("editor");
