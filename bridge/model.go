@@ -38,6 +38,17 @@ func syncDecision(localHash, remoteHash, baseHash, resolution string) string {
 	}
 }
 
+func readOnlySyncDecision(localHash, remoteHash, baseHash string) (action string, useRemote bool, nextBase string) {
+	switch {
+	case localHash == remoteHash:
+		return "noop", false, remoteHash
+	case baseHash != "" && localHash == baseHash:
+		return "pull", true, remoteHash
+	default:
+		return "locked", false, baseHash
+	}
+}
+
 func isManagedTag(value string) bool {
 	return value == "aic" || strings.HasPrefix(value, "project:") || strings.HasPrefix(value, "path:")
 }

@@ -1,5 +1,25 @@
 # Changelog
 
+## 5.3.1 — 2026-08-21
+
+Release sequence 5 · 3 feature outcomes · 1 fixed-bug outcome.
+
+- F01: the Secondary note surface is always an editor, with no Preview/Edit switch; a Standard
+  Notes item lock or read-only session makes that same surface fixed read-only until a later manual
+  sync reports write access.
+- F02: selection links now use the AIC `>>>|open| Title` / `>>> Title` / `<<<` details contract. A
+  new block starts open with a checkbox and compact source link in its summary, the copied code
+  fragment and comment inside, and an arrow that toggles only that block's exact marker.
+- F03: a new file-note body is reduced to the existing frontmatter properties and one empty
+  checklist item; project/folder defaults and valid workspace overrides remain intact.
+- B01: Standard Notes authorization no longer depends on a desktop Secret Service/keyring. The Go
+  bridge stores its session in an authenticated AES-256-GCM vault while VS Code SecretStorage holds
+  the independent wrapping key, so headless code-server can connect without `secret-tool`.
+
+Compatibility: VS Code/Code 1.106 or newer; the bundled Standard Notes bridge is Linux x64. The
+first sync after upgrading from 4.3.3 requests a new connection because legacy keyring sessions are
+not read, migrated, or deleted. No Marketplace/Open VSX publication is implied.
+
 ## 4.3.3 — 2026-08-21
 
 Release sequence 4 · 3 feature outcomes · 3 fixed-bug outcomes.

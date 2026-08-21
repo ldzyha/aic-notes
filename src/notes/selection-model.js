@@ -1,3 +1,5 @@
+import { parseDetailsBlocks } from "../webview/details-model.js";
+
 const LINKED_CODE_HEADING = "## Linked code";
 
 function clampPosition(value, length) {
@@ -43,10 +45,41 @@ export function linkedCodeReference(sourcePath, line, endLine = line) {
   }
   const name = sourcePath.slice(sourcePath.lastIndexOf("/") + 1);
   const range = endLine > line ? `${line}-${endLine}` : `${line}`;
+  const compactRange = endLine > line ? `L${line}–L${endLine}` : `L${line}`;
   const fragment = endLine > line ? `#L${line}-L${endLine}` : `#L${line}`;
   const label = `${sourcePath}:${range}`;
   const href = `${encodeURIComponent(name)}${fragment}`;
-  return { label, href, markdown: `[${escapeMarkdownLabel(label)}](${href})` };
+  const compactLabel = `${name} · ${compactRange}`;
+  return {
+    label,
+    href,
+    markdown: `[${escapeMarkdownLabel(label)}](${href})`,
+    compactLabel,
+    compactMarkdown: `[${escapeMarkdownLabel(compactLabel)}](${href})`,
+  };
+}
+
+const LANGUAGE_BY_EXTENSION = new Map([
+  ["c", "c"], ["cc", "cpp"], ["cpp", "cpp"], ["cs", "csharp"], ["css", "css"],
+  ["go", "go"], ["html", "html"], ["java", "java"], ["js", "javascript"],
+  ["json", "json"], ["jsx", "jsx"], ["md", "markdown"], ["mjs", "javascript"],
+  ["py", "python"], ["rb", "ruby"], ["rs", "rust"], ["scss", "scss"], ["sh", "bash"],
+  ["sql", "sql"], ["ts", "typescript"], ["tsx", "tsx"], ["xml", "xml"],
+  ["yaml", "yaml"], ["yml", "yaml"],
+]);
+
+export function languageForSourcePath(sourcePath) {
+  const name = String(sourcePath ?? "").replaceAll("\\", "/").split("/").at(-1) ?? "";
+  const extension = name.includes(".") ? name.slice(name.lastIndexOf(".") + 1).toLowerCase() : "";
+  return LANGUAGE_BY_EXTENSION.get(extension) ?? "";
+}
+
+export function fencedSelection(value, language = "") {
+  const text = String(value ?? "").replaceAll("\r\n", "\n").replaceAll("\r", "\n");
+  let longest = 0;
+  for (const match of text.matchAll(/`+/gu)) longest = Math.max(longest, match[0].length);
+  const fence = "`".repeat(Math.max(3, longest + 1));
+  return `${fence}${language}\n${text}${text.endsWith("\n") ? "" : "\n"}${fence}`;
 }
 
 /** Canonical owner/note route for an ordinary source or an AIC *.ai.md artifact. */
@@ -69,26 +102,69 @@ export function noteTargetForSource(value) {
   return { sourcePath, ownerPath, notePath, ai };
 }
 
-/** Insert one deduplicated linked-code bullet and return its annotation caret offset. */
-export function upsertLinkedCodeReference(noteText, reference) {
+function hrefNeedle(reference) {
+  return `](${reference.href})`;
+}
+
+function commentCursor(source, from, to) {
+  const label = "**Comment**";
+  const at = source.indexOf(label, from);
+  if (at < 0 || at >= to) return to;
+  let cursor = at + label.length;
+  if (source.slice(cursor, cursor + 2) === "\n\n") cursor += 2;
+  else if (source[cursor] === "\n") cursor += 1;
+  return cursor;
+}
+
+function linkedCodeSectionEnd(source, headingEnd, details) {
+  const headings = /^#{1,2}[ \t]+/gmu;
+  headings.lastIndex = headingEnd;
+  for (let match = headings.exec(source); match; match = headings.exec(source)) {
+    const insideDetail = details.some((detail) => match.index >= detail.from && match.index < detail.end);
+    if (!insideDetail) return match.index;
+  }
+  return source.length;
+}
+
+/** Insert one deduplicated linked-code details block and return its comment caret offset. */
+export function upsertLinkedCodeReference(noteText, reference, selectedText = "") {
   const source = String(noteText ?? "").replaceAll("\r\n", "\n").replaceAll("\r", "\n");
-  const markdown = typeof reference === "string" ? reference : reference?.markdown;
-  if (!markdown) throw new TypeError("upsertLinkedCodeReference needs a Markdown reference");
+  const markdown = reference?.markdown;
+  const compactMarkdown = reference?.compactMarkdown;
+  if (!markdown || !compactMarkdown || !reference?.href) {
+    throw new TypeError("upsertLinkedCodeReference needs a linked-code reference");
+  }
 
   const heading = /^##[ \t]+Linked code[ \t]*$/im.exec(source);
   if (!heading) {
     const prefix = source.trimEnd();
     const separator = prefix ? "\n\n" : "";
-    const lead = `${prefix}${separator}${LINKED_CODE_HEADING}\n\n- ${markdown} — `;
-    return { text: `${lead}\n`, cursor: lead.length, created: true };
+    const block = linkedDetailsBlock(reference, selectedText);
+    const lead = `${prefix}${separator}${LINKED_CODE_HEADING}\n\n${block.prefix}`;
+    return { text: `${lead}${block.suffix}\n`, cursor: lead.length, created: true };
   }
 
   const headingEnd = heading.index + heading[0].length;
-  const tail = source.slice(headingEnd);
-  const nextHeading = /^#{1,2}[ \t]+/m.exec(tail);
-  const sectionEnd = nextHeading ? headingEnd + nextHeading.index : source.length;
-  const existing = source.indexOf(markdown, headingEnd);
+  const details = parseDetailsBlocks(source);
+  const sectionEnd = linkedCodeSectionEnd(source, headingEnd, details);
+  const existing = source.indexOf(hrefNeedle(reference), headingEnd);
   if (existing >= 0 && existing < sectionEnd) {
+    const detail = details.find(
+      (candidate) => candidate.from >= headingEnd && candidate.to <= sectionEnd &&
+        source.slice(candidate.headerFrom, candidate.headerTo).includes(hrefNeedle(reference)),
+    );
+    if (detail) {
+      let text = source;
+      let cursor = commentCursor(source, detail.contentFrom, detail.contentTo);
+      if (!detail.open) {
+        const header = source.slice(detail.headerFrom, detail.headerTo);
+        const opened = header.replace(/^>>>[ \t]+/u, ">>>|open| ");
+        text = source.slice(0, detail.headerFrom) + opened + source.slice(detail.headerTo);
+        const delta = opened.length - header.length;
+        cursor += delta;
+      }
+      return { text, cursor, created: false, opened: !detail.open };
+    }
     const lineEnd = source.indexOf("\n", existing + markdown.length);
     return {
       text: source,
@@ -99,9 +175,17 @@ export function upsertLinkedCodeReference(noteText, reference) {
   const prefix = source.slice(0, sectionEnd).trimEnd();
   const hasSectionContent = source.slice(headingEnd, sectionEnd).trim().length > 0;
   const gap = hasSectionContent ? "\n" : "\n\n";
-  const lead = `${prefix}${gap}- ${markdown} — `;
-  const suffix = nextHeading ? `\n\n${source.slice(sectionEnd).trimStart()}` : "\n";
+  const block = linkedDetailsBlock(reference, selectedText);
+  const lead = `${prefix}${gap}${block.prefix}`;
+  const suffix = `${block.suffix}${sectionEnd < source.length ? `\n\n${source.slice(sectionEnd).trimStart()}` : "\n"}`;
   return { text: `${lead}${suffix}`, cursor: lead.length, created: true };
+}
+
+export function linkedDetailsBlock(reference, selectedText) {
+  const language = languageForSourcePath(reference.label.split(":", 1)[0]);
+  const code = fencedSelection(selectedText, language);
+  const prefix = `>>>|open| - [ ] ${reference.compactMarkdown}\n${code}\n\n**Comment**\n\n`;
+  return { prefix, suffix: "\n<<<", cursor: prefix.length };
 }
 
 /** Parse only a valid inclusive #Lx or #Lx-Ly range. */

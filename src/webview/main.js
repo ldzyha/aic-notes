@@ -36,6 +36,7 @@ import { MARKDOWN_CSS } from "../../vendor/markdown/styles.js";
 import { makeFencedMarkdown } from "./fenced-local.js";
 import { darkHighlight } from "./highlight.js";
 import { makeHost } from "./host-shim.js";
+import { detailsExtension } from "./details.js";
 import THEME_CSS from "./theme.css";
 
 const api = acquireVsCodeApi();
@@ -44,7 +45,7 @@ const readOnlyCompartment = new Compartment();
 const editableCompartment = new Compartment();
 const secondarySurface = Boolean(document.getElementById("secondary-controls"));
 
-const docState = { relativePath: "", generation: 0 };
+const docState = { relativePath: "", generation: 0, readOnly: false };
 const host = makeHost(api, docState);
 
 // bundled JetBrains Mono (OFL, dist/webview/fonts): the @font-face URLs must
@@ -68,33 +69,22 @@ for (const css of [FONT_CSS, THEME_CSS, MARKDOWN_CSS]) {
 }
 
 let view = null;
-let paneMode = secondarySurface ? "preview" : "edit";
-
-function setPaneMode(mode) {
-  paneMode = mode === "edit" ? "edit" : "preview";
+function setReadOnly(value) {
+  docState.readOnly = secondarySurface && Boolean(value);
   if (view) {
-    const readOnly = secondarySurface && paneMode === "preview";
     view.dispatch({
       effects: [
-        readOnlyCompartment.reconfigure(EditorState.readOnly.of(readOnly)),
-        editableCompartment.reconfigure(EditorView.editable.of(!readOnly)),
+        readOnlyCompartment.reconfigure(EditorState.readOnly.of(docState.readOnly)),
+        editableCompartment.reconfigure(EditorView.editable.of(!docState.readOnly)),
       ],
     });
   }
-  const button = document.getElementById("pane-mode");
-  if (button) {
-    button.textContent = paneMode === "preview" ? "Edit" : "Preview";
-    button.setAttribute("aria-pressed", String(paneMode === "edit"));
-  }
-  document.body.dataset.paneMode = paneMode;
-  if (view && paneMode === "edit") requestAnimationFrame(() => view?.focus());
+  document.body.dataset.readOnly = String(docState.readOnly);
+  if (view && !docState.readOnly) requestAnimationFrame(() => view?.focus());
 }
 
 function wirePaneControls() {
   if (!secondarySurface) return;
-  document.getElementById("pane-mode")?.addEventListener("click", () =>
-    setPaneMode(paneMode === "preview" ? "edit" : "preview"),
-  );
   document.getElementById("pane-pin")?.addEventListener("click", () =>
     api.postMessage({ type: "pane.pin" }),
   );
@@ -110,7 +100,6 @@ function wirePaneControls() {
   document.getElementById("pane-auto")?.addEventListener("change", (event) =>
     api.postMessage({ type: "pane.autoOpen", value: event.currentTarget.checked }),
   );
-  setPaneMode("preview");
 }
 
 // Nested fenced-code highlighting: the language sits in a Compartment so a
@@ -145,8 +134,8 @@ function makeEditor(text) {
     state: EditorState.create({
       doc: text,
       extensions: [
-        readOnlyCompartment.of(EditorState.readOnly.of(secondarySurface)),
-        editableCompartment.of(EditorView.editable.of(!secondarySurface)),
+        readOnlyCompartment.of(EditorState.readOnly.of(docState.readOnly)),
+        editableCompartment.of(EditorView.editable.of(!docState.readOnly)),
         langCompartment.of(fencedLang()),
         // colors nested fenced-code tokens; markdown structure styling is
         // owned by the handler classes (theme.css bumps their specificity)
@@ -156,6 +145,7 @@ function makeEditor(text) {
         makeTableExtension(host),
         ...makeFrontmatterExtension(),
         makeMermaidExtension(),
+        ...detailsExtension(host),
         drawSelection(),
         search({ top: true }),
         // arrow-into-block must win over defaultKeymap's cursor moves —
@@ -192,9 +182,9 @@ window.addEventListener("message", (event) => {
     case "init": {
       docState.relativePath = msg.relativePath;
       docState.generation = msg.generation;
+      docState.readOnly = secondarySurface && Boolean(msg.readOnly);
       view?.destroy();
       view = makeEditor(msg.text);
-      if (secondarySurface) setPaneMode(msg.mode);
       const requested = msg.selection;
       const saved = api.getState();
       const selection = requested ?? (saved?.path === msg.relativePath ? saved : null);
@@ -213,7 +203,7 @@ window.addEventListener("message", (event) => {
           /* stale saved selection — keep the default */
         }
       }
-      if (!secondarySurface) requestAnimationFrame(() => view?.focus());
+      if (!docState.readOnly) requestAnimationFrame(() => view?.focus());
       break;
     }
     case "external": {
@@ -246,6 +236,7 @@ window.addEventListener("message", (event) => {
       if (auto) auto.checked = Boolean(msg.autoOpen);
       const status = document.getElementById("pane-status");
       if (status) status.textContent = msg.status || "";
+      if (secondarySurface) setReadOnly(Boolean(msg.readOnly));
       const detail = document.getElementById("pane-empty-detail");
       if (detail) {
         detail.textContent = msg.candidatePath
@@ -259,7 +250,7 @@ window.addEventListener("message", (event) => {
         create.hidden = !msg.candidatePath;
         create.disabled = !msg.canCreate;
       }
-      for (const id of ["pane-mode", "pane-target", "pane-sync"]) {
+      for (const id of ["pane-target", "pane-sync"]) {
         const control = document.getElementById(id);
         if (control) control.disabled = !msg.hasNote;
       }

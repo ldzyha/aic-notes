@@ -6,7 +6,15 @@ item sync, and tag references. It uses the pinned MIT `gosn-v2` module in `go.mo
 Protocol: one JSON object on stdin and one JSON object on stdout. Supported operations are
 `status`, `connect`, and `sync`. Input is limited to 2 MiB. The VS Code host additionally limits
 output to 4 MiB and execution to 45 seconds. Credentials are accepted only for `connect`, passed
-over stdin, and persisted by `gosn-v2` only through the operating-system keychain.
+over stdin, and never persisted. Session tokens and encryption material are serialized by this
+bridge into an AES-256-GCM vault supplied by the extension. The vault file is restricted to `0600`
+inside a `0700` directory; the independent wrapping key arrives per invocation from VS Code
+SecretStorage and is never stored in the vault. No Secret Service/keyring daemon is used.
+
+Every operation requires the absolute `vaultPath` ending in
+`standard-notes-session.v1.json` and a base64url 256-bit `vaultKey`. Writes use a fresh random nonce
+and atomic replacement. Unsafe paths/files, invalid permissions, malformed envelopes, wrong keys,
+and authentication failures are rejected without exposing upstream or secret material.
 
 The pinned client sends Standard Notes client/version headers on authentication and sync. Server
 URLs must be absolute HTTP(S) endpoints without embedded credentials, query strings, or fragments.

@@ -7,7 +7,7 @@ const root = path.resolve(import.meta.dirname, "..");
 const manifest = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
 const version = manifest.version;
 if (!/^\d+\.\d+\.\d+$/u.test(version)) throw new Error(`invalid R.F.B version: ${version}`);
-if (version !== "4.3.3") throw new Error(`release gate expects 4.3.3, got ${version}`);
+if (version !== "5.3.1") throw new Error(`release gate expects 5.3.1, got ${version}`);
 
 const binary = path.join(root, "bin", "linux-x64", "aic-notes-sn-bridge");
 await access(binary);

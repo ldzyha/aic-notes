@@ -58,6 +58,7 @@ export class SecondaryNotePane {
     this.editQueue = Promise.resolve();
     this.pendingViewState = undefined;
     this.creating = false;
+    this.readOnly = false;
     this.disposables = [];
     this.routingTabs = false;
     this.autoOpen = context.workspaceState.get(AUTO_OPEN_KEY, true);
@@ -81,7 +82,6 @@ export class SecondaryNotePane {
           <button id="pane-pin" type="button" title="Pin or follow active file">Follow</button>
         </div>
         <div class="aic-pane-actions">
-          <button id="pane-mode" type="button">Edit</button>
           <button id="pane-target" type="button">Source</button>
           <button id="pane-sync" type="button">Sync</button>
         </div>
@@ -116,7 +116,7 @@ export class SecondaryNotePane {
     }
   }
 
-  async open(uri, { pin = true, reveal = true, sourceUri, mode = "preview", selection } = {}) {
+  async open(uri, { pin = true, reveal = true, sourceUri, selection } = {}) {
     if (!uri || uri.scheme !== "file" || !isNotePath(uri.path)) {
       throw structuredError("notes_not_sidecar", `${uri?.fsPath ?? "resource"} is not a *.note.md sidecar`, [
         "Choose a sidecar note",
@@ -124,13 +124,14 @@ export class SecondaryNotePane {
     }
     this.pinned = pin;
     this.sourceUri = sourceUri;
-    this.pendingViewState = { mode, selection };
+    this.pendingViewState = { selection };
     await this.attach(uri);
     if (reveal) await this.focus(false);
     await this.closeExactNoteTabs(uri);
   }
 
   async attach(uri) {
+    this.readOnly = this.syncService.isReadOnly(uri);
     if (this.document?.uri.toString() === uri.toString()) {
       await this.sendInit();
       return;
@@ -156,7 +157,7 @@ export class SecondaryNotePane {
       await this.sendPaneState();
       return false;
     }
-    this.pendingViewState = { mode: "preview" };
+    this.pendingViewState = undefined;
     await this.attach(noteUri);
     if (forceReveal || this.autoOpen) await this.focus(true);
     return true;
@@ -228,7 +229,7 @@ export class SecondaryNotePane {
       generation: this.generation,
       relativePath,
       surface: "secondary",
-      mode: viewState?.mode ?? "preview",
+      readOnly: this.readOnly,
       selection: viewState?.selection,
     });
     this.pendingViewState = undefined;
@@ -257,11 +258,23 @@ export class SecondaryNotePane {
       canCreate: Boolean(candidatePath) && !this.creating,
       candidatePath,
       status,
+      readOnly: this.readOnly,
     });
   }
 
   async applyChanges(changes, generation) {
     if (!this.document) return;
+    if (this.readOnly) {
+      this.generation++;
+      await this.view?.webview.postMessage({
+        type: "reset",
+        text: this.document.getText(),
+        generation: this.generation,
+      });
+      throw structuredError("sn_note_read_only", "the linked Standard Notes item is locked or read-only", [
+        "Unlock it in Standard Notes and synchronize again",
+      ]);
+    }
     if (generation !== this.generation) {
       this.generation++;
       await this.view?.webview.postMessage({
@@ -349,7 +362,6 @@ export class SecondaryNotePane {
               pin: false,
               reveal: true,
               sourceUri,
-              mode: "edit",
             });
           } finally {
             this.creating = false;
@@ -376,7 +388,10 @@ export class SecondaryNotePane {
             return;
           }
           if (typeof result.localContent === "string") await this.replaceDocument(result.localContent);
-          await this.sendPaneState(`Synced · ${result.action}`);
+          this.readOnly = Boolean(result.readOnly);
+          await this.sendPaneState(
+            result.action === "locked" ? "Locked in Standard Notes" : `Synced · ${result.action}`,
+          );
           break;
         }
         case "bus":

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"github.com/jonhadfield/gosn-v2/common"
 	"github.com/jonhadfield/gosn-v2/items"
 	"github.com/jonhadfield/gosn-v2/session"
+	"github.com/zalando/go-keyring"
 )
 
 const (
@@ -32,6 +34,8 @@ type request struct {
 	RemoteUUID   string   `json:"remoteUuid,omitempty"`
 	BaseHash     string   `json:"baseHash,omitempty"`
 	Resolution   string   `json:"resolution,omitempty"`
+	VaultPath    string   `json:"vaultPath,omitempty"`
+	VaultKey     string   `json:"vaultKey,omitempty"`
 }
 
 type response struct {
@@ -50,6 +54,7 @@ type response struct {
 	SyncedAt      string   `json:"syncedAt,omitempty"`
 	ManagedTags   []string `json:"managedTags,omitempty"`
 	RemoteChanged bool     `json:"remoteChanged,omitempty"`
+	ReadOnly      bool     `json:"readOnly,omitempty"`
 }
 
 func main() {
@@ -77,7 +82,7 @@ func handle(payload []byte) response {
 	}
 	switch input.Operation {
 	case "status":
-		return status()
+		return status(input)
 	case "connect":
 		return connect(input)
 	case "sync":
@@ -93,16 +98,28 @@ func write(output response) {
 	_ = encoder.Encode(output)
 }
 
-func status() response {
-	if err := session.SessionExists(nil); err != nil {
-		return response{OK: false, Code: "sn_not_connected", Message: "no Standard Notes session exists in the operating-system keychain", Fixes: []string{"Choose Connect from the AIC Notes sync action"}}
+func status(input request) response {
+	vault, err := vaultFromRequest(input)
+	if err != nil {
+		return failure("sn_vault_unavailable", err, "Reload code-server and retry the AIC Notes connection")
 	}
-	return response{OK: true, Connected: true}
+	s, err := readSession(vault)
+	if errors.Is(err, keyring.ErrNotFound) {
+		return response{OK: false, Code: "sn_not_connected", Message: "no Standard Notes session exists", Fixes: []string{"Choose Connect from the AIC Notes sync action"}}
+	}
+	if err != nil {
+		return failure("sn_vault_unreadable", err, "Choose Reconnect to replace only the local encrypted session vault")
+	}
+	return response{OK: true, Connected: true, ReadOnly: s.ReadOnlyAccess}
 }
 
 func connect(input request) response {
 	if strings.TrimSpace(input.Email) == "" || input.Password == "" {
 		return response{OK: false, Code: "sn_credentials_required", Message: "email and password are required"}
+	}
+	vault, vaultErr := vaultFromRequest(input)
+	if vaultErr != nil {
+		return failure("sn_vault_unavailable", vaultErr, "Reload code-server and retry the AIC Notes connection")
 	}
 	server, serverErr := normalizeServer(input.Server, common.APIServer)
 	if serverErr != nil {
@@ -132,10 +149,10 @@ func connect(input request) response {
 		return response{OK: false, Code: "sn_auth_response_invalid", Message: "Standard Notes returned no access token", Fixes: []string{"Verify the server endpoint and retry"}}
 	}
 	s := sessionFromAuth(result.Session, server)
-	if err := session.UpdateSession(&s, nil, false); err != nil {
-		return failure("sn_keychain_failed", err, "Unlock a Secret Service compatible keyring and retry")
+	if err := saveSession(vault, s); err != nil {
+		return failure("sn_vault_write_failed", err, "Check extension storage permissions and retry")
 	}
-	return response{OK: true, Connected: true, Email: input.Email}
+	return response{OK: true, Connected: true, Email: input.Email, ReadOnly: s.ReadOnlyAccess}
 }
 
 func sessionFromAuth(input auth.SignInResponseDataSession, server string) session.Session {
@@ -155,22 +172,31 @@ func sessionFromAuth(input auth.SignInResponseDataSession, server string) sessio
 	}
 }
 
-func loadSession() (session.Session, error) {
-	s, _, err := session.GetSession(common.NewHTTPClient(), true, "", common.APIServer, false)
+func loadSession(input request) (session.Session, *sessionVault, error) {
+	vault, err := vaultFromRequest(input)
 	if err != nil {
-		return session.Session{}, err
+		return session.Session{}, nil, err
 	}
-	if s.Server == "" {
-		s.Server = common.APIServer
+	s, err := readSession(vault)
+	if err != nil {
+		return session.Session{}, vault, err
 	}
-	return s, nil
+	if time.Unix(s.AccessExpiration/1000, 0).Add(-session.RefreshSessionThreshold).Before(time.Now().UTC()) {
+		if err := s.Refresh(); err != nil {
+			return session.Session{}, vault, err
+		}
+		if err := saveSession(vault, s); err != nil {
+			return session.Session{}, vault, err
+		}
+	}
+	return s, vault, nil
 }
 
 func syncNote(input request) response {
 	if strings.TrimSpace(input.Title) == "" {
 		return response{OK: false, Code: "sn_title_required", Message: "the note title is empty"}
 	}
-	s, err := loadSession()
+	s, vault, err := loadSession(input)
 	if err != nil {
 		return failure("sn_not_connected", err, "Reconnect AIC Notes to Standard Notes")
 	}
@@ -178,10 +204,15 @@ func syncNote(input request) response {
 	if err != nil {
 		return failure("sn_sync_failed", err, "Check the network connection and reconnect if the session expired")
 	}
-	if err := session.UpdateSession(&s, nil, false); err != nil {
-		return failure("sn_keychain_failed", err, "Unlock the operating-system keyring and retry")
+	if err := saveSession(vault, s); err != nil {
+		return failure("sn_vault_write_failed", err, "Check extension storage permissions and retry")
 	}
-	decrypted, err := pull.Items.DecryptAndParse(&s)
+	rawItems, err := items.DecryptItems(&s, pull.Items, []session.SessionItemsKey{})
+	if err != nil {
+		return failure("sn_decrypt_failed", err, "Reconnect to refresh account encryption keys")
+	}
+	lockedNotes := lockedNoteUUIDs(rawItems)
+	decrypted, err := rawItems.Parse()
 	if err != nil {
 		return failure("sn_decrypt_failed", err, "Reconnect to refresh account encryption keys")
 	}
@@ -202,6 +233,27 @@ func syncNote(input request) response {
 		remoteHash = contentHash(remote.Content.Text)
 	}
 	localHash := contentHash(input.LocalContent)
+	readOnly := s.ReadOnlyAccess || (remote != nil && lockedNotes[remote.UUID])
+	if remote == nil && readOnly {
+		return response{OK: false, Code: "sn_note_read_only", Message: "the Standard Notes session is read-only", Fixes: []string{"Reconnect with write access before creating the remote note"}, ReadOnly: true}
+	}
+	if remote != nil && readOnly {
+		action, useRemote, baseHash := readOnlySyncDecision(localHash, remoteHash, input.BaseHash)
+		content := input.LocalContent
+		if useRemote {
+			content = remote.Content.Text
+		}
+		return response{
+			OK:            true,
+			Action:        action,
+			LocalContent:  content,
+			RemoteUUID:    remote.UUID,
+			BaseHash:      baseHash,
+			SyncedAt:      time.Now().UTC().Format(time.RFC3339),
+			RemoteChanged: remoteHash != input.BaseHash,
+			ReadOnly:      true,
+		}
+	}
 	action := syncDecision(localHash, remoteHash, input.BaseHash, input.Resolution)
 	if action == "conflict" {
 		return response{OK: true, Action: "conflict", RemoteUUID: remote.UUID, BaseHash: input.BaseHash, RemoteChanged: true}
@@ -266,6 +318,7 @@ func syncNote(input request) response {
 		BaseHash:     baseHash,
 		SyncedAt:     time.Now().UTC().Format(time.RFC3339),
 		ManagedTags:  input.Tags,
+		ReadOnly:     false,
 	}
 }
 

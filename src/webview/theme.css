@@ -234,7 +234,7 @@ html, body {
 
 /* Secondary Side Bar chrome stays compact and uses the same controls/tokens
    as the Standard Notes AIC toolbar. The Markdown document remains the only
-   persisted value; preview/edit is a view-state switch. */
+   persisted value; remote lock state alone can make the editor read-only. */
 .aic-secondary-surface {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
@@ -306,6 +306,51 @@ html, body {
 
 .aic-secondary-surface .cm-editor { font-size: 0.875rem; }
 .aic-secondary-surface .cm-scroller { line-height: 1.42; }
+
+/* AIC details: source remains Markdown; compact summary is the only collapsed surface. */
+.cm-aic-details-summary {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  min-height: 1.75rem;
+  padding: 0.15rem 0.3rem;
+  border-left: 2px solid var(--aic-accent, var(--vscode-textLink-foreground));
+  color: var(--aic-contrast-fg, var(--vscode-foreground));
+  background: color-mix(in srgb, var(--vscode-editor-background) 92%, var(--vscode-textLink-foreground));
+}
+.cm-aic-details-summary button {
+  color: inherit;
+  font: inherit;
+}
+.cm-aic-details-disclosure,
+.cm-aic-details-check,
+.cm-aic-details-link {
+  border: 0;
+  background: transparent;
+  padding: 0.1rem;
+}
+.cm-aic-details-disclosure { width: 1.25rem; cursor: pointer; }
+.cm-aic-details-check {
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid currentColor !important;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.cm-aic-details-check.checked::after { content: "✓"; display: block; line-height: 0.75rem; }
+.cm-aic-details-check:disabled { opacity: 0.55; cursor: default; }
+.cm-aic-details-link {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--vscode-textLink-foreground);
+  text-decoration: underline;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.cm-aic-details-title { overflow-wrap: anywhere; }
 .aic-secondary-surface .cm-editor .cm-content .cm-md-h1 { font-size: 1.45em; }
 .aic-secondary-surface .cm-editor .cm-content .cm-md-h2 { font-size: 1.25em; }
 .aic-secondary-surface .cm-editor .cm-content .cm-md-h3 { font-size: 1.12em; }

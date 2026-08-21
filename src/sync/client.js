@@ -3,6 +3,7 @@ import { execFile } from "node:child_process";
 import * as path from "node:path";
 import { managedTags, noteTitle, workspaceStateKey } from "../secondary/model.js";
 import { structuredError } from "../errors.js";
+import { sessionVaultConfig } from "./vault.js";
 
 const MAX_REQUEST_BYTES = 2 * 1024 * 1024;
 const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
@@ -79,7 +80,13 @@ export class StandardNotesSync {
 
   async _invoke(request) {
     const bridge = await assertBridge(this.context);
-    return runBridge(bridge, request);
+    const vault = await sessionVaultConfig(this.context);
+    return runBridge(bridge, { ...request, ...vault });
+  }
+
+  isReadOnly(uri) {
+    const state = this.context.workspaceState.get(workspaceStateKey(uri), {});
+    return Boolean(state.remoteUuid && state.readOnly);
   }
 
   async _connect() {
@@ -123,18 +130,28 @@ export class StandardNotesSync {
   }
 
   async ensureConnected() {
+    let reconnect = false;
     try {
       const status = await this._invoke({ operation: "status" });
       if (status.connected) return true;
     } catch (error) {
-      if (error?.structured?.error !== "sn_not_connected") throw error;
+      const code = error?.structured?.error;
+      if (code === "sn_vault_unreadable") reconnect = true;
+      else if (code !== "sn_not_connected") throw error;
     }
     const choice = await vscode.window.showInformationMessage(
-      "AIC Notes is not connected to Standard Notes.",
-      { modal: true, detail: "Credentials and session keys are stored only in the operating-system keychain." },
-      "Connect",
+      reconnect
+        ? "AIC Notes cannot unlock its local Standard Notes session."
+        : "AIC Notes is not connected to Standard Notes.",
+      {
+        modal: true,
+        detail: reconnect
+          ? "Reconnect replaces only the unreadable encrypted local session vault; remote notes are unchanged."
+          : "The session is encrypted locally; its wrapping key is held by VS Code SecretStorage.",
+      },
+      reconnect ? "Reconnect" : "Connect",
     );
-    return choice === "Connect" ? this._connect() : false;
+    return choice === "Connect" || choice === "Reconnect" ? this._connect() : false;
   }
 
   async sync(uri, markdown) {
@@ -184,6 +201,7 @@ export class StandardNotesSync {
       remoteUuid: result.remoteUuid,
       baseHash: result.baseHash,
       syncedAt: result.syncedAt,
+      readOnly: Boolean(result.readOnly),
     });
     return result;
   }

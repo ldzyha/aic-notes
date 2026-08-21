@@ -6,8 +6,8 @@ const packageJson = JSON.parse(
   await readFile(new URL("../package.json", import.meta.url), "utf8"),
 );
 
-test("4.3.3 manifest separates Primary management from Secondary note content", () => {
-  assert.equal(packageJson.version, "4.3.3");
+test("5.3.1 manifest separates Primary management from Secondary note content", () => {
+  assert.equal(packageJson.version, "5.3.1");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.equal(packageJson.scripts.publish, undefined);
   assert.ok(packageJson.scripts["release:gate"]);
@@ -59,22 +59,43 @@ test("source selections expose the AIC linked-comment action without targeting n
   assert.match(menu.when, /editorHasSelection/u);
   const selection = await readFile(new URL("../src/notes/selection.js", import.meta.url), "utf8");
   assert.match(selection, /document\.isDirty/u);
-  assert.match(selection, /secondary\.open[\s\S]*mode: "edit"[\s\S]*selection:/u);
+  assert.match(selection, /document\.getText\(editor\.selection\)/u);
+  assert.match(selection, /secondary\.open[\s\S]*selection:/u);
+  assert.doesNotMatch(selection, /mode: "(?:edit|preview)"/u);
   assert.doesNotMatch(selection, /edit\.replace\(document\.uri/u);
 });
 
 test("Secondary placeholder, compact density, edit focus, and theme-safe controls are scoped", async () => {
   const provider = await readFile(new URL("../src/secondary/provider.js", import.meta.url), "utf8");
   const webview = await readFile(new URL("../src/webview/main.js", import.meta.url), "utf8");
+  const details = await readFile(new URL("../src/webview/details.js", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/webview/theme.css", import.meta.url), "utf8");
   assert.match(provider, /id="pane-create"/u);
   assert.match(provider, /ensureFileNoteForUri/u);
   assert.match(provider, /case "ready":[\s\S]*else await this\.followActive\(\)/u);
   assert.match(webview, /pane\.create/u);
-  assert.match(webview, /paneMode === "edit"[\s\S]*view\?\.focus/u);
+  assert.match(webview, /EditorState\.readOnly\.of\(docState\.readOnly\)/u);
+  assert.match(webview, /if \(!docState\.readOnly\) requestAnimationFrame\(\(\) => view\?\.focus\(\)\)/u);
+  assert.doesNotMatch(provider, /pane-mode/u);
+  assert.doesNotMatch(webview, /paneMode|setPaneMode/u);
+  assert.match(details, /EditorView\.decorations\.from\(field\)/u);
+  assert.doesNotMatch(details, /ViewPlugin/u);
   assert.match(css, /--aic-contrast-fg:[^;]*--vscode-foreground/u);
   assert.match(css, /\.aic-secondary-surface \.cm-editor \{ font-size: 0\.875rem; \}/u);
   assert.match(css, /\.aic-secondary-surface \.cm-scroller \{ line-height: 1\.42; \}/u);
+  assert.match(css, /\.cm-aic-details-summary/u);
+});
+
+test("headless authorization uses SecretStorage plus the encrypted bridge vault", async () => {
+  const client = await readFile(new URL("../src/sync/client.js", import.meta.url), "utf8");
+  const vault = await readFile(new URL("../src/sync/vault.js", import.meta.url), "utf8");
+  const bridge = await readFile(new URL("../bridge/main.go", import.meta.url), "utf8");
+  assert.match(client, /sessionVaultConfig/u);
+  assert.match(vault, /context\.secrets\.store/u);
+  assert.match(vault, /standard-notes-session\.v1\.json/u);
+  assert.doesNotMatch(bridge, /session\.UpdateSession/u);
+  assert.doesNotMatch(bridge, /session\.GetSessionFromKeyring/u);
+  assert.match(bridge, /ReadOnly/u);
 });
 
 test("release packaging includes the helper but excludes helper source", async () => {

@@ -12,8 +12,8 @@
 AIC Notes adapts that editor's observable contract to VS Code: exact Markdown source, styled
 in-place structures, task/table/frontmatter/Mermaid behavior, and its `--aic-*` visual tokens mapped
 to VS Code theme tokens. Standard Notes account/runtime code is not bundled. The existing AIC Notes
-Markdown implementation remains the runtime engine; the v4.3.3 adapter keeps the Secondary surface
-and Standard Notes AIC theme/interaction contract while tightening its narrow-pane presentation.
+Markdown implementation remains the runtime engine; the v5.3.1 adapter keeps the Secondary surface,
+adds the exact AIC details markers, and preserves the Standard Notes AIC theme/interaction contract.
 
 ## AIC selection-note contract
 
@@ -28,9 +28,10 @@ and Standard Notes AIC theme/interaction contract while tightening its narrow-pa
 - Repository module contract SHA-256:
   `2df4f4603ecee687e76c2777630441da3233407aea35305e92c1655f97cf9be7`
 
-The VS Code command independently adapts AIC's observable selection-note rule: one project-relative
-line link in a canonical note section, an annotation caret after that link, deduplication, exact
-source navigation, and fail-closed `*.ai.md` owner verification. It does not modify source bytes.
+The VS Code command independently adapts AIC's observable selection-note rule: one compact linked
+details block in a canonical note section, the copied source fragment, an annotation caret in its
+comment, deduplication, exact source navigation, and fail-closed `*.ai.md` owner verification. It
+does not modify source bytes.
 
 ## Standard Notes bridge
 
@@ -46,7 +47,9 @@ The bridge is independently authored for this extension. It imports the MIT libr
 does not import, execute, or bundle `sn-cli`. The pinned client sends the current Standard Notes
 client/version headers on authentication and sync requests. The bridge accepts one bounded JSON
 request on stdin and emits one bounded JSON response on stdout. Secret values and upstream response
-text are not included in success/error output.
+text are not included in success/error output. AIC Notes does not call the library's operating-system
+keyring persistence: the extension supplies an authenticated local vault and a wrapping key held by
+VS Code SecretStorage.
 
 ## Existing AIC Markdown sources
 

@@ -20,8 +20,8 @@ test("loadTemplate: override wins only when it contains a token", () => {
   };
   return Promise.all([
     loadTemplate("file-note", withToken).then((t) => assert.equal(t, "# {{name}} custom\n")),
-    loadTemplate("file-note", noToken).then((t) => assert.match(t, /## Essence/)),
-    loadTemplate("file-note", missing).then((t) => assert.match(t, /## Essence/)),
+    loadTemplate("file-note", noToken).then((t) => assert.equal(t, "- [ ] \n")),
+    loadTemplate("file-note", missing).then((t) => assert.equal(t, "- [ ] \n")),
     loadTemplate("project-note", missing).then((t) => assert.match(t, /## Standards/)),
   ]);
 });

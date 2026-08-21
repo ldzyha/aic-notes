@@ -11,21 +11,7 @@ export const TEMPLATE_PATHS = {
 };
 
 const DEFAULT_TEMPLATES = {
-  "file-note": `# {{name}}
-
-## Essence
-{{essence}}
-{{model}}
-## API / surface
-{{api}}
-
-## Dependencies
-{{dependencies}}
-
-## Decisions & gotchas
-
-## TODO / open questions
-`,
+  "file-note": "- [ ] \n",
   "folder-note": `# notes: {{name}}/
 
 ## Purpose

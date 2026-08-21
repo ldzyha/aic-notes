@@ -85,11 +85,12 @@ export async function linkSelectionToNote(secondary) {
     ]);
   }
   const reference = linkedCodeReference(sourcePath, range.line, range.endLine);
+  const selectedText = document.getText(editor.selection);
   const noteUri = await ensureNoteFile(folder, target.notePath, target.level, target.title);
   const note = await vscode.workspace.openTextDocument(noteUri);
   const noteText = note.getText();
-  const result = upsertLinkedCodeReference(noteText, reference);
-  if (result.created) {
+  const result = upsertLinkedCodeReference(noteText, reference, selectedText);
+  if (result.text !== noteText) {
     const edit = new vscode.WorkspaceEdit();
     edit.replace(noteUri, new vscode.Range(note.positionAt(0), note.positionAt(noteText.length)), result.text);
     if (!(await vscode.workspace.applyEdit(edit))) {
@@ -103,7 +104,6 @@ export async function linkSelectionToNote(secondary) {
     pin: false,
     reveal: true,
     sourceUri: document.uri,
-    mode: "edit",
     selection: { anchor: result.cursor, head: result.cursor },
   });
   vscode.window.setStatusBarMessage(

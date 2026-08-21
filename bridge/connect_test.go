@@ -93,12 +93,12 @@ func TestPinnedClientHeadersReachAuthEndpoints(t *testing.T) {
 	defer server.Close()
 
 	secret := "bridge-contract-password-never-echo"
-	got := connect(request{
+	got := connect(withTestVault(t, request{
 		Operation: "connect",
 		Email:     "test@example.com",
 		Password:  secret,
 		Server:    server.URL + "/",
-	})
+	}))
 	if got.Code != "sn_auth_rejected" {
 		t.Fatalf("got %#v", got)
 	}
@@ -134,7 +134,7 @@ func TestMFAChallengeRemainsInteractiveAndSecretFree(t *testing.T) {
 	}))
 	defer server.Close()
 
-	got := connect(request{Email: "test@example.com", Password: "private-password", Server: server.URL})
+	got := connect(withTestVault(t, request{Email: "test@example.com", Password: "private-password", Server: server.URL}))
 	if !got.OK || !got.MFARequired || got.TokenName != "totp" {
 		t.Fatalf("MFA challenge was not preserved: %#v", got)
 	}

@@ -28,6 +28,30 @@ func TestSyncDecision(t *testing.T) {
 	}
 }
 
+func TestReadOnlySyncDecisionNeverPushes(t *testing.T) {
+	tests := []struct {
+		name, local, remote, base, action, nextBase string
+		useRemote                                   bool
+	}{
+		{"same", "same", "same", "old", "noop", "same", false},
+		{"remote only", "base", "remote", "base", "pull", "remote", true},
+		{"local only", "local", "base", "base", "locked", "base", false},
+		{"both", "local", "remote", "base", "locked", "base", false},
+		{"unbased", "local", "remote", "", "locked", "", false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			action, useRemote, nextBase := readOnlySyncDecision(test.local, test.remote, test.base)
+			if action != test.action || useRemote != test.useRemote || nextBase != test.nextBase {
+				t.Fatalf("got %q, %v, %q; want %q, %v, %q", action, useRemote, nextBase, test.action, test.useRemote, test.nextBase)
+			}
+			if action == "push" {
+				t.Fatal("read-only decision attempted a push")
+			}
+		})
+	}
+}
+
 func TestManagedTagBoundary(t *testing.T) {
 	for _, value := range []string{"aic", "project:demo", "path:src/lib"} {
 		if !isManagedTag(value) {
