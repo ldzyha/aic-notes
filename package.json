@@ -1,8 +1,8 @@
 {
   "name": "aic-notes",
   "displayName": "AIC Notes",
-  "description": "Sidecar *.note.md notes (file / folder / project / global levels) with a notes explorer, quick note creation, and an aic-style live markdown editor.",
-  "version": "0.7.1",
+  "description": "AIC Markdown plus Secondary-Side-Bar-only *.note.md sidecars with manual encrypted Standard Notes sync.",
+  "version": "3.4.0",
   "publisher": "ldzyha",
   "icon": "media/icon.png",
   "license": "MIT",
@@ -28,7 +28,7 @@
   },
   "type": "module",
   "engines": {
-    "vscode": "^1.90.0"
+    "vscode": "^1.106.0"
   },
   "categories": [
     "Notebooks",
@@ -38,7 +38,7 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": true,
-      "description": "Renders and edits markdown only; no workspace code is executed."
+      "description": "Local rendering and editing are supported; Standard Notes network sync runs only after an explicit Connect or Sync action."
     },
     "virtualWorkspaces": {
       "supported": "limited",
@@ -48,10 +48,11 @@
   "scripts": {
     "build": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
-    "test": "node --test \"test/*.test.js\"",
-    "package": "npm run build && vsce package",
-    "install:vsix": "npm run package && code --install-extension aic-notes-$npm_package_version.vsix",
-    "publish": "npm run build && npm test && vsce publish"
+    "test": "node --test --test-concurrency=1 test/*.test.js",
+    "package": "npm run build && vsce package --no-dependencies --target linux-x64 --out aic-notes-$npm_package_version-linux-x64.vsix",
+    "install:vsix": "npm run package && code-server --install-extension aic-notes-$npm_package_version-linux-x64.vsix --force",
+    "release:verify": "node scripts/verify-release.mjs",
+    "release:gate": "npm test && npm run package && npm run release:verify"
   },
   "contributes": {
     "viewsContainers": {
@@ -59,6 +60,13 @@
         {
           "id": "aicNotes",
           "title": "Notes",
+          "icon": "media/notes.svg"
+        }
+      ],
+      "secondarySidebar": [
+        {
+          "id": "aicNotesSecondary",
+          "title": "AIC Note",
           "icon": "media/notes.svg"
         }
       ]
@@ -70,14 +78,28 @@
           "name": "Notes",
           "icon": "media/notes.svg"
         }
+      ],
+      "aicNotesSecondary": [
+        {
+          "id": "aicNotes.secondary",
+          "name": "Linked Note",
+          "type": "webview",
+          "icon": "media/notes.svg",
+          "visibility": "visible"
+        }
       ]
     },
     "commands": [
       {
         "command": "aicNotes.noteForCurrentFile",
-        "title": "Note for Current File",
+        "title": "Open Linked Note",
         "category": "AIC Notes",
         "icon": "$(note)"
+      },
+      {
+        "command": "aicNotes.openInSecondary",
+        "title": "Open Note in Secondary Side Bar",
+        "category": "AIC Notes"
       },
       {
         "command": "aicNotes.noteForExplorerItem",
@@ -134,16 +156,16 @@
     "keybindings": [
       {
         "command": "aicNotes.noteForCurrentFile",
-        "key": "ctrl+alt+m",
-        "mac": "cmd+alt+m",
-        "when": "editorTextFocus || activeCustomEditorId == aicNotes.markdown"
+        "key": "ctrl+alt+n",
+        "mac": "cmd+alt+n",
+        "when": "editorTextFocus || activeCustomEditorId == aicNotes.markdown || focusedView == aicNotes.secondary"
       }
     ],
     "menus": {
       "editor/title": [
         {
           "command": "aicNotes.noteForCurrentFile",
-          "when": "resourceScheme == file",
+          "when": "resourceScheme == file && resourceFilename not =~ /\\.note\\.md$/",
           "group": "navigation"
         }
       ],
@@ -190,6 +212,16 @@
     },
     "customEditors": [
       {
+        "viewType": "aicNotes.noteRedirect",
+        "displayName": "AIC Note (Secondary Side Bar)",
+        "selector": [
+          {
+            "filenamePattern": "*.note.md"
+          }
+        ],
+        "priority": "default"
+      },
+      {
         "viewType": "aicNotes.markdown",
         "displayName": "AIC Markdown",
         "selector": [
@@ -201,6 +233,10 @@
       }
     ],
     "configurationDefaults": {
+      "workbench.editorAssociations": {
+        "*.note.md": "aicNotes.noteRedirect",
+        "*.md": "aicNotes.markdown"
+      },
       "explorer.fileNesting.patterns": {
         "*.js": "${capture}.note.md",
         "*.mjs": "${capture}.note.md",
@@ -236,26 +272,45 @@
         "Makefile": "Makefile.note.md",
         "Dockerfile": "Dockerfile.note.md"
       }
+    },
+    "configuration": {
+      "title": "AIC Notes",
+      "properties": {
+        "aicNotes.standardNotes.server": {
+          "type": "string",
+          "default": "https://api.standardnotes.com",
+          "description": "Standard Notes API server used only by explicit Connect/Sync actions."
+        },
+        "aicNotes.standardNotes.bridgePath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional absolute path to a compatible aic-notes-sn-bridge. Empty uses the bundled Linux x64 helper."
+        }
+      }
     }
   },
   "devDependencies": {
-    "@codemirror/commands": "^6.10.3",
+    "@codemirror/autocomplete": "6.20.3",
+    "@codemirror/commands": "6.10.3",
     "@codemirror/lang-css": "^6.3.1",
     "@codemirror/lang-html": "^6.4.11",
     "@codemirror/lang-javascript": "^6.2.5",
     "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/lang-markdown": "6.5.2",
     "@codemirror/lang-python": "^6.2.1",
     "@codemirror/lang-rust": "^6.0.2",
-    "@codemirror/language": "^6.12.3",
-    "@codemirror/search": "^6.5.8",
-    "@codemirror/state": "^6.6.0",
-    "@codemirror/view": "^6.43.1",
+    "@codemirror/lang-sass": "6.0.2",
+    "@codemirror/language": "6.12.3",
+    "@codemirror/search": "6.7.1",
+    "@codemirror/state": "6.6.0",
+    "@codemirror/view": "6.43.1",
     "@lezer/common": "^1.5.2",
     "@lezer/highlight": "^1.2.3",
     "@lezer/markdown": "^1.6.4",
-    "@types/vscode": "^1.90.0",
+    "@types/vscode": "^1.106.0",
     "@vscode/vsce": "^3.3.0",
+    "adm-zip": "0.5.16",
     "esbuild": "^0.28.0",
-    "mermaid": "^11.16.0"
+    "mermaid": "11.16.1"
   }
 }

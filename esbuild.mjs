@@ -2,9 +2,14 @@
 // browser, code-splitting so mermaid / @codemirror/lang-* land as lazy chunks
 // loaded on first use — the same shape as aic's build).
 import { build, context } from "esbuild";
-import { existsSync, cpSync } from "node:fs";
+import { existsSync, cpSync, rmSync } from "node:fs";
 
 const watch = process.argv.includes("--watch");
+const distRoot = new URL("./dist/", import.meta.url);
+
+// dist is entirely generated. Clearing it prevents content-hashed lazy
+// chunks from earlier builds leaking into a later VSIX.
+rmSync(distRoot, { recursive: true, force: true });
 
 const host = {
   entryPoints: ["src/extension.js"],
@@ -16,7 +21,7 @@ const host = {
   platform: "node",
   target: "node20",
   external: ["vscode"],
-  sourcemap: true,
+  sourcemap: false,
   minify: true,
   logLevel: "info",
 };
@@ -30,7 +35,7 @@ const webview = {
   target: "es2022",
   splitting: true,
   chunkNames: "chunks/[name]-[hash]",
-  sourcemap: true,
+  sourcemap: false,
   loader: { ".css": "text" },
   minify: true,
   logLevel: "info",

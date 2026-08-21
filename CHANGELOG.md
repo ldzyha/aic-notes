@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.4.0 — 2026-08-21
+
+Release sequence 3 · 4 feature outcomes · 0 fixed-bug outcomes.
+
+- F01: `.note.md` is Secondary-Side-Bar-only, with follow/pin, preview/edit, exact-tab
+  interception, configurable `Ctrl/Cmd+Alt+N`, a workspace auto-open checkbox, and an ordinary-file
+  note icon. The Primary Side Bar remains the existing-note manager.
+- F02: ordinary Markdown and Secondary sidecars share the current Standard Notes AIC visual/editor
+  contract while persisting exact Markdown only.
+- F03: a manual Linux x64 MIT Go bridge performs encrypted Standard Notes sync with keychain-backed
+  sessions, stable remote UUIDs, three-way comparison, and explicit conflict choice.
+- F04: sync reconciles exact `aic`, `project:<root>`, and `path:<parent>` managed tag references while
+  preserving every unrelated tag.
+
+Compatibility: raises the extension-host floor to VS Code/Code 1.106. Standard Notes sync in this
+release is Linux x64 only. No Marketplace/Open VSX publication is implied.
+
 ## 0.7.1 — 2026-07-06
 
 - Fix: diagrams actually take the full available width — mermaid's inline

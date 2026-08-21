@@ -13,7 +13,7 @@ export function nonce() {
   ).join("");
 }
 
-export function webviewHtml(webview, distRoot, entry, body) {
+export function webviewHtml(webview, distRoot, entry, body, bodyClass = "") {
   const n = nonce();
   const entryUri = webview.asWebviewUri(vscode.Uri.joinPath(distRoot, entry));
   return `<!DOCTYPE html>
@@ -23,7 +23,7 @@ export function webviewHtml(webview, distRoot, entry, body) {
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource}; script-src 'nonce-${n}' ${webview.cspSource};">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body>
+<body class="${bodyClass}">
 ${body}
 <script type="module" nonce="${n}" src="${entryUri}"></script>
 </body>

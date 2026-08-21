@@ -40,6 +40,9 @@ import THEME_CSS from "./theme.css";
 
 const api = acquireVsCodeApi();
 const remote = Annotation.define();
+const readOnlyCompartment = new Compartment();
+const editableCompartment = new Compartment();
+const secondarySurface = Boolean(document.getElementById("secondary-controls"));
 
 const docState = { relativePath: "", generation: 0 };
 const host = makeHost(api, docState);
@@ -65,6 +68,46 @@ for (const css of [FONT_CSS, THEME_CSS, MARKDOWN_CSS]) {
 }
 
 let view = null;
+let paneMode = secondarySurface ? "preview" : "edit";
+
+function setPaneMode(mode) {
+  paneMode = mode === "edit" ? "edit" : "preview";
+  if (view) {
+    const readOnly = secondarySurface && paneMode === "preview";
+    view.dispatch({
+      effects: [
+        readOnlyCompartment.reconfigure(EditorState.readOnly.of(readOnly)),
+        editableCompartment.reconfigure(EditorView.editable.of(!readOnly)),
+      ],
+    });
+  }
+  const button = document.getElementById("pane-mode");
+  if (button) {
+    button.textContent = paneMode === "preview" ? "Edit" : "Preview";
+    button.setAttribute("aria-pressed", String(paneMode === "edit"));
+  }
+  document.body.dataset.paneMode = paneMode;
+}
+
+function wirePaneControls() {
+  if (!secondarySurface) return;
+  document.getElementById("pane-mode")?.addEventListener("click", () =>
+    setPaneMode(paneMode === "preview" ? "edit" : "preview"),
+  );
+  document.getElementById("pane-pin")?.addEventListener("click", () =>
+    api.postMessage({ type: "pane.pin" }),
+  );
+  document.getElementById("pane-target")?.addEventListener("click", () =>
+    api.postMessage({ type: "pane.target" }),
+  );
+  document.getElementById("pane-sync")?.addEventListener("click", () =>
+    api.postMessage({ type: "pane.sync" }),
+  );
+  document.getElementById("pane-auto")?.addEventListener("change", (event) =>
+    api.postMessage({ type: "pane.autoOpen", value: event.currentTarget.checked }),
+  );
+  setPaneMode("preview");
+}
 
 // Nested fenced-code highlighting: the language sits in a Compartment so a
 // lazily-loaded parser chunk can force a re-parse by reconfiguring with a
@@ -98,6 +141,8 @@ function makeEditor(text) {
     state: EditorState.create({
       doc: text,
       extensions: [
+        readOnlyCompartment.of(EditorState.readOnly.of(secondarySurface)),
+        editableCompartment.of(EditorView.editable.of(!secondarySurface)),
         langCompartment.of(fencedLang()),
         // colors nested fenced-code tokens; markdown structure styling is
         // owned by the handler classes (theme.css bumps their specificity)
@@ -145,6 +190,7 @@ window.addEventListener("message", (event) => {
       docState.generation = msg.generation;
       view?.destroy();
       view = makeEditor(msg.text);
+      if (secondarySurface) setPaneMode("preview");
       const saved = api.getState();
       if (saved && saved.path === msg.relativePath) {
         const len = view.state.doc.length;
@@ -158,7 +204,7 @@ window.addEventListener("message", (event) => {
           /* stale saved selection — keep the default */
         }
       }
-      view.focus();
+      if (!secondarySurface) view.focus();
       break;
     }
     case "external": {
@@ -179,7 +225,36 @@ window.addEventListener("message", (event) => {
       });
       break;
     }
+    case "empty": {
+      document.getElementById("pane-empty")?.removeAttribute("hidden");
+      const editor = document.getElementById("editor");
+      if (editor) editor.hidden = true;
+      break;
+    }
+    case "paneState": {
+      const title = document.getElementById("pane-title");
+      if (title) title.textContent = msg.title;
+      const pin = document.getElementById("pane-pin");
+      if (pin) {
+        pin.textContent = msg.pinned ? "Unpin" : "Pin";
+        pin.setAttribute("aria-pressed", String(Boolean(msg.pinned)));
+      }
+      const auto = document.getElementById("pane-auto");
+      if (auto) auto.checked = Boolean(msg.autoOpen);
+      const status = document.getElementById("pane-status");
+      if (status) status.textContent = msg.status || "";
+      for (const id of ["pane-mode", "pane-target", "pane-sync"]) {
+        const control = document.getElementById(id);
+        if (control) control.disabled = !msg.hasNote;
+      }
+      const empty = document.getElementById("pane-empty");
+      const editor = document.getElementById("editor");
+      if (empty) empty.hidden = Boolean(msg.hasNote);
+      if (editor) editor.hidden = !msg.hasNote;
+      break;
+    }
   }
 });
 
+wirePaneControls();
 api.postMessage({ type: "ready" });

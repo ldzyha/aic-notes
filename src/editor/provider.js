@@ -186,9 +186,14 @@ export class MarkdownEditorProvider {
         );
         return;
       }
-      await vscode.commands.executeCommand("vscode.open", uri, {
-        viewColumn: vscode.ViewColumn.Beside,
-      });
+      if (uri.path.endsWith(".note.md")) {
+        await vscode.commands.executeCommand("aicNotes.openInSecondary", uri, {
+          pin: true,
+          reveal: true,
+        });
+      } else {
+        await vscode.commands.executeCommand("vscode.open", uri);
+      }
       return;
     }
     if (topic === "wiki.open") {
@@ -200,8 +205,9 @@ export class MarkdownEditorProvider {
         );
         return;
       }
-      await vscode.commands.executeCommand("vscode.open", uri, {
-        viewColumn: vscode.ViewColumn.Beside,
+      await vscode.commands.executeCommand("aicNotes.openInSecondary", uri, {
+        pin: true,
+        reveal: true,
       });
     }
   }

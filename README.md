@@ -1,150 +1,116 @@
-# aic-notes
+# AIC Notes
 
-Sidecar notes + aic-style markdown editing for VS Code. Standalone — no aic
-kernel/server required; everything works off the workspace filesystem.
+AIC Notes is a public VS Code/code-server extension for Markdown and file-linked sidecar notes.
+Source files stay in the editor. Every `*.note.md` sidecar stays in the **Secondary Side Bar**, where
+it can follow the active file, remain pinned, switch between preview and edit, and synchronize
+manually with Standard Notes.
 
-Two things, carried over from the [aic](https://github.com/ldzyha) editor:
+## Install on code-server
 
-1. **The `*.note.md` notes system** — one note per file/folder/project, living
-   next to what it annotates:
-   - file note: `src/app.js` → `src/app.note.md` (final extension replaced;
-     dotfiles/extension-less append: `.env` → `.env.note.md`)
-   - folder note: `src/` → `src.note.md` (sibling, never inside)
-   - project note: `<rootName>.note.md` at the workspace root
-   - project globals: `.aic/notes/*.note.md`
-   - global note: `~/.config/aic/note.md` (cross-project)
-   Every note opens with a YAML props header (`title/level/scope/status/
-   updated/created/agent`). Notes are byte-compatible with aic.
-2. **The markdown editor** — the default editor for every `*.md` file
-   (notes included), replicating aic's markdown session: in-place reveal-rule
-   styling (headings, bold/italic/strikethrough, inline code, blockquote/hr),
-   clickable task checkboxes, list continue/renumber, links with an
-   open/edit/unlink tooltip, nested fenced-code highlighting (lazy chunks),
-   plus the three block widgets — the live table grid, the frontmatter props
-   table, and mermaid diagrams rendered in place. Cursor inside a rendered
-   block reveals its raw source for editing; arrow keys enter blocks.
-   Everything lives on the one page: while the caret edits a ```mermaid
-   fence, the live diagram renders directly below the fence (re-rendered
-   ~300ms as you type, structured error card when broken) — no separate
-   preview tab.
+Download `aic-notes-3.4.0-linux-x64.vsix` and its `.sha256` file from the
+[v3.4.0 release](https://github.com/ldzyha/aic-notes/releases/tag/v3.4.0), then verify and install:
 
-   Typography is a fixed DARK document theme (deliberately not
-   theme-following): #E5E5E5 on #121212, 16px body at 1.6 line-height,
-   measure capped at 76ch and centered, bundled JetBrains Mono (OFL,
-   `src/webview/fonts/`), heading hierarchy by size + accent color (no
-   underlines — those are reserved for links), `---` renders as a real
-   horizontal rule, tables carry their own cell backgrounds and render
-   inline markdown (code/links/bold/italic/strike) inside cells, fenced
-   code uses a Dark+-flavored highlight style.
+```sh
+sha256sum -c aic-notes-3.4.0-linux-x64.vsix.sha256
+code-server --install-extension aic-notes-3.4.0-linux-x64.vsix --force
+```
 
-   Escape hatches: per file, right-click the tab → **Reopen Editor With… →
-   Text Editor**; globally, run **AIC Notes: Use Native Editor for Plain
-   Markdown** (writes `workbench.editorAssociations` `"*.md": "default"` to
-   user settings, keeping `*.note.md` on the AIC editor). Note the built-in
-   markdown preview/lint features don't operate inside a custom editor.
+Reload the browser window after installation. The extension targets Code/VS Code 1.106 or newer;
+the bundled Standard Notes helper in this release targets Linux x64.
 
-## Usage
+## Use notes
 
-- **Notes view** — the Notes icon in the activity bar: pinned global note →
-  project note → `.aic/notes` bucket → per-directory notes, each labeled by
-  its target with a level badge; `agent: false`/`private: true` notes get a
-  lock icon, notes whose target is gone get a warning.
-- **`ctrl+alt+m`** — create/open the note for the current file (opens
-  beside). On a note it jumps back to the target. Also on the editor title
-  bar and the explorer context menu (files AND folders — folders get
-  `<dir>.note.md`).
-- **Delete from the tree** — right-click a note → **Delete Note**; right-click
-  a directory group (or the `.aic/notes` bucket) → **Delete All Notes in
-  Folder**. Modal confirmation, moves to trash (offers permanent delete only
-  if the platform has no trash).
-- **Explorer nesting** — notes nest under their target file in the regular
-  explorer (shipped as `explorer.fileNesting.patterns` defaults). If you have
-  your own `patterns` override it shadows ours wholesale — run
-  **AIC Notes: Enable Explorer Nesting for Notes** to merge. Folder notes
-  cannot nest (VS Code nesting is file-to-file); the Notes view covers them.
-- **Templates** — fresh notes use the built-in level templates; a project can
-  override them in `.aic/templates/{file-note,folder-note,project-note}.md`
-  (must contain at least one `{{token}}`).
-- **Markdown editor** — default for all `*.md`. Escape hatch per file:
-  right-click the tab → **Reopen Editor With… → Text Editor**; globally:
-  **AIC Notes: Use Native Editor for Plain Markdown**. Inside the editor:
-  `ctrl+f` is the CM search panel (the VS Code find widget can't reach
-  webviews); undo/redo route through VS Code's document stack.
+- Open the **Notes** Activity Bar item to manage all existing sidecars in the Primary Side Bar.
+- Press `Ctrl+Alt+N` on Linux/Windows or `Cmd+Alt+N` on macOS to open or create the linked note.
+  Change the binding for `AIC Notes: Open Linked Note` in Keyboard Shortcuts at any time.
+- Use the note icon in an ordinary file's editor title to open its existing sidecar or explicitly
+  create one. Merely focusing a file never creates a note.
+- Keep **Auto-open linked note** checked to reveal an existing sidecar when its source becomes
+  active. The checkbox is workspace-scoped and defaults to checked. Uncheck it to stop forced
+  reveals.
+- Use **Pin/Unpin**, **Preview/Edit**, and **Source** in the Secondary panel. Opening a
+  `*.note.md` through Explorer, Quick Open, a link, a restored tab, or a command is intercepted and
+  routed to this panel; the note is not left in an editor tab.
 
-## Build & install
+The sidecar mapping remains AIC-compatible:
+
+- `src/app.js` → `src/app.note.md` (the last file extension is replaced)
+- `.env` → `.env.note.md`; `Makefile` → `Makefile.note.md`
+- folder `src/components/` → sibling `src/components.note.md`
+- project note → `<workspace-name>.note.md`
+- project-global notes → `.aic/notes/*.note.md`
+
+Fresh notes use AIC frontmatter and level templates. A workspace can override templates in
+`.aic/templates/{file-note,folder-note,project-note}.md`.
+
+## Markdown
+
+Ordinary `*.md` files open in the AIC Markdown custom editor. Sidecars use the same renderer in the
+Secondary Side Bar. The visual/editor contract follows AIC for Standard Notes v0.1.1: exact
+Markdown remains the only persisted value while headings, emphasis, tasks, lists, links,
+frontmatter properties, tables, fenced code, and Mermaid are rendered in place.
+
+Run **AIC Notes: Use Native Editor for Plain Markdown** if ordinary Markdown should use VS Code's
+text editor. This does not relax the `*.note.md` Secondary-only rule.
+
+## Standard Notes synchronization
+
+Synchronization is manual and sidecars only:
+
+1. Open a sidecar in the Secondary panel and choose **Sync**.
+2. On first use, choose **Connect** and enter the Standard Notes account email/password. MFA is
+   requested when the server requires it.
+3. Credentials, access tokens, master keys, and item keys are handled by the local Go helper and
+   stored only in the operating-system keychain. They are never written to VS Code settings,
+   workspace state, logs, or the repository.
+4. The workspace stores only the remote item UUID, last common content hash, and sync timestamp.
+5. First sync creates one Markdown note. Later syncs use a three-way comparison. One-sided changes
+   propagate; two-sided changes stop and ask whether the complete local or Standard Notes body is
+   authoritative. Nothing is merged silently.
+
+Each synchronized note receives exactly these managed tags:
+
+- `aic`
+- `project:<workspace-root-name>`
+- `path:<parent-path>` (`path:.` at the root)
+
+Only these managed references are reconciled. Every unrelated Standard Notes tag and its
+references are preserved. Deleted or ambiguous remote identity stops synchronization instead of
+creating a duplicate.
+
+The default server is `https://api.standardnotes.com`. Self-hosted users can change
+`aicNotes.standardNotes.server`. The helper requires a Secret Service compatible keychain on Linux;
+unlock/configure one before connecting. There is no background, timer, on-save, or ordinary-`.md`
+sync.
+
+## Build and verify
+
+Requirements: Node.js 20.19+, npm, and Go 1.25.1 for the Linux helper.
 
 ```sh
 npm ci
-npm run build        # dist/extension.cjs + dist/webview/* (lazy chunks)
-npm test             # node:test unit tests (paths/frontmatter/templates)
-npm run install:vsix # build → aic-notes-<version>.vsix → code --install-extension
+npm test
+npm run build
+cd bridge && go test ./... && CGO_ENABLED=0 go build -trimpath -o ../bin/linux-x64/aic-notes-sn-bridge .
+cd .. && npm run package
 ```
 
-Then reload the VS Code window (**Developer: Reload Window**).
+The bridge is built directly on the MIT `gosn-v2` commit recorded in
+[`PROVENANCE.md`](PROVENANCE.md); it does not use or bundle AGPL `sn-cli`. The extension invokes the
+helper with `execFile`, no shell, bounded JSON, a 45-second timeout, and bounded output.
 
-Development: open this folder in VS Code, F5 ("Run Extension") — the
-extension host opens `test-fixtures/`, a workspace exercising every feature.
+Focused unit tests cover sidecar paths/templates/frontmatter, release manifest invariants,
+three-way decisions, managed-tag boundaries, and the bridge protocol. A live Standard Notes account
+is intentionally not mutated by unattended tests.
 
-## Verification checklist
+## Release accounting
 
-- **Tree**: global note pinned (dimmed if absent) → project note
-  (`test-fixtures.note.md`) → "project globals" bucket → `src/` notes with
-  `file-note` badges; `secret.note.md` shows a lock; `deleted-target.note.md`
-  shows a warning + `orphan`.
-- **Create**: `ctrl+alt+m` on `src/app.js` opens the existing note;
-  on `src/util.test.ts` creates `src/util.test.note.md` beside, with the
-  fixture template override body and an aic-identical frontmatter header.
-  Delete a note file externally → the tree refreshes.
-- **Nesting**: in the explorer `app.note.md` nests under `app.js`,
-  `.env.note.md` under `.env`.
-- **Editor** (open `kitchen-sink.note.md`): frontmatter renders as a props
-  table (click → raw YAML); markers around `**bold**` brighten when the
-  cursor touches them, with zero glyph shift; headings get accent color +
-  per-level size with NO double-coloring from the base highlight style;
-  the link tooltip appears when the cursor sits in a link (open/edit/unlink;
-  local vs external colored apart); the table renders as a grid (cursor
-  inside → raw pipes); checkboxes toggle on click and persist; Enter inside
-  a list continues it (ordered lists renumber), Space on the marker toggles
-  the box; the `js` fence gets syntax colors after its chunk loads; the
-  mermaid fence renders an SVG in place (click the diagram → edit the
-  source; a broken diagram shows a warning marker whose tooltip carries the
-  parse error).
-- **Every .md**: a plain `README.md` opens in the AIC editor with the same
-  render; right-click tab → Reopen Editor With → Text Editor restores
-  native per file; **AIC Notes: Use Native Editor for Plain Markdown**
-  flips the default for `*.md` while `*.note.md` stays on the AIC editor.
-- **Diagrams**: rendered mermaid spans the FULL editor width (escaping the
-  76ch text column); hovering shows a − / + / ↺ zoom bar (50–400%, wide
-  diagrams pan by horizontal scroll); the tree warn icon appears only on
-  true orphans — a note whose frontmatter claims `file-note`/`folder-note`
-  but whose target is gone; free-standing notes (no frontmatter) show plain.
-- **Mermaid editing preview**: caret into a ```mermaid fence → the raw
-  source reveals AND the live diagram renders directly below the fence;
-  typing re-renders after ~300ms (no blanking — the SVG swaps in place);
-  break the diagram → a structured error card (code + detail + fix) in the
-  same spot; caret leaves → the fence collapses back to the single in-place
-  diagram; clicking the editing preview never moves the caret.
-- **Sync**: type in the editor → tab dirties → `ctrl+s` saves; run
-  `git checkout -- <note>` while it is open → content updates without an
-  echo loop; `ctrl+z` inside the editor undoes through VS Code's stack.
-- **Package**: `npm run package` → install the `.vsix` → repeat the tree
-  smoke test in a real window.
+This project uses the global `R.F.B` convention: release sequence, release-local feature outcomes,
+release-local fixed-bug outcomes. `3.4.0` is sequence 3 with four feature outcomes and zero bug-fix
+outcomes. It is not a SemVer compatibility claim. See [`CHANGELOG.md`](CHANGELOG.md).
 
-## Design notes
+## License and provenance
 
-- Vendored aic sources (reveal-rule engine, handlers, mermaid widget path)
-  live in `vendor/markdown/` with per-file provenance in
-  `vendor/markdown/PROVENANCE.md` (pinned aic commit; fork by design).
-- Document sync: the webview applies its edits locally and posts them FIFO;
-  any non-echo document change (undo, git, split editor) bumps a generation
-  counter and is broadcast; a webview edit with a stale generation is
-  discarded and answered with a full reset. Offsets are UTF-16 code units on
-  both sides.
-- Failures follow aic's errors-not-fallbacks rule: structured
-  `{error, detail, fix}` surfaced as VS Code notifications, never silent
-  degradation.
-- CSP: scripts are nonce'd + resource-origin (lazy chunks); `style-src`
-  carries `'unsafe-inline'` because CodeMirror and mermaid inject styles at
-  runtime (documented exception).
-- `retainContextWhenHidden` keeps one webview per open note alive across tab
-  switches — revisit (serialize-on-hide) if many open notes bite on memory.
+AIC Notes is MIT licensed. Vendored/runtime provenance and third-party notices are in
+[`PROVENANCE.md`](PROVENANCE.md), [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md), and
+[`vendor/markdown/PROVENANCE.md`](vendor/markdown/PROVENANCE.md).

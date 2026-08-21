@@ -28,18 +28,16 @@ function workspaceReader(folder) {
   };
 }
 
-export async function openNoteDocument(uri, beside = true) {
-  // the custom editor (P2+) is the default for *.md, so a plain open lands
-  // in the aic editor automatically; Beside keeps the source in view
-  await vscode.commands.executeCommand(
-    "vscode.open",
-    uri,
-    beside ? { viewColumn: vscode.ViewColumn.Beside } : undefined,
-  );
+export async function openNoteDocument(uri, options = {}) {
+  if (uri.path.endsWith(".note.md")) {
+    await vscode.commands.executeCommand("aicNotes.openInSecondary", uri, options);
+    return;
+  }
+  await vscode.commands.executeCommand("vscode.open", uri);
 }
 
 // create <notePath> with header+template if missing, then open it
-async function ensureNote(folder, relNotePath, level, titleName) {
+async function ensureNote(folder, relNotePath, level, titleName, sourceUri) {
   const uri = vscode.Uri.joinPath(folder.uri, relNotePath);
   if (!(await exists(uri))) {
     const template = await loadTemplate(level, workspaceReader(folder));
@@ -47,7 +45,7 @@ async function ensureNote(folder, relNotePath, level, titleName) {
     const text = stringifyFrontmatter(body, noteMeta(titleName, level));
     await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(text));
   }
-  await openNoteDocument(uri);
+  await openNoteDocument(uri, { pin: false, sourceUri });
   return uri;
 }
 
@@ -81,7 +79,7 @@ export async function noteForCurrentFile() {
   }
 
   const notePath = notePathFor(relPath);
-  await ensureNote(folder, notePath, "file-note", path.basename(relPath));
+  await ensureNote(folder, notePath, "file-note", path.basename(relPath), uri);
 }
 
 export async function noteForExplorerItem(uri) {
@@ -98,7 +96,7 @@ export async function noteForExplorerItem(uri) {
   const notePath = isDir ? folderNotePathFor(relPath) : notePathFor(relPath);
   if (!notePath) {
     // the item IS a note — just open it
-    await openNoteDocument(uri);
+    await openNoteDocument(uri, { pin: true });
     return;
   }
   await ensureNote(
@@ -106,6 +104,7 @@ export async function noteForExplorerItem(uri) {
     notePath,
     isDir ? "folder-note" : "file-note",
     isDir ? `${path.basename(relPath)}` : path.basename(relPath),
+    uri,
   );
 }
 
@@ -125,7 +124,7 @@ export async function openGlobalNote() {
     await vscode.workspace.fs.createDirectory(vscode.Uri.file(path.dirname(GLOBAL_NOTE_PATH)));
     await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(""));
   }
-  await openNoteDocument(uri, false);
+  await openNoteDocument(uri);
 }
 
 // shared command wrapper: structured errors surface as messages, never throw

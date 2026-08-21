@@ -16,13 +16,22 @@ import { enableExplorerNesting, hintIfShadowed } from "./notes/nesting.js";
 import { resolveTarget } from "./notes/target.js";
 import { MarkdownEditorProvider } from "./editor/provider.js";
 import { structuredError } from "./errors.js";
+import { SecondaryNotePane } from "./secondary/provider.js";
+import { StandardNotesSync } from "./sync/client.js";
 
 export function activate(context) {
   const tree = new NotesTree();
+  const sync = new StandardNotesSync(context);
+  const secondary = SecondaryNotePane.register(context, sync);
   context.subscriptions.push(
     tree,
     vscode.window.registerTreeDataProvider("aicNotes.tree", tree),
     MarkdownEditorProvider.register(context),
+
+    vscode.commands.registerCommand(
+      "aicNotes.openInSecondary",
+      commandHandler((uri, options) => secondary.open(uri, options)),
+    ),
 
     vscode.commands.registerCommand("aicNotes.noteForCurrentFile", commandHandler(noteForCurrentFile)),
     vscode.commands.registerCommand("aicNotes.noteForExplorerItem", commandHandler(noteForExplorerItem)),
@@ -83,11 +92,11 @@ export function activate(context) {
         const current = cfg.get("editorAssociations") ?? {};
         await cfg.update(
           "editorAssociations",
-          { ...current, "*.md": "default", "*.note.md": "aicNotes.markdown" },
+          { ...current, "*.md": "default", "*.note.md": "aicNotes.noteRedirect" },
           vscode.ConfigurationTarget.Global,
         );
         vscode.window.showInformationMessage(
-          "AIC Notes: plain *.md now opens in the native editor; *.note.md keeps the AIC editor. Undo via workbench.editorAssociations in user settings.",
+          "AIC Notes: plain *.md now opens in the native editor; *.note.md still routes only to the Secondary Side Bar. Undo via workbench.editorAssociations in user settings.",
         );
       }),
     ),

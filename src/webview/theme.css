@@ -1,22 +1,29 @@
-/* Fixed DARK palette (owner 2026-07-06: "only dark mode" — a readable
-   document, not theme-following): near-white #E5E5E5 on charcoal #121212
-   (never pure white on pure black), body 16px, line-height 1.6, measure
-   capped at 76ch, JetBrains Mono (bundled woff2, OFL — fonts/OFL.txt;
-   @font-face is injected by main.js because the URLs must resolve against
-   the script's webview URI). Variable names stay aic's (--fg/--marker/…)
-   so the vendored MARKDOWN_CSS keeps resolving; the override block below
-   wins on specificity where the vendor defaults differ. */
+/* Standard Notes AIC v0.1.1 visual contract, adapted to VS Code theme
+   tokens. The --aic-* names match the Standard Notes component; the short
+   aliases keep the existing AIC Markdown renderer byte-compatible. */
 :root {
-  --fg: #e5e5e5;
-  --bg: #121212;
-  --marker: #6e7681;
-  --accent: #6cb6ff; /* headings, list marks, local links, checked boxes */
-  --info: #58a6ff; /* external links */
-  --warn: #d29922;
-  --chip: #1f242b; /* inline code / fence tint */
-  --muted: #9ba3ae;
-  --border: #30363d;
-  --radius: 4px;
+  color-scheme: light dark;
+  --aic-bg: var(--vscode-editor-background, #f7f8fa);
+  --aic-fg: var(--vscode-editor-foreground, #20242b);
+  --aic-muted: var(--vscode-descriptionForeground, #68717d);
+  --aic-border: var(--vscode-panel-border, #d8dde5);
+  --aic-contrast: var(--vscode-sideBar-background, #ffffff);
+  --aic-contrast-fg: var(--vscode-sideBar-foreground, #20242b);
+  --aic-accent: var(--vscode-textLink-foreground, #1976d2);
+  --aic-accent-contrast: var(--vscode-button-foreground, #ffffff);
+  --aic-chip: color-mix(in srgb, var(--aic-fg) 7%, transparent);
+  --aic-marker: color-mix(in srgb, var(--aic-muted) 80%, var(--aic-fg));
+  --aic-danger: var(--vscode-errorForeground, #c62828);
+  --fg: var(--aic-fg);
+  --bg: var(--aic-bg);
+  --marker: var(--aic-marker);
+  --accent: var(--aic-accent);
+  --info: var(--aic-accent);
+  --warn: var(--vscode-editorWarning-foreground, #d29922);
+  --chip: var(--aic-chip);
+  --muted: var(--aic-muted);
+  --border: var(--aic-border);
+  --radius: 0.4rem;
 }
 
 html, body {
@@ -34,7 +41,7 @@ html, body {
 .cm-editor {
   height: 100%;
   font-family: "JetBrains Mono", var(--vscode-editor-font-family, monospace);
-  font-size: 16px; /* document baseline; below 14px strains the eyes */
+  font-size: clamp(0.94rem, 0.9rem + 0.18vw, 1.05rem);
   background: var(--bg);
   color: var(--fg);
 }
@@ -95,9 +102,9 @@ html, body {
 .cm-editor .cm-content .cm-md-h4 { font-size: 1.1em; }
 .cm-editor .cm-content .cm-md-h5 { font-size: 1em; }
 .cm-editor .cm-content .cm-md-h6 { font-size: 0.9em; color: var(--muted); }
-.cm-editor .cm-content .cm-md-bold { font-weight: 700; color: #f0f6fc; }
-.cm-editor .cm-content .cm-md-italic { color: #d8dee9; }
-.cm-editor .cm-content .cm-md-code { background: var(--chip); color: #d19a66; }
+.cm-editor .cm-content .cm-md-bold { font-weight: 800; color: var(--fg); }
+.cm-editor .cm-content .cm-md-italic { color: color-mix(in srgb, var(--fg) 82%, var(--accent)); }
+.cm-editor .cm-content .cm-md-code { background: var(--chip); color: color-mix(in srgb, var(--fg) 78%, var(--muted)); }
 .cm-editor .cm-content .cm-md-link { text-decoration: underline; text-underline-offset: 3px; }
 .cm-editor .cm-content .cm-md-link-local { color: var(--accent); }
 .cm-editor .cm-content .cm-md-link-external { color: var(--info); }
@@ -133,12 +140,12 @@ html, body {
   padding: 0.3rem 0.6rem;
 }
 .cm-editor .cm-content .cm-md-table thead th,
-.cm-editor .cm-content .cm-md-props th { background: #1c2128; }
+.cm-editor .cm-content .cm-md-props th { background: var(--aic-contrast); }
 .cm-editor .cm-content .cm-md-table td,
-.cm-editor .cm-content .cm-md-props td { background: #17191d; }
+.cm-editor .cm-content .cm-md-props td { background: color-mix(in srgb, var(--fg) 3%, var(--bg)); }
 .cm-editor .cm-content .cm-md-table td code.cm-md-code {
   background: var(--chip);
-  color: #d19a66;
+  color: color-mix(in srgb, var(--fg) 78%, var(--muted));
   font: inherit;
 }
 
@@ -224,3 +231,85 @@ html, body {
 .aicn-error-head { color: var(--warn); font-weight: 700; }
 .aicn-error-detail { color: var(--fg); white-space: pre-wrap; margin-top: 0.3rem; }
 .aicn-error-fix { color: var(--muted); margin-top: 0.2rem; }
+
+/* Secondary Side Bar chrome stays compact and uses the same controls/tokens
+   as the Standard Notes AIC toolbar. The Markdown document remains the only
+   persisted value; preview/edit is a view-state switch. */
+.aic-secondary-surface {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#secondary-controls {
+  position: relative;
+  z-index: 10;
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.55rem;
+  border-bottom: 1px solid var(--aic-border);
+  background: var(--aic-contrast);
+  color: var(--aic-contrast-fg);
+}
+
+.aic-pane-heading,
+.aic-pane-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.aic-pane-heading strong {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#secondary-controls button {
+  min-height: 30px;
+  padding: 0 0.55rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+#secondary-controls button:hover,
+#secondary-controls button:focus-visible {
+  border-color: color-mix(in srgb, var(--aic-accent) 60%, var(--aic-border));
+  background: color-mix(in srgb, var(--aic-accent) 10%, transparent);
+  outline: none;
+}
+
+#secondary-controls button:disabled { cursor: not-allowed; opacity: 0.45; }
+.aic-pane-auto { display: flex; align-items: center; gap: 0.35rem; color: var(--aic-muted); }
+#pane-status { min-height: 1.2em; color: var(--aic-muted); font-size: 0.9em; }
+
+.aic-secondary-surface #editor {
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  overflow: hidden;
+}
+
+.aic-secondary-surface .cm-editor .cm-content {
+  width: min(100%, 940px);
+  max-width: none;
+  padding: 1rem 0.75rem 30vh;
+}
+
+.aic-pane-empty {
+  grid-row: 2;
+  padding: 1rem;
+  color: var(--aic-muted);
+  line-height: 1.5;
+}
+
+.aic-secondary-surface #editor { grid-row: 2; }
+[hidden] { display: none !important; }
