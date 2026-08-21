@@ -26,20 +26,53 @@ export function noteTitle(relativePath, markdown = "") {
 }
 
 export function managedTags(folderName, parentPath) {
-  const project = String(folderName ?? "").trim();
-  const parent = String(parentPath ?? "").replaceAll("\\", "/").replace(/^\/+|\/+$/gu, "");
-  return ["aic", `project:${project || "workspace"}`, `path:${parent || "."}`];
+  const project = String(folderName ?? "").trim() || "workspace";
+  const parents = String(parentPath ?? "")
+    .replaceAll("\\", "/")
+    .split("/")
+    .map((value) => value.trim())
+    .filter((value) => value && value !== ".");
+  return [[project, ...parents].join(".")];
 }
 
-export function reconcileTagNames(existing, required) {
+export function reconcileTagNames(existing, required, previous = []) {
   const managed = (value) =>
-    value === "aic" || value.startsWith("project:") || value.startsWith("path:");
+    value === "aic" || value.startsWith("project:") || value.startsWith("path:") ||
+    previous.includes(value);
   return [
     ...new Set([
       ...existing.filter((value) => !managed(value)),
       ...required,
     ]),
   ];
+}
+
+// CodeMirror change coordinates refer to the same pre-transaction document.
+// Applying validated, non-overlapping ranges from right to left produces the
+// exact first edited placeholder bytes without creating an intermediate file.
+export function applyTextChanges(value, changes) {
+  const source = String(value ?? "");
+  const ordered = [...changes]
+    .map((change) => ({
+      from: Number(change?.from),
+      to: Number(change?.to),
+      insert: String(change?.insert ?? ""),
+    }))
+    .sort((left, right) => right.from - left.from || right.to - left.to);
+  let boundary = source.length;
+  let output = source;
+  for (const change of ordered) {
+    if (
+      !Number.isInteger(change.from) || !Number.isInteger(change.to) ||
+      change.from < 0 || change.to < change.from || change.to > source.length ||
+      change.to > boundary
+    ) {
+      throw new RangeError("text changes must be valid non-overlapping source ranges");
+    }
+    output = output.slice(0, change.from) + change.insert + output.slice(change.to);
+    boundary = change.from;
+  }
+  return output;
 }
 
 export function threeWayDecision(localHash, remoteHash, baseHash, resolution = "") {

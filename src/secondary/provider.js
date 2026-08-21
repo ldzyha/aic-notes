@@ -2,15 +2,15 @@ import * as vscode from "vscode";
 import * as path from "node:path";
 import { webviewHtml } from "../editor/webview-html.js";
 import { formatError, structuredError } from "../errors.js";
-import { linkedNotePath, isNotePath } from "./model.js";
+import { applyTextChanges, linkedNotePath, isNotePath } from "./model.js";
 import { resolveTarget } from "../notes/target.js";
-import { ensureFileNoteForUri } from "../notes/create.js";
+import { fileNotePlaceholderForUri } from "../notes/create.js";
 import { openSourceAtHref } from "../notes/navigation.js";
 import { clearNoteContent } from "./note-actions.js";
 import { deleteNotes } from "../notes/delete.js";
+import { CoalescingQueue, mergeSyncRequests } from "../sync/coalescing-queue.js";
 
 export const SECONDARY_VIEW_ID = "aicNotes.secondary";
-const AUTO_OPEN_KEY = "aicNotes.secondary.autoOpenExisting";
 
 async function exists(uri) {
   try {
@@ -43,6 +43,9 @@ export class SecondaryNotePane {
       vscode.window.tabGroups.onDidChangeTabs(() => pane.routeNoteTabs()),
       vscode.window.tabGroups.onDidChangeTabGroups(() => pane.followActive()),
       vscode.workspace.onDidChangeTextDocument((event) => pane.onDocumentChanged(event)),
+      vscode.workspace.onDidSaveTextDocument((document) => {
+        pane.onDocumentSaved(document).catch((error) => pane.reportSyncError(error));
+      }),
       vscode.workspace.onDidCloseTextDocument((document) => pane.onDocumentClosed(document)),
     );
     queueMicrotask(() => pane.routeNoteTabs());
@@ -56,6 +59,8 @@ export class SecondaryNotePane {
     this.document = undefined;
     this.documentUri = undefined;
     this.sourceUri = undefined;
+    this.placeholderUri = undefined;
+    this.placeholderText = undefined;
     this.pinned = false;
     this.ready = false;
     this.generation = 0;
@@ -68,10 +73,13 @@ export class SecondaryNotePane {
     this.authReconnect = false;
     this.authPending = false;
     this.actionPending = false;
-    this.explorerTargetUri = undefined;
     this.disposables = [];
     this.routingTabs = false;
-    this.autoOpen = context.workspaceState.get(AUTO_OPEN_KEY, true);
+    this.syncRequests = new CoalescingQueue(
+      (_key, request) => this.performSync(request.uri, request),
+      mergeSyncRequests,
+    );
+    this.suppressedSaveSync = new Set();
   }
 
   dispose() {
@@ -86,37 +94,36 @@ export class SecondaryNotePane {
       view.webview,
       distRoot,
       "main.js",
-      `<section id="secondary-controls" aria-label="Linked note controls">
+      `<section id="secondary-controls" aria-label="Linked note context">
         <div class="aic-pane-context">
           <strong id="pane-filename"></strong>
-          <button id="pane-breadcrumb" class="aic-pane-breadcrumb" type="button" title="Reveal folder in Explorer"></button>
+          <span id="pane-breadcrumb" class="aic-pane-breadcrumb"></span>
         </div>
-        <div class="aic-pane-actions">
-          <button id="pane-pin" type="button" title="Pin or follow active file">Pin</button>
-          <button id="pane-target" type="button">Source</button>
-          <button id="pane-sync" type="button">Sync</button>
-          <button id="pane-auth" type="button">Log in</button>
-          <div class="aic-pane-menu-wrap">
-            <button id="pane-note-actions" type="button" aria-haspopup="menu" aria-expanded="false" title="Note actions">
-              <svg aria-hidden="true" viewBox="0 0 16 16"><circle cx="3" cy="8" r="1.25"/><circle cx="8" cy="8" r="1.25"/><circle cx="13" cy="8" r="1.25"/></svg>
-              <span>Note</span>
-            </button>
-            <div id="pane-note-menu" class="aic-pane-menu" role="menu" hidden>
-              <button id="pane-clear" type="button" role="menuitem">Clear content</button>
-              <button id="pane-delete" class="danger" type="button" role="menuitem">Delete note</button>
-            </div>
-          </div>
-        </div>
-        <label class="aic-pane-auto"><input id="pane-auto" type="checkbox"> Auto-open linked note</label>
         <span id="pane-status" role="status"></span>
       </section>
       <div id="pane-empty" class="aic-pane-empty">
-        <strong>No linked note yet</strong>
-        <span id="pane-empty-detail">Focus a workspace source file.</span>
-        <code id="pane-candidate"></code>
-        <button id="pane-create" type="button">Create note</button>
+        <strong>Open a workspace file</strong>
+        <span id="pane-empty-detail">Its note or editable placeholder will appear here.</span>
       </div>
-      <div id="editor"></div>`,
+      <div id="editor"></div>
+      <footer id="secondary-footer" aria-label="Linked note actions">
+        <button id="pane-auth" class="aic-pane-icon" type="button" title="Log in to Standard Notes" aria-label="Log in to Standard Notes">
+          <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M8.5 3.5H5.75A1.75 1.75 0 0 0 4 5.25v9.5c0 .97.78 1.75 1.75 1.75H8.5M11.5 6.5 15 10l-3.5 3.5M7 10h8"/></svg>
+        </button>
+        <button id="pane-target" class="aic-pane-icon" type="button" title="Open source" aria-label="Open source" hidden>
+          <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m7.25 6-4 4 4 4M12.75 6l4 4-4 4M11.25 3.75l-2.5 12.5"/></svg>
+        </button>
+        <button id="pane-clear" class="aic-pane-icon" type="button" title="Clear note content" aria-label="Clear note content" hidden>
+          <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m4.25 12.25 6.8-7.55a1.4 1.4 0 0 1 2-.08l2.35 2.12a1.4 1.4 0 0 1 .08 2l-6.8 7.55H5.5l-1.25-1.12a2 2 0 0 1 0-2.92ZM9 16.25h7"/></svg>
+        </button>
+        <button id="pane-delete" class="aic-pane-icon danger" type="button" title="Delete note" aria-label="Delete note" hidden>
+          <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M3.75 5.5h12.5M8 3.5h4M6 5.5l.65 11h6.7l.65-11M8.25 8.25v5.5M11.75 8.25v5.5"/></svg>
+        </button>
+        <span class="aic-pane-footer-spacer"></span>
+        <button id="pane-pin" class="aic-pane-icon" type="button" title="Pin note" aria-label="Pin note" aria-pressed="false">
+          <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m7 3.75 6 1.5-1.3 3.1 2.55 2.55-1.35 1.35-2.55-2.55L7.25 11 5.75 5l1.25-1.25ZM9.35 10.65 4 16"/></svg>
+        </button>
+      </footer>`,
       "aic-secondary-surface",
     );
     this.disposables.push(
@@ -126,7 +133,7 @@ export class SecondaryNotePane {
         this.ready = false;
       }),
     );
-    if (this.documentUri) await this.sendInit();
+    if (this.documentUri || this.placeholderUri) await this.sendInit();
     else await this.sendPaneState();
     await this.refreshAuthState();
   }
@@ -147,6 +154,8 @@ export class SecondaryNotePane {
     }
     this.pinned = pin;
     this.sourceUri = sourceUri;
+    this.placeholderUri = undefined;
+    this.placeholderText = undefined;
     this.pendingViewState = { selection };
     await this.attach(uri);
     if (reveal) await this.focus(false);
@@ -156,6 +165,8 @@ export class SecondaryNotePane {
   async attach(uri) {
     this.readOnly = this.syncService.isReadOnly(uri);
     this.documentUri = uri;
+    this.placeholderUri = undefined;
+    this.placeholderText = undefined;
     if (this.document?.uri.toString() === uri.toString() && !this.document.isClosed) {
       await this.sendInit();
       return;
@@ -181,10 +192,11 @@ export class SecondaryNotePane {
     this.document = undefined;
   }
 
-  async followSource(uri, { forceReveal = false } = {}) {
-    if (!uri || uri.scheme !== "file" || isNotePath(uri.path) || this.pinned) return false;
+  async followSource(uri, { force = false, preserveFocus = true } = {}) {
+    if (!uri || uri.scheme !== "file" || isNotePath(uri.path) || (this.pinned && !force)) return false;
     const folder = vscode.workspace.getWorkspaceFolder(uri);
     if (!folder) return false;
+    if (force) this.pinned = false;
     const relativePath = vscode.workspace.asRelativePath(uri, false).replaceAll("\\", "/");
     const notePath = linkedNotePath(relativePath);
     if (!notePath) return false;
@@ -194,13 +206,18 @@ export class SecondaryNotePane {
       this.document = undefined;
       this.documentUri = undefined;
       this.pendingViewState = undefined;
+      const placeholder = await fileNotePlaceholderForUri(uri);
+      this.placeholderUri = placeholder.noteUri;
+      this.placeholderText = placeholder.text;
+      this.readOnly = false;
       this.generation++;
-      await this.sendPaneState();
-      return false;
+      await this.sendInit();
+      await this.focus(preserveFocus);
+      return true;
     }
     this.pendingViewState = undefined;
     await this.attach(noteUri);
-    if (forceReveal || this.autoOpen) await this.focus(true);
+    await this.focus(preserveFocus);
     return true;
   }
 
@@ -258,22 +275,117 @@ export class SecondaryNotePane {
     });
   }
 
+  async onDocumentSaved(document) {
+    const key = document.uri.toString();
+    if (this.suppressedSaveSync.has(key) || this.documentUri?.toString() !== key) return;
+    await this.queueSync(document.uri, { interactive: false, markdown: document.getText() });
+  }
+
+  reportSyncError(error) {
+    this.sendPaneState("Sync failed").catch(() => undefined);
+    vscode.window.showErrorMessage(`AIC Notes — ${formatError(error)}`);
+  }
+
+  queueSync(uri, { interactive = false, markdown } = {}) {
+    const key = uri.toString();
+    return this.syncRequests.enqueue(key, { uri, interactive, markdown });
+  }
+
+  async performSync(uri, { interactive, markdown }) {
+    const document = await vscode.workspace.openTextDocument(uri);
+    const attached = this.documentUri?.toString() === uri.toString();
+    const captured = typeof markdown === "string" ? markdown : document.getText();
+    if (attached) await this.sendPaneState("Synchronizing…");
+    const result = await this.syncService.sync(
+      document.uri,
+      captured,
+      {
+        interactive,
+        acceptResult: (candidate) => {
+          const changedDuringSync = document.getText() !== captured;
+          const wouldReplaceCaptured = typeof candidate.localContent === "string" &&
+            candidate.localContent !== captured;
+          return !(changedDuringSync && wouldReplaceCaptured);
+        },
+      },
+    );
+    if (!result) {
+      if (attached) await this.sendPaneState("");
+      return null;
+    }
+    if (result.skipped) {
+      this.authConnected = false;
+      this.authReconnect = Boolean(result.reconnect);
+      if (attached) {
+        await this.sendPaneState(
+          result.reconnect ? "Saved locally · log in again to sync" : "Saved locally · log in to sync",
+        );
+      }
+      return result;
+    }
+    if (result.stale) {
+      if (attached) await this.sendPaneState("Changed during sync · save again");
+      return result;
+    }
+    this.authConnected = true;
+    this.authReconnect = false;
+    if (typeof result.localContent === "string" && result.localContent !== captured) {
+      await this.replaceDocument(result.localContent, uri, { suppressSync: true });
+    }
+    if (attached) {
+      this.readOnly = Boolean(result.readOnly);
+      await this.sendPaneState(
+        result.action === "locked" ? "Locked in Standard Notes" : `Synced · ${result.action}`,
+      );
+    }
+    return result;
+  }
+
+  async saveCurrent({ interactive = false } = {}) {
+    await this.editQueue.catch(() => undefined);
+    const document = await this.currentDocument();
+    if (!document) return null;
+    const key = document.uri.toString();
+    this.suppressedSaveSync.add(key);
+    try {
+      const saved = await document.save();
+      if (!saved) {
+        throw structuredError("notes_save_failed", "the note could not be saved before synchronization", [
+          "Resolve the file-system error and retry",
+        ]);
+      }
+    } finally {
+      this.suppressedSaveSync.delete(key);
+    }
+    return this.queueSync(document.uri, { interactive, markdown: document.getText() });
+  }
+
+  async syncCurrent() {
+    return this.saveCurrent({ interactive: true });
+  }
+
   async sendInit() {
-    if (!this.documentUri || !this.view || !this.ready) {
+    if (!this.view || !this.ready) {
       await this.sendPaneState();
       return;
     }
-    const document = await this.currentDocument();
-    if (!document) return;
-    const relativePath = vscode.workspace.asRelativePath(document.uri, false).replaceAll("\\", "/");
+    const document = this.documentUri ? await this.currentDocument() : undefined;
+    const uri = document?.uri ?? this.placeholderUri;
+    const text = document?.getText() ?? this.placeholderText;
+    if (!uri || typeof text !== "string") {
+      await this.sendPaneState();
+      return;
+    }
+    const relativePath = vscode.workspace.asRelativePath(uri, false).replaceAll("\\", "/");
     const viewState = this.pendingViewState;
     await this.view.webview.postMessage({
       type: "init",
-      text: document.getText(),
+      text,
       generation: this.generation,
       relativePath,
       surface: "secondary",
       readOnly: this.readOnly,
+      placeholder: !document,
       selection: viewState?.selection,
     });
     this.pendingViewState = undefined;
@@ -285,22 +397,14 @@ export class SecondaryNotePane {
     const relativePath = this.documentUri
       ? vscode.workspace.asRelativePath(this.documentUri, false).replaceAll("\\", "/")
       : "";
-    let candidatePath = "";
-    if (!this.documentUri && this.sourceUri) {
-      const folder = vscode.workspace.getWorkspaceFolder(this.sourceUri);
-      if (folder) {
-        const sourcePath = vscode.workspace.asRelativePath(this.sourceUri, false).replaceAll("\\", "/");
-        candidatePath = linkedNotePath(sourcePath) ?? "";
-      }
-    }
+    const candidatePath = this.placeholderUri
+      ? vscode.workspace.asRelativePath(this.placeholderUri, false).replaceAll("\\", "/")
+      : "";
     const displayPath = relativePath || candidatePath;
     const title = displayPath ? path.posix.basename(displayPath) : "Linked Note";
     const parentPath = displayPath ? path.posix.dirname(displayPath) : "";
     const folder = (this.documentUri && vscode.workspace.getWorkspaceFolder(this.documentUri)) ||
       (this.sourceUri && vscode.workspace.getWorkspaceFolder(this.sourceUri));
-    this.explorerTargetUri = folder && displayPath
-      ? vscode.Uri.joinPath(folder.uri, parentPath === "." ? "" : parentPath)
-      : undefined;
     this.view.title = title;
     this.view.description = "";
     await this.view.webview.postMessage({
@@ -308,9 +412,11 @@ export class SecondaryNotePane {
       title,
       breadcrumb: parentPath === "." ? folder?.name ?? "Workspace" : parentPath,
       pinned: this.pinned,
-      autoOpen: this.autoOpen,
       hasNote: Boolean(this.documentUri),
-      canCreate: Boolean(candidatePath) && !this.creating,
+      hasPlaceholder: Boolean(this.placeholderUri),
+      hasSurface: Boolean(this.documentUri || this.placeholderUri),
+      showPinnedActions: Boolean(this.pinned && this.documentUri),
+      canPin: Boolean(this.documentUri || this.placeholderUri || this.sourceUri),
       candidatePath,
       status,
       readOnly: this.readOnly,
@@ -321,7 +427,46 @@ export class SecondaryNotePane {
     });
   }
 
+  async createFromPlaceholder(changes, generation) {
+    if (!this.placeholderUri || typeof this.placeholderText !== "string" || this.creating) {
+      return undefined;
+    }
+    if (generation !== this.generation) return undefined;
+    const uri = this.placeholderUri;
+    const seed = this.placeholderText;
+    const text = applyTextChanges(seed, changes);
+    this.creating = true;
+    try {
+      if (await exists(uri)) {
+        this.documentUri = uri;
+        this.document = await vscode.workspace.openTextDocument(uri);
+        this.placeholderUri = undefined;
+        this.placeholderText = undefined;
+        this.generation++;
+        await this.sendInit();
+        throw structuredError("notes_placeholder_changed", "the note appeared on disk while its placeholder was open", [
+          "Review the on-disk note, then repeat the edit",
+        ]);
+      }
+      await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(text));
+      this.documentUri = uri;
+      this.document = await vscode.workspace.openTextDocument(uri);
+      this.placeholderUri = undefined;
+      this.placeholderText = undefined;
+      this.readOnly = false;
+      await vscode.commands.executeCommand("aicNotes.refreshTree");
+      await this.sendPaneState("Created locally · leave the note to sync");
+      return this.document;
+    } finally {
+      this.creating = false;
+    }
+  }
+
   async applyChanges(changes, generation) {
+    if (!this.documentUri && this.placeholderUri) {
+      await this.createFromPlaceholder(changes, generation);
+      return;
+    }
     const document = await this.currentDocument();
     if (!document) return;
     if (this.readOnly) {
@@ -361,8 +506,8 @@ export class SecondaryNotePane {
     }
   }
 
-  async replaceDocument(text) {
-    const document = await this.currentDocument();
+  async replaceDocument(text, uri = this.documentUri, { suppressSync = true } = {}) {
+    const document = uri ? await vscode.workspace.openTextDocument(uri) : undefined;
     if (!document || text === document.getText()) return;
     const edit = new vscode.WorkspaceEdit();
     edit.replace(
@@ -371,12 +516,18 @@ export class SecondaryNotePane {
       text,
     );
     this.applying++;
+    const key = document.uri.toString();
+    if (suppressSync) this.suppressedSaveSync.add(key);
     try {
       if (!(await vscode.workspace.applyEdit(edit))) throw new Error("workspace rejected synced note");
       await document.save();
-      this.generation++;
-      await this.view?.webview.postMessage({ type: "reset", text, generation: this.generation });
+      if (this.documentUri?.toString() === key) {
+        this.document = document;
+        this.generation++;
+        await this.view?.webview.postMessage({ type: "reset", text, generation: this.generation });
+      }
     } finally {
+      if (suppressSync) this.suppressedSaveSync.delete(key);
       this.applying--;
     }
   }
@@ -430,7 +581,7 @@ export class SecondaryNotePane {
       `Clear local content in ${relativePath}?`,
       {
         modal: true,
-        detail: "Valid leading properties stay byte-for-byte. The remaining body becomes one empty checklist item. Standard Notes is not changed until a later explicit Sync.",
+        detail: "Valid leading properties stay byte-for-byte. The remaining body becomes one empty checklist item. This destructive local action does not auto-sync; use AIC Notes: Sync Current Note if the remote copy must also be cleared.",
       },
       "Clear Content",
     );
@@ -439,7 +590,7 @@ export class SecondaryNotePane {
     await this.sendPaneState("Clearing…");
     try {
       await this.replaceDocument(clearNoteContent(document.getText()));
-      await this.sendPaneState("Content cleared");
+      await this.sendPaneState("Content cleared locally");
     } finally {
       this.actionPending = false;
       await this.sendPaneState();
@@ -460,16 +611,33 @@ export class SecondaryNotePane {
         `note "${relativePath}"`,
         undefined,
         "This removes only the local sidecar. The Standard Notes item, lock state, and workspace sync binding are unchanged.",
-        () => document.save(),
+        async () => {
+          const key = document.uri.toString();
+          this.suppressedSaveSync.add(key);
+          try {
+            await document.save();
+          } finally {
+            this.suppressedSaveSync.delete(key);
+          }
+        },
       );
       if (!deleted) return;
       this.document = undefined;
       this.documentUri = undefined;
       this.readOnly = false;
       this.pendingViewState = undefined;
+      if (this.sourceUri) {
+        const placeholder = await fileNotePlaceholderForUri(this.sourceUri);
+        this.placeholderUri = placeholder.noteUri;
+        this.placeholderText = placeholder.text;
+      } else {
+        this.placeholderUri = undefined;
+        this.placeholderText = undefined;
+      }
       this.generation++;
       await vscode.commands.executeCommand("aicNotes.refreshTree");
-      await this.sendPaneState("Note moved to Trash");
+      if (this.placeholderUri) await this.sendInit();
+      else await this.sendPaneState("Note moved to Trash");
     } finally {
       this.actionPending = false;
       await this.sendPaneState();
@@ -482,7 +650,7 @@ export class SecondaryNotePane {
         case "ready":
           this.ready = true;
           await this.refreshAuthState();
-          if (this.documentUri) await this.sendInit();
+          if (this.documentUri || this.placeholderUri) await this.sendInit();
           else await this.followActive();
           break;
         case "edit":
@@ -492,47 +660,19 @@ export class SecondaryNotePane {
           await this.editQueue;
           break;
         case "save":
-          await (await this.currentDocument())?.save();
+          await this.saveCurrent({ interactive: false });
           break;
         case "undo":
         case "redo":
           await vscode.commands.executeCommand(message.type);
-          break;
-        case "pane.autoOpen":
-          this.autoOpen = Boolean(message.value);
-          await this.context.workspaceState.update(AUTO_OPEN_KEY, this.autoOpen);
-          await this.sendPaneState();
           break;
         case "pane.pin":
           this.pinned = !this.pinned;
           await this.sendPaneState();
           if (!this.pinned) await this.followActive();
           break;
-        case "pane.create": {
-          if (this.documentUri || !this.sourceUri || this.creating) return;
-          const sourceUri = this.sourceUri;
-          this.creating = true;
-          await this.sendPaneState("Creating…");
-          try {
-            const noteUri = await ensureFileNoteForUri(sourceUri);
-            await this.open(noteUri, {
-              pin: false,
-              reveal: true,
-              sourceUri,
-            });
-          } finally {
-            this.creating = false;
-            await this.sendPaneState("");
-          }
-          break;
-        }
         case "pane.auth":
           await this.authenticate();
-          break;
-        case "pane.reveal":
-          if (this.explorerTargetUri) {
-            await vscode.commands.executeCommand("revealInExplorer", this.explorerTargetUri);
-          }
           break;
         case "pane.clear":
           await this.clearContent();
@@ -550,24 +690,6 @@ export class SecondaryNotePane {
           if (target) await vscode.window.showTextDocument(target);
           break;
         }
-        case "pane.sync": {
-          const document = await this.currentDocument();
-          if (!document) return;
-          await document.save();
-          await this.sendPaneState("Synchronizing…");
-          const result = await this.syncService.sync(document.uri, document.getText());
-          await this.refreshAuthState();
-          if (!result) {
-            await this.sendPaneState("");
-            return;
-          }
-          if (typeof result.localContent === "string") await this.replaceDocument(result.localContent);
-          this.readOnly = Boolean(result.readOnly);
-          await this.sendPaneState(
-            result.action === "locked" ? "Locked in Standard Notes" : `Synced · ${result.action}`,
-          );
-          break;
-        }
         case "bus":
           await this.routeBus(message);
           break;
@@ -576,7 +698,7 @@ export class SecondaryNotePane {
           break;
       }
     } catch (error) {
-      await this.sendPaneState(message.type === "pane.sync" ? "Sync failed" : "Action failed");
+      await this.sendPaneState("Action failed");
       vscode.window.showErrorMessage(`AIC Notes — ${formatError(error)}`);
     }
   }

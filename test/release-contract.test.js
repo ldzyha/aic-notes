@@ -6,8 +6,8 @@ const packageJson = JSON.parse(
   await readFile(new URL("../package.json", import.meta.url), "utf8"),
 );
 
-test("6.6.1 manifest separates Primary management from Secondary note content", () => {
-  assert.equal(packageJson.version, "6.6.1");
+test("7.3.2 manifest separates Primary management from Secondary note content", () => {
+  assert.equal(packageJson.version, "7.3.2");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.equal(packageJson.scripts.publish, undefined);
   assert.ok(packageJson.scripts["release:gate"]);
@@ -24,7 +24,7 @@ test("6.6.1 manifest separates Primary management from Secondary note content", 
   );
 });
 
-test("note association, hotkey, checkbox surface, and ordinary-file icon are explicit", async () => {
+test("note association, global open hotkey, and footer surface are explicit", async () => {
   assert.equal(
     packageJson.contributes.configurationDefaults["workbench.editorAssociations"]["*.note.md"],
     "aicNotes.noteRedirect",
@@ -33,24 +33,35 @@ test("note association, hotkey, checkbox surface, and ordinary-file icon are exp
     ({ command }) => command === "aicNotes.noteForCurrentFile",
   );
   assert.deepEqual({ key: binding.key, mac: binding.mac }, { key: "ctrl+alt+n", mac: "cmd+alt+n" });
+  assert.equal(binding.when, undefined);
   const titleItem = packageJson.contributes.menus["editor/title"].find(
     ({ command }) => command === "aicNotes.noteForCurrentFile",
   );
   assert.match(titleItem.when, /not =~ \/\\\.note\\\.md\$\//u);
   const provider = await readFile(new URL("../src/secondary/provider.js", import.meta.url), "utf8");
-  assert.match(provider, /id="pane-auto"/u);
-  assert.match(provider, /workspaceState\.get\(AUTO_OPEN_KEY, true\)/u);
+  const create = await readFile(new URL("../src/notes/create.js", import.meta.url), "utf8");
+  const extension = await readFile(new URL("../src/extension.js", import.meta.url), "utf8");
+  assert.match(provider, /id="secondary-footer"/u);
+  assert.match(provider, /id="pane-pin"/u);
+  assert.doesNotMatch(provider, /id="pane-(?:auto|sync|create|note-actions)"/u);
   assert.match(provider, /tabGroups\.close/u);
+  assert.match(create, /secondary\.followSource\(uri, \{ force: true, preserveFocus: false \}\)/u);
+  assert.doesNotMatch(create, /ensureFileNoteForUri/u);
+  assert.match(extension, /noteForCurrentFile\(secondary\)/u);
 });
 
 test("source selections expose the AIC linked-comment action without targeting note files", async () => {
   const binding = packageJson.contributes.keybindings.find(
-    ({ command }) => command === "aicNotes.linkSelectionToNote",
+    ({ command, key }) => command === "aicNotes.linkSelectionToNote" && key === "ctrl+alt+l",
   );
   assert.deepEqual(
     { key: binding.key, mac: binding.mac },
-    { key: "ctrl+shift+/", mac: "cmd+shift+/" },
+    { key: "ctrl+alt+l", mac: "cmd+alt+l" },
   );
+  assert.ok(packageJson.contributes.keybindings.some(
+    ({ command, key, mac }) => command === "aicNotes.linkSelectionToNote" &&
+      key === "ctrl+shift+/" && mac === "cmd+shift+/",
+  ));
   assert.match(binding.when, /editorHasSelection/u);
   assert.match(binding.when, /not =~ \/\\\.note\\\.md\$\//u);
   const menu = packageJson.contributes.menus["editor/context"].find(
@@ -59,27 +70,33 @@ test("source selections expose the AIC linked-comment action without targeting n
   assert.match(menu.when, /editorHasSelection/u);
   const selection = await readFile(new URL("../src/notes/selection.js", import.meta.url), "utf8");
   assert.match(selection, /document\.isDirty/u);
+  assert.match(selection, /await document\.save\(\)/u);
   assert.match(selection, /document\.getText\(editor\.selection\)/u);
   assert.match(selection, /secondary\.open[\s\S]*selection:/u);
   assert.doesNotMatch(selection, /mode: "(?:edit|preview)"/u);
   assert.doesNotMatch(selection, /edit\.replace\(document\.uri/u);
 });
 
-test("Secondary placeholder, compact density, edit focus, and theme-safe controls are scoped", async () => {
+test("Secondary editable placeholder, pinned footer, blur save, and theme-safe controls are scoped", async () => {
   const provider = await readFile(new URL("../src/secondary/provider.js", import.meta.url), "utf8");
   const webview = await readFile(new URL("../src/webview/main.js", import.meta.url), "utf8");
   const details = await readFile(new URL("../src/webview/details.js", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/webview/theme.css", import.meta.url), "utf8");
-  assert.match(provider, /id="pane-create"/u);
+  assert.match(provider, /fileNotePlaceholderForUri/u);
+  assert.match(provider, /createFromPlaceholder/u);
+  assert.match(provider, /workspace\.fs\.writeFile/u);
   assert.match(provider, /id="pane-breadcrumb"/u);
   assert.match(provider, /id="pane-filename"/u);
   assert.match(provider, /id="pane-auth"/u);
-  assert.match(provider, /id="pane-note-actions"/u);
-  assert.match(provider, /ensureFileNoteForUri/u);
+  assert.match(provider, /showPinnedActions/u);
+  assert.match(provider, /onDidSaveTextDocument/u);
+  assert.match(provider, /CoalescingQueue/u);
   assert.match(provider, /case "ready":[\s\S]*else await this\.followActive\(\)/u);
-  assert.match(webview, /pane\.create/u);
+  assert.match(webview, /reason: "blur"/u);
   assert.match(webview, /EditorState\.readOnly\.of\(docState\.readOnly\)/u);
   assert.match(webview, /if \(!docState\.readOnly\) requestAnimationFrame\(\(\) => view\?\.focus\(\)\)/u);
+  assert.doesNotMatch(webview, /pane\.(?:create|sync|autoOpen|reveal)/u);
+  assert.doesNotMatch(provider, /case "pane\.sync"/u);
   assert.doesNotMatch(provider, /pane-mode/u);
   assert.doesNotMatch(webview, /paneMode|setPaneMode/u);
   assert.match(details, /EditorView\.decorations\.from\(field\)/u);
@@ -87,6 +104,7 @@ test("Secondary placeholder, compact density, edit focus, and theme-safe control
   assert.match(css, /--aic-contrast-fg:[^;]*--vscode-foreground/u);
   assert.match(css, /\.aic-secondary-surface \.cm-editor \{ font-size: 0\.875rem; \}/u);
   assert.match(css, /\.aic-secondary-surface \.cm-scroller \{ line-height: 1\.42; \}/u);
+  assert.match(css, /#secondary-footer/u);
   assert.match(css, /\.cm-aic-details-summary/u);
   assert.match(css, /--aic-details-surface:/u);
   assert.match(details, /createElementNS\("http:\/\/www\.w3\.org\/2000\/svg"/u);

@@ -176,8 +176,15 @@ export class StandardNotesSync {
     return choice === "Connect" || choice === "Reconnect" ? this._connect() : false;
   }
 
-  async sync(uri, markdown) {
-    if (!(await this.ensureConnected())) return null;
+  async sync(uri, markdown, { interactive = true, acceptResult } = {}) {
+    if (interactive) {
+      if (!(await this.ensureConnected())) return null;
+    } else {
+      const state = await this.connectionState();
+      if (!state.connected) {
+        return { action: "disconnected", skipped: true, reconnect: state.reconnect };
+      }
+    }
     const folder = vscode.workspace.getWorkspaceFolder(uri);
     if (!folder) {
       throw structuredError("sn_outside_workspace", "only workspace sidecars can be synchronized", [
@@ -195,14 +202,17 @@ export class StandardNotesSync {
       localContent: markdown,
       title: noteTitle(relativePath, markdown),
       tags: managedTags(folder.name, parentPath),
+      previousTags: Array.isArray(previous.managedTags) ? previous.managedTags : [],
       remoteUuid: previous.remoteUuid || "",
       baseHash: previous.baseHash || "",
     };
 
-    let result = await vscode.window.withProgress(
-      { location: vscode.ProgressLocation.Notification, title: "AIC Notes: synchronizing", cancellable: false },
-      () => this._invoke(base),
-    );
+    let result = interactive
+      ? await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: "AIC Notes: synchronizing", cancellable: false },
+        () => this._invoke(base),
+      )
+      : await this._invoke(base);
     if (result.action === "conflict") {
       const resolution = await vscode.window.showWarningMessage(
         "This note changed both locally and in Standard Notes.",
@@ -219,11 +229,17 @@ export class StandardNotesSync {
         resolution: resolution === "Use Local" ? "local" : "remote",
       });
     }
+    if (acceptResult && !(await acceptResult(result))) {
+      return { ...result, stale: true };
+    }
     await this.context.workspaceState.update(key, {
       remoteUuid: result.remoteUuid,
       baseHash: result.baseHash,
       syncedAt: result.syncedAt,
       readOnly: Boolean(result.readOnly),
+      managedTags: Array.isArray(result.managedTags)
+        ? result.managedTags
+        : Array.isArray(previous.managedTags) ? previous.managedTags : [],
     });
     return result;
   }

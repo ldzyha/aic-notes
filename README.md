@@ -2,17 +2,17 @@
 
 AIC Notes is a public VS Code/code-server extension for Markdown and file-linked sidecar notes.
 Source files stay in the editor. Every `*.note.md` sidecar stays in the **Secondary Side Bar**, where
-it can follow the active file, remain pinned, stay directly editable, and synchronize manually
+it follows the active file until pinned, stays directly editable, and synchronizes after save/blur
 with Standard Notes.
 
 ## Install on code-server
 
-Download `aic-notes-6.6.1-linux-x64.vsix` and its `.sha256` file from the
-[v6.6.1 release](https://github.com/ldzyha/aic-notes/releases/tag/v6.6.1), then verify and install:
+Download `aic-notes-7.3.2-linux-x64.vsix` and its `.sha256` file from the
+[v7.3.2 release](https://github.com/ldzyha/aic-notes/releases/tag/v7.3.2), then verify and install:
 
 ```sh
-sha256sum -c aic-notes-6.6.1-linux-x64.vsix.sha256
-code-server --install-extension aic-notes-6.6.1-linux-x64.vsix --force
+sha256sum -c aic-notes-7.3.2-linux-x64.vsix.sha256
+code-server --install-extension aic-notes-7.3.2-linux-x64.vsix --force
 ```
 
 Reload the browser window after installation. The extension targets Code/VS Code 1.106 or newer;
@@ -25,25 +25,25 @@ the bundled Standard Notes helper in this release targets Linux x64.
   Change the binding for `AIC Notes: Open Linked Note` in Keyboard Shortcuts at any time.
 - Use the note icon in an ordinary file's editor title to open its existing sidecar or explicitly
   create one. Merely focusing a file never creates a note.
-- Keep **Auto-open linked note** checked to reveal an existing sidecar when its source becomes
-  active. The checkbox is workspace-scoped and defaults to checked. Uncheck it to stop forced
-  reveals.
-- The Secondary view title follows the current note filename. Its parent-folder breadcrumb reveals
-  that location in VS Code Explorer. Use compact **Pin/Unpin**, **Source**, **Sync**, and
-  **Log in/Log out** controls. There is no Preview/Edit mode switch:
+- An unpinned Secondary pane always follows the active source; **Pin** freezes the current
+  relationship. The title follows the note filename and its parent path is a read-only breadcrumb.
+  The icon-only footer exposes **Log in/Log out** and **Pin**. **Source**, **Clear**, and **Delete**
+  appear only for a pinned existing note. There is no manual Sync button or Preview/Edit switch:
   an attached note is an editor unless Standard Notes reports its item or session as read-only.
   Opening a `*.note.md` through Explorer, Quick Open, a link, a restored tab, or a command is
   intercepted and routed to this panel; the note is not left in an editor tab.
-- When no sidecar exists, the Secondary panel shows the exact candidate path and a **Create note**
-  button. Following a file never writes the placeholder to disk; only that button, the note icon,
-  or an explicit command creates it.
-- Select persisted source text and press `Ctrl+Shift+/` on Linux/Windows or `Cmd+Shift+/` on macOS
-  (or choose **AIC Notes: Link Selection to Note** from the editor context menu). The extension
-  adds one deduplicated, initially open details block under `## Linked code`. Its summary contains a
+- When no sidecar exists, the Secondary panel shows its complete fresh-note seed as an editable
+  placeholder. Viewing or focusing it writes nothing; the first real edit atomically persists the
+  canonical `*.note.md` bytes and continues in the same editor.
+- Select source text and press `Ctrl+Alt+L` on Linux/Windows or `Cmd+Alt+L` on macOS
+  (`Ctrl/Cmd+Shift+/` remains a compatibility alias), or choose **AIC Notes: Link Selection to
+  Note** from the editor context menu. The extension first saves a dirty file so line anchors
+  always identify persisted bytes, then adds one deduplicated, initially open details block under
+  `## Linked code`. Its summary contains a
   checkbox and compact `file · Lx–Ly` link; the copied selection and an editable comment live inside.
   Clicking the link returns to the exact source lines. The source file is never modified.
-- Use the compact **Note** menu to **Clear content** or **Delete note**. Clear preserves a strictly
-  valid leading properties block byte-for-byte and resets the remaining local body to `- [ ]`.
+- Pin a note to expose the footer **Clear content** and **Delete note** icons. Clear preserves a
+  strictly valid leading properties block byte-for-byte and resets the remaining local body to `- [ ]`.
   Delete saves current bytes and moves only the local sidecar to Trash, with a separate permanent
   confirmation only when Trash is unavailable. Neither action changes a remote Standard Notes item.
 
@@ -55,8 +55,9 @@ The sidecar mapping remains AIC-compatible:
 - project note → `<workspace-name>.note.md`
 - project-global notes → `.aic/notes/*.note.md`
 
-Fresh file notes contain the existing AIC frontmatter properties plus one empty `- [ ]` checklist
-item. Folder and project templates remain unchanged. A workspace can override templates in
+Fresh file notes contain the existing AIC frontmatter properties, a blank separation, and two
+action sections: `## Todo` and `## Open questions`, each with an empty checklist item. Folder and
+project templates remain unchanged. A workspace can override templates in
 `.aic/templates/{file-note,folder-note,project-note}.md`.
 
 Selection links follow the same AIC owner rule for `*.ai.md`: the project-level artifact maps to the
@@ -70,9 +71,8 @@ Ordinary `*.md` files open in the AIC Markdown custom editor. Sidecars use the s
 Secondary Side Bar. Its compact layout keeps controls, headings, tables, and body copy legible in a
 narrow pane while preserving visible theme-derived foregrounds. The Secondary view always exposes
 the Markdown editor and persists changes through the VS Code document model. If the linked remote
-item is locked, the same view becomes fixed read-only after manual synchronization; there is no
-local mode toggle. The
-visual/editor contract follows AIC for Standard Notes v3.2.0: exact
+item is locked, the same view becomes fixed read-only after synchronization; there is no
+local mode toggle. The visual/editor contract follows AIC for Standard Notes v3.2.0: exact
 Markdown remains the only persisted value while headings, emphasis, tasks, lists, links,
 frontmatter properties, tables, fenced code, and Mermaid are rendered in place.
 
@@ -87,10 +87,9 @@ text editor. This does not relax the `*.note.md` Secondary-only rule.
 
 ## Standard Notes synchronization
 
-Synchronization is manual and sidecars only:
+Synchronization is save-driven and sidecars only:
 
-1. Open a sidecar in the Secondary panel and choose **Log in**, or choose **Sync** and accept its
-   connection prompt.
+1. Open a sidecar in the Secondary panel and choose the footer **Log in** icon.
 2. Enter the Standard Notes account email/password. MFA is
    requested when the server requires it.
 3. Credentials are sent only to the local Go helper for authentication and are not persisted.
@@ -99,32 +98,38 @@ Synchronization is manual and sidecars only:
    `SecretStorage`. Session secrets are never written to settings, workspace state, logs, or the
    repository. This works in headless code-server without Secret Service, GNOME Keyring, or
    `secret-tool`.
-4. The workspace stores only the remote item UUID, last common content hash, and sync timestamp.
-5. First sync creates one Markdown note. Later syncs use a three-way comparison. One-sided changes
+4. The workspace stores only the remote item UUID, last common content hash, sync timestamp, and
+   exact last AIC-managed tag title.
+5. `Ctrl/Cmd+S`, a VS Code save event for the attached sidecar, or leaving the Secondary editor
+   drains pending edits, saves locally, and schedules one serialized sync. Save/blur bursts collapse
+   to the newest persisted Markdown. Automatic sync never opens a login prompt: a disconnected note
+   stays safely local and shows a compact login status. **AIC Notes: Sync Current Note** remains an
+   explicit command-palette recovery action and may offer Connect/Reconnect.
+6. First sync creates one Markdown note. Later syncs use a three-way comparison. One-sided changes
    propagate; two-sided changes stop and ask whether the complete local or Standard Notes body is
-   authoritative. Nothing is merged silently.
-6. A Standard Notes `locked` item or read-only account session never receives a push. The Secondary
-   editor becomes read-only and remains so until a later manual sync reports write access again.
+   authoritative. Nothing is merged silently, and a remote result never replaces text typed while
+   its network request was in flight.
+7. A Standard Notes `locked` item or read-only account session never receives a push. The Secondary
+   editor becomes read-only and remains so until a later sync reports write access again.
 
 **Log out** removes only the encrypted local Standard Notes session after confirmation. It does not
 revoke remote tokens, delete the SecretStorage wrapping key, remove local notes or workspace sync
 bindings, or alter Standard Notes items.
 
-Each synchronized note receives exactly these managed tags:
+Each synchronized note receives exactly one AIC-managed hierarchical tag:
 
-- `aic`
-- `project:<workspace-root-name>`
-- `path:<parent-path>` (`path:.` at the root)
+- root note: `<workspace-root-name>`
+- nested note: `<workspace-root-name>.<parent>.<child>`
 
-Only these managed references are reconciled. Every unrelated Standard Notes tag and its
-references are preserved. Deleted or ambiguous remote identity stops synchronization instead of
-creating a duplicate.
+The filename is not included. A successful migration removes that note's legacy `aic`,
+`project:*`, and `path:*` references, retires an emptied legacy tag, and records the new exact title
+for safe future moves. Shared references and every unrelated Standard Notes tag are preserved.
+Deleted or ambiguous remote identity stops synchronization instead of creating a duplicate.
 
 The default server is `https://api.standardnotes.com`. Self-hosted users can change
 `aicNotes.standardNotes.server`. Upgrading from 4.3.3 requires one new **Connect** because the new
 vault deliberately does not read or migrate the old operating-system-keyring session; it does not
-delete that old entry or change remote notes. There is no background, timer, on-save, or
-ordinary-`.md` sync.
+delete that old entry or change remote notes. There is no timer, polling, or ordinary-`.md` sync.
 
 The bridge sends the current Standard Notes client/version headers on authentication and sync
 requests. Connection failures are classified without echoing server responses or credentials:
@@ -169,15 +174,16 @@ The bridge is built directly on the MIT `gosn-v2` commit recorded in
 helper with `execFile`, no shell, bounded JSON, a 45-second timeout, and bounded output.
 
 Focused unit tests cover sidecar paths/templates/frontmatter, selection range/link/deduplication
-rules, release manifest invariants, three-way decisions, managed-tag boundaries, sanitized
-connection failures, mandatory client headers on auth/sync, and the bridge protocol. A live
+rules, placeholder creation, serialized sync coalescing, release manifest invariants, three-way
+decisions, managed-tag migration boundaries, sanitized connection failures, mandatory client
+headers on auth/sync, and the bridge protocol. A live
 Standard Notes account is intentionally not mutated by unattended tests.
 
 ## Release accounting
 
 This project uses the global `R.F.B` convention: release sequence, release-local feature outcomes,
-release-local fixed-bug outcomes. `6.6.1` is sequence 6 with six feature outcomes and one
-fixed-bug outcome. It is not a SemVer compatibility claim. See [`CHANGELOG.md`](CHANGELOG.md).
+release-local fixed-bug outcomes. `7.3.2` is sequence 7 with three feature outcomes and two
+fixed-bug outcomes. It is not a SemVer compatibility claim. See [`CHANGELOG.md`](CHANGELOG.md).
 
 ## License and provenance
 

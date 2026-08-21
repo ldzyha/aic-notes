@@ -7,7 +7,7 @@ const root = path.resolve(import.meta.dirname, "..");
 const manifest = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
 const version = manifest.version;
 if (!/^\d+\.\d+\.\d+$/u.test(version)) throw new Error(`invalid R.F.B version: ${version}`);
-if (version !== "6.6.1") throw new Error(`release gate expects 6.6.1, got ${version}`);
+if (version !== "7.3.2") throw new Error(`release gate expects 7.3.2, got ${version}`);
 
 const binary = path.join(root, "bin", "linux-x64", "aic-notes-sn-bridge");
 await access(binary);
@@ -53,16 +53,35 @@ const selectionCommand = packagedManifest.contributes.commands.find(
   (value) => value.command === "aicNotes.linkSelectionToNote",
 );
 if (!selectionCommand) throw new Error("packaged selection-link command is missing");
+if (
+  !packagedManifest.contributes.commands.some(
+    (value) => value.command === "aicNotes.syncCurrentNote",
+  )
+) {
+  throw new Error("packaged manual sync recovery command is missing");
+}
 for (const command of ["aicNotes.enableAgentWorkflow", "aicNotes.syncAgentInstructions"]) {
   if (!packagedManifest.contributes.commands.some((value) => value.command === command)) {
     throw new Error(`packaged agent workflow command is missing: ${command}`);
   }
 }
 const selectionBinding = packagedManifest.contributes.keybindings.find(
-  (value) => value.command === "aicNotes.linkSelectionToNote",
+  (value) => value.command === "aicNotes.linkSelectionToNote" && value.key === "ctrl+alt+l",
 );
-if (selectionBinding?.key !== "ctrl+shift+/" || selectionBinding?.mac !== "cmd+shift+/") {
+if (selectionBinding?.mac !== "cmd+alt+l") {
   throw new Error("packaged selection-link keybinding is missing");
+}
+const selectionAlias = packagedManifest.contributes.keybindings.find(
+  (value) => value.command === "aicNotes.linkSelectionToNote" && value.key === "ctrl+shift+/",
+);
+if (selectionAlias?.mac !== "cmd+shift+/") {
+  throw new Error("packaged selection-link compatibility keybinding is missing");
+}
+const openBinding = packagedManifest.contributes.keybindings.find(
+  (value) => value.command === "aicNotes.noteForCurrentFile",
+);
+if (openBinding?.key !== "ctrl+alt+n" || openBinding?.mac !== "cmd+alt+n" || openBinding.when) {
+  throw new Error("packaged global open-note keybinding is missing");
 }
 
 const secretPattern = /(?:BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY|(?:access|refresh)[_-]?token["']?\s*[:=]\s*["'][A-Za-z0-9._-]{24,}|password["']?\s*[:=]\s*["'][^"']{8,}["'])/iu;

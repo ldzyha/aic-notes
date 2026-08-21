@@ -5,6 +5,7 @@ import {
   linkedNotePath,
   managedTags,
   reconcileTagNames,
+  applyTextChanges,
   threeWayDecision,
 } from "../src/secondary/model.js";
 
@@ -17,21 +18,33 @@ test("note paths are Secondary-only candidates without note-of-note recursion", 
 });
 
 test("managed tags are exact and root-aware", () => {
-  assert.deepEqual(managedTags("demo", "src/lib"), [
-    "aic",
-    "project:demo",
-    "path:src/lib",
-  ]);
-  assert.deepEqual(managedTags("demo", "."), ["aic", "project:demo", "path:."]);
+  assert.deepEqual(managedTags("demo", "src/lib"), ["demo.src.lib"]);
+  assert.deepEqual(managedTags("demo", "."), ["demo"]);
+  assert.deepEqual(managedTags(" demo ", "src\\feature / child"), ["demo.src.feature.child"]);
 });
 
 test("tag reconciliation replaces only AIC-managed names", () => {
   assert.deepEqual(
     reconcileTagNames(
-      ["personal", "aic", "project:old", "path:old", "topic:aic"],
-      ["aic", "project:new", "path:src"],
+      ["personal", "aic", "project:old", "path:old", "demo.old", "topic:aic"],
+      ["demo.src"],
+      ["demo.old"],
     ),
-    ["personal", "topic:aic", "aic", "project:new", "path:src"],
+    ["personal", "topic:aic", "demo.src"],
+  );
+});
+
+test("placeholder changes apply atomically against one source generation", () => {
+  assert.equal(
+    applyTextChanges("abcdef", [
+      { from: 1, to: 3, insert: "X" },
+      { from: 5, to: 6, insert: "Y" },
+    ]),
+    "aXdeY",
+  );
+  assert.throws(
+    () => applyTextChanges("abc", [{ from: 1, to: 3, insert: "x" }, { from: 2, to: 2, insert: "y" }]),
+    /non-overlapping/u,
   );
 });
 

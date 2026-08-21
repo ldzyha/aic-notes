@@ -28,8 +28,8 @@ export function stringifyFrontmatter(text, meta) {
   const lines = ["---"];
   for (const k of keys) lines.push(`${k}: ${meta[k]}`);
   lines.push("---");
-  const prefix = lines.join("\n") + "\n";
-  return prefix + (text.startsWith("\n") ? text.slice(1) : text);
+  const prefix = lines.join("\n") + "\n\n";
+  return prefix + text.replace(/^\n+/u, "");
 }
 
 export function isAgentVisible(text) {

@@ -50,9 +50,11 @@ export async function linkSelectionToNote(secondary) {
     ]);
   }
   if (document.isDirty) {
-    throw structuredError("selection_source_unsaved", "the selected source has unsaved changes", [
-      "Save the source file so the linked line range identifies persisted bytes",
-    ]);
+    if (!(await document.save())) {
+      throw structuredError("selection_source_unsaved", "the selected source could not be saved", [
+        "Resolve the file-system error so the linked range can identify persisted bytes",
+      ]);
+    }
   }
   if (editor.selection.isEmpty) {
     throw structuredError("selection_required", "the source selection is empty", [
@@ -98,7 +100,6 @@ export async function linkSelectionToNote(secondary) {
         "Retry after resolving any note conflict",
       ]);
     }
-    await note.save();
   }
   await secondary.open(noteUri, {
     pin: false,
@@ -106,6 +107,11 @@ export async function linkSelectionToNote(secondary) {
     sourceUri: document.uri,
     selection: { anchor: result.cursor, head: result.cursor },
   });
+  if (note.isDirty && !(await note.save())) {
+    throw structuredError("selection_note_save_failed", `could not save ${target.notePath}`, [
+      "Resolve the file-system error and retry",
+    ]);
+  }
   vscode.window.setStatusBarMessage(
     result.created
       ? `AIC Notes: linked ${reference.label}`

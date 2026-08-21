@@ -37,12 +37,22 @@ export function activate(context) {
       commandHandler((uri, options) => secondary.open(uri, options)),
     ),
 
-    vscode.commands.registerCommand("aicNotes.noteForCurrentFile", commandHandler(noteForCurrentFile)),
+    vscode.commands.registerCommand(
+      "aicNotes.noteForCurrentFile",
+      commandHandler(() => noteForCurrentFile(secondary)),
+    ),
     vscode.commands.registerCommand(
       "aicNotes.linkSelectionToNote",
       commandHandler(() => linkSelectionToNote(secondary)),
     ),
-    vscode.commands.registerCommand("aicNotes.noteForExplorerItem", commandHandler(noteForExplorerItem)),
+    vscode.commands.registerCommand(
+      "aicNotes.syncCurrentNote",
+      commandHandler(() => secondary.syncCurrent()),
+    ),
+    vscode.commands.registerCommand(
+      "aicNotes.noteForExplorerItem",
+      commandHandler((uri) => noteForExplorerItem(uri, secondary)),
+    ),
     vscode.commands.registerCommand("aicNotes.openProjectNote", commandHandler(openProjectNote)),
     vscode.commands.registerCommand("aicNotes.openGlobalNote", commandHandler(openGlobalNote)),
     vscode.commands.registerCommand("aicNotes.refreshTree", () => tree.refresh()),

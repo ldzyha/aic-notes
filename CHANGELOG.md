@@ -1,5 +1,31 @@
 # Changelog
 
+## 7.3.2 — 2026-08-21
+
+Release sequence 7 · 3 feature outcomes · 2 fixed-bug outcomes.
+
+- F01: connected sidecars now synchronize after `Ctrl/Cmd+S`, attached-document saves, and
+  Secondary editor blur. Per-note requests serialize and coalesce to the newest persisted body;
+  automatic sync never prompts for credentials, and an in-flight remote pull cannot overwrite
+  newer local edits.
+- F02: fresh file notes now separate properties from an action-oriented `## Todo` and
+  `## Open questions` seed, each with an empty checklist item. Workspace overrides and existing
+  notes remain unchanged.
+- F03: Secondary now follows every active source until pinned, presents a non-writing editable seed
+  when its sidecar is absent, and creates the file on the first real edit. The crowded toolbar,
+  manual Sync/Create/Docs controls, and auto-open checkbox are replaced by an icon-only footer;
+  Source/Clear/Delete appear only while an existing note is pinned.
+- B01: Standard Notes sync now assigns one dotted `<project>.<parent>.<child>` tag instead of three
+  `aic`/`project:*`/`path:*` tags. Migration removes only AIC-owned references, retires empty legacy
+  tags, records the exact new managed title, and preserves shared or unrelated user tags.
+- B02: Open Linked Note now works outside editor text focus. Selection linking saves dirty sources,
+  keeps the old chord as an alias, and adds layout-safe `Ctrl/Cmd+Alt+L` before opening the exact
+  linked comment in Secondary.
+
+Compatibility: VS Code/Code 1.106 or newer; bundled Standard Notes bridge is Linux x64. Automatic
+sync remains sidecar-only and requires an already readable local session; manual recovery remains
+available as **AIC Notes: Sync Current Note**. No Marketplace/Open VSX publication is implied.
+
 ## 6.6.1 — 2026-08-21
 
 Release sequence 6 · 6 feature outcomes · 1 fixed-bug outcome.

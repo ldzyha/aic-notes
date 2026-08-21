@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/jonhadfield/gosn-v2/common"
+	"github.com/jonhadfield/gosn-v2/items"
 )
 
 func TestSyncDecision(t *testing.T) {
@@ -54,14 +57,56 @@ func TestReadOnlySyncDecisionNeverPushes(t *testing.T) {
 
 func TestManagedTagBoundary(t *testing.T) {
 	for _, value := range []string{"aic", "project:demo", "path:src/lib"} {
-		if !isManagedTag(value) {
+		if !isManagedTag(value, nil, nil) {
 			t.Fatalf("expected managed tag %q", value)
 		}
 	}
 	for _, value := range []string{"aic-user", "project", "pathology", "topic:demo"} {
-		if isManagedTag(value) {
+		if isManagedTag(value, nil, nil) {
 			t.Fatalf("must preserve unrelated tag %q", value)
 		}
+	}
+	if !isManagedTag("demo.src", []string{"demo.src"}, nil) {
+		t.Fatal("previously bound hierarchical tag must remain managed for migration")
+	}
+	if !isManagedTag("demo.docs", nil, []string{"demo.docs"}) {
+		t.Fatal("required hierarchical tag must be managed for attachment")
+	}
+}
+
+func TestReconcileTagsMigratesOnlyOwnedReferences(t *testing.T) {
+	noteRef := items.ItemReference{UUID: "note", ContentType: common.SNItemTypeNote}
+	otherRef := items.ItemReference{UUID: "other", ContentType: common.SNItemTypeNote}
+	legacy, _ := items.NewTag("aic", items.ItemReferences{noteRef})
+	sharedLegacy, _ := items.NewTag("path:docs", items.ItemReferences{noteRef, otherRef})
+	previous, _ := items.NewTag("demo.old", items.ItemReferences{noteRef})
+	required, _ := items.NewTag("demo.docs", items.ItemReferences{otherRef})
+	personal, _ := items.NewTag("personal", items.ItemReferences{noteRef})
+
+	changed, err := reconcileTags(
+		items.Tags{legacy, sharedLegacy, previous, required, personal},
+		"note",
+		[]string{"demo.docs"},
+		[]string{"demo.old"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	byTitle := map[string]items.Tag{}
+	for _, tag := range changed {
+		byTitle[tag.Content.Title] = tag
+	}
+	if !byTitle["aic"].IsDeleted() || !byTitle["demo.old"].IsDeleted() {
+		t.Fatal("empty legacy and previously-owned tags must be retired")
+	}
+	if byTitle["path:docs"].IsDeleted() || tagReferences(items.Tags{byTitle["path:docs"]}, "path:docs", "note") {
+		t.Fatal("shared legacy tag must keep other references and drop only this note")
+	}
+	if !tagReferences(items.Tags{byTitle["demo.docs"]}, "demo.docs", "note") {
+		t.Fatal("required hierarchy tag must reference the synchronized note")
+	}
+	if _, touched := byTitle["personal"]; touched {
+		t.Fatal("unrelated user tag must not be changed")
 	}
 }
 

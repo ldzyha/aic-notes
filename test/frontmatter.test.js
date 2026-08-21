@@ -11,6 +11,7 @@ test("parse/stringify round-trip preserves keys, order and body", () => {
   const meta = noteMeta("app.js", "file-note");
   const body = "# notes: src/app.js\n\nSome body.\n";
   const text = stringifyFrontmatter(body, meta);
+  assert.match(text, /\n---\n\n# notes:/u);
   const parsed = parseFrontmatter(text);
   assert.deepEqual(parsed.meta, meta);
   assert.equal(parsed.text, body);

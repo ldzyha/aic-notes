@@ -284,7 +284,7 @@ html, body {
    persisted value; remote lock state alone can make the editor read-only. */
 .aic-secondary-surface {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   width: 100%;
   height: 100vh;
   overflow: hidden;
@@ -294,19 +294,11 @@ html, body {
   position: relative;
   z-index: 10;
   display: grid;
-  gap: 0.2rem;
-  padding: 0.32rem 0.4rem;
+  gap: 0.12rem;
+  padding: 0.34rem 0.48rem 0.3rem;
   border-bottom: 1px solid var(--aic-border);
   background: var(--aic-contrast);
   color: var(--aic-contrast-fg);
-}
-
-.aic-pane-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.2rem;
-  min-width: 0;
 }
 
 .aic-pane-context {
@@ -323,12 +315,11 @@ html, body {
 }
 
 .aic-pane-breadcrumb {
-  justify-self: start;
+  display: block;
   max-width: 100%;
   overflow: hidden;
-  padding-left: 0 !important;
-  color: var(--aic-muted) !important;
-  font-size: 0.76rem !important;
+  color: var(--aic-muted);
+  font-size: 0.73rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -344,49 +335,60 @@ html, body {
   clip-path: polygon(4% 21%, 39% 21%, 49% 34%, 96% 34%, 96% 84%, 4% 84%);
 }
 
-#secondary-controls button {
-  min-height: 24px;
-  padding: 0 0.38rem;
+#pane-status { min-height: 0.9rem; color: var(--aic-muted); font-size: 0.72rem; }
+
+#secondary-footer {
+  position: relative;
+  z-index: 10;
+  grid-row: 3;
+  display: flex;
+  align-items: center;
+  gap: 0.18rem;
+  min-height: 34px;
+  padding: 0.24rem 0.38rem;
+  border-top: 1px solid var(--aic-border);
+  background: var(--aic-contrast);
+  color: var(--aic-contrast-fg);
+}
+
+.aic-pane-footer-spacer { flex: 1 1 auto; }
+
+#secondary-footer .aic-pane-icon {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  padding: 0;
+  place-items: center;
   border: 1px solid transparent;
   border-radius: var(--radius);
   background: transparent;
   color: var(--aic-contrast-fg);
   cursor: pointer;
-  font: inherit;
 }
 
-#secondary-controls button:hover,
-#secondary-controls button:focus-visible {
+#secondary-footer .aic-pane-icon svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.45;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#pane-auth[data-connected="false"] svg { transform: scaleX(-1); }
+
+#secondary-footer .aic-pane-icon:hover,
+#secondary-footer .aic-pane-icon:focus-visible,
+#secondary-footer .aic-pane-icon[aria-pressed="true"] {
   border-color: color-mix(in srgb, var(--aic-accent) 60%, var(--aic-border));
   background: color-mix(in srgb, var(--aic-accent) 10%, transparent);
   outline: none;
 }
 
-#secondary-controls button:disabled { cursor: not-allowed; opacity: 0.45; }
-.aic-pane-menu-wrap { position: relative; }
-#pane-note-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.22rem;
-}
-#pane-note-actions svg { width: 0.9rem; height: 0.9rem; fill: currentColor; }
-.aic-pane-menu {
-  position: absolute;
-  z-index: 30;
-  top: calc(100% + 0.2rem);
-  right: 0;
-  display: grid;
-  min-width: 9.5rem;
-  padding: 0.2rem;
-  border: 1px solid var(--vscode-menu-border, var(--aic-border));
-  border-radius: var(--radius);
-  background: var(--vscode-menu-background, var(--aic-contrast));
-  box-shadow: 0 4px 12px color-mix(in srgb, #000 28%, transparent);
-}
-.aic-pane-menu button { justify-content: flex-start; text-align: left; }
-.aic-pane-menu button.danger { color: var(--aic-danger) !important; }
-.aic-pane-auto { display: flex; align-items: center; gap: 0.25rem; color: var(--aic-muted); font-size: 0.84rem; }
-#pane-status { min-height: 1em; color: var(--aic-muted); font-size: 0.8rem; }
+#secondary-footer .aic-pane-icon:disabled { cursor: not-allowed; opacity: 0.42; }
+#secondary-footer .aic-pane-icon.danger { color: var(--aic-danger); }
 
 .aic-secondary-surface #editor {
   min-width: 0;
@@ -514,23 +516,6 @@ html, body {
 }
 
 .aic-pane-empty strong { color: var(--aic-fg); }
-.aic-pane-empty code {
-  max-width: 100%;
-  overflow-wrap: anywhere;
-  color: var(--aic-accent);
-}
-.aic-pane-empty button {
-  min-height: 26px;
-  padding: 0 0.55rem;
-  border: 1px solid var(--vscode-button-border, transparent);
-  border-radius: var(--radius);
-  background: var(--vscode-button-background, var(--aic-accent));
-  color: var(--vscode-button-foreground, var(--aic-accent-contrast));
-  cursor: pointer;
-  font: inherit;
-}
-.aic-pane-empty button:hover { background: var(--vscode-button-hoverBackground, var(--aic-accent)); }
-.aic-pane-empty button:disabled { cursor: not-allowed; opacity: 0.55; }
 
 .aic-secondary-surface #editor { grid-row: 2; }
 [hidden] { display: none !important; }

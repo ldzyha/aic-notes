@@ -42,7 +42,7 @@ const readOnlyCompartment = new Compartment();
 const editableCompartment = new Compartment();
 const secondarySurface = Boolean(document.getElementById("secondary-controls"));
 
-const docState = { relativePath: "", generation: 0, readOnly: false };
+const docState = { relativePath: "", generation: 0, readOnly: false, placeholder: false };
 const host = makeHost(api, docState);
 
 // bundled JetBrains Mono (OFL, dist/webview/fonts): the @font-face URLs must
@@ -77,7 +77,6 @@ function setReadOnly(value) {
     });
   }
   document.body.dataset.readOnly = String(docState.readOnly);
-  if (view && !docState.readOnly) requestAnimationFrame(() => view?.focus());
 }
 
 function wirePaneControls() {
@@ -88,52 +87,14 @@ function wirePaneControls() {
   document.getElementById("pane-target")?.addEventListener("click", () =>
     api.postMessage({ type: "pane.target" }),
   );
-  document.getElementById("pane-sync")?.addEventListener("click", () =>
-    api.postMessage({ type: "pane.sync" }),
-  );
   document.getElementById("pane-auth")?.addEventListener("click", () =>
     api.postMessage({ type: "pane.auth" }),
   );
-  document.getElementById("pane-breadcrumb")?.addEventListener("click", () =>
-    api.postMessage({ type: "pane.reveal" }),
+  document.getElementById("pane-clear")?.addEventListener("click", () =>
+    api.postMessage({ type: "pane.clear" }),
   );
-  const menuButton = document.getElementById("pane-note-actions");
-  const menu = document.getElementById("pane-note-menu");
-  const closeMenu = () => {
-    if (!menu || !menuButton) return;
-    menu.hidden = true;
-    menuButton.setAttribute("aria-expanded", "false");
-  };
-  menuButton?.addEventListener("click", (event) => {
-    event.stopPropagation();
-    if (!menu) return;
-    menu.hidden = !menu.hidden;
-    menuButton.setAttribute("aria-expanded", String(!menu.hidden));
-    if (!menu.hidden) menu.querySelector("button:not(:disabled)")?.focus();
-  });
-  document.getElementById("pane-clear")?.addEventListener("click", () => {
-    closeMenu();
-    api.postMessage({ type: "pane.clear" });
-  });
-  document.getElementById("pane-delete")?.addEventListener("click", () => {
-    closeMenu();
-    api.postMessage({ type: "pane.delete" });
-  });
-  document.addEventListener("click", (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    if (!menu?.hidden && !target?.closest(".aic-pane-menu-wrap")) closeMenu();
-  });
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !menu?.hidden) {
-      closeMenu();
-      menuButton?.focus();
-    }
-  });
-  document.getElementById("pane-create")?.addEventListener("click", () =>
-    api.postMessage({ type: "pane.create" }),
-  );
-  document.getElementById("pane-auto")?.addEventListener("change", (event) =>
-    api.postMessage({ type: "pane.autoOpen", value: event.currentTarget.checked }),
+  document.getElementById("pane-delete")?.addEventListener("click", () =>
+    api.postMessage({ type: "pane.delete" }),
   );
 }
 
@@ -206,6 +167,14 @@ function makeEditor(text) {
             api.setState({ anchor, head, path: docState.relativePath });
           }
         }),
+        EditorView.domEventHandlers({
+          blur: () => {
+            if (secondarySurface && !docState.readOnly && !docState.placeholder) {
+              api.postMessage({ type: "save", reason: "blur" });
+            }
+            return false;
+          },
+        }),
       ],
     }),
   });
@@ -218,6 +187,7 @@ window.addEventListener("message", (event) => {
       docState.relativePath = msg.relativePath;
       docState.generation = msg.generation;
       docState.readOnly = secondarySurface && Boolean(msg.readOnly);
+      docState.placeholder = secondarySurface && Boolean(msg.placeholder);
       view?.destroy();
       view = makeEditor(msg.text);
       const requested = msg.selection;
@@ -261,69 +231,53 @@ window.addEventListener("message", (event) => {
     }
     case "paneState": {
       document.title = msg.title;
+      docState.placeholder = secondarySurface && Boolean(msg.hasPlaceholder);
+      document.body.dataset.placeholder = String(docState.placeholder);
       const filename = document.getElementById("pane-filename");
       if (filename) filename.textContent = msg.title || "Linked Note";
       const breadcrumb = document.getElementById("pane-breadcrumb");
-      if (breadcrumb) {
-        breadcrumb.textContent = msg.breadcrumb || "Workspace";
-        breadcrumb.disabled = !msg.breadcrumb;
-        breadcrumb.title = msg.breadcrumb ? `Reveal ${msg.breadcrumb} in Explorer` : "";
-      }
+      if (breadcrumb) breadcrumb.textContent = msg.breadcrumb || "Workspace";
       const pin = document.getElementById("pane-pin");
       if (pin) {
-        pin.textContent = msg.pinned ? "Unpin" : "Pin";
         pin.setAttribute("aria-pressed", String(Boolean(msg.pinned)));
+        pin.setAttribute("aria-label", msg.pinned ? "Unpin note" : "Pin note");
+        pin.title = msg.pinned ? "Unpin and follow the active file" : "Pin note";
+        pin.disabled = !msg.canPin;
       }
-      const auto = document.getElementById("pane-auto");
-      if (auto) auto.checked = Boolean(msg.autoOpen);
       const status = document.getElementById("pane-status");
       if (status) status.textContent = msg.status || "";
       if (secondarySurface) setReadOnly(Boolean(msg.readOnly));
       const auth = document.getElementById("pane-auth");
       if (auth) {
-        auth.textContent = msg.authPending
+        const authLabel = msg.authPending
           ? msg.authConnected ? "Logging out…" : "Logging in…"
           : msg.authConnected ? "Log out" : "Log in";
+        auth.setAttribute("aria-label", authLabel);
+        auth.dataset.connected = String(Boolean(msg.authConnected));
         auth.disabled = Boolean(msg.authPending);
         auth.title = msg.authReconnect
           ? "Replace the unreadable local session by logging in again"
           : msg.authConnected ? "Remove only the encrypted local session" : "Log in to Standard Notes";
       }
-      const detail = document.getElementById("pane-empty-detail");
-      if (detail) {
-        detail.textContent = msg.candidatePath
-          ? "Create the canonical sidecar for the focused source:"
-          : "Focus a saved workspace source file.";
-      }
-      const candidate = document.getElementById("pane-candidate");
-      if (candidate) candidate.textContent = msg.candidatePath || "";
-      const create = document.getElementById("pane-create");
-      if (create) {
-        create.hidden = !msg.candidatePath;
-        create.disabled = !msg.canCreate;
-      }
-      for (const id of ["pane-target", "pane-sync"]) {
-        const control = document.getElementById(id);
-        if (control) control.disabled = !msg.hasNote;
-      }
-      const noteActions = document.getElementById("pane-note-actions");
-      if (noteActions) {
-        noteActions.disabled = !msg.hasNote || Boolean(msg.actionPending);
-        noteActions.closest(".aic-pane-menu-wrap").hidden = !msg.hasNote;
-      }
-      if (!msg.hasNote || msg.actionPending) {
-        const menu = document.getElementById("pane-note-menu");
-        if (menu) menu.hidden = true;
-        noteActions?.setAttribute("aria-expanded", "false");
+      const target = document.getElementById("pane-target");
+      if (target) {
+        target.hidden = !msg.showPinnedActions;
+        target.disabled = !msg.showPinnedActions || Boolean(msg.actionPending);
       }
       const clear = document.getElementById("pane-clear");
-      if (clear) clear.disabled = Boolean(msg.readOnly) || Boolean(msg.actionPending);
+      if (clear) {
+        clear.hidden = !msg.showPinnedActions;
+        clear.disabled = !msg.showPinnedActions || Boolean(msg.readOnly) || Boolean(msg.actionPending);
+      }
       const remove = document.getElementById("pane-delete");
-      if (remove) remove.disabled = Boolean(msg.actionPending);
+      if (remove) {
+        remove.hidden = !msg.showPinnedActions;
+        remove.disabled = !msg.showPinnedActions || Boolean(msg.actionPending);
+      }
       const empty = document.getElementById("pane-empty");
       const editor = document.getElementById("editor");
-      if (empty) empty.hidden = Boolean(msg.hasNote);
-      if (editor) editor.hidden = !msg.hasNote;
+      if (empty) empty.hidden = Boolean(msg.hasSurface);
+      if (editor) editor.hidden = !msg.hasSurface;
       break;
     }
   }

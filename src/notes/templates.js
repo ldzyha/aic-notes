@@ -11,7 +11,14 @@ export const TEMPLATE_PATHS = {
 };
 
 const DEFAULT_TEMPLATES = {
-  "file-note": "- [ ] \n",
+  "file-note": `## Todo
+
+- [ ]
+
+## Open questions
+
+- [ ]
+`,
   "folder-note": `# notes: {{name}}/
 
 ## Purpose

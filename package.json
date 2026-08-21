@@ -1,8 +1,8 @@
 {
   "name": "aic-notes",
   "displayName": "AIC Notes",
-  "description": "AIC Markdown plus Secondary-Side-Bar-only *.note.md sidecars with manual encrypted Standard Notes sync.",
-  "version": "6.6.1",
+  "description": "AIC Markdown plus Secondary-Side-Bar-only *.note.md sidecars with encrypted save/blur Standard Notes sync.",
+  "version": "7.3.2",
   "publisher": "ldzyha",
   "icon": "media/icon.png",
   "license": "MIT",
@@ -38,7 +38,7 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": true,
-      "description": "Local rendering and editing are supported; Standard Notes network sync runs only after an explicit Connect or Sync action."
+      "description": "Local rendering and editing are supported; connected *.note.md sidecars synchronize after save or Secondary editor blur."
     },
     "virtualWorkspaces": {
       "supported": "limited",
@@ -103,13 +103,19 @@
         "icon": "$(comment-discussion)"
       },
       {
+        "command": "aicNotes.syncCurrentNote",
+        "title": "Sync Current Note",
+        "category": "AIC Notes",
+        "icon": "$(sync)"
+      },
+      {
         "command": "aicNotes.openInSecondary",
         "title": "Open Note in Secondary Side Bar",
         "category": "AIC Notes"
       },
       {
         "command": "aicNotes.noteForExplorerItem",
-        "title": "AIC Notes: Create/Open Note",
+        "title": "Open Linked Note",
         "category": "AIC Notes"
       },
       {
@@ -175,8 +181,13 @@
       {
         "command": "aicNotes.noteForCurrentFile",
         "key": "ctrl+alt+n",
-        "mac": "cmd+alt+n",
-        "when": "editorTextFocus || activeCustomEditorId == aicNotes.markdown || focusedView == aicNotes.secondary"
+        "mac": "cmd+alt+n"
+      },
+      {
+        "command": "aicNotes.linkSelectionToNote",
+        "key": "ctrl+alt+l",
+        "mac": "cmd+alt+l",
+        "when": "editorTextFocus && editorHasSelection && resourceScheme == file && resourceFilename not =~ /\\.note\\.md$/"
       },
       {
         "command": "aicNotes.linkSelectionToNote",

@@ -31,6 +31,7 @@ type request struct {
 	LocalContent string   `json:"localContent,omitempty"`
 	Title        string   `json:"title,omitempty"`
 	Tags         []string `json:"tags,omitempty"`
+	PreviousTags []string `json:"previousTags,omitempty"`
 	RemoteUUID   string   `json:"remoteUuid,omitempty"`
 	BaseHash     string   `json:"baseHash,omitempty"`
 	Resolution   string   `json:"resolution,omitempty"`
@@ -118,7 +119,7 @@ func status(input request) response {
 	}
 	s, err := readSession(vault)
 	if errors.Is(err, keyring.ErrNotFound) {
-		return response{OK: false, Code: "sn_not_connected", Message: "no Standard Notes session exists", Fixes: []string{"Choose Connect from the AIC Notes sync action"}}
+		return response{OK: false, Code: "sn_not_connected", Message: "no Standard Notes session exists", Fixes: []string{"Use the Secondary footer Log in icon or run AIC Notes: Sync Current Note"}}
 	}
 	if err != nil {
 		return failure("sn_vault_unreadable", err, "Choose Reconnect to replace only the local encrypted session vault")
@@ -294,7 +295,7 @@ func syncNote(input request) response {
 	}
 
 	tags := decrypted.Tags()
-	tagItems, err := reconcileTags(tags, remote.UUID, input.Tags)
+	tagItems, err := reconcileTags(tags, remote.UUID, input.Tags, input.PreviousTags)
 	if err != nil {
 		return failure("sn_tags_failed", err, "Remove duplicate managed tags and retry")
 	}
@@ -335,10 +336,10 @@ func syncNote(input request) response {
 	}
 }
 
-func reconcileTags(existing items.Tags, noteUUID string, required []string) (items.Tags, error) {
+func reconcileTags(existing items.Tags, noteUUID string, required, previous []string) (items.Tags, error) {
 	seen := map[string]int{}
 	for _, tag := range existing {
-		if isManagedTag(tag.Content.Title) {
+		if isManagedTag(tag.Content.Title, previous, required) {
 			seen[tag.Content.Title]++
 		}
 	}
@@ -353,7 +354,7 @@ func reconcileTags(existing items.Tags, noteUUID string, required []string) (ite
 	for index := range existing {
 		tag := existing[index]
 		title := tag.Content.Title
-		if !isManagedTag(title) {
+		if !isManagedTag(title, previous, required) {
 			continue
 		}
 		wanted := contains(required, title)
@@ -378,6 +379,9 @@ func reconcileTags(existing items.Tags, noteUUID string, required []string) (ite
 		if had != wanted {
 			tag.Content.SetReferences(next)
 			tag.Content.SetUpdateTime(now)
+			if !wanted && len(next) == 0 && (isLegacyManagedTag(title) || contains(previous, title)) {
+				tag.SetDeleted(true)
+			}
 			changed = append(changed, tag)
 		}
 	}
