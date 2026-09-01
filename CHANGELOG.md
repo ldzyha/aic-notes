@@ -1,8 +1,8 @@
 # Changelog
 
-## 16.2.0 — 2026-09-01
+## 16.2.1 — 2026-09-01
 
-Release sequence 16 · 2 feature outcomes · 0 fixed-bug outcomes.
+Release sequence 16 · 2 feature outcomes · 1 fixed-bug outcome.
 
 - F01: add a permanent Copy action to parsed and fallback table previews. It sends the exact
   Markdown table source through the existing VS Code clipboard bridge and reports success by
@@ -12,6 +12,9 @@ Release sequence 16 · 2 feature outcomes · 0 fixed-bug outcomes.
   contract; embedded SVG data URIs are painted exclusively through CSS masks, so action rendering
   does not depend on inline-SVG support. Every control retains an explicit `aria-label`, while
   redundant native title tooltips are removed.
+- B01: make the release gate generate SHA-256 sidecars from the CI-built VSIX files after the pinned
+  bridge build, verify those exact artifacts, and publish both platform packages plus checksums to
+  the tagged GitHub Release. Checksums no longer depend on locally generated ZIP bytes.
 
 Compatibility: VS Code/Code 1.106 or newer; Windows x64 uses the bundled in-process WebAssembly
 bridge and Linux x64 uses the bundled static helper. No Marketplace/Open VSX publication is implied.

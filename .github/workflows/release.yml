@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify-linux-x64:
@@ -35,4 +35,22 @@ jobs:
           CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o ../bin/linux-x64/aic-notes-sn-bridge .
       - run: npm run package
       - run: npm run package:windows
+      - name: Generate package checksums
+        run: |
+          sha256sum "aic-notes-${GITHUB_REF_NAME#v}-linux-x64.vsix" > "aic-notes-${GITHUB_REF_NAME#v}-linux-x64.vsix.sha256"
+          sha256sum "aic-notes-${GITHUB_REF_NAME#v}-win32-x64.vsix" > "aic-notes-${GITHUB_REF_NAME#v}-win32-x64.vsix.sha256"
       - run: npm run release:verify
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" \
+            "aic-notes-$VERSION-linux-x64.vsix" \
+            "aic-notes-$VERSION-linux-x64.vsix.sha256" \
+            "aic-notes-$VERSION-win32-x64.vsix" \
+            "aic-notes-$VERSION-win32-x64.vsix.sha256" \
+            --verify-tag \
+            --title "AIC Notes $VERSION" \
+            --generate-notes

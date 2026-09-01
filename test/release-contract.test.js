@@ -7,8 +7,8 @@ const packageJson = JSON.parse(
   await readFile(new URL("../package.json", import.meta.url), "utf8"),
 );
 
-test("16.2.0 manifest separates Primary management from Secondary note content", () => {
-  assert.equal(packageJson.version, "16.2.0");
+test("16.2.1 manifest separates Primary management from Secondary note content", () => {
+  assert.equal(packageJson.version, "16.2.1");
   assert.equal(packageJson.aicEditorCore, "2.4.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.equal(packageJson.scripts.publish, undefined);
@@ -419,6 +419,19 @@ test("all preview actions use renderer-independent CSS SVG masks", async () => {
   assert.match(core, /dataset\.aicIcon/u);
   assert.match(core, /setAttribute\("aria-label"/u);
   assert.match(main, /ICONS_CSS/u);
+});
+
+test("release gate hashes CI-built VSIX files before publishing all assets", async () => {
+  const workflow = await readFile(
+    new URL("../.github/workflows/release.yml", import.meta.url),
+    "utf8",
+  );
+  assert.match(workflow, /contents: write/u);
+  assert.match(workflow, /npm run package:windows[\s\S]*sha256sum/u);
+  assert.match(workflow, /sha256sum[\s\S]*npm run release:verify/u);
+  assert.match(workflow, /gh release create/u);
+  assert.match(workflow, /linux-x64\.vsix\.sha256/u);
+  assert.match(workflow, /win32-x64\.vsix\.sha256/u);
 });
 
 test("workspace initialization reconciles all Markdown and properties expose read-only note context", async () => {

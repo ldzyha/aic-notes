@@ -2,7 +2,7 @@
   "name": "aic-notes",
   "displayName": "AIC Notes",
   "description": "AIC Markdown documents plus Secondary-Side-Bar-only *.note.md notes with explicit-save Standard Notes sync.",
-  "version": "16.2.0",
+  "version": "16.2.1",
   "aicEditorCore": "2.4.0",
   "publisher": "ldzyha",
   "icon": "media/icon.png",
