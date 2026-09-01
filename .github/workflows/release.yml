@@ -34,4 +34,5 @@ jobs:
           go test ./...
           CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o ../bin/linux-x64/aic-notes-sn-bridge .
       - run: npm run package
+      - run: npm run package:windows
       - run: npm run release:verify

@@ -27,7 +27,10 @@ async function loadRuntime(context) {
     if (typeof GoRuntime !== "function") throw new Error("Go WebAssembly runtime did not initialize");
     const go = new GoRuntime();
     go.argv = ["aic-notes-sn-bridge.wasm"];
-    go.env = { ...process.env, TMPDIR: os.tmpdir() };
+    // The bridge receives every required value through its JSON request. Passing the
+    // extension host environment into Go/WASM is both unnecessary and unsafe: CI and
+    // enterprise hosts can exceed Go's command-line/environment memory limit.
+    go.env = { TMPDIR: os.tmpdir() };
     go.exit = (code) => {
       if (code) throw new Error(`Standard Notes WebAssembly bridge exited with ${code}`);
     };

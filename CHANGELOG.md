@@ -1,5 +1,18 @@
 # Changelog
 
+## 12.0.1 — 2026-09-01
+
+Release sequence 12 · 0 feature outcomes · 1 fixed-bug outcome.
+
+- B01: the in-process Standard Notes WebAssembly bridge now runs with a minimal, explicit runtime
+  environment instead of copying the complete VS Code host environment. This removes Go/WASM's
+  command-line/environment overflow on GitHub Actions and on enterprise installations with large
+  inherited environments. The release gate exercises the regression with an oversized host value
+  and builds both Linux and Windows VSIX artifacts before validating them.
+
+Compatibility: VS Code/Code 1.106 or newer; Windows x64 uses the bundled in-process WebAssembly
+bridge and Linux x64 uses the bundled static helper. No Marketplace/Open VSX publication is implied.
+
 ## 11.4.6 — 2026-09-01
 
 Release sequence 11 · 4 feature outcomes · 6 fixed-bug outcomes.

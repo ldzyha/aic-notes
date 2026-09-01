@@ -7,8 +7,8 @@ const packageJson = JSON.parse(
   await readFile(new URL("../package.json", import.meta.url), "utf8"),
 );
 
-test("11.4.6 manifest separates Primary management from Secondary note content", () => {
-  assert.equal(packageJson.version, "11.4.6");
+test("12.0.1 manifest separates Primary management from Secondary note content", () => {
+  assert.equal(packageJson.version, "12.0.1");
   assert.equal(packageJson.aicEditorCore, "2.1.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.equal(packageJson.scripts.publish, undefined);
