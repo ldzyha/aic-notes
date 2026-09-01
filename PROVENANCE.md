@@ -3,11 +3,12 @@
 ## AIC for Standard Notes contract
 
 - Source repository: `https://github.com/ldzyha/standard-notes-aic`
-- Paired editor contract: `10.2.0` / AIC Editor Core `2.2.0`
-- Commit: `9b3adb1ccce9dd3ab5294e736f16b5bafa33ab43`
+- Paired editor contract: `11.1.0` / AIC Editor Core `2.3.0`
+- Commit: `a951e34f452b7afd7b053d2e6f22b46daed9cc44`
 - Authority files reviewed: `src/styles.css`, `src/editor.ts`, `src/language.ts`,
   `src/markdown-decorations.ts`, `src/block-views.ts`, `src/commands.ts`, `src/toolbar.ts`,
-  `src/link-actions.ts`, `src/core/structured-preview.js`, and Mermaid modules.
+  `src/link-actions.ts`, `src/core/structured-preview.js`, `src/core/file-properties.js`, and
+  Mermaid modules.
 
 AIC Notes adapts that editor's observable contract to VS Code: exact Markdown source, styled
 in-place structures, task/table/frontmatter/Mermaid behavior, and its `--aic-*` visual tokens mapped
@@ -60,11 +61,13 @@ uses the same encrypted vault protocol as the native Linux build.
 
 ## Shared editor core
 
-- Core contract version: `2.2.0`
+- Core contract version: `2.3.0`
 - VS Code snapshot: `vendor/aic-editor-core/draft-session.js`
 - Standard Notes snapshot: `src/core/draft-session.js` in `ldzyha/standard-notes-aic`
 - VS Code structured snapshot: `vendor/aic-editor-core/structured-preview.js`
 - Standard Notes structured snapshot: `src/core/structured-preview.js`
+- VS Code file-properties snapshot: `vendor/aic-editor-core/file-properties.js`
+- Standard Notes file-properties snapshot: `src/core/file-properties.js`
 
 The byte-equivalent dependency-free state machine owns hydration, dirty drafts, commit boundaries,
 failed-save retention, and external-update rejection. Each product keeps only a thin host adapter:
@@ -72,6 +75,8 @@ VS Code persists through `workspace.fs`/`TextDocument`, while the component pers
 Standard Notes extension API. The byte-equivalent structured module owns table/property mutation,
 nested YAML parsing and hierarchy-preserving reorder behavior, validation, serialization,
 selection-driven source disclosure, and direct open/copy/edit link-control composition.
+The file-properties module owns ordinary Markdown filename/creation/update stamping at the explicit
+save boundary while excluding `*.note.md` sidecars.
 
 ## Existing AIC Markdown sources
 

@@ -7,9 +7,9 @@ const packageJson = JSON.parse(
   await readFile(new URL("../package.json", import.meta.url), "utf8"),
 );
 
-test("14.2.0 manifest separates Primary management from Secondary note content", () => {
-  assert.equal(packageJson.version, "14.2.0");
-  assert.equal(packageJson.aicEditorCore, "2.2.0");
+test("15.1.0 manifest separates Primary management from Secondary note content", () => {
+  assert.equal(packageJson.version, "15.1.0");
+  assert.equal(packageJson.aicEditorCore, "2.3.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.equal(packageJson.scripts.publish, undefined);
   assert.ok(packageJson.scripts["release:gate"]);
@@ -457,6 +457,8 @@ test("documents and notes stay visibly distinct and ordinary Ctrl+S synchronizes
   assert.match(extension, /onDidSaveTextDocument/u);
   assert.match(extension, /onWillSaveTextDocument/u);
   assert.match(extension, /TextDocumentSaveReason\.Manual/u);
+  assert.match(extension, /stampFileProperties/u);
+  assert.match(extension, /event\.waitUntil\(filePropertyEdits\(event\.document\)\)/u);
   assert.match(extension, /explicitDocumentSaves\.delete/u);
   assert.match(extension, /endsWith\("\.note\.md"\)/u);
   assert.match(
@@ -617,7 +619,7 @@ test("release packaging includes the helper but excludes helper source", async (
     new URL("../PROVENANCE.md", import.meta.url),
     "utf8",
   );
-  assert.match(provenance, /9b3adb1ccce9dd3ab5294e736f16b5bafa33ab43/u);
+  assert.match(provenance, /a951e34f452b7afd7b053d2e6f22b46daed9cc44/u);
   for (const artifact of [
     "../bin/linux-x64/aic-notes-sn-bridge",
     "../bin/wasm/aic-notes-sn-bridge.wasm",

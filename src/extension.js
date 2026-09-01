@@ -20,6 +20,38 @@ import { StandardNotesSync } from "./sync/client.js";
 import { linkSelectionToNote } from "./notes/selection.js";
 import { deleteNotes } from "./notes/delete.js";
 import { AgentWorkflowBootstrap } from "./agents/bootstrap.js";
+import { stampFileProperties } from "../vendor/aic-editor-core/file-properties.js";
+
+async function filePropertyEdits(document) {
+  const version = document.version;
+  const relativePath = vscode.workspace
+    .asRelativePath(document.uri, false)
+    .replaceAll("\\", "/");
+  const fileName = relativePath.split("/").pop() ?? "";
+  const updatedAt = new Date().toISOString();
+  let createdAt = updatedAt;
+  try {
+    const stat = await vscode.workspace.fs.stat(document.uri);
+    if (Number.isFinite(stat.ctime) && stat.ctime > 0)
+      createdAt = new Date(stat.ctime).toISOString();
+  } catch {
+    // The save itself remains authoritative when a virtual provider has no stat.
+  }
+  if (document.version !== version) return [];
+  const source = document.getText();
+  const stamped = stampFileProperties(source, {
+    fileName,
+    createdAt,
+    updatedAt,
+  });
+  if (stamped === source) return [];
+  return [
+    vscode.TextEdit.replace(
+      new vscode.Range(document.positionAt(0), document.positionAt(source.length)),
+      stamped,
+    ),
+  ];
+}
 
 export function activate(context) {
   AgentWorkflowBootstrap.register(context);
@@ -59,9 +91,10 @@ export function activate(context) {
       explicitDocumentSaves.delete(saveKey);
       return;
     }
-    if (event.reason === vscode.TextDocumentSaveReason.Manual)
+    if (event.reason === vscode.TextDocumentSaveReason.Manual) {
       explicitDocumentSaves.add(saveKey);
-    else explicitDocumentSaves.delete(saveKey);
+      event.waitUntil(filePropertyEdits(event.document));
+    } else explicitDocumentSaves.delete(saveKey);
   });
   const documentSync = vscode.workspace.onDidSaveTextDocument(
     async (document) => {

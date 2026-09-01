@@ -47,6 +47,10 @@ async function verifyVsix(target) {
   const vsix = path.join(root, `aic-notes-${version}-${target}.vsix`);
   const bytes = await readFile(vsix);
   const sha256 = createHash("sha256").update(bytes).digest("hex");
+  const checksum = await readFile(`${vsix}.sha256`, "utf8");
+  const expectedChecksum = `${sha256}  ${path.basename(vsix)}`;
+  if (checksum.trim() !== expectedChecksum)
+    throw new Error(`${target} SHA-256 sidecar does not match the VSIX`);
   const archive = new AdmZip(vsix);
   const zipEntries = archive.getEntries();
   const entries = zipEntries.map((entry) => entry.entryName);

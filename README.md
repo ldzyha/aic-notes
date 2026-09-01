@@ -7,12 +7,12 @@ with Standard Notes.
 
 ## Install on VS Code or code-server
 
-Download `aic-notes-14.2.0-linux-x64.vsix` and its `.sha256` file from the
-[v14.2.0 release](https://github.com/ldzyha/aic-notes/releases/tag/v14.2.0), then verify and install:
+Download `aic-notes-15.1.0-linux-x64.vsix` and its `.sha256` file from the
+[v15.1.0 release](https://github.com/ldzyha/aic-notes/releases/tag/v15.1.0), then verify and install:
 
 ```sh
-sha256sum -c aic-notes-14.2.0-linux-x64.vsix.sha256
-code-server --install-extension aic-notes-14.2.0-linux-x64.vsix --force
+sha256sum -c aic-notes-15.1.0-linux-x64.vsix.sha256
+code-server --install-extension aic-notes-15.1.0-linux-x64.vsix --force
 ```
 
 Reload the browser window after installation. The extension targets Code/VS Code 1.106 or newer;
@@ -21,7 +21,7 @@ the bundled Standard Notes helper in this release targets Linux x64.
 For local 64-bit Windows VS Code, install the matching `win32-x64` VSIX:
 
 ```powershell
-code --install-extension .\aic-notes-14.2.0-win32-x64.vsix --force
+code --install-extension .\aic-notes-15.1.0-win32-x64.vsix --force
 ```
 
 Then run **Developer: Reload Window**. Do not install the Linux VSIX into Windows VS Code. Windows
@@ -138,8 +138,10 @@ For substantive notes:
    exact titles plus UUIDs of the last AIC-managed native tag path.
 5. `Ctrl/Cmd+S` inside an attached note drains the current draft, saves locally, and schedules one
    serialized sync. Saving an ordinary Markdown document schedules the same sync after its local
-   save, including when it is opened in VS Code's native editor. Repeated explicit-save requests collapse
-   to the newest persisted Markdown. Automatic sync never opens a login prompt: a disconnected note
+   save, including when it is opened in VS Code's native editor. Before that save, its managed
+   properties are normalized to `file`, stable `created`, and a fresh UTC `updated` timestamp;
+   `*.note.md` sidecars are excluded. Repeated explicit-save requests collapse to the newest persisted
+   Markdown. Automatic sync never opens a login prompt: a disconnected note
    stays safely local and shows a compact login status. **AIC Notes: Sync Current Note** remains an
    explicit command-palette recovery action and may offer Connect/Reconnect.
 6. First sync creates one Markdown note. Later syncs use a three-way comparison. One-sided changes
@@ -244,7 +246,7 @@ Standard Notes account is intentionally not mutated by unattended tests.
 ## Release accounting
 
 This project uses the global `R.F.B` convention: release sequence, release-local feature outcomes,
-release-local fixed-bug outcomes. `14.2.0` is sequence 14 with two feature outcomes and no
+release-local fixed-bug outcomes. `15.1.0` is sequence 15 with one feature outcome and no
 fixed-bug outcomes. It is not a SemVer compatibility claim. See [`CHANGELOG.md`](CHANGELOG.md).
 
 ## License and provenance

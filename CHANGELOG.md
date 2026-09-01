@@ -1,5 +1,19 @@
 # Changelog
 
+## 15.1.0 — 2026-09-01
+
+Release sequence 15 · 1 feature outcome · 0 fixed-bug outcomes.
+
+- F01: reduce managed properties for ordinary Markdown files to `file`, `created`, and `updated`.
+  Manual Ctrl+S/Cmd+S reads the filename and portable VS Code file creation time, preserves an
+  existing creation value and the complete Markdown body, and applies a fresh UTC update timestamp
+  through `onWillSaveTextDocument` before local persistence and Standard Notes synchronization.
+  Concurrent document changes invalidate the pending metadata edit, and `*.note.md` sidecars stay
+  byte-identical. AIC Editor Core 2.3 provides the same pure transform to the Standard Notes plugin.
+
+Compatibility: VS Code/Code 1.106 or newer; Windows x64 uses the bundled in-process WebAssembly
+bridge and Linux x64 uses the bundled static helper. No Marketplace/Open VSX publication is implied.
+
 ## 14.2.0 — 2026-09-01
 
 Release sequence 14 · 2 feature outcomes · 0 fixed-bug outcomes.
