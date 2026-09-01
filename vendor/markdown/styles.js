@@ -74,8 +74,12 @@ export const MARKDOWN_CSS = `
   color: color-mix(in srgb, var(--fg) 78%, var(--muted)) }
 /* live table grid (owner 2026-06-19): the rendered block widget — the cursor
    entering the table reveals the raw pipes (edit line by line) */
-.cm-md-table { padding: .3rem 0; overflow-x: auto }
-.cm-md-table table { border-collapse: collapse; font-family: monospace }
+.cm-md-table { padding: .3rem 0; overflow: hidden }
+.cm-aic-table-scroll { box-sizing: border-box; width: 100%; max-width: 100%;
+  overflow-x: auto; overflow-y: hidden; scrollbar-width: thin;
+  overscroll-behavior-x: contain; touch-action: pan-x pan-y }
+.cm-md-table .cm-aic-table-scroll > table { width: max-content; min-width: 100%;
+  border-collapse: collapse; table-layout: auto; font-family: monospace }
 .cm-md-table th, .cm-md-table td { border: 1px solid var(--border);
   padding: .2rem .5rem; text-align: left; vertical-align: top }
 .cm-md-table thead th { background: var(--chip); font-weight: 700 }
@@ -89,6 +93,10 @@ export const MARKDOWN_CSS = `
 .cm-aic-structure-input:focus { border-color: var(--accent);
   background: var(--bg); outline: none }
 .cm-aic-structure-input[readonly] { cursor: default }
+.cm-md-table .cm-aic-structure-input { display: block; min-width: 14rem;
+  min-height: 2rem; max-height: 12rem; line-height: 1.35;
+  white-space: pre-wrap; overflow-wrap: anywhere; overflow-y: auto;
+  resize: vertical }
 .cm-aic-structure-handle-cell { width: 1.8rem; min-width: 1.8rem;
   padding: .1rem !important; text-align: center !important }
 .cm-aic-drag-handle { width: 1.45rem; height: 1.45rem; padding: 0;

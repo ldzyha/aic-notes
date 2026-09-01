@@ -7,12 +7,12 @@ with Standard Notes.
 
 ## Install on VS Code or code-server
 
-Download `aic-notes-13.1.0-linux-x64.vsix` and its `.sha256` file from the
-[v13.1.0 release](https://github.com/ldzyha/aic-notes/releases/tag/v13.1.0), then verify and install:
+Download `aic-notes-14.2.0-linux-x64.vsix` and its `.sha256` file from the
+[v14.2.0 release](https://github.com/ldzyha/aic-notes/releases/tag/v14.2.0), then verify and install:
 
 ```sh
-sha256sum -c aic-notes-13.1.0-linux-x64.vsix.sha256
-code-server --install-extension aic-notes-13.1.0-linux-x64.vsix --force
+sha256sum -c aic-notes-14.2.0-linux-x64.vsix.sha256
+code-server --install-extension aic-notes-14.2.0-linux-x64.vsix --force
 ```
 
 Reload the browser window after installation. The extension targets Code/VS Code 1.106 or newer;
@@ -21,7 +21,7 @@ the bundled Standard Notes helper in this release targets Linux x64.
 For local 64-bit Windows VS Code, install the matching `win32-x64` VSIX:
 
 ```powershell
-code --install-extension .\aic-notes-13.1.0-win32-x64.vsix --force
+code --install-extension .\aic-notes-14.2.0-win32-x64.vsix --force
 ```
 
 Then run **Developer: Reload Window**. Do not install the Linux VSIX into Windows VS Code. Windows
@@ -103,6 +103,8 @@ among valid siblings; every action replaces exactly one valid Markdown block.
 A non-empty selection reveals raw Markdown for every preview block it crosses;
 `Ctrl+A`/`Cmd+A` therefore exits preview for the complete document. A collapsed cursor retains
 preview, while **Edit** still opens one focused source block.
+Table cells use wrapping, auto-height textareas. The table fills its card and places only the grid
+inside a horizontal scroller when its readable columns are wider than the editor.
 The explicit **Edit** action reveals and focuses the full raw source for that structure. In read-only
 notes the same action reveals exact non-editable Markdown.
 
@@ -242,7 +244,7 @@ Standard Notes account is intentionally not mutated by unattended tests.
 ## Release accounting
 
 This project uses the global `R.F.B` convention: release sequence, release-local feature outcomes,
-release-local fixed-bug outcomes. `13.1.0` is sequence 13 with one feature outcome and no
+release-local fixed-bug outcomes. `14.2.0` is sequence 14 with two feature outcomes and no
 fixed-bug outcomes. It is not a SemVer compatibility claim. See [`CHANGELOG.md`](CHANGELOG.md).
 
 ## License and provenance

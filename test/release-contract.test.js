@@ -7,8 +7,8 @@ const packageJson = JSON.parse(
   await readFile(new URL("../package.json", import.meta.url), "utf8"),
 );
 
-test("13.1.0 manifest separates Primary management from Secondary note content", () => {
-  assert.equal(packageJson.version, "13.1.0");
+test("14.2.0 manifest separates Primary management from Secondary note content", () => {
+  assert.equal(packageJson.version, "14.2.0");
   assert.equal(packageJson.aicEditorCore, "2.2.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.equal(packageJson.scripts.publish, undefined);
@@ -373,6 +373,27 @@ test("code, Mermaid, and link actions copy through the VS Code clipboard bridge"
   assert.match(details, /ignoreEvent\(\) \{[\s\S]*return true/u);
 });
 
+test("table preview uses multiline cells and a dedicated horizontal scroller", async () => {
+  const table = await readFile(
+    new URL("../vendor/markdown/handlers/table.js", import.meta.url),
+    "utf8",
+  );
+  const styles = await readFile(
+    new URL("../vendor/markdown/styles.js", import.meta.url),
+    "utf8",
+  );
+  const main = await readFile(
+    new URL("../src/webview/main.js", import.meta.url),
+    "utf8",
+  );
+  assert.match(table, /createElement\("textarea"\)/u);
+  assert.match(table, /cm-aic-table-scroll/u);
+  assert.match(styles, /width: max-content; min-width: 100%/u);
+  assert.match(styles, /min-width: 14rem/u);
+  assert.match(main, /wirePreviewSelection/u);
+  assert.match(main, /userEvent: "select\.pointer"/u);
+});
+
 test("workspace initialization reconciles all Markdown and properties expose read-only note context", async () => {
   const client = await readFile(
     new URL("../src/sync/client.js", import.meta.url),
@@ -596,7 +617,7 @@ test("release packaging includes the helper but excludes helper source", async (
     new URL("../PROVENANCE.md", import.meta.url),
     "utf8",
   );
-  assert.match(provenance, /f5c9cdcf3672867e920d3d86e017576c35e79fb4/u);
+  assert.match(provenance, /9b3adb1ccce9dd3ab5294e736f16b5bafa33ab43/u);
   for (const artifact of [
     "../bin/linux-x64/aic-notes-sn-bridge",
     "../bin/wasm/aic-notes-sn-bridge.wasm",

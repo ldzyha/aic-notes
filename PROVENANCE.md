@@ -3,8 +3,8 @@
 ## AIC for Standard Notes contract
 
 - Source repository: `https://github.com/ldzyha/standard-notes-aic`
-- Paired editor contract: `9.1.0` / AIC Editor Core `2.2.0`
-- Commit: `f5c9cdcf3672867e920d3d86e017576c35e79fb4`
+- Paired editor contract: `10.2.0` / AIC Editor Core `2.2.0`
+- Commit: `9b3adb1ccce9dd3ab5294e736f16b5bafa33ab43`
 - Authority files reviewed: `src/styles.css`, `src/editor.ts`, `src/language.ts`,
   `src/markdown-decorations.ts`, `src/block-views.ts`, `src/commands.ts`, `src/toolbar.ts`,
   `src/link-actions.ts`, `src/core/structured-preview.js`, and Mermaid modules.

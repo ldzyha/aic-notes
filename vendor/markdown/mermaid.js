@@ -146,19 +146,23 @@ function diagramShell(className) {
 }
 
 class MermaidWidget extends WidgetType {
-  constructor(source, from, textFrom, host) {
+  constructor(source, from, to, textFrom, host) {
     super();
     this.source = source;
     this.from = from;
+    this.to = to;
     this.textFrom = textFrom;
     this.host = host;
   }
   eq(other) {
-    return other.source === this.source && other.from === this.from;
+    return other.source === this.source && other.from === this.from &&
+      other.to === this.to;
   }
   toDOM(view) {
     const { el, body } = diagramShell("cm-md-mermaid");
     el.classList.add("cm-md-block-preview");
+    el.dataset.aicSourceFrom = String(this.from);
+    el.dataset.aicSourceTo = String(this.to);
     el.setAttribute("role", "region");
     el.setAttribute("aria-label", "Mermaid diagram preview");
     const header = document.createElement("div");
@@ -302,7 +306,13 @@ export function makeMermaidExtension(host) {
       } else {
         decorations.push(
           Decoration.replace({
-            widget: new MermaidWidget(fence.source, fence.from, fence.textFrom, host),
+            widget: new MermaidWidget(
+              fence.source,
+              fence.from,
+              fence.to,
+              fence.textFrom,
+              host,
+            ),
             block: true,
           }).range(fence.from, fence.to),
         );

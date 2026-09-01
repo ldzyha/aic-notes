@@ -72,6 +72,8 @@ class CodeFenceWidget extends WidgetType {
   toDOM(view) {
     const wrap = document.createElement("div");
     wrap.className = "cm-md-code-preview cm-md-block-preview";
+    wrap.dataset.aicSourceFrom = String(this.block.from);
+    wrap.dataset.aicSourceTo = String(this.block.to);
     wrap.setAttribute("role", "region");
     wrap.setAttribute("aria-label", `${this.block.language || "Code"} preview`);
 

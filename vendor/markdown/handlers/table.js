@@ -80,12 +80,17 @@ function previewHeader(document, label, actions) {
 }
 
 function input(document, value, label, onChange, readOnly) {
-  const field = document.createElement("input");
-  field.type = "text";
+  const field = document.createElement("textarea");
+  field.rows = 1;
   field.className = "cm-aic-structure-input";
   field.value = value;
   field.setAttribute("aria-label", label);
   field.readOnly = readOnly;
+  const fit = () => {
+    field.style.height = "0";
+    field.style.height = `${Math.max(30, field.scrollHeight)}px`;
+  };
+  field.addEventListener("input", fit);
   field.addEventListener("change", () => onChange(field.value));
   field.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
@@ -97,6 +102,7 @@ function input(document, value, label, onChange, readOnly) {
       field.blur();
     }
   });
+  queueMicrotask(fit);
   return field;
 }
 
@@ -154,6 +160,8 @@ class TableWidget extends WidgetType {
     const document = view.dom.ownerDocument;
     const wrapper = document.createElement("div");
     wrapper.className = "cm-md-table cm-md-block-preview";
+    wrapper.dataset.aicSourceFrom = String(this.from);
+    wrapper.dataset.aicSourceTo = String(this.from + this.source.length);
     wrapper.setAttribute("role", "region");
     wrapper.setAttribute("aria-label", "Interactive Markdown table");
     const parsed = parseTable(this.source);
@@ -285,7 +293,10 @@ class TableWidget extends WidgetType {
       body.append(rowElement);
     });
     table.append(body);
-    wrapper.append(table);
+    const scroll = document.createElement("div");
+    scroll.className = "cm-aic-table-scroll";
+    scroll.append(table);
+    wrapper.append(scroll);
     return wrapper;
   }
 

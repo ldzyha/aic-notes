@@ -170,6 +170,8 @@ class FrontmatterWidget extends WidgetType {
     const document = view.dom.ownerDocument;
     const wrapper = document.createElement("div");
     wrapper.className = "cm-md-props cm-md-block-preview";
+    wrapper.dataset.aicSourceFrom = String(this.block.from);
+    wrapper.dataset.aicSourceTo = String(this.block.to);
     wrapper.setAttribute("role", "region");
     wrapper.setAttribute("aria-label", "Interactive Markdown properties");
     const replace = (rows) => {
