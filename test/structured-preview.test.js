@@ -8,11 +8,19 @@ import {
   moveTableColumn,
   moveTableRow,
   parseFrontmatterRows,
+  selectionRevealsPreview,
   serializeFrontmatter,
   serializeTable,
   updateProperty,
   updateTableCell,
 } from "../vendor/aic-editor-core/structured-preview.js";
+
+test("only a non-empty selection reveals intersected preview source", () => {
+  assert.equal(selectionRevealsPreview([{ from: 4, to: 4 }], 0, 10), false);
+  assert.equal(selectionRevealsPreview([{ from: 2, to: 8 }], 0, 10), true);
+  assert.equal(selectionRevealsPreview([{ from: 10, to: 20 }], 0, 10), false);
+  assert.equal(selectionRevealsPreview([{ from: 20, to: 0 }], 4, 8), true);
+});
 
 test("table operations serialize one stable Markdown block", () => {
   const initial = {

@@ -7,12 +7,12 @@ with Standard Notes.
 
 ## Install on VS Code or code-server
 
-Download `aic-notes-12.0.1-linux-x64.vsix` and its `.sha256` file from the
-[v12.0.1 release](https://github.com/ldzyha/aic-notes/releases/tag/v12.0.1), then verify and install:
+Download `aic-notes-13.1.0-linux-x64.vsix` and its `.sha256` file from the
+[v13.1.0 release](https://github.com/ldzyha/aic-notes/releases/tag/v13.1.0), then verify and install:
 
 ```sh
-sha256sum -c aic-notes-12.0.1-linux-x64.vsix.sha256
-code-server --install-extension aic-notes-12.0.1-linux-x64.vsix --force
+sha256sum -c aic-notes-13.1.0-linux-x64.vsix.sha256
+code-server --install-extension aic-notes-13.1.0-linux-x64.vsix --force
 ```
 
 Reload the browser window after installation. The extension targets Code/VS Code 1.106 or newer;
@@ -21,7 +21,7 @@ the bundled Standard Notes helper in this release targets Linux x64.
 For local 64-bit Windows VS Code, install the matching `win32-x64` VSIX:
 
 ```powershell
-code --install-extension .\aic-notes-12.0.1-win32-x64.vsix --force
+code --install-extension .\aic-notes-13.1.0-win32-x64.vsix --force
 ```
 
 Then run **Developer: Reload Window**. Do not install the Linux VSIX into Windows VS Code. Windows
@@ -100,6 +100,9 @@ is no second tooltip surface. **Table** and **Properties** previews edit values 
 and reorder rows/columns with drag handles. Nested maps and sequences preserve visible indentation
 levels, structural groups remain protected, and a moved property carries its complete branch only
 among valid siblings; every action replaces exactly one valid Markdown block.
+A non-empty selection reveals raw Markdown for every preview block it crosses;
+`Ctrl+A`/`Cmd+A` therefore exits preview for the complete document. A collapsed cursor retains
+preview, while **Edit** still opens one focused source block.
 The explicit **Edit** action reveals and focuses the full raw source for that structure. In read-only
 notes the same action reveals exact non-editable Markdown.
 
@@ -239,8 +242,8 @@ Standard Notes account is intentionally not mutated by unattended tests.
 ## Release accounting
 
 This project uses the global `R.F.B` convention: release sequence, release-local feature outcomes,
-release-local fixed-bug outcomes. `12.0.1` is sequence 12 with no feature outcomes and one
-fixed-bug outcome. It is not a SemVer compatibility claim. See [`CHANGELOG.md`](CHANGELOG.md).
+release-local fixed-bug outcomes. `13.1.0` is sequence 13 with one feature outcome and no
+fixed-bug outcomes. It is not a SemVer compatibility claim. See [`CHANGELOG.md`](CHANGELOG.md).
 
 ## License and provenance
 

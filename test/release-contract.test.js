@@ -7,9 +7,9 @@ const packageJson = JSON.parse(
   await readFile(new URL("../package.json", import.meta.url), "utf8"),
 );
 
-test("12.0.1 manifest separates Primary management from Secondary note content", () => {
-  assert.equal(packageJson.version, "12.0.1");
-  assert.equal(packageJson.aicEditorCore, "2.1.0");
+test("13.1.0 manifest separates Primary management from Secondary note content", () => {
+  assert.equal(packageJson.version, "13.1.0");
+  assert.equal(packageJson.aicEditorCore, "2.2.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.equal(packageJson.scripts.publish, undefined);
   assert.ok(packageJson.scripts["release:gate"]);
@@ -596,7 +596,7 @@ test("release packaging includes the helper but excludes helper source", async (
     new URL("../PROVENANCE.md", import.meta.url),
     "utf8",
   );
-  assert.match(provenance, /e1901966301c32181edfdf65e475c94b43bcad5a/u);
+  assert.match(provenance, /f5c9cdcf3672867e920d3d86e017576c35e79fb4/u);
   for (const artifact of [
     "../bin/linux-x64/aic-notes-sn-bridge",
     "../bin/wasm/aic-notes-sn-bridge.wasm",

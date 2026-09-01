@@ -3,8 +3,8 @@
 ## AIC for Standard Notes contract
 
 - Source repository: `https://github.com/ldzyha/standard-notes-aic`
-- Paired editor contract: `8.1.2` / AIC Editor Core `2.1.0`
-- Commit: `e1901966301c32181edfdf65e475c94b43bcad5a`
+- Paired editor contract: `9.1.0` / AIC Editor Core `2.2.0`
+- Commit: `f5c9cdcf3672867e920d3d86e017576c35e79fb4`
 - Authority files reviewed: `src/styles.css`, `src/editor.ts`, `src/language.ts`,
   `src/markdown-decorations.ts`, `src/block-views.ts`, `src/commands.ts`, `src/toolbar.ts`,
   `src/link-actions.ts`, `src/core/structured-preview.js`, and Mermaid modules.
@@ -60,7 +60,7 @@ uses the same encrypted vault protocol as the native Linux build.
 
 ## Shared editor core
 
-- Core contract version: `2.1.0`
+- Core contract version: `2.2.0`
 - VS Code snapshot: `vendor/aic-editor-core/draft-session.js`
 - Standard Notes snapshot: `src/core/draft-session.js` in `ldzyha/standard-notes-aic`
 - VS Code structured snapshot: `vendor/aic-editor-core/structured-preview.js`
@@ -70,8 +70,8 @@ The byte-equivalent dependency-free state machine owns hydration, dirty drafts, 
 failed-save retention, and external-update rejection. Each product keeps only a thin host adapter:
 VS Code persists through `workspace.fs`/`TextDocument`, while the component persists through the
 Standard Notes extension API. The byte-equivalent structured module owns table/property mutation,
-nested YAML parsing and hierarchy-preserving reorder behavior, validation, serialization, and
-direct open/copy/edit link-control composition.
+nested YAML parsing and hierarchy-preserving reorder behavior, validation, serialization,
+selection-driven source disclosure, and direct open/copy/edit link-control composition.
 
 ## Existing AIC Markdown sources
 

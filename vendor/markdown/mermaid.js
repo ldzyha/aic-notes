@@ -17,6 +17,7 @@ import { Decoration, EditorView, WidgetType, ViewPlugin } from "@codemirror/view
 import { StateField, StateEffect } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { Icon, ErrorCard } from "./components-stub.js";
+import { selectionRevealsPreview } from "../aic-editor-core/structured-preview.js";
 
 let mermaidPromise = null;
 let renderSeq = 0;
@@ -280,11 +281,15 @@ export function makeMermaidExtension(host) {
   });
 
   function build(state) {
-    const head = state.selection.main.head;
     const decorations = [];
     for (const fence of mermaidFences(state)) {
       if (!fence.source.trim()) continue;
-      const inside = head >= fence.from && head <= fence.to;
+      const inside =
+        state.selection.ranges.some(
+          (range) =>
+            range.empty && range.from >= fence.from && range.from <= fence.to,
+        ) ||
+        selectionRevealsPreview(state.selection.ranges, fence.from, fence.to);
       if (inside) {
         // editing: raw source stays visible, the live diagram renders below
         decorations.push(

@@ -7,6 +7,7 @@
 import { Decoration, EditorView, WidgetType, ViewPlugin } from "@codemirror/view";
 import { StateEffect, StateField } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
+import { selectionRevealsPreview } from "../../aic-editor-core/structured-preview.js";
 
 const marker = Decoration.mark({ class: "cm-md-marker" });
 const markerRevealed = Decoration.mark({ class: "cm-md-marker cm-md-marker-revealed" });
@@ -145,10 +146,14 @@ const refreshCodeFences = StateEffect.define();
 
 export function makeCodeFenceExtension(host) {
   function build(state) {
-    const head = state.selection.main.head;
     const decorations = [];
     for (const block of codeFences(state)) {
-      const inside = head >= block.from && head <= block.to;
+      const inside =
+        state.selection.ranges.some(
+          (range) =>
+            range.empty && range.from >= block.from && range.from <= block.to,
+        ) ||
+        selectionRevealsPreview(state.selection.ranges, block.from, block.to);
       if (!inside) {
         decorations.push(
           Decoration.replace({

@@ -1,6 +1,7 @@
 import { StateEffect, StateField } from "@codemirror/state";
 import { Decoration, EditorView, WidgetType } from "@codemirror/view";
 import { openLink } from "../../vendor/markdown/link-actions.js";
+import { selectionRevealsPreview } from "../../vendor/aic-editor-core/structured-preview.js";
 import { parseDetailsBlocks, toggleDetailsMarker } from "./details-model.js";
 
 const toggleVisual = StateEffect.define();
@@ -188,7 +189,11 @@ function previewDecorations(state, host) {
   const source = state.field(sourceOverrides);
   const ranges = [];
   for (const block of parseDetailsBlocks(state.doc.toString())) {
-    if (source.has(block.headerFrom)) continue;
+    if (
+      source.has(block.headerFrom) ||
+      selectionRevealsPreview(state.selection.ranges, block.from, block.end)
+    )
+      continue;
     const open = overrides.has(block.headerFrom) ? !block.open : block.open;
     const widget = new DetailsSummaryWidget(block, open, host, state.readOnly);
     if (!open) {
@@ -232,7 +237,11 @@ function buildBodyDecorations(state) {
   const source = state.field(sourceOverrides);
   const ranges = [];
   for (const block of parseDetailsBlocks(state.doc.toString())) {
-    if (source.has(block.headerFrom)) continue;
+    if (
+      source.has(block.headerFrom) ||
+      selectionRevealsPreview(state.selection.ranges, block.from, block.end)
+    )
+      continue;
     const open = overrides.has(block.headerFrom) ? !block.open : block.open;
     if (!open) continue;
     const first = state.doc.lineAt(block.contentFrom).number;

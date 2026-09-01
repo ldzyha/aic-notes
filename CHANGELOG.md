@@ -1,5 +1,19 @@
 # Changelog
 
+## 13.1.0 — 2026-09-01
+
+Release sequence 13 · 1 feature outcome · 0 fixed-bug outcomes.
+
+- F01: upgrade the shared AIC Editor Core to 2.2 and make source selection a universal escape from
+  rendered previews. Ctrl+A/Cmd+A selects the complete Markdown document and reveals raw source for
+  every intersected Properties, Table, Details, code, Mermaid, link, and inline-syntax view. A
+  smaller non-empty selection reveals only the blocks it crosses; ordinary clicks and collapsed
+  cursors retain preview behavior, and the visible **Edit** action remains available for focused
+  source editing.
+
+Compatibility: VS Code/Code 1.106 or newer; Windows x64 uses the bundled in-process WebAssembly
+bridge and Linux x64 uses the bundled static helper. No Marketplace/Open VSX publication is implied.
+
 ## 12.0.1 — 2026-09-01
 
 Release sequence 12 · 0 feature outcomes · 1 fixed-bug outcome.

@@ -6,6 +6,7 @@ import {
   addTableRow,
   moveTableColumn,
   moveTableRow,
+  selectionRevealsPreview,
   serializeTable,
   updateTableCell,
 } from "../../aic-editor-core/structured-preview.js";
@@ -333,6 +334,7 @@ export function makeTableExtension() {
       const markdown = state.sliceDoc(node.from, node.to);
       if (
         source?.from !== node.from &&
+        !selectionRevealsPreview(state.selection.ranges, node.from, node.to) &&
         markdown.trim() &&
         parseTable(markdown)
       ) {

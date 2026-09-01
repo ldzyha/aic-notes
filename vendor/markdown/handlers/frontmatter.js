@@ -4,6 +4,7 @@ import {
   addProperty,
   moveProperty,
   parseFrontmatterRows,
+  selectionRevealsPreview,
   serializeFrontmatter,
   updateProperty,
   validPropertyKey,
@@ -339,7 +340,11 @@ export function makeFrontmatterExtension(
   });
   const build = (state) => {
     const block = parseFrontmatter(state.doc.toString());
-    if (!block || state.field(sourceOverrides)?.from === block.from)
+    if (
+      !block ||
+      state.field(sourceOverrides)?.from === block.from ||
+      selectionRevealsPreview(state.selection.ranges, block.from, block.to)
+    )
       return Decoration.none;
     return Decoration.set(
       [
