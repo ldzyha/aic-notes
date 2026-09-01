@@ -3,11 +3,12 @@
 ## AIC for Standard Notes contract
 
 - Source repository: `https://github.com/ldzyha/standard-notes-aic`
-- Paired editor contract: `11.1.0` / AIC Editor Core `2.3.0`
-- Commit: `a951e34f452b7afd7b053d2e6f22b46daed9cc44`
+- Paired editor contract: `12.2.0` / AIC Editor Core `2.4.0`
+- Commit: `1cf72517cb082401492faf1d02b7d02c8677d06e`
 - Authority files reviewed: `src/styles.css`, `src/editor.ts`, `src/language.ts`,
   `src/markdown-decorations.ts`, `src/block-views.ts`, `src/commands.ts`, `src/toolbar.ts`,
-  `src/link-actions.ts`, `src/core/structured-preview.js`, `src/core/file-properties.js`, and
+  `src/link-actions.ts`, `src/core/structured-preview.js`, `src/core/icons.css`,
+  `src/core/file-properties.js`, and
   Mermaid modules.
 
 AIC Notes adapts that editor's observable contract to VS Code: exact Markdown source, styled
@@ -61,11 +62,15 @@ uses the same encrypted vault protocol as the native Linux build.
 
 ## Shared editor core
 
-- Core contract version: `2.3.0`
+- Core contract version: `2.4.0`
 - VS Code snapshot: `vendor/aic-editor-core/draft-session.js`
 - Standard Notes snapshot: `src/core/draft-session.js` in `ldzyha/standard-notes-aic`
 - VS Code structured snapshot: `vendor/aic-editor-core/structured-preview.js`
 - Standard Notes structured snapshot: `src/core/structured-preview.js`
+- Structured snapshot SHA-256: `8d564702b143cefa4fd248cce483647ea1eeaf03a21faafefaa0922bafb01f99`
+- VS Code icon snapshot: `vendor/aic-editor-core/icons.css`
+- Standard Notes icon snapshot: `src/core/icons.css`
+- Icon snapshot SHA-256: `7b4dbec2a8a66d465dadcf09475bae85b08fd396f01c39a018d61926ca57c089`
 - VS Code file-properties snapshot: `vendor/aic-editor-core/file-properties.js`
 - Standard Notes file-properties snapshot: `src/core/file-properties.js`
 
@@ -74,7 +79,9 @@ failed-save retention, and external-update rejection. Each product keeps only a 
 VS Code persists through `workspace.fs`/`TextDocument`, while the component persists through the
 Standard Notes extension API. The byte-equivalent structured module owns table/property mutation,
 nested YAML parsing and hierarchy-preserving reorder behavior, validation, serialization,
-selection-driven source disclosure, and direct open/copy/edit link-control composition.
+selection-driven source disclosure, direct open/copy/edit link-control composition, icon-only
+action semantics, accessible feedback state, and restricted-client clipboard fallback. The CSS
+snapshot paints embedded SVG data URIs as masks without requiring inline SVG in action-button DOM.
 The file-properties module owns ordinary Markdown filename/creation/update stamping at the explicit
 save boundary while excluding `*.note.md` sidecars.
 

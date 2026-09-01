@@ -17,7 +17,11 @@ import { Decoration, EditorView, WidgetType, ViewPlugin } from "@codemirror/view
 import { StateField, StateEffect } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { Icon, ErrorCard } from "./components-stub.js";
-import { selectionRevealsPreview } from "../aic-editor-core/structured-preview.js";
+import {
+  createIconButton,
+  selectionRevealsPreview,
+  showIconFeedback,
+} from "../aic-editor-core/structured-preview.js";
 
 let mermaidPromise = null;
 let renderSeq = 0;
@@ -115,22 +119,21 @@ function attachZoom(el) {
   const bar = document.createElement("div");
   bar.className = "cm-md-mermaid-zoom";
   const apply = () => el.style.setProperty("--mmd-zoom", `${zoom}%`);
-  const btn = (label, title, fn) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.textContent = label;
-    b.title = title;
-    b.onmousedown = (event) => event.preventDefault(); // keep editor focus
-    b.onclick = (event) => {
-      event.stopPropagation();
-      fn();
-      apply();
-    };
+  const btn = (label, icon, fn) => {
+    const b = createIconButton(document, {
+      label,
+      icon,
+      className: "cm-md-mermaid-zoom-action",
+      onActivate: () => {
+        fn();
+        apply();
+      },
+    });
     bar.appendChild(b);
   };
-  btn("−", "zoom out", () => (zoom = Math.max(50, zoom - 25)));
-  btn("+", "zoom in", () => (zoom = Math.min(400, zoom + 25)));
-  btn("↺", "reset zoom", () => (zoom = 100));
+  btn("Zoom out", "zoom-out", () => (zoom = Math.max(50, zoom - 25)));
+  btn("Zoom in", "zoom-in", () => (zoom = Math.min(400, zoom + 25)));
+  btn("Reset zoom", "reset", () => (zoom = 100));
   el.appendChild(bar);
 }
 
@@ -171,25 +174,24 @@ class MermaidWidget extends WidgetType {
     title.textContent = "Mermaid";
     const actions = document.createElement("span");
     actions.className = "cm-md-preview-actions";
-    const copy = document.createElement("button");
-    copy.type = "button";
-    copy.className = "cm-md-edit-source";
-    copy.textContent = "Copy";
-    copy.onmousedown = (event) => event.preventDefault();
-    copy.onclick = (event) => {
-      event.stopPropagation();
-      this.host.bus.publish("clipboard.write", { text: this.source, label: "Mermaid source" });
-    };
-    const edit = document.createElement("button");
-    edit.type = "button";
-    edit.className = "cm-md-edit-source";
-    edit.textContent = view.state.readOnly ? "View source" : "Edit";
-    edit.onmousedown = (event) => event.preventDefault();
-    edit.onclick = (event) => {
-      event.stopPropagation();
-      view.dispatch({ selection: { anchor: this.textFrom }, scrollIntoView: true });
-      view.focus();
-    };
+    const copy = createIconButton(document, {
+      label: "Copy Mermaid source",
+      icon: "copy",
+      className: "cm-md-edit-source",
+      onActivate: (button) => {
+        this.host.bus.publish("clipboard.write", { text: this.source, label: "Mermaid source" });
+        showIconFeedback(button, { restoreLabel: "Copy Mermaid source" });
+      },
+    });
+    const edit = createIconButton(document, {
+      label: view.state.readOnly ? "View Mermaid source" : "Edit Mermaid source",
+      icon: view.state.readOnly ? "source" : "edit",
+      className: "cm-md-edit-source",
+      onActivate: () => {
+        view.dispatch({ selection: { anchor: this.textFrom }, scrollIntoView: true });
+        view.focus();
+      },
+    });
     actions.append(copy, edit);
     header.append(title, actions);
     el.prepend(header);

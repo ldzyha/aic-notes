@@ -117,19 +117,11 @@ export class SecondaryNotePane {
       </div>
       <div id="editor"></div>
       <footer id="secondary-footer" aria-label="Linked note actions">
-        <button id="pane-auth" class="aic-pane-icon" type="button" title="Log in to Standard Notes" aria-label="Log in to Standard Notes">
-          <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M8.5 3.5H5.75A1.75 1.75 0 0 0 4 5.25v9.5c0 .97.78 1.75 1.75 1.75H8.5M11.5 6.5 15 10l-3.5 3.5M7 10h8"/></svg>
-        </button>
-        <button id="pane-target" class="aic-pane-icon" type="button" title="Open source" aria-label="Open source" hidden>
-          <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m7.25 6-4 4 4 4M12.75 6l4 4-4 4M11.25 3.75l-2.5 12.5"/></svg>
-        </button>
-        <button id="pane-clear" class="aic-pane-icon danger" type="button" title="Move note to Trash" aria-label="Move note to Trash" hidden>
-          <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M3.75 5.5h12.5M8 3.5h4M6 5.5l.65 11h6.7l.65-11M8.25 8.25v5.5M11.75 8.25v5.5"/></svg>
-        </button>
+        <button id="pane-auth" class="aic-pane-icon cm-aic-icon-button" type="button" data-aic-icon="login" aria-label="Log in to Standard Notes"></button>
+        <button id="pane-target" class="aic-pane-icon cm-aic-icon-button" type="button" data-aic-icon="source" aria-label="Open source" hidden></button>
+        <button id="pane-clear" class="aic-pane-icon cm-aic-icon-button danger" type="button" data-aic-icon="trash" aria-label="Move note to Trash" hidden></button>
         <span class="aic-pane-footer-spacer"></span>
-        <button id="pane-pin" class="aic-pane-icon" type="button" title="Pin note" aria-label="Pin note" aria-pressed="false">
-          <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m7 3.75 6 1.5-1.3 3.1 2.55 2.55-1.35 1.35-2.55-2.55L7.25 11 5.75 5l1.25-1.25ZM9.35 10.65 4 16"/></svg>
-        </button>
+        <button id="pane-pin" class="aic-pane-icon cm-aic-icon-button" type="button" data-aic-icon="pin" aria-label="Pin note" aria-pressed="false"></button>
       </footer>`,
       "aic-secondary-surface",
     );

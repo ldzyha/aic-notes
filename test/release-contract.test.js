@@ -7,9 +7,9 @@ const packageJson = JSON.parse(
   await readFile(new URL("../package.json", import.meta.url), "utf8"),
 );
 
-test("15.1.0 manifest separates Primary management from Secondary note content", () => {
-  assert.equal(packageJson.version, "15.1.0");
-  assert.equal(packageJson.aicEditorCore, "2.3.0");
+test("16.2.0 manifest separates Primary management from Secondary note content", () => {
+  assert.equal(packageJson.version, "16.2.0");
+  assert.equal(packageJson.aicEditorCore, "2.4.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.equal(packageJson.scripts.publish, undefined);
   assert.ok(packageJson.scripts["release:gate"]);
@@ -156,6 +156,11 @@ test("Secondary editable placeholder, explicit save, and theme-safe controls are
   assert.match(provider, /id="pane-breadcrumb"/u);
   assert.match(provider, /id="pane-filename"/u);
   assert.match(provider, /id="pane-auth"/u);
+  assert.match(provider, /data-aic-icon="login"/u);
+  assert.match(provider, /data-aic-icon="trash"/u);
+  assert.match(provider, /data-aic-icon="pin"/u);
+  assert.doesNotMatch(provider, /<svg/u);
+  assert.doesNotMatch(provider, /class="aic-pane-icon[^\n]*title=/u);
   assert.match(provider, /Standard Notes · Connected/u);
   assert.match(provider, /Standard Notes · Disconnected/u);
   assert.match(provider, /showPinnedActions/u);
@@ -169,6 +174,7 @@ test("Secondary editable placeholder, explicit save, and theme-safe controls are
   assert.doesNotMatch(webview, /commitDraft\("blur"\)|onfocusout/u);
   assert.match(webview, /commitDraft\("explicit"\)/u);
   assert.match(webview, /dataset\.saveState/u);
+  assert.match(webview, /dataset\.aicIcon = msg\.authConnected/u);
   assert.match(provider, /Unsaved · Ctrl\+S/u);
   assert.match(webview, /DraftSession/u);
   assert.match(webview, /type: "draft\.state"/u);
@@ -213,11 +219,9 @@ test("Secondary editable placeholder, explicit save, and theme-safe controls are
   assert.match(css, /#secondary-footer/u);
   assert.match(css, /\.cm-aic-details-summary/u);
   assert.match(css, /--aic-details-surface:/u);
-  assert.match(details, /createElementNS\("http:\/\/www\.w3\.org\/2000\/svg"/u);
-  assert.match(
-    details,
-    /textContent = view\.state\.readOnly \? "View source" : "Edit"/u,
-  );
+  assert.doesNotMatch(details, /createElementNS\("http:\/\/www\.w3\.org\/2000\/svg"/u);
+  assert.match(details, /dataset\.aicIcon = "chevron"/u);
+  assert.match(details, /createIconButton/u);
   assert.doesNotMatch(details, /[▸▾]/u);
 });
 
@@ -353,13 +357,12 @@ test("code, Mermaid, and link actions copy through the VS Code clipboard bridge"
     "utf8",
   );
   assert.match(code, /cm-md-code-preview cm-md-block-preview/u);
-  assert.match(code, /copy\.textContent = "Copy"/u);
-  assert.match(
-    code,
-    /edit\.textContent = view\.state\.readOnly \? "View source" : "Edit"/u,
-  );
+  assert.match(code, /label: "Copy code"/u);
+  assert.match(code, /icon: "copy"/u);
+  assert.doesNotMatch(code, /copy\.textContent/u);
   assert.match(code, /clipboard\.write/u);
-  assert.match(mermaid, /copy\.textContent = "Copy"/u);
+  assert.match(mermaid, /label: "Copy Mermaid source"/u);
+  assert.doesNotMatch(mermaid, /copy\.textContent/u);
   assert.match(mermaid, /clipboard\.write/u);
   assert.match(link, /makeLinkActionsExtension/u);
   assert.match(link, /createLinkControl/u);
@@ -388,10 +391,34 @@ test("table preview uses multiline cells and a dedicated horizontal scroller", a
   );
   assert.match(table, /createElement\("textarea"\)/u);
   assert.match(table, /cm-aic-table-scroll/u);
+  assert.match(table, /label: "Markdown table"/u);
+  assert.match(table, /"Copy table", "copy"/u);
+  assert.match(table, /makeTableExtension\(host\)/u);
   assert.match(styles, /width: max-content; min-width: 100%/u);
   assert.match(styles, /min-width: 14rem/u);
   assert.match(main, /wirePreviewSelection/u);
   assert.match(main, /userEvent: "select\.pointer"/u);
+});
+
+test("all preview actions use renderer-independent CSS SVG masks", async () => {
+  const icons = await readFile(
+    new URL("../vendor/aic-editor-core/icons.css", import.meta.url),
+    "utf8",
+  );
+  const core = await readFile(
+    new URL("../vendor/aic-editor-core/structured-preview.js", import.meta.url),
+    "utf8",
+  );
+  const main = await readFile(
+    new URL("../src/webview/main.js", import.meta.url),
+    "utf8",
+  );
+  assert.match(icons, /data:image\/svg\+xml/u);
+  assert.match(icons, /-webkit-mask: var\(--aic-icon\)/u);
+  assert.match(icons, /mask: var\(--aic-icon\)/u);
+  assert.match(core, /dataset\.aicIcon/u);
+  assert.match(core, /setAttribute\("aria-label"/u);
+  assert.match(main, /ICONS_CSS/u);
 });
 
 test("workspace initialization reconciles all Markdown and properties expose read-only note context", async () => {
@@ -619,7 +646,7 @@ test("release packaging includes the helper but excludes helper source", async (
     new URL("../PROVENANCE.md", import.meta.url),
     "utf8",
   );
-  assert.match(provenance, /a951e34f452b7afd7b053d2e6f22b46daed9cc44/u);
+  assert.match(provenance, /1cf72517cb082401492faf1d02b7d02c8677d06e/u);
   for (const artifact of [
     "../bin/linux-x64/aic-notes-sn-bridge",
     "../bin/wasm/aic-notes-sn-bridge.wasm",

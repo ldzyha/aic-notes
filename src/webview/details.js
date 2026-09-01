@@ -1,7 +1,10 @@
 import { StateEffect, StateField } from "@codemirror/state";
 import { Decoration, EditorView, WidgetType } from "@codemirror/view";
 import { openLink } from "../../vendor/markdown/link-actions.js";
-import { selectionRevealsPreview } from "../../vendor/aic-editor-core/structured-preview.js";
+import {
+  createIconButton,
+  selectionRevealsPreview,
+} from "../../vendor/aic-editor-core/structured-preview.js";
 import { parseDetailsBlocks, toggleDetailsMarker } from "./details-model.js";
 
 const toggleVisual = StateEffect.define();
@@ -55,22 +58,6 @@ const sourceOverrides = StateField.define({
   },
 });
 
-function svgIcon(path, className = "") {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 16 16");
-  svg.setAttribute("aria-hidden", "true");
-  if (className) svg.setAttribute("class", className);
-  const shape = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  shape.setAttribute("d", path);
-  shape.setAttribute("fill", "none");
-  shape.setAttribute("stroke", "currentColor");
-  shape.setAttribute("stroke-width", "1.7");
-  shape.setAttribute("stroke-linecap", "round");
-  shape.setAttribute("stroke-linejoin", "round");
-  svg.appendChild(shape);
-  return svg;
-}
-
 class DetailsSummaryWidget extends WidgetType {
   constructor(block, open, host, readOnly) {
     super();
@@ -104,10 +91,10 @@ class DetailsSummaryWidget extends WidgetType {
 
     const disclosure = document.createElement("button");
     disclosure.type = "button";
-    disclosure.className = "cm-aic-details-disclosure";
+    disclosure.className = "cm-aic-details-disclosure cm-aic-icon-button";
+    disclosure.dataset.aicIcon = "chevron";
     disclosure.setAttribute("aria-label", this.open ? "Collapse details" : "Expand details");
     disclosure.setAttribute("aria-expanded", String(this.open));
-    disclosure.appendChild(svgIcon("M5.5 3.5 10 8l-4.5 4.5", "cm-aic-details-chevron"));
     disclosure.onmousedown = (event) => event.preventDefault();
     const toggle = () => {
       if (view.state.readOnly) {
@@ -158,29 +145,28 @@ class DetailsSummaryWidget extends WidgetType {
     if (data.href) {
       const link = document.createElement("button");
       link.type = "button";
-      link.className = "cm-aic-details-link";
-      link.title = data.href;
+      link.className = "cm-aic-details-link cm-aic-icon-button";
+      link.dataset.aicIcon = "open";
       link.setAttribute("aria-label", `Open linked source: ${data.label}`);
-      link.appendChild(svgIcon("M6.5 3.5H3.75a.75.75 0 0 0-.75.75v8a.75.75 0 0 0 .75.75h8a.75.75 0 0 0 .75-.75V9.5M9 3h4v4M13 3 7.25 8.75"));
       link.onmousedown = (event) => event.preventDefault();
       link.onclick = () => openLink(data.href, this.host);
       row.appendChild(link);
     }
 
-    const edit = document.createElement("button");
-    edit.type = "button";
-    edit.className = "cm-md-edit-source cm-aic-details-edit";
-    edit.textContent = view.state.readOnly ? "View source" : "Edit";
-    edit.onmousedown = (event) => event.preventDefault();
-    edit.onclick = () => {
-      const anchor = Math.min(this.block.headerTo, this.block.headerFrom + 4);
-      view.dispatch({
-        selection: { anchor },
-        effects: editSource.of(this.block.headerFrom),
-        scrollIntoView: true,
-      });
-      view.focus();
-    };
+    const edit = createIconButton(document, {
+      label: view.state.readOnly ? "View details source" : "Edit details source",
+      icon: view.state.readOnly ? "source" : "edit",
+      className: "cm-md-edit-source cm-aic-details-edit",
+      onActivate: () => {
+        const anchor = Math.min(this.block.headerTo, this.block.headerFrom + 4);
+        view.dispatch({
+          selection: { anchor },
+          effects: editSource.of(this.block.headerFrom),
+          scrollIntoView: true,
+        });
+        view.focus();
+      },
+    });
     row.appendChild(edit);
     return row;
   }

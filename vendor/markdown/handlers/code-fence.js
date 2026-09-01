@@ -7,7 +7,11 @@
 import { Decoration, EditorView, WidgetType, ViewPlugin } from "@codemirror/view";
 import { StateEffect, StateField } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
-import { selectionRevealsPreview } from "../../aic-editor-core/structured-preview.js";
+import {
+  createIconButton,
+  selectionRevealsPreview,
+  showIconFeedback,
+} from "../../aic-editor-core/structured-preview.js";
 
 const marker = Decoration.mark({ class: "cm-md-marker" });
 const markerRevealed = Decoration.mark({ class: "cm-md-marker cm-md-marker-revealed" });
@@ -84,29 +88,28 @@ class CodeFenceWidget extends WidgetType {
     const actions = document.createElement("span");
     actions.className = "cm-md-preview-actions";
 
-    const copy = document.createElement("button");
-    copy.type = "button";
-    copy.className = "cm-md-edit-source";
-    copy.textContent = "Copy";
-    copy.onmousedown = (event) => event.preventDefault();
-    copy.onclick = (event) => {
-      event.stopPropagation();
-      this.host.bus.publish("clipboard.write", {
-        text: this.block.source,
-        label: `${this.block.language || "code"} block`,
-      });
-    };
+    const copy = createIconButton(document, {
+      label: "Copy code",
+      icon: "copy",
+      className: "cm-md-edit-source",
+      onActivate: (button) => {
+        this.host.bus.publish("clipboard.write", {
+          text: this.block.source,
+          label: `${this.block.language || "code"} block`,
+        });
+        showIconFeedback(button, { restoreLabel: "Copy code" });
+      },
+    });
 
-    const edit = document.createElement("button");
-    edit.type = "button";
-    edit.className = "cm-md-edit-source";
-    edit.textContent = view.state.readOnly ? "View source" : "Edit";
-    edit.onmousedown = (event) => event.preventDefault();
-    edit.onclick = (event) => {
-      event.stopPropagation();
-      view.dispatch({ selection: { anchor: this.block.textFrom }, scrollIntoView: true });
-      view.focus();
-    };
+    const edit = createIconButton(document, {
+      label: view.state.readOnly ? "View code source" : "Edit code source",
+      icon: view.state.readOnly ? "source" : "edit",
+      className: "cm-md-edit-source",
+      onActivate: () => {
+        view.dispatch({ selection: { anchor: this.block.textFrom }, scrollIntoView: true });
+        view.focus();
+      },
+    });
 
     actions.append(copy, edit);
     header.append(title, actions);

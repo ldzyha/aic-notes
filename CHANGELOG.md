@@ -1,5 +1,21 @@
 # Changelog
 
+## 16.2.0 — 2026-09-01
+
+Release sequence 16 · 2 feature outcomes · 0 fixed-bug outcomes.
+
+- F01: add a permanent Copy action to parsed and fallback table previews. It sends the exact
+  Markdown table source through the existing VS Code clipboard bridge and reports success by
+  changing only the accessible icon state.
+- F02: replace textual preview, link, details, Mermaid, zoom, drag, and Secondary footer actions
+  with custom icon-only buttons. AIC Editor Core 2.4 supplies the shared button and feedback
+  contract; embedded SVG data URIs are painted exclusively through CSS masks, so action rendering
+  does not depend on inline-SVG support. Every control retains an explicit `aria-label`, while
+  redundant native title tooltips are removed.
+
+Compatibility: VS Code/Code 1.106 or newer; Windows x64 uses the bundled in-process WebAssembly
+bridge and Linux x64 uses the bundled static helper. No Marketplace/Open VSX publication is implied.
+
 ## 15.1.0 — 2026-09-01
 
 Release sequence 15 · 1 feature outcome · 0 fixed-bug outcomes.

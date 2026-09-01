@@ -4,10 +4,12 @@ import { Decoration, EditorView, WidgetType } from "@codemirror/view";
 import {
   addTableColumn,
   addTableRow,
+  createIconButton,
   moveTableColumn,
   moveTableRow,
   selectionRevealsPreview,
   serializeTable,
+  showIconFeedback,
   updateTableCell,
 } from "../../aic-editor-core/structured-preview.js";
 
@@ -51,20 +53,14 @@ export function parseTable(source) {
   return { header, aligns, rows: lines.slice(2).map(splitRow) };
 }
 
-function action(document, label, run, disabled = false) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "cm-md-edit-source";
-  button.textContent = label;
-  button.setAttribute("aria-label", label);
-  button.disabled = disabled;
-  button.onmousedown = (event) => event.preventDefault();
-  button.onclick = (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    run();
-  };
-  return button;
+function action(document, label, icon, run, disabled = false) {
+  return createIconButton(document, {
+    label,
+    icon,
+    className: "cm-md-edit-source",
+    disabled,
+    onActivate: run,
+  });
 }
 
 function previewHeader(document, label, actions) {
@@ -109,8 +105,8 @@ function input(document, value, label, onChange, readOnly) {
 function dragHandle(document, label, kind, index, readOnly) {
   const handle = document.createElement("button");
   handle.type = "button";
-  handle.className = "cm-aic-drag-handle";
-  handle.textContent = "⠿";
+  handle.className = "cm-aic-drag-handle cm-aic-icon-button";
+  handle.dataset.aicIcon = "drag";
   handle.setAttribute("aria-label", label);
   handle.draggable = !readOnly;
   handle.disabled = readOnly;
@@ -141,11 +137,12 @@ function dropTarget(element, kind, index, onMove, readOnly) {
 }
 
 class TableWidget extends WidgetType {
-  constructor(source, from, readOnly) {
+  constructor(source, from, readOnly, host) {
     super();
     this.source = source;
     this.from = from;
     this.readOnly = readOnly;
+    this.host = host;
   }
 
   eq(other) {
@@ -186,11 +183,21 @@ class TableWidget extends WidgetType {
       });
       view.focus();
     };
+    const copy = (button) => {
+      this.host?.bus?.publish("clipboard.write", {
+        text: this.source,
+        label: "Markdown table",
+      });
+      showIconFeedback(button, { restoreLabel: "Copy table" });
+    };
     if (!parsed) {
       const fallback = document.createElement("pre");
       fallback.textContent = this.source;
       wrapper.append(
-        previewHeader(document, "Table", [action(document, "Edit", reveal)]),
+        previewHeader(document, "Table", [
+          action(document, "Copy table", "copy", copy),
+          action(document, "Edit table source", "edit", reveal),
+        ]),
         fallback,
       );
       return wrapper;
@@ -200,16 +207,24 @@ class TableWidget extends WidgetType {
         action(
           document,
           "Add row",
+          "add-row",
           () => replace(addTableRow(parsed)),
           this.readOnly,
         ),
         action(
           document,
           "Add column",
+          "add-column",
           () => replace(addTableColumn(parsed)),
           this.readOnly,
         ),
-        action(document, this.readOnly ? "View source" : "Edit", reveal),
+        action(document, "Copy table", "copy", copy),
+        action(
+          document,
+          this.readOnly ? "View table source" : "Edit table source",
+          this.readOnly ? "source" : "edit",
+          reveal,
+        ),
       ]),
     );
     const table = document.createElement("table");
@@ -319,7 +334,7 @@ export function tableNodes(state) {
   return nodes;
 }
 
-export function makeTableExtension() {
+export function makeTableExtension(host) {
   const sourceOverrides = StateField.define({
     create: () => null,
     update(value, transaction) {
@@ -351,7 +366,7 @@ export function makeTableExtension() {
       ) {
         decorations.push(
           Decoration.replace({
-            widget: new TableWidget(markdown, node.from, state.readOnly),
+            widget: new TableWidget(markdown, node.from, state.readOnly, host),
             block: true,
           }).range(node.from, node.to),
         );

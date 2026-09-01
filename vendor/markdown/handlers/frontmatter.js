@@ -2,6 +2,7 @@ import { StateEffect, StateField } from "@codemirror/state";
 import { Decoration, EditorView, WidgetType } from "@codemirror/view";
 import {
   addProperty,
+  createIconButton,
   moveProperty,
   parseFrontmatterRows,
   selectionRevealsPreview,
@@ -39,20 +40,14 @@ export function parseFrontmatter(document) {
   return null;
 }
 
-function action(document, label, run, disabled = false) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "cm-md-edit-source";
-  button.textContent = label;
-  button.setAttribute("aria-label", label);
-  button.disabled = disabled;
-  button.onmousedown = (event) => event.preventDefault();
-  button.onclick = (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    run();
-  };
-  return button;
+function action(document, label, icon, run, disabled = false) {
+  return createIconButton(document, {
+    label,
+    icon,
+    className: "cm-md-edit-source",
+    disabled,
+    onActivate: run,
+  });
 }
 
 function field(document, value, label, onChange, readOnly, key = false) {
@@ -87,8 +82,8 @@ function field(document, value, label, onChange, readOnly, key = false) {
 function dragHandle(document, index, readOnly) {
   const handle = document.createElement("button");
   handle.type = "button";
-  handle.className = "cm-aic-drag-handle";
-  handle.textContent = "⠿";
+  handle.className = "cm-aic-drag-handle cm-aic-icon-button";
+  handle.dataset.aicIcon = "drag";
   handle.setAttribute("aria-label", `Move property ${index + 1}`);
   handle.draggable = !readOnly;
   handle.disabled = readOnly;
@@ -205,10 +200,16 @@ class FrontmatterWidget extends WidgetType {
       action(
         document,
         "Add property",
+        "add-property",
         () => replace(addProperty(this.block.rows)),
         this.readOnly,
       ),
-      action(document, this.readOnly ? "View source" : "Edit", reveal),
+      action(
+        document,
+        this.readOnly ? "View properties source" : "Edit properties source",
+        this.readOnly ? "source" : "edit",
+        reveal,
+      ),
     );
     header.append(title, actions);
     wrapper.append(header);

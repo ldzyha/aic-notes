@@ -38,6 +38,7 @@ import { darkHighlight } from "./highlight.js";
 import { makeHost } from "./host-shim.js";
 import { detailsExtension } from "./details.js";
 import { DraftSession } from "../../vendor/aic-editor-core/draft-session.js";
+import ICONS_CSS from "../../vendor/aic-editor-core/icons.css";
 import THEME_CSS from "./theme.css";
 
 const api = acquireVsCodeApi();
@@ -78,7 +79,7 @@ const FONT_CSS = [
   )
   .join("\n");
 
-for (const css of [FONT_CSS, THEME_CSS, MARKDOWN_CSS]) {
+for (const css of [FONT_CSS, THEME_CSS, MARKDOWN_CSS, ICONS_CSS]) {
   const style = document.createElement("style");
   style.textContent = css;
   document.head.appendChild(style);
@@ -344,7 +345,6 @@ window.addEventListener("message", (event) => {
       if (pin) {
         pin.setAttribute("aria-pressed", String(Boolean(msg.pinned)));
         pin.setAttribute("aria-label", msg.pinned ? "Unpin note" : "Pin note");
-        pin.title = msg.pinned ? "Unpin and follow the active file" : "Pin note";
         pin.disabled = !msg.canPin;
       }
       const status = document.getElementById("pane-status");
@@ -356,11 +356,9 @@ window.addEventListener("message", (event) => {
           ? msg.authConnected ? "Logging out…" : "Logging in…"
           : msg.authConnected ? "Log out" : "Log in";
         auth.setAttribute("aria-label", authLabel);
+        auth.dataset.aicIcon = msg.authConnected ? "logout" : "login";
         auth.dataset.connected = String(Boolean(msg.authConnected));
         auth.disabled = Boolean(msg.authPending);
-        auth.title = msg.authReconnect
-          ? "Replace the unreadable local session by logging in again"
-          : msg.authConnected ? "Remove only the encrypted local session" : "Log in to Standard Notes";
       }
       const target = document.getElementById("pane-target");
       if (target) {

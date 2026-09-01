@@ -407,18 +407,6 @@ body.aic-secondary-surface {
   cursor: pointer;
 }
 
-#secondary-footer .aic-pane-icon svg {
-  width: 17px;
-  height: 17px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.45;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-#pane-auth[data-connected="false"] svg { transform: scaleX(-1); }
-
 #secondary-footer .aic-pane-icon:hover,
 #secondary-footer .aic-pane-icon:focus-visible,
 #secondary-footer .aic-pane-icon[aria-pressed="true"] {
@@ -493,13 +481,6 @@ body.aic-secondary-surface {
   place-items: center;
   cursor: pointer;
 }
-.cm-aic-details-chevron {
-  width: 0.9rem;
-  height: 0.9rem;
-  transform: rotate(0deg);
-  transition: transform 120ms ease-out;
-}
-.cm-aic-details-summary[data-open="true"] .cm-aic-details-chevron { transform: rotate(90deg); }
 .cm-aic-details-check {
   flex: 0 0 auto;
   width: 1rem;
@@ -508,7 +489,6 @@ body.aic-secondary-surface {
   border-radius: 2px;
   cursor: pointer;
 }
-.cm-aic-details-check.checked::after { content: "✓"; display: block; line-height: 0.75rem; }
 .cm-aic-details-check:disabled { opacity: 0.55; cursor: default; }
 .cm-aic-details-link {
   display: inline-grid;
@@ -519,7 +499,6 @@ body.aic-secondary-surface {
   color: var(--vscode-textLink-foreground);
   cursor: pointer;
 }
-.cm-aic-details-link svg { width: 0.9rem; height: 0.9rem; }
 .cm-aic-details-title {
   min-width: 0;
   flex: 1 1 auto;
