@@ -3,11 +3,11 @@
 ## AIC for Standard Notes contract
 
 - Source repository: `https://github.com/ldzyha/standard-notes-aic`
-- Version: `v3.2.0`
-- Commit: `5e8f000ca1dff2880ed1da5042a47bc511202ff7`
+- Paired editor contract: `8.1.2` / AIC Editor Core `2.1.0`
+- Commit: `e1901966301c32181edfdf65e475c94b43bcad5a`
 - Authority files reviewed: `src/styles.css`, `src/editor.ts`, `src/language.ts`,
   `src/markdown-decorations.ts`, `src/block-views.ts`, `src/commands.ts`, `src/toolbar.ts`,
-  `src/link-tooltip.ts`, and Mermaid modules.
+  `src/link-actions.ts`, `src/core/structured-preview.js`, and Mermaid modules.
 
 AIC Notes adapts that editor's observable contract to VS Code: exact Markdown source, styled
 in-place structures, task/table/frontmatter/Mermaid behavior, and its `--aic-*` visual tokens mapped
@@ -39,9 +39,11 @@ does not modify source bytes.
 - Commit: `28e3820a341fad50b42f0ed29adb690077e87b46`
 - Go module version: `v0.0.0-20260523114812-28e3820a341f`
 - License: MIT; notice reproduced in `THIRD_PARTY_NOTICES.md`
-- Build toolchain: Go `1.25.1` Linux amd64
-- Official toolchain archive: `go1.25.1.linux-amd64.tar.gz`
-- Official SHA-256: `7716a0d940a0f6ae8e1f3b3f4f36299dc53e31b16840dbd171254312c41ca12e`
+- Shared Linux/WebAssembly build toolchain: Go `1.27.0` Windows amd64 with the official
+  cross-compilers (`linux/amd64` and `js/wasm`), both with `CGO_ENABLED=0`.
+- Linux helper SHA-256: `4124e41b6c959c3f41a5dfc937e241ada0ea26b5c648f1952fe33eb035456f08`
+- WebAssembly helper SHA-256: `2ae7496e59b439a9e8f9a0523f7ddf40ed5ccf5a93140b80aae04622d0c8680e`
+- Go WebAssembly runtime SHA-256: `0c949f4996f9a89698e4b5c586de32249c3b69b7baadb64d220073cc04acba14`
 
 The bridge is independently authored for this extension. It imports the MIT library directly and
 does not import, execute, or bundle `sn-cli`. The pinned client sends the current Standard Notes
@@ -51,6 +53,26 @@ text are not included in success/error output. AIC Notes does not call the libra
 keyring persistence: the extension supplies an authenticated local vault and a wrapping key held by
 VS Code SecretStorage.
 
+The Windows artifact compiles the same bridge package to `js/wasm` with Go `1.27.0` and bundles
+the matching Go `wasm_exec.js` runtime under its BSD-3-Clause license. No Standard Notes AGPL SDK
+or executable wrapper is bundled. The WebAssembly module runs in the VS Code extension host and
+uses the same encrypted vault protocol as the native Linux build.
+
+## Shared editor core
+
+- Core contract version: `2.1.0`
+- VS Code snapshot: `vendor/aic-editor-core/draft-session.js`
+- Standard Notes snapshot: `src/core/draft-session.js` in `ldzyha/standard-notes-aic`
+- VS Code structured snapshot: `vendor/aic-editor-core/structured-preview.js`
+- Standard Notes structured snapshot: `src/core/structured-preview.js`
+
+The byte-equivalent dependency-free state machine owns hydration, dirty drafts, commit boundaries,
+failed-save retention, and external-update rejection. Each product keeps only a thin host adapter:
+VS Code persists through `workspace.fs`/`TextDocument`, while the component persists through the
+Standard Notes extension API. The byte-equivalent structured module owns table/property mutation,
+nested YAML parsing and hierarchy-preserving reorder behavior, validation, serialization, and
+direct open/copy/edit link-control composition.
+
 ## Existing AIC Markdown sources
 
 See `vendor/markdown/PROVENANCE.md` for the earlier pinned AIC implementation and per-file
@@ -59,5 +81,6 @@ adaptations. The bundled JetBrains Mono files retain their OFL notice under
 
 ## Release artifact identity
 
-The GitHub release must contain the exact locally tested Linux x64 VSIX and a SHA-256 sidecar. The
-published VSIX is redownloaded and byte-compared before the release is considered complete.
+The GitHub release must contain the exact locally tested Linux x64 and Windows x64 VSIX files plus
+their SHA-256 sidecars. Both target manifests, bundled core artifacts, and checksums are verified;
+published VSIX files are redownloaded and byte-compared before the release is considered complete.

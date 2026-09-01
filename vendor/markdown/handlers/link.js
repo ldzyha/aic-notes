@@ -1,6 +1,5 @@
-// link — colored underlined text; [ ]( ) and the URL hidden per the reveal
-// rule; tooltip with URL + open/edit/unlink on cursor-inside (tap places
-// the cursor → same path; no hover-only affordance, rule 12).
+// Raw-source link styling while the link action widget is in edit mode.
+// The compact open/copy/edit control is owned by link-actions.js.
 
 import { Decoration } from "@codemirror/view";
 

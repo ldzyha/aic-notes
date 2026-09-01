@@ -1,6 +1,6 @@
 import { StateEffect, StateField } from "@codemirror/state";
 import { Decoration, EditorView, WidgetType } from "@codemirror/view";
-import { openLink } from "../../vendor/markdown/link-tooltip.js";
+import { openLink } from "../../vendor/markdown/link-actions.js";
 import { parseDetailsBlocks, toggleDetailsMarker } from "./details-model.js";
 
 const toggleVisual = StateEffect.define();
@@ -87,7 +87,10 @@ class DetailsSummaryWidget extends WidgetType {
   }
 
   ignoreEvent() {
-    return false;
+    // Summary controls own their pointer events. Letting CodeMirror process
+    // the same mousedown can recreate the widget before its checkbox click
+    // lands, which makes the task control appear inert.
+    return true;
   }
 
   toDOM(view) {
@@ -164,8 +167,7 @@ class DetailsSummaryWidget extends WidgetType {
     const edit = document.createElement("button");
     edit.type = "button";
     edit.className = "cm-md-edit-source cm-aic-details-edit";
-    edit.textContent = "Edit source";
-    edit.title = view.state.readOnly ? "View source (read-only)" : "Edit source";
+    edit.textContent = view.state.readOnly ? "View source" : "Edit";
     edit.onmousedown = (event) => event.preventDefault();
     edit.onclick = () => {
       const anchor = Math.min(this.block.headerTo, this.block.headerFrom + 4);
@@ -251,20 +253,10 @@ function buildBodyDecorations(state) {
 }
 
 export function detailsExtension(host) {
-  const inertPreviewClicks = EditorView.domEventHandlers({
-    mousedown(event) {
-      const target = event.target instanceof Element ? event.target : null;
-      if (!target?.closest(".cm-aic-details-body")) return false;
-      if (target.closest("button, a, input, [role='checkbox']")) return false;
-      event.preventDefault();
-      return true;
-    },
-  });
   return [
     visualOverrides,
     sourceOverrides,
     bodyDecorations,
     detailsDecorations(host),
-    inertPreviewClicks,
   ];
 }

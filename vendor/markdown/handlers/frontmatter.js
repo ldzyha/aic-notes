@@ -1,84 +1,304 @@
-// Render a strict leading YAML properties block as an inert preview. Raw
-// Markdown appears only after the explicit Edit source action.
-
+import { StateEffect, StateField } from "@codemirror/state";
 import { Decoration, EditorView, WidgetType } from "@codemirror/view";
-import { StateField } from "@codemirror/state";
+import {
+  addProperty,
+  moveProperty,
+  parseFrontmatterRows,
+  serializeFrontmatter,
+  updateProperty,
+  validPropertyKey,
+} from "../../aic-editor-core/structured-preview.js";
 
-export function parseFrontmatter(doc) {
-  if (!doc.startsWith("---")) return null;
-  const lines = doc.split("\n");
-  if (lines[0].trim() !== "---") return null;
-  const rows = [];
-  let end = -1;
+const editSource = StateEffect.define({
+  map: (value, mapping) => ({ ...value, from: mapping.mapPos(value.from) }),
+});
+
+function selectionIntersects(state, from, to) {
+  return state.selection.ranges.some((range) =>
+    range.empty
+      ? range.from >= from && range.from < to
+      : range.from < to && range.to > from,
+  );
+}
+
+export function parseFrontmatter(document) {
+  if (!document.startsWith("---")) return null;
+  const lines = document.split("\n");
+  if (lines[0].replace(/\r$/, "").trim() !== "---") return null;
+  let to = lines[0].length;
   for (let index = 1; index < lines.length; index++) {
-    if (lines[index].trim() === "---") {
-      end = index;
-      break;
+    const line = lines[index].replace(/\r$/, "");
+    if (line.trim() === "---") {
+      to += 1 + lines[index].length;
+      const rows = parseFrontmatterRows(lines.slice(1, index).join("\n"));
+      return rows?.length ? { rows, from: 0, to } : null;
     }
-    if (!lines[index].trim()) continue;
-    const separator = lines[index].indexOf(":");
-    if (separator <= 0) return null;
-    rows.push({
-      key: lines[index].slice(0, separator).trim(),
-      value: lines[index].slice(separator + 1).trim(),
-    });
+    to += 1 + lines[index].length;
   }
-  if (end === -1 || !rows.length) return null;
-  let to = 0;
-  for (let index = 0; index < end; index++) to += lines[index].length + 1;
-  to += lines[end].length;
-  return { rows, from: 0, to };
+  return null;
+}
+
+function action(document, label, run, disabled = false) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "cm-md-edit-source";
+  button.textContent = label;
+  button.setAttribute("aria-label", label);
+  button.disabled = disabled;
+  button.onmousedown = (event) => event.preventDefault();
+  button.onclick = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    run();
+  };
+  return button;
+}
+
+function field(document, value, label, onChange, readOnly, key = false) {
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "cm-aic-structure-input";
+  input.value = value;
+  input.readOnly = readOnly;
+  input.setAttribute("aria-label", label);
+  input.addEventListener("change", () => {
+    if (key && !validPropertyKey(input.value.trim())) {
+      input.setCustomValidity("Use letters, numbers, dot, underscore, or dash");
+      input.reportValidity();
+      return;
+    }
+    input.setCustomValidity("");
+    onChange(input.value);
+  });
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      input.blur();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      input.value = value;
+      input.blur();
+    }
+  });
+  return input;
+}
+
+function dragHandle(document, index, readOnly) {
+  const handle = document.createElement("button");
+  handle.type = "button";
+  handle.className = "cm-aic-drag-handle";
+  handle.textContent = "⠿";
+  handle.setAttribute("aria-label", `Move property ${index + 1}`);
+  handle.draggable = !readOnly;
+  handle.disabled = readOnly;
+  handle.addEventListener("dragstart", (event) => {
+    event.dataTransfer?.setData("application/x-aic-property", String(index));
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+  });
+  return handle;
+}
+
+export const setNoteRelationships = StateEffect.define();
+
+function relationshipTree(document, relationships, host) {
+  if (!relationships.length) return null;
+  const region = document.createElement("section");
+  region.className = "cm-aic-note-relations";
+  region.setAttribute("aria-label", "Related notes");
+  const heading = document.createElement("div");
+  heading.className = "cm-aic-note-relations-heading";
+  heading.textContent = "Context";
+  const tree = document.createElement("ul");
+  tree.setAttribute("role", "tree");
+  for (const item of relationships) {
+    const row = document.createElement("li");
+    row.setAttribute("role", "treeitem");
+    row.setAttribute(
+      "aria-current",
+      item.relation === "current" ? "true" : "false",
+    );
+    row.style.setProperty(
+      "--aic-note-depth",
+      String(Math.max(0, Math.min(8, Number(item.depth) || 0))),
+    );
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = "cm-aic-note-relation-open";
+    open.setAttribute("aria-label", `Open ${item.relation} note ${item.label}`);
+    open.onmousedown = (event) => event.preventDefault();
+    open.onclick = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      host.bus.publish("note.open", { path: item.path });
+    };
+    const marker = document.createElement("span");
+    marker.className = "cm-aic-note-relation-marker";
+    marker.textContent = item.exists ? "●" : "○";
+    const label = document.createElement("span");
+    label.className = "cm-aic-note-relation-label";
+    label.textContent = item.label;
+    const relation = document.createElement("span");
+    relation.className = "cm-aic-note-relation-kind";
+    relation.textContent = item.relation;
+    open.append(marker, label, relation);
+    row.append(open);
+    tree.append(row);
+  }
+  region.append(heading, tree);
+  return region;
 }
 
 class FrontmatterWidget extends WidgetType {
-  constructor(block) {
+  constructor(block, readOnly, relationships, host) {
     super();
     this.block = block;
-    this.key = block.rows.map((row) => `${row.key}\u0000${row.value}`).join("\n");
+    this.readOnly = readOnly;
+    this.relationships = relationships;
+    this.host = host;
   }
 
   eq(other) {
-    return other.key === this.key;
+    return (
+      other.readOnly === this.readOnly &&
+      JSON.stringify(other.block.rows) === JSON.stringify(this.block.rows) &&
+      JSON.stringify(other.relationships) === JSON.stringify(this.relationships)
+    );
   }
 
   toDOM(view) {
-    const wrap = document.createElement("div");
-    wrap.className = "cm-md-props cm-md-block-preview";
-    wrap.setAttribute("role", "region");
-    wrap.setAttribute("aria-label", "Markdown properties preview");
-
+    const document = view.dom.ownerDocument;
+    const wrapper = document.createElement("div");
+    wrapper.className = "cm-md-props cm-md-block-preview";
+    wrapper.setAttribute("role", "region");
+    wrapper.setAttribute("aria-label", "Interactive Markdown properties");
+    const replace = (rows) => {
+      const source = view.state.sliceDoc(this.block.from, this.block.to);
+      const markdown = serializeFrontmatter(
+        rows,
+        source.includes("\r\n") ? "\r\n" : "\n",
+      );
+      if (!markdown || markdown === source) return;
+      view.dispatch({
+        changes: { from: this.block.from, to: this.block.to, insert: markdown },
+        userEvent: "input",
+      });
+    };
+    const reveal = () => {
+      const anchor = Math.min(view.state.doc.length, this.block.from + 4);
+      view.dispatch({
+        selection: { anchor },
+        effects: editSource.of({ from: this.block.from }),
+        scrollIntoView: true,
+      });
+      view.focus();
+    };
     const header = document.createElement("div");
     header.className = "cm-md-preview-header";
     const title = document.createElement("span");
     title.textContent = "Properties";
-    const edit = document.createElement("button");
-    edit.type = "button";
-    edit.className = "cm-md-edit-source";
-    edit.textContent = "Edit source";
-    edit.onmousedown = (event) => event.preventDefault();
-    edit.onclick = (event) => {
-      event.stopPropagation();
-      const anchor = Math.min(view.state.doc.length, this.block.from + 4);
-      view.dispatch({ selection: { anchor }, scrollIntoView: true });
-      view.focus();
-    };
-    header.append(title, edit);
-    wrap.appendChild(header);
-
+    const actions = document.createElement("span");
+    actions.className = "cm-md-preview-actions";
+    actions.append(
+      action(
+        document,
+        "Add property",
+        () => replace(addProperty(this.block.rows)),
+        this.readOnly,
+      ),
+      action(document, this.readOnly ? "View source" : "Edit", reveal),
+    );
+    header.append(title, actions);
+    wrapper.append(header);
     const table = document.createElement("table");
     const body = document.createElement("tbody");
-    for (const { key, value } of this.block.rows) {
+    this.block.rows.forEach((item, index) => {
       const row = document.createElement("tr");
-      const heading = document.createElement("th");
-      heading.textContent = key;
-      const cell = document.createElement("td");
-      cell.textContent = value;
-      row.append(heading, cell);
-      body.appendChild(row);
-    }
-    table.appendChild(body);
-    wrap.appendChild(table);
-    return wrap;
+      row.dataset.depth = String(item.depth ?? 0);
+      row.dataset.sequence = String(Boolean(item.sequence));
+      const handle = document.createElement("th");
+      handle.className = "cm-aic-structure-handle-cell";
+      handle.append(dragHandle(document, index, this.readOnly));
+      const key = document.createElement("th");
+      key.className = "cm-aic-property-key-cell";
+      const keyContent = document.createElement("div");
+      keyContent.className = "cm-aic-property-key";
+      keyContent.style.setProperty(
+        "--aic-property-depth",
+        String(Math.max(0, Math.min(12, item.depth ?? 0))),
+      );
+      const marker = document.createElement("span");
+      marker.className = "cm-aic-property-level";
+      marker.textContent = item.sequence ? "•" : item.depth ? "↳" : "";
+      keyContent.append(marker);
+      if (item.scalar) {
+        const itemLabel = document.createElement("span");
+        itemLabel.className = "cm-aic-property-item";
+        itemLabel.textContent = "item";
+        keyContent.append(itemLabel);
+      } else {
+        keyContent.append(
+          field(
+            document,
+            item.key,
+            `Property ${index + 1} name`,
+            (value) =>
+              replace(updateProperty(this.block.rows, index, "key", value)),
+            this.readOnly,
+            true,
+          ),
+        );
+      }
+      key.append(keyContent);
+      const value = document.createElement("td");
+      const hasChildren =
+        !item.value &&
+        index + 1 < this.block.rows.length &&
+        (this.block.rows[index + 1].indent ?? 0) > (item.indent ?? 0);
+      if (hasChildren) {
+        const group = document.createElement("span");
+        group.className = "cm-aic-property-group";
+        group.textContent = "Group";
+        value.append(group);
+      } else {
+        value.append(
+          field(
+            document,
+            item.value,
+            `Property ${item.key || "list item"} value`,
+            (next) =>
+              replace(updateProperty(this.block.rows, index, "value", next)),
+            this.readOnly,
+          ),
+        );
+      }
+      if (!this.readOnly) {
+        row.addEventListener("dragover", (event) => {
+          if (!event.dataTransfer?.types.includes("application/x-aic-property"))
+            return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+        });
+        row.addEventListener("drop", (event) => {
+          const from = Number(
+            event.dataTransfer?.getData("application/x-aic-property"),
+          );
+          if (!Number.isInteger(from)) return;
+          event.preventDefault();
+          replace(moveProperty(this.block.rows, from, index));
+        });
+      }
+      row.append(handle, key, value);
+      body.append(row);
+    });
+    table.append(body);
+    wrapper.append(table);
+    const relationships = relationshipTree(
+      document,
+      this.relationships,
+      this.host,
+    );
+    if (relationships) wrapper.append(relationships);
+    return wrapper;
   }
 
   ignoreEvent() {
@@ -86,29 +306,75 @@ class FrontmatterWidget extends WidgetType {
   }
 }
 
-export function makeFrontmatterExtension() {
-  function build(state) {
-    const block = parseFrontmatter(state.doc.toString());
-    if (!block) return Decoration.none;
-    const sourceVisible = state.selection.ranges.some(
-      (range) => range.from < block.to && range.to > block.from,
-    );
-    if (sourceVisible) return Decoration.none;
-    return Decoration.set(
-      Decoration.replace({ widget: new FrontmatterWidget(block), block: true }).range(
-        block.from,
-        block.to,
-      ),
-    );
-  }
-
-  const field = StateField.define({
-    create: (state) => build(state),
+export function makeFrontmatterExtension(
+  host,
+  initialRelationships = () => [],
+) {
+  const relationshipState = StateField.define({
+    create: () => initialRelationships(),
     update(value, transaction) {
-      if (!transaction.docChanged && !transaction.selection) return value;
-      return build(transaction.state);
+      for (const effect of transaction.effects) {
+        if (effect.is(setNoteRelationships))
+          return Array.isArray(effect.value) ? effect.value : [];
+      }
+      return value;
     },
-    provide: (value) => EditorView.decorations.from(value),
   });
-  return [field];
+  const sourceOverrides = StateField.define({
+    create: () => null,
+    update(value, transaction) {
+      let next = value
+        ? { ...value, from: transaction.changes.mapPos(value.from) }
+        : null;
+      for (const effect of transaction.effects) {
+        if (effect.is(editSource)) next = effect.value;
+      }
+      if (!next) return null;
+      const block = parseFrontmatter(transaction.state.doc.toString());
+      return block?.from === next.from &&
+        selectionIntersects(transaction.state, block.from, block.to)
+        ? next
+        : null;
+    },
+  });
+  const build = (state) => {
+    const block = parseFrontmatter(state.doc.toString());
+    if (!block || state.field(sourceOverrides)?.from === block.from)
+      return Decoration.none;
+    return Decoration.set(
+      [
+        Decoration.replace({
+          widget: new FrontmatterWidget(
+            block,
+            state.readOnly,
+            state.field(relationshipState),
+            host,
+          ),
+          block: true,
+        }).range(block.from, block.to),
+      ],
+      true,
+    );
+  };
+  return [
+    relationshipState,
+    sourceOverrides,
+    StateField.define({
+      create: build,
+      update(value, transaction) {
+        const relationshipsChanged = transaction.effects.some((effect) =>
+          effect.is(setNoteRelationships),
+        );
+        if (
+          !transaction.docChanged &&
+          !transaction.selection &&
+          !relationshipsChanged &&
+          transaction.startState.readOnly === transaction.state.readOnly
+        )
+          return value;
+        return build(transaction.state);
+      },
+      provide: (field) => EditorView.decorations.from(field),
+    }),
+  ];
 }

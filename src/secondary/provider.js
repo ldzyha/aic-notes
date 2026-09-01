@@ -2,9 +2,10 @@ import * as vscode from "vscode";
 import * as path from "node:path";
 import { webviewHtml } from "../editor/webview-html.js";
 import { formatError, structuredError } from "../errors.js";
-import { applyTextChanges, linkedNotePath, isNotePath } from "./model.js";
+import { applyTextChanges, isNotePath } from "./model.js";
 import { resolveTarget } from "../notes/target.js";
-import { fileNotePlaceholderForUri } from "../notes/create.js";
+import { noteDescriptorForUri, notePlaceholderForUri } from "../notes/create.js";
+import { noteRelationshipsForTarget } from "../notes/relationships.js";
 import { openSourceAtHref } from "../notes/navigation.js";
 import { trashNotesLocally } from "../notes/delete.js";
 import { CoalescingQueue, mergeSyncRequests } from "../sync/coalescing-queue.js";
@@ -28,8 +29,10 @@ function uriFromTab(tab) {
 export class SecondaryNotePane {
   static register(context, syncService) {
     const pane = new SecondaryNotePane(context, syncService);
+    const noteWatcher = vscode.workspace.createFileSystemWatcher("**/*.note.md");
     context.subscriptions.push(
       pane,
+      noteWatcher,
       vscode.window.registerWebviewViewProvider(SECONDARY_VIEW_ID, pane, {
         webviewOptions: { retainContextWhenHidden: true },
       }),
@@ -43,10 +46,9 @@ export class SecondaryNotePane {
       vscode.window.tabGroups.onDidChangeTabs(() => pane.routeNoteTabs()),
       vscode.window.tabGroups.onDidChangeTabGroups(() => pane.followActive()),
       vscode.workspace.onDidChangeTextDocument((event) => pane.onDocumentChanged(event)),
-      vscode.workspace.onDidSaveTextDocument((document) => {
-        pane.onDocumentSaved(document).catch((error) => pane.reportSyncError(error));
-      }),
       vscode.workspace.onDidCloseTextDocument((document) => pane.onDocumentClosed(document)),
+      noteWatcher.onDidCreate(() => pane.refreshRelationships()),
+      noteWatcher.onDidDelete(() => pane.refreshRelationships()),
     );
     queueMicrotask(() => pane.routeNoteTabs());
     return pane;
@@ -64,6 +66,8 @@ export class SecondaryNotePane {
     this.pinned = false;
     this.ready = false;
     this.generation = 0;
+    this.draftEpoch = 0;
+    this.draftDirty = false;
     this.applying = 0;
     this.editQueue = Promise.resolve();
     this.pendingViewState = undefined;
@@ -79,7 +83,6 @@ export class SecondaryNotePane {
       (_key, request) => this.performSync(request.uri, request),
       mergeSyncRequests,
     );
-    this.suppressedSaveSync = new Set();
   }
 
   dispose() {
@@ -90,6 +93,13 @@ export class SecondaryNotePane {
     this.view = view;
     const distRoot = vscode.Uri.joinPath(this.context.extensionUri, "dist", "webview");
     view.webview.options = { enableScripts: true, localResourceRoots: [distRoot] };
+    this.disposables.push(
+      view.webview.onDidReceiveMessage((message) => this.onMessage(message)),
+      view.onDidDispose(() => {
+        this.view = undefined;
+        this.ready = false;
+      }),
+    );
     view.webview.html = webviewHtml(
       view.webview,
       distRoot,
@@ -123,13 +133,6 @@ export class SecondaryNotePane {
       </footer>`,
       "aic-secondary-surface",
     );
-    this.disposables.push(
-      view.webview.onDidReceiveMessage((message) => this.onMessage(message)),
-      view.onDidDispose(() => {
-        this.view = undefined;
-        this.ready = false;
-      }),
-    );
     if (this.documentUri || this.placeholderUri) await this.sendInit();
     else await this.sendPaneState();
     await this.refreshAuthState();
@@ -149,14 +152,60 @@ export class SecondaryNotePane {
         "Choose a sidecar note",
       ]);
     }
+    const currentUri = this.documentUri ?? this.placeholderUri;
+    if (this.draftDirty && currentUri?.toString() === uri.toString()) {
+      await this.closeExactNoteTabs(uri);
+      if (reveal) await this.focus(false);
+      return true;
+    }
+    if (this.draftDirty) {
+      await this.sendPaneState("Unsaved · press Ctrl+S before switching notes");
+      if (reveal) await this.focus(false);
+      return false;
+    }
     this.pinned = pin;
     this.sourceUri = sourceUri;
     this.placeholderUri = undefined;
     this.placeholderText = undefined;
     this.pendingViewState = { selection };
+    if (!(await exists(uri))) {
+      if (!(await this.recoverPlaceholder(uri, sourceUri))) {
+        throw structuredError("notes_missing", `${uri.fsPath} no longer exists`, [
+          "Restore its source or select another workspace item",
+        ]);
+      }
+      await this.sendInit();
+      await this.closeExactNoteTabs(uri);
+      if (reveal) await this.focus(false);
+      return true;
+    }
     await this.attach(uri);
-    if (reveal) await this.focus(false);
     await this.closeExactNoteTabs(uri);
+    if (reveal) await this.focus(false);
+    return true;
+  }
+
+  // A note URI can outlive its file: project placeholders are deliberately
+  // lazy, and sidecars may be moved/deleted while the Secondary view remains
+  // open. Rebuild the preview from the still-existing owner instead of asking
+  // VS Code's text-document service to open a nonexistent file.
+  async recoverPlaceholder(uri, sourceUri = this.sourceUri) {
+    if (!uri || uri.scheme !== "file" || !isNotePath(uri.path)) return false;
+    const folder = vscode.workspace.getWorkspaceFolder(uri);
+    const relativePath = folder
+      ? vscode.workspace.asRelativePath(uri, false).replaceAll("\\", "/")
+      : "";
+    const target = folder ? await resolveTarget(folder, relativePath) : null;
+    if (!target) return false;
+    const placeholder = await notePlaceholderForUri(target);
+    this.sourceUri = sourceUri ?? target;
+    this.document = undefined;
+    this.documentUri = undefined;
+    this.placeholderUri = placeholder.noteUri;
+    this.placeholderText = placeholder.text;
+    this.readOnly = false;
+    this.generation++;
+    return true;
   }
 
   async attach(uri) {
@@ -176,6 +225,16 @@ export class SecondaryNotePane {
   async currentDocument() {
     const uri = this.documentUri ?? this.document?.uri;
     if (!uri) return undefined;
+    if (!(await exists(uri))) {
+      if (await this.recoverPlaceholder(uri)) {
+        await this.sendInit();
+        await this.closeExactNoteTabs(uri);
+        return undefined;
+      }
+      this.document = undefined;
+      this.documentUri = undefined;
+      return undefined;
+    }
     if (!this.document || this.document.isClosed || this.document.uri.toString() !== uri.toString()) {
       this.document = await vscode.workspace.openTextDocument(uri);
       this.readOnly = this.syncService.isReadOnly(uri);
@@ -190,20 +249,31 @@ export class SecondaryNotePane {
   }
 
   async followSource(uri, { force = false, preserveFocus = true } = {}) {
+    return this.followTarget(uri, { force, preserveFocus });
+  }
+
+  async followTarget(uri, { force = false, preserveFocus = true } = {}) {
     if (!uri || uri.scheme !== "file" || isNotePath(uri.path) || (this.pinned && !force)) return false;
     const folder = vscode.workspace.getWorkspaceFolder(uri);
     if (!folder) return false;
     if (force) this.pinned = false;
-    const relativePath = vscode.workspace.asRelativePath(uri, false).replaceAll("\\", "/");
-    const notePath = linkedNotePath(relativePath);
-    if (!notePath) return false;
-    const noteUri = vscode.Uri.joinPath(folder.uri, notePath);
+    const descriptor = await noteDescriptorForUri(uri);
+    const noteUri = descriptor.noteUri;
+    const currentUri = this.documentUri ?? this.placeholderUri;
+    if (this.draftDirty && currentUri?.toString() === noteUri.toString()) {
+      await this.focus(preserveFocus);
+      return true;
+    }
+    if (this.draftDirty) {
+      await this.sendPaneState("Unsaved · press Ctrl+S before following another file");
+      return false;
+    }
     this.sourceUri = uri;
     if (!(await exists(noteUri))) {
       this.document = undefined;
       this.documentUri = undefined;
       this.pendingViewState = undefined;
-      const placeholder = await fileNotePlaceholderForUri(uri);
+      const placeholder = await notePlaceholderForUri(uri);
       this.placeholderUri = placeholder.noteUri;
       this.placeholderText = placeholder.text;
       this.readOnly = false;
@@ -272,20 +342,14 @@ export class SecondaryNotePane {
     });
   }
 
-  async onDocumentSaved(document) {
-    const key = document.uri.toString();
-    if (this.suppressedSaveSync.has(key) || this.documentUri?.toString() !== key) return;
-    await this.queueSync(document.uri, { interactive: false, markdown: document.getText() });
-  }
-
   reportSyncError(error) {
     this.sendPaneState("Sync failed").catch(() => undefined);
     vscode.window.showErrorMessage(`AIC Notes — ${formatError(error)}`);
   }
 
-  queueSync(uri, { interactive = false, markdown } = {}) {
+  queueSync(uri, { interactive = false, resolveConflicts = interactive, markdown } = {}) {
     const key = uri.toString();
-    return this.syncRequests.enqueue(key, { uri, interactive, markdown });
+    return this.syncRequests.enqueue(key, { uri, interactive, resolveConflicts, markdown });
   }
 
   async placeholderForSync(uri) {
@@ -295,21 +359,17 @@ export class SecondaryNotePane {
     let source = this.sourceUri;
     if (source) {
       const sourceFolder = vscode.workspace.getWorkspaceFolder(source);
-      const sourcePath = sourceFolder
-        ? vscode.workspace.asRelativePath(source, false).replaceAll("\\", "/")
-        : "";
-      if (sourceFolder?.uri.toString() !== folder.uri.toString() || linkedNotePath(sourcePath) !== notePath) {
+      const descriptor = sourceFolder ? await noteDescriptorForUri(source) : undefined;
+      if (sourceFolder?.uri.toString() !== folder.uri.toString() || descriptor?.notePath !== notePath) {
         source = undefined;
       }
     }
     source ??= await resolveTarget(folder, notePath);
     if (!source) return "";
-    const stat = await vscode.workspace.fs.stat(source);
-    if (stat.type & vscode.FileType.Directory) return "";
-    return (await fileNotePlaceholderForUri(source)).text;
+    return (await notePlaceholderForUri(source)).text;
   }
 
-  async performSync(uri, { interactive, markdown }) {
+  async performSync(uri, { interactive, resolveConflicts, markdown, draftEpoch }) {
     const document = await vscode.workspace.openTextDocument(uri);
     const attached = this.documentUri?.toString() === uri.toString();
     const captured = typeof markdown === "string" ? markdown : document.getText();
@@ -330,17 +390,25 @@ export class SecondaryNotePane {
       captured,
       {
         interactive,
+        resolveConflicts,
         acceptResult: (candidate) => {
           const changedDuringSync = document.getText() !== captured;
+          const newerWebviewDraft = Number.isSafeInteger(draftEpoch) && this.draftEpoch !== draftEpoch;
           const wouldReplaceCaptured = typeof candidate.localContent === "string" &&
             candidate.localContent !== captured;
-          return !(changedDuringSync && wouldReplaceCaptured);
+          return !((changedDuringSync || newerWebviewDraft) && wouldReplaceCaptured);
         },
       },
     );
     if (!result) {
       if (attached) await this.sendPaneState("");
       return null;
+    }
+    if (result.conflict) {
+      this.authConnected = true;
+      this.authReconnect = false;
+      if (attached) await this.sendPaneState("Conflict · save again to choose a version");
+      return result;
     }
     if (result.skipped) {
       this.authConnected = false;
@@ -359,7 +427,7 @@ export class SecondaryNotePane {
     this.authConnected = true;
     this.authReconnect = false;
     if (typeof result.localContent === "string" && result.localContent !== captured) {
-      await this.replaceDocument(result.localContent, uri, { suppressSync: true });
+      await this.replaceDocument(result.localContent, uri);
     }
     if (attached) {
       this.readOnly = Boolean(result.readOnly);
@@ -379,17 +447,10 @@ export class SecondaryNotePane {
         ? { action: "skipped-placeholder", skipped: true, admission: true }
         : null;
     }
-    const key = document.uri.toString();
-    this.suppressedSaveSync.add(key);
-    try {
-      const saved = await document.save();
-      if (!saved) {
-        throw structuredError("notes_save_failed", "the note could not be saved before synchronization", [
-          "Resolve the file-system error and retry",
-        ]);
-      }
-    } finally {
-      this.suppressedSaveSync.delete(key);
+    const saved = await document.save();
+    if (!saved) {
+      await this.sendPaneState("Save failed · note kept in the editor");
+      return { action: "save-failed", skipped: true };
     }
     return this.queueSync(document.uri, { interactive, markdown: document.getText() });
   }
@@ -411,7 +472,16 @@ export class SecondaryNotePane {
       return;
     }
     const relativePath = vscode.workspace.asRelativePath(uri, false).replaceAll("\\", "/");
+    let relationshipTarget = this.sourceUri;
+    if (!relationshipTarget) {
+      const folder = vscode.workspace.getWorkspaceFolder(uri);
+      relationshipTarget = folder ? await resolveTarget(folder, relativePath) : undefined;
+    }
+    const relationships = relationshipTarget
+      ? await noteRelationshipsForTarget(relationshipTarget)
+      : [];
     const viewState = this.pendingViewState;
+    this.draftDirty = false;
     await this.view.webview.postMessage({
       type: "init",
       text,
@@ -420,10 +490,26 @@ export class SecondaryNotePane {
       surface: "secondary",
       readOnly: this.readOnly,
       placeholder: !document,
+      relationships,
       selection: viewState?.selection,
     });
     this.pendingViewState = undefined;
     await this.sendPaneState();
+  }
+
+  async refreshRelationships() {
+    if (!this.view || !this.ready || (!this.documentUri && !this.placeholderUri)) return;
+    const uri = this.documentUri ?? this.placeholderUri;
+    let target = this.sourceUri;
+    if (!target && uri) {
+      const folder = vscode.workspace.getWorkspaceFolder(uri);
+      const relativePath = folder
+        ? vscode.workspace.asRelativePath(uri, false).replaceAll("\\", "/")
+        : "";
+      target = folder ? await resolveTarget(folder, relativePath) : undefined;
+    }
+    const relationships = target ? await noteRelationshipsForTarget(target) : [];
+    await this.view.webview.postMessage({ type: "relationships", relationships });
   }
 
   async sendPaneState(status = "") {
@@ -439,6 +525,13 @@ export class SecondaryNotePane {
     const parentPath = displayPath ? path.posix.dirname(displayPath) : "";
     const folder = (this.documentUri && vscode.workspace.getWorkspaceFolder(this.documentUri)) ||
       (this.sourceUri && vscode.workspace.getWorkspaceFolder(this.sourceUri));
+    const visibleStatus = this.draftDirty
+      ? "Unsaved · Ctrl+S"
+      : status || (this.authReconnect
+        ? "Standard Notes · Reconnect required"
+        : this.authConnected
+          ? "Standard Notes · Connected"
+          : "Standard Notes · Disconnected");
     this.view.title = title;
     this.view.description = "";
     await this.view.webview.postMessage({
@@ -452,7 +545,7 @@ export class SecondaryNotePane {
       showPinnedActions: Boolean(this.pinned && this.documentUri),
       canPin: Boolean(this.documentUri || this.placeholderUri || this.sourceUri),
       candidatePath,
-      status,
+      status: visibleStatus,
       readOnly: this.readOnly,
       authConnected: this.authConnected,
       authReconnect: this.authReconnect,
@@ -540,7 +633,7 @@ export class SecondaryNotePane {
     }
   }
 
-  async replaceDocument(text, uri = this.documentUri, { suppressSync = true } = {}) {
+  async replaceDocument(text, uri = this.documentUri) {
     const document = uri ? await vscode.workspace.openTextDocument(uri) : undefined;
     if (!document || text === document.getText()) return;
     const edit = new vscode.WorkspaceEdit();
@@ -551,7 +644,6 @@ export class SecondaryNotePane {
     );
     this.applying++;
     const key = document.uri.toString();
-    if (suppressSync) this.suppressedSaveSync.add(key);
     try {
       if (!(await vscode.workspace.applyEdit(edit))) throw new Error("workspace rejected synced note");
       await document.save();
@@ -561,7 +653,6 @@ export class SecondaryNotePane {
         await this.view?.webview.postMessage({ type: "reset", text, generation: this.generation });
       }
     } finally {
-      if (suppressSync) this.suppressedSaveSync.delete(key);
       this.applying--;
     }
   }
@@ -584,6 +675,7 @@ export class SecondaryNotePane {
   async authenticate() {
     if (this.authPending) return;
     this.authPending = true;
+    await this.editQueue.catch(() => undefined);
     await this.sendPaneState(this.authConnected ? "Logging out…" : "Logging in…");
     try {
       if (this.authConnected) {
@@ -598,12 +690,203 @@ export class SecondaryNotePane {
         if (choice !== "Log out locally") return;
         await this.syncService.logout();
       } else {
-        await this.syncService.login();
+        const connected = await this.syncService.login();
+        if (connected) await this.importProjectNotes({ ensureConnected: false });
       }
     } finally {
       this.authPending = false;
       await this.refreshAuthState();
     }
+  }
+
+  async commitDraft(text, generation, reason = "explicit") {
+    const draft = String(text ?? "");
+    if (this.readOnly) {
+      await this.view?.webview.postMessage({
+        type: "committed",
+        text: draft,
+        generation: this.generation,
+        saved: false,
+      });
+      await this.sendPaneState("Read-only · draft not saved");
+      return { action: "read-only", skipped: true };
+    }
+    if (generation !== this.generation) {
+      await this.view?.webview.postMessage({
+        type: "committed",
+        text: draft,
+        generation: this.generation,
+        saved: false,
+      });
+      await this.sendPaneState("File changed externally · draft kept in the editor");
+      return { action: "stale-draft", skipped: true };
+    }
+
+    let document;
+    if (!this.documentUri && this.placeholderUri) {
+      if (draft === this.placeholderText) {
+        await this.view?.webview.postMessage({
+          type: "committed",
+          text: draft,
+          generation: this.generation,
+          saved: true,
+        });
+        await this.sendPaneState("Not saved · unchanged placeholder");
+        return { action: "placeholder", skipped: true };
+      }
+      const uri = this.placeholderUri;
+      if (await exists(uri)) {
+        await this.view?.webview.postMessage({
+          type: "committed",
+          text: draft,
+          generation: this.generation,
+          saved: false,
+        });
+        await this.sendPaneState("Note appeared on disk · draft kept in the editor");
+        return { action: "appeared", skipped: true };
+      }
+      try {
+        await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(draft));
+      } catch {
+        await this.view?.webview.postMessage({
+          type: "committed",
+          text: draft,
+          generation: this.generation,
+          saved: false,
+        });
+        await this.sendPaneState("Save failed · draft kept in the editor");
+        return { action: "save-failed", skipped: true };
+      }
+      this.documentUri = uri;
+      this.document = await vscode.workspace.openTextDocument(uri);
+      this.placeholderUri = undefined;
+      this.placeholderText = undefined;
+      document = this.document;
+      await vscode.commands.executeCommand("aicNotes.refreshTree");
+    } else {
+      if (this.documentUri && !(await exists(this.documentUri))) {
+        try {
+          await vscode.workspace.fs.writeFile(this.documentUri, new TextEncoder().encode(draft));
+          this.document = await vscode.workspace.openTextDocument(this.documentUri);
+          document = this.document;
+          await vscode.commands.executeCommand("aicNotes.refreshTree");
+        } catch {
+          await this.view?.webview.postMessage({
+            type: "committed",
+            text: draft,
+            generation: this.generation,
+            saved: false,
+          });
+          await this.sendPaneState("Save failed · draft kept in the editor");
+          return { action: "save-failed", skipped: true };
+        }
+      } else {
+        document = await this.currentDocument();
+      }
+      if (!document) {
+        await this.view?.webview.postMessage({
+          type: "committed",
+          text: draft,
+          generation: this.generation,
+          saved: false,
+        });
+        await this.sendPaneState("Note is unavailable · draft kept in the editor");
+        return { action: "missing", skipped: true };
+      }
+      if (document.getText() !== draft) {
+        const edit = new vscode.WorkspaceEdit();
+        edit.replace(
+          document.uri,
+          new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)),
+          draft,
+        );
+        this.applying++;
+        try {
+          if (!(await vscode.workspace.applyEdit(edit))) {
+            await this.view?.webview.postMessage({
+              type: "committed",
+              text: draft,
+              generation: this.generation,
+              saved: false,
+            });
+            await this.sendPaneState("Save failed · draft kept in the editor");
+            return { action: "save-failed", skipped: true };
+          }
+          this.document = document;
+        } finally {
+          this.applying--;
+        }
+      }
+    }
+
+    let saved = false;
+    try {
+      saved = await document.save();
+    } catch {
+      // A sidecar can disappear between the existence check and save. The
+      // webview remains the draft owner; keep it dirty and let the next
+      // Ctrl+S retry instead of surfacing a disruptive host error.
+    }
+    await this.view?.webview.postMessage({
+      type: "committed",
+      text: draft,
+      generation: this.generation,
+      saved,
+    });
+    if (!saved) {
+      await this.sendPaneState("Save failed · draft kept in the editor");
+      return { action: "save-failed", skipped: true };
+    }
+    this.draftDirty = false;
+    await this.sendPaneState("Saved · synchronizing…");
+    return this.queueSync(document.uri, {
+      interactive: false,
+      resolveConflicts: true,
+      markdown: draft,
+      draftEpoch: this.draftEpoch,
+    });
+  }
+
+  async importProjectNotes({ ensureConnected = true } = {}) {
+    if (ensureConnected && !(await this.syncService.ensureConnected())) return null;
+    await this.sendPaneState("Connected · reconciling workspace notes…");
+    const summary = await this.syncService.reconcileOpenWorkspaces({ showProgress: true });
+    await vscode.commands.executeCommand("aicNotes.refreshTree");
+    if (this.placeholderUri && await exists(this.placeholderUri)) {
+      await this.attach(this.placeholderUri);
+    } else if (this.documentUri || this.placeholderUri) {
+      if (this.draftDirty) await this.refreshRelationships();
+      else await this.sendInit();
+    }
+    vscode.window.showInformationMessage(
+      `AIC Notes: imported ${summary.imported?.created ?? 0}, linked ${summary.imported?.linked ?? 0}, synchronized ${summary.synced}, conflicts ${summary.conflicts}, skipped ${summary.skipped}, failed ${summary.failed}`,
+    );
+    return summary;
+  }
+
+  async initializeWorkspaceSync() {
+    const summary = await this.syncService.reconcileOpenWorkspaces({ showProgress: false });
+    if (!summary.connected) {
+      this.authConnected = false;
+      this.authReconnect = Boolean(summary.reconnect);
+      await this.sendPaneState();
+      return summary;
+    }
+    this.authConnected = true;
+    this.authReconnect = false;
+    await vscode.commands.executeCommand("aicNotes.refreshTree");
+    if (this.placeholderUri && await exists(this.placeholderUri)) {
+      await this.attach(this.placeholderUri);
+    } else if (this.documentUri || this.placeholderUri) {
+      if (this.draftDirty) await this.refreshRelationships();
+      else await this.sendInit();
+    }
+    await this.sendPaneState(
+      summary.failed
+        ? `Workspace sync finished · ${summary.failed} failed`
+        : `Workspace notes ready · ${summary.synced} synchronized`,
+    );
+    return summary;
   }
 
   async trashCurrentNote() {
@@ -629,16 +912,10 @@ export class SecondaryNotePane {
     let finalStatus = "";
     await this.sendPaneState(binding.bound ? "Moving remote note to Trash…" : "Moving local note to Trash…");
     try {
-      const key = document.uri.toString();
-      this.suppressedSaveSync.add(key);
-      try {
-        if (!(await document.save())) {
-          throw structuredError("notes_save_failed", "the note could not be saved before moving it to Trash", [
-            "Resolve the file-system error and retry",
-          ]);
-        }
-      } finally {
-        this.suppressedSaveSync.delete(key);
+      if (!(await document.save())) {
+        throw structuredError("notes_save_failed", "the note could not be saved before moving it to Trash", [
+          "Resolve the file-system error and retry",
+        ]);
       }
 
       if (binding.bound) {
@@ -661,7 +938,7 @@ export class SecondaryNotePane {
       this.readOnly = false;
       this.pendingViewState = undefined;
       if (this.sourceUri) {
-        const placeholder = await fileNotePlaceholderForUri(this.sourceUri);
+        const placeholder = await notePlaceholderForUri(this.sourceUri);
         this.placeholderUri = placeholder.noteUri;
         this.placeholderText = placeholder.text;
       } else {
@@ -692,6 +969,12 @@ export class SecondaryNotePane {
         case "edit":
           this.editQueue = this.editQueue.catch(() => undefined).then(() =>
             this.applyChanges(message.changes ?? [], message.generation),
+          );
+          await this.editQueue;
+          break;
+        case "commit":
+          this.editQueue = this.editQueue.catch(() => undefined).then(() =>
+            this.commitDraft(message.text, message.generation, message.reason),
           );
           await this.editQueue;
           break;
@@ -730,6 +1013,14 @@ export class SecondaryNotePane {
         case "toast":
           vscode.window.showWarningMessage(`AIC Notes — ${String(message.message ?? "Markdown warning")}`);
           break;
+        case "draft.externalConflict":
+          await this.sendPaneState("File changed externally · current draft was not replaced");
+          break;
+        case "draft.state":
+          this.draftEpoch++;
+          this.draftDirty = Boolean(message.dirty);
+          await this.sendPaneState();
+          break;
       }
     } catch (error) {
       await this.sendPaneState("Action failed");
@@ -739,15 +1030,38 @@ export class SecondaryNotePane {
 
   async routeBus(message) {
     const { topic, payload } = message;
+    if (topic === "clipboard.write") {
+      const text = typeof payload?.text === "string" ? payload.text : "";
+      if (Buffer.byteLength(text, "utf8") > 2 * 1024 * 1024) {
+        vscode.window.showWarningMessage("AIC Notes — clipboard payload exceeds 2 MiB");
+        return;
+      }
+      await vscode.env.clipboard.writeText(text);
+      vscode.window.setStatusBarMessage(`AIC Notes: copied ${String(payload?.label ?? "source")}`, 2000);
+      return;
+    }
     if (topic === "link.external") {
       const value = String(payload?.url ?? "");
       if (/^(?:https?:|mailto:|tel:)/iu.test(value)) await vscode.env.openExternal(vscode.Uri.parse(value));
       return;
     }
-    if (topic === "file.open" && this.documentUri && payload?.path) {
-      const document = await this.currentDocument();
-      if (!document) return;
-      const folder = vscode.workspace.getWorkspaceFolder(document.uri);
+    if (topic === "note.open" && (this.documentUri || this.placeholderUri) && payload?.path) {
+      const baseUri = this.documentUri ?? this.placeholderUri;
+      const folder = baseUri ? vscode.workspace.getWorkspaceFolder(baseUri) : undefined;
+      if (!folder) return;
+      const relativePath = String(payload.path).replaceAll("\\", "/");
+      if (
+        !relativePath.endsWith(".note.md") || relativePath.startsWith("/") ||
+        relativePath.split("/").some((segment) => !segment || segment === "." || segment === "..")
+      ) return;
+      await this.open(vscode.Uri.joinPath(folder.uri, relativePath), { pin: true, reveal: true });
+      return;
+    }
+    if (topic === "file.open" && (this.documentUri || this.placeholderUri) && payload?.path) {
+      const document = this.documentUri ? await this.currentDocument() : undefined;
+      const baseUri = document?.uri ?? this.placeholderUri;
+      if (!baseUri) return;
+      const folder = vscode.workspace.getWorkspaceFolder(baseUri);
       if (!folder) return;
       const uri = vscode.Uri.joinPath(folder.uri, payload.path);
       if (isNotePath(uri.path)) {

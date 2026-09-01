@@ -1,29 +1,22 @@
-// The notes explorer — a TreeDataProvider mirroring aic's explorer fold-in
-// (aic web/src/find.js withNotes): every *.note.md shown against the thing it
-// annotates. Shape per workspace folder:
-//   global note (~/.config/aic/note.md, pinned, cross-project)
+// The project Markdown explorer. It includes every *.md document while keeping
+// *.note.md sidecars visibly distinct and attached to their target semantics.
+// Shape per workspace folder:
 //   project note (<rootName>.note.md at root)
 //   .aic/notes/ bucket ("project globals")
-//   directory hierarchy of the remaining notes
-// Level badge comes from frontmatter (lazy 1 KB read, mtime-cached);
+//   directory hierarchy of the remaining Markdown files
+// Note metadata comes from frontmatter (lazy 1 KB read, mtime-cached);
 // agent-hidden notes get a lock icon; a note whose target is gone is an orphan.
 
 import * as vscode from "vscode";
-import * as os from "node:os";
 import * as path from "node:path";
 import { noteTargetStem } from "./paths.js";
 import { parseFrontmatter, isAgentVisible } from "./frontmatter.js";
 import { targetKind } from "./target.js";
-
-export const GLOBAL_NOTE_PATH = path.join(
-  process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config"),
-  "aic",
-  "note.md",
-);
+import { isNotePath } from "../secondary/model.js";
 
 const EXCLUDE = "{**/node_modules/**,**/.git/**,**/dist/**,**/.*/**}";
 
-// one tree element; kind: global | project | bucket | dir | note
+// one tree element; kind: root | projectPlaceholder | bucket | dir | note | document
 class Item {
   constructor(kind, label, opts = {}) {
     this.kind = kind;
@@ -37,7 +30,7 @@ export class NotesTree {
     this._emitter = new vscode.EventEmitter();
     this.onDidChangeTreeData = this._emitter.event;
     this._badgeCache = new Map(); // fsPath → { mtime, level, visible }
-    this._watcher = vscode.workspace.createFileSystemWatcher("**/*.note.md");
+    this._watcher = vscode.workspace.createFileSystemWatcher("**/*.md");
     for (const ev of ["onDidCreate", "onDidChange", "onDidDelete"]) {
       this._watcher[ev](() => this.refresh());
     }
@@ -55,15 +48,18 @@ export class NotesTree {
 
   // ---- data -----------------------------------------------------------
 
-  async _notesFor(folder) {
+  async _markdownFor(folder) {
     const rel = (p) => new vscode.RelativePattern(folder, p);
     const [main, bucket] = await Promise.all([
-      vscode.workspace.findFiles(rel("**/*.note.md"), rel(EXCLUDE)),
+      vscode.workspace.findFiles(rel("**/*.md"), rel(EXCLUDE)),
       vscode.workspace.findFiles(rel(".aic/notes/*.note.md")),
     ]);
     const seen = new Map();
     for (const uri of [...main, ...bucket]) {
-      seen.set(uri.fsPath, vscode.workspace.asRelativePath(uri, false).replaceAll("\\", "/"));
+      seen.set(
+        uri.fsPath,
+        vscode.workspace.asRelativePath(uri, false).replaceAll("\\", "/"),
+      );
     }
     return [...seen.entries()]
       .map(([fsPath, relPath]) => ({ uri: vscode.Uri.file(fsPath), relPath }))
@@ -79,7 +75,8 @@ export class NotesTree {
     }
     const hit = this._badgeCache.get(uri.fsPath);
     if (hit && hit.mtime === stat.mtime) return hit;
-    let level, visible = true;
+    let level,
+      visible = true;
     try {
       const bytes = await vscode.workspace.fs.readFile(uri);
       const head = new TextDecoder().decode(bytes.slice(0, 1024));
@@ -98,101 +95,182 @@ export class NotesTree {
   async getChildren(element) {
     const folders = vscode.workspace.workspaceFolders ?? [];
     if (!element) {
-      const roots = [new Item("global", "global note")];
-      if (folders.length === 1) return [...roots, ...(await this._folderChildren(folders[0]))];
-      for (const f of folders) roots.push(new Item("root", f.name, { folder: f }));
+      const roots = [];
+      if (folders.length === 1) return this._folderChildren(folders[0]);
+      for (const f of folders)
+        roots.push(new Item("root", f.name, { folder: f }));
       return roots;
     }
     if (element.kind === "root") return this._folderChildren(element.folder);
-    if (element.kind === "bucket" || element.kind === "dir") return element.children;
+    if (element.kind === "bucket" || element.kind === "dir")
+      return element.children;
     return [];
   }
 
   async _folderChildren(folder) {
-    const notes = await this._notesFor(folder);
+    const notes = await this._markdownFor(folder);
     const projectNoteRel = `${folder.name}.note.md`;
     const items = [];
+    let hasProjectNote = false;
     const bucket = [];
     const byDir = new Map(); // top-level dir → notes under it
 
     for (const n of notes) {
       if (n.relPath === projectNoteRel) {
-        items.push(new Item("note", folder.name, { uri: n.uri, relPath: n.relPath, folder, forcedLevel: "project" }));
+        hasProjectNote = true;
+        items.push(
+          new Item("note", folder.name, {
+            uri: n.uri,
+            relPath: n.relPath,
+            folder,
+            forcedLevel: "project",
+          }),
+        );
       } else if (n.relPath.startsWith(".aic/notes/")) {
-        bucket.push(new Item("note", path.basename(n.relPath), { uri: n.uri, relPath: n.relPath, folder, forcedLevel: "global" }));
+        bucket.push(
+          new Item("note", path.basename(n.relPath), {
+            uri: n.uri,
+            relPath: n.relPath,
+            folder,
+            forcedLevel: "global",
+          }),
+        );
       } else {
-        const top = n.relPath.includes("/") ? n.relPath.slice(0, n.relPath.indexOf("/")) : "";
+        const top = n.relPath.includes("/")
+          ? n.relPath.slice(0, n.relPath.indexOf("/"))
+          : "";
         if (!byDir.has(top)) byDir.set(top, []);
         byDir.get(top).push(n);
       }
     }
-    if (bucket.length) items.push(new Item("bucket", "project globals (.aic/notes)", { children: bucket }));
+    if (!hasProjectNote) {
+      items.unshift(new Item("projectPlaceholder", folder.name, { folder }));
+    }
+    if (bucket.length)
+      items.push(
+        new Item("bucket", "project globals (.aic/notes)", {
+          children: bucket,
+        }),
+      );
 
     const rootNotes = byDir.get("") ?? [];
     byDir.delete("");
-    for (const [dir, dirNotes] of [...byDir.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    for (const [dir, dirNotes] of [...byDir.entries()].sort(([a], [b]) =>
+      a.localeCompare(b),
+    )) {
       items.push(
         new Item("dir", dir, {
           children: dirNotes.map(
-            (n) => new Item("note", this._noteLabel(n.relPath), { uri: n.uri, relPath: n.relPath, folder }),
+            (n) =>
+              new Item(
+                isNotePath(n.relPath) ? "note" : "document",
+                this._entryLabel(n.relPath),
+                {
+                  uri: n.uri,
+                  relPath: n.relPath,
+                  folder,
+                },
+              ),
           ),
         }),
       );
     }
     for (const n of rootNotes) {
-      items.push(new Item("note", this._noteLabel(n.relPath), { uri: n.uri, relPath: n.relPath, folder }));
+      items.push(
+        new Item(
+          isNotePath(n.relPath) ? "note" : "document",
+          this._entryLabel(n.relPath),
+          {
+            uri: n.uri,
+            relPath: n.relPath,
+            folder,
+          },
+        ),
+      );
     }
     return items;
   }
 
-  _noteLabel(relPath) {
+  _entryLabel(relPath) {
+    if (!isNotePath(relPath)) return path.basename(relPath);
     const t = noteTargetStem(relPath);
-    return t ? t.stem.slice(t.stem.lastIndexOf("/") + 1) : path.basename(relPath);
+    return t
+      ? t.stem.slice(t.stem.lastIndexOf("/") + 1)
+      : path.basename(relPath);
   }
 
   async getTreeItem(element) {
-    if (element.kind === "global") {
-      let exists = true;
-      try {
-        await vscode.workspace.fs.stat(vscode.Uri.file(GLOBAL_NOTE_PATH));
-      } catch {
-        exists = false;
-      }
-      const item = new vscode.TreeItem("global note", vscode.TreeItemCollapsibleState.None);
-      item.description = exists ? "~/.config/aic/note.md" : "not created yet";
-      item.iconPath = new vscode.ThemeIcon(exists ? "globe" : "circle-outline");
-      item.command = { command: "aicNotes.openGlobalNote", title: "Open Global Note" };
-      item.contextValue = "globalNote";
-      return item;
-    }
     if (element.kind === "root") {
-      const item = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Expanded);
+      const item = new vscode.TreeItem(
+        element.label,
+        vscode.TreeItemCollapsibleState.Expanded,
+      );
       item.iconPath = vscode.ThemeIcon.Folder;
       return item;
     }
+    if (element.kind === "projectPlaceholder") {
+      const item = new vscode.TreeItem(
+        element.label,
+        vscode.TreeItemCollapsibleState.None,
+      );
+      item.description = "Note · not created yet";
+      item.iconPath = new vscode.ThemeIcon("circle-outline");
+      item.command = {
+        command: "aicNotes.openProjectNote",
+        title: "Open Project Note",
+        arguments: [element.folder.uri],
+      };
+      item.contextValue = "projectPlaceholder";
+      return item;
+    }
     if (element.kind === "bucket" || element.kind === "dir") {
-      const item = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
+      const item = new vscode.TreeItem(
+        element.label,
+        vscode.TreeItemCollapsibleState.Collapsed,
+      );
       item.iconPath =
-        element.kind === "bucket" ? new vscode.ThemeIcon("archive") : vscode.ThemeIcon.Folder;
+        element.kind === "bucket"
+          ? new vscode.ThemeIcon("archive")
+          : vscode.ThemeIcon.Folder;
       item.contextValue = element.kind; // "dir" | "bucket" — enables group delete
+      return item;
+    }
+    if (element.kind === "document") {
+      const item = new vscode.TreeItem(
+        element.label,
+        vscode.TreeItemCollapsibleState.None,
+      );
+      item.resourceUri = element.uri;
+      item.description = "Document";
+      item.iconPath = new vscode.ThemeIcon("markdown");
+      item.tooltip = element.relPath;
+      item.command = {
+        command: "aicNotes.openNote",
+        title: "Open Document",
+        arguments: [element.uri],
+      };
+      item.contextValue = "document";
       return item;
     }
     // note
     const { level, visible } = await this._badge(element.uri);
-    const kind = element.forcedLevel ? "file" : await targetKind(element.folder, element.relPath);
-    const badge =
-      element.forcedLevel ??
-      level ??
-      (kind === "folder" ? "folder-note" : kind === "file" ? "file-note" : undefined);
+    const kind = element.forcedLevel
+      ? "file"
+      : await targetKind(element.folder, element.relPath);
     // "orphan" (warn icon) only when the note CLAIMS a target via its level
     // and that target is gone. A free-standing note (ticket/topic notes have
     // no frontmatter, or a non file/folder level) is legitimate — plain icon
     // (owner 2026-07-06: ts-* ticket notes wrongly warned).
     const claimsTarget = level === "file-note" || level === "folder-note";
     const orphan = kind === null && !element.forcedLevel && claimsTarget;
-    const item = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.None);
+    const item = new vscode.TreeItem(
+      element.label,
+      vscode.TreeItemCollapsibleState.None,
+    );
     item.resourceUri = element.uri;
-    item.description = [badge, orphan ? "orphan" : null].filter(Boolean).join(" · ");
+    item.description = ["Note", orphan ? "orphan" : null]
+      .filter(Boolean)
+      .join(" · ");
     item.iconPath = !visible
       ? new vscode.ThemeIcon("lock")
       : orphan

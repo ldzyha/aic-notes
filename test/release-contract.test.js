@@ -1,17 +1,23 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
 const packageJson = JSON.parse(
   await readFile(new URL("../package.json", import.meta.url), "utf8"),
 );
 
-test("9.0.1 manifest separates Primary management from Secondary note content", () => {
-  assert.equal(packageJson.version, "9.0.1");
+test("11.4.6 manifest separates Primary management from Secondary note content", () => {
+  assert.equal(packageJson.version, "11.4.6");
+  assert.equal(packageJson.aicEditorCore, "2.1.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.equal(packageJson.scripts.publish, undefined);
   assert.ok(packageJson.scripts["release:gate"]);
-  assert.ok(packageJson.contributes.views.aicNotes.some((view) => view.id === "aicNotes.tree"));
+  assert.ok(
+    packageJson.contributes.views.aicNotes.some(
+      (view) => view.id === "aicNotes.tree",
+    ),
+  );
   assert.ok(
     packageJson.contributes.viewsContainers.secondarySidebar.some(
       (container) => container.id === "aicNotesSecondary",
@@ -24,53 +30,100 @@ test("9.0.1 manifest separates Primary management from Secondary note content", 
   );
 });
 
-test("note association, global open hotkey, and footer surface are explicit", async () => {
+test("note association, linked-note hotkey, and footer surface are explicit", async () => {
   assert.equal(
-    packageJson.contributes.configurationDefaults["workbench.editorAssociations"]["*.note.md"],
+    packageJson.contributes.configurationDefaults[
+      "workbench.editorAssociations"
+    ]["*.note.md"],
     "aicNotes.noteRedirect",
   );
   const binding = packageJson.contributes.keybindings.find(
     ({ command }) => command === "aicNotes.noteForCurrentFile",
   );
-  assert.deepEqual({ key: binding.key, mac: binding.mac }, { key: "ctrl+alt+n", mac: "cmd+alt+n" });
+  assert.deepEqual(
+    { key: binding.key, mac: binding.mac },
+    { key: "ctrl+alt+n", mac: "cmd+alt+n" },
+  );
   assert.equal(binding.when, undefined);
   const titleItem = packageJson.contributes.menus["editor/title"].find(
     ({ command }) => command === "aicNotes.noteForCurrentFile",
   );
   assert.match(titleItem.when, /not =~ \/\\\.note\\\.md\$\//u);
-  const provider = await readFile(new URL("../src/secondary/provider.js", import.meta.url), "utf8");
-  const create = await readFile(new URL("../src/notes/create.js", import.meta.url), "utf8");
-  const extension = await readFile(new URL("../src/extension.js", import.meta.url), "utf8");
+  const provider = await readFile(
+    new URL("../src/secondary/provider.js", import.meta.url),
+    "utf8",
+  );
+  const create = await readFile(
+    new URL("../src/notes/create.js", import.meta.url),
+    "utf8",
+  );
+  const extension = await readFile(
+    new URL("../src/extension.js", import.meta.url),
+    "utf8",
+  );
+  const target = await readFile(
+    new URL("../src/notes/target.js", import.meta.url),
+    "utf8",
+  );
+  const tree = await readFile(
+    new URL("../src/notes/tree.js", import.meta.url),
+    "utf8",
+  );
   assert.match(provider, /id="secondary-footer"/u);
   assert.match(provider, /id="pane-pin"/u);
   assert.match(provider, /id="pane-clear"/u);
   assert.doesNotMatch(provider, /id="pane-delete"/u);
   assert.doesNotMatch(provider, /id="pane-(?:auto|sync|create|note-actions)"/u);
   assert.match(provider, /tabGroups\.close/u);
-  assert.match(create, /secondary\.followSource\(uri, \{ force: true, preserveFocus: false \}\)/u);
+  assert.match(
+    create,
+    /secondary\.followSource\(uri, \{ force: true, preserveFocus: false \}\)/u,
+  );
+  assert.match(
+    create,
+    /secondary\.followTarget\(uri, \{ force: true, preserveFocus: false \}\)/u,
+  );
+  assert.doesNotMatch(create, /openGlobalNote|GLOBAL_NOTE_PATH/u);
+  assert.ok(
+    !packageJson.contributes.commands.some(
+      ({ command }) => command === "aicNotes.openGlobalNote",
+    ),
+  );
   assert.doesNotMatch(create, /ensureFileNoteForUri/u);
   assert.match(extension, /noteForCurrentFile\(secondary\)/u);
+  assert.match(target, /relNotePath === `\$\{folder\.name\}\.note\.md`/u);
+  assert.match(tree, /projectPlaceholder/u);
+  assert.match(tree, /Note · not created yet/u);
+  assert.doesNotMatch(tree, /global note|GLOBAL_NOTE_PATH/u);
 });
 
 test("source selections expose the AIC linked-comment action without targeting note files", async () => {
   const binding = packageJson.contributes.keybindings.find(
-    ({ command, key }) => command === "aicNotes.linkSelectionToNote" && key === "ctrl+alt+l",
+    ({ command, key }) =>
+      command === "aicNotes.linkSelectionToNote" && key === "ctrl+alt+l",
   );
   assert.deepEqual(
     { key: binding.key, mac: binding.mac },
     { key: "ctrl+alt+l", mac: "cmd+alt+l" },
   );
-  assert.ok(packageJson.contributes.keybindings.some(
-    ({ command, key, mac }) => command === "aicNotes.linkSelectionToNote" &&
-      key === "ctrl+shift+/" && mac === "cmd+shift+/",
-  ));
+  assert.ok(
+    packageJson.contributes.keybindings.some(
+      ({ command, key, mac }) =>
+        command === "aicNotes.linkSelectionToNote" &&
+        key === "ctrl+shift+/" &&
+        mac === "cmd+shift+/",
+    ),
+  );
   assert.match(binding.when, /editorHasSelection/u);
   assert.match(binding.when, /not =~ \/\\\.note\\\.md\$\//u);
   const menu = packageJson.contributes.menus["editor/context"].find(
     ({ command }) => command === "aicNotes.linkSelectionToNote",
   );
   assert.match(menu.when, /editorHasSelection/u);
-  const selection = await readFile(new URL("../src/notes/selection.js", import.meta.url), "utf8");
+  const selection = await readFile(
+    new URL("../src/notes/selection.js", import.meta.url),
+    "utf8",
+  );
   assert.match(selection, /document\.isDirty/u);
   assert.match(selection, /await document\.save\(\)/u);
   assert.match(selection, /document\.getText\(editor\.selection\)/u);
@@ -79,25 +132,58 @@ test("source selections expose the AIC linked-comment action without targeting n
   assert.doesNotMatch(selection, /edit\.replace\(document\.uri/u);
 });
 
-test("Secondary editable placeholder, pinned footer, blur save, and theme-safe controls are scoped", async () => {
-  const provider = await readFile(new URL("../src/secondary/provider.js", import.meta.url), "utf8");
-  const webview = await readFile(new URL("../src/webview/main.js", import.meta.url), "utf8");
-  const details = await readFile(new URL("../src/webview/details.js", import.meta.url), "utf8");
-  const css = await readFile(new URL("../src/webview/theme.css", import.meta.url), "utf8");
-  assert.match(provider, /fileNotePlaceholderForUri/u);
+test("Secondary editable placeholder, explicit save, and theme-safe controls are scoped", async () => {
+  const provider = await readFile(
+    new URL("../src/secondary/provider.js", import.meta.url),
+    "utf8",
+  );
+  const webview = await readFile(
+    new URL("../src/webview/main.js", import.meta.url),
+    "utf8",
+  );
+  const details = await readFile(
+    new URL("../src/webview/details.js", import.meta.url),
+    "utf8",
+  );
+  const css = await readFile(
+    new URL("../src/webview/theme.css", import.meta.url),
+    "utf8",
+  );
+  assert.match(provider, /notePlaceholderForUri/u);
+  assert.match(provider, /async followTarget/u);
   assert.match(provider, /createFromPlaceholder/u);
   assert.match(provider, /workspace\.fs\.writeFile/u);
   assert.match(provider, /id="pane-breadcrumb"/u);
   assert.match(provider, /id="pane-filename"/u);
   assert.match(provider, /id="pane-auth"/u);
+  assert.match(provider, /Standard Notes · Connected/u);
+  assert.match(provider, /Standard Notes · Disconnected/u);
   assert.match(provider, /showPinnedActions/u);
-  assert.match(provider, /onDidSaveTextDocument/u);
+  assert.doesNotMatch(provider, /onDidSaveTextDocument/u);
+  assert.doesNotMatch(provider, /onDocumentSaved/u);
   assert.match(provider, /CoalescingQueue/u);
-  assert.match(provider, /case "ready":[\s\S]*else await this\.followActive\(\)/u);
-  assert.match(webview, /reason: "blur"/u);
+  assert.match(
+    provider,
+    /case "ready":[\s\S]*else await this\.followActive\(\)/u,
+  );
+  assert.doesNotMatch(webview, /commitDraft\("blur"\)|onfocusout/u);
+  assert.match(webview, /commitDraft\("explicit"\)/u);
+  assert.match(webview, /dataset\.saveState/u);
+  assert.match(provider, /Unsaved · Ctrl\+S/u);
+  assert.match(webview, /DraftSession/u);
+  assert.match(webview, /type: "draft\.state"/u);
+  assert.match(provider, /newerWebviewDraft/u);
+  assert.doesNotMatch(webview, /secondarySurface\) postEdit\(update\)/u);
   assert.match(webview, /EditorState\.readOnly\.of\(docState\.readOnly\)/u);
-  assert.match(webview, /if \(!docState\.readOnly\) requestAnimationFrame\(\(\) => view\?\.focus\(\)\)/u);
+  assert.match(
+    webview,
+    /if \(!docState\.readOnly\) requestAnimationFrame\(\(\) => view\?\.focus\(\)\)/u,
+  );
   assert.doesNotMatch(webview, /pane\.(?:create|sync|autoOpen|reveal)/u);
+  assert.doesNotMatch(
+    webview,
+    /@codemirror\/search|searchKeymap|search\(\{ top:/u,
+  );
   assert.doesNotMatch(provider, /case "pane\.sync"/u);
   assert.doesNotMatch(provider, /pane-mode/u);
   assert.doesNotMatch(webview, /paneMode|setPaneMode/u);
@@ -105,28 +191,63 @@ test("Secondary editable placeholder, pinned footer, blur save, and theme-safe c
   assert.doesNotMatch(details, /ViewPlugin/u);
   assert.match(css, /--aic-contrast-fg:[^;]*--vscode-foreground/u);
   assert.match(css, /--aic-agent-shell:[^;]*--vscode-agents-background/u);
-  assert.match(css, /--aic-agent-panel:[^;]*--vscode-agentsPanel-background[^;]*--vscode-sideBar-background/u);
-  assert.match(css, /--aic-agent-panel-border:[^;]*--vscode-agentsPanel-border[^;]*--vscode-sideBar-border/u);
+  assert.match(
+    css,
+    /--aic-agent-panel:[^;]*--vscode-agentsPanel-background[^;]*--vscode-sideBar-background/u,
+  );
+  assert.match(
+    css,
+    /--aic-agent-panel-border:[^;]*--vscode-agentsPanel-border[^;]*--vscode-sideBar-border/u,
+  );
   assert.match(css, /html\.aic-secondary-shell/u);
   assert.match(css, /body\.aic-secondary-surface/u);
   assert.match(css, /margin: 5px/u);
-  assert.match(css, /\.aic-secondary-surface \.cm-editor \{ font-size: 0\.875rem; \}/u);
-  assert.match(css, /\.aic-secondary-surface \.cm-scroller \{ line-height: 1\.42; \}/u);
+  assert.match(
+    css,
+    /\.aic-secondary-surface \.cm-editor \{ font-size: 0\.875rem; \}/u,
+  );
+  assert.match(
+    css,
+    /\.aic-secondary-surface \.cm-scroller \{ line-height: 1\.42; \}/u,
+  );
   assert.match(css, /#secondary-footer/u);
   assert.match(css, /\.cm-aic-details-summary/u);
   assert.match(css, /--aic-details-surface:/u);
   assert.match(details, /createElementNS\("http:\/\/www\.w3\.org\/2000\/svg"/u);
-  assert.match(details, /textContent = "Edit source"/u);
+  assert.match(
+    details,
+    /textContent = view\.state\.readOnly \? "View source" : "Edit"/u,
+  );
   assert.doesNotMatch(details, /[▸▾]/u);
 });
 
 test("headless authorization uses SecretStorage plus the encrypted bridge vault", async () => {
-  const client = await readFile(new URL("../src/sync/client.js", import.meta.url), "utf8");
-  const vault = await readFile(new URL("../src/sync/vault.js", import.meta.url), "utf8");
-  const bridge = await readFile(new URL("../bridge/main.go", import.meta.url), "utf8");
+  const client = await readFile(
+    new URL("../src/sync/client.js", import.meta.url),
+    "utf8",
+  );
+  const vault = await readFile(
+    new URL("../src/sync/vault.js", import.meta.url),
+    "utf8",
+  );
+  const bridge = await readFile(
+    new URL("../bridge/main.go", import.meta.url),
+    "utf8",
+  );
   assert.match(client, /sessionVaultConfig/u);
   assert.match(vault, /context\.secrets\.store/u);
+  assert.match(vault, /const confirmed = await context\.secrets\.get/u);
+  assert.match(
+    vault,
+    /confirmed === candidate \? candidate : await fileBackedVaultKey/u,
+  );
+  assert.match(vault, /vaultKeyCache/u);
   assert.match(vault, /standard-notes-session\.v1\.json/u);
+  assert.match(vault, /fileBackedVaultKey/u);
+  assert.match(vault, /standard-notes-vault-key\.v1/u);
+  assert.match(vault, /open\(keyPath, "wx", 0o600\)/u);
+  assert.match(vault, /context\.globalStoragePath/u);
+  assert.match(vault, /vscode\.Uri\.file\(context\.globalStoragePath\)/u);
   assert.doesNotMatch(bridge, /session\.UpdateSession/u);
   assert.doesNotMatch(bridge, /session\.GetSessionFromKeyring/u);
   assert.match(bridge, /ReadOnly/u);
@@ -134,11 +255,225 @@ test("headless authorization uses SecretStorage plus the encrypted bridge vault"
   assert.match(client, /async logout\(\)/u);
 });
 
+test("first login and explicit recovery pull only tagged project notes", async () => {
+  const provider = await readFile(
+    new URL("../src/secondary/provider.js", import.meta.url),
+    "utf8",
+  );
+  const client = await readFile(
+    new URL("../src/sync/client.js", import.meta.url),
+    "utf8",
+  );
+  const bridge = await readFile(
+    new URL("../bridge/main.go", import.meta.url),
+    "utf8",
+  );
+  const importer = await readFile(
+    new URL("../bridge/import.go", import.meta.url),
+    "utf8",
+  );
+  assert.ok(
+    packageJson.contributes.commands.some(
+      ({ command }) => command === "aicNotes.pullProjectNotes",
+    ),
+  );
+  assert.match(provider, /login\(\)[\s\S]*importProjectNotes/u);
+  assert.match(client, /operation: "pull-project"/u);
+  assert.match(client, /await chmod\(bridge, 0o755\)/u);
+  assert.doesNotMatch(client, /existing !== candidate\.remote\.localContent/u);
+  assert.match(client, /persist the binding\/base/u);
+  assert.match(bridge, /discoverRemoteNote/u);
+  assert.match(bridge, /case "pull-project"/u);
+  assert.match(importer, /projectTagAssignments/u);
+  assert.match(importer, /project:/u);
+  assert.match(importer, /path:/u);
+});
+
+test("Secondary installs its message receiver before loading webview HTML", async () => {
+  const provider = await readFile(
+    new URL("../src/secondary/provider.js", import.meta.url),
+    "utf8",
+  );
+  const receiver = provider.indexOf("view.webview.onDidReceiveMessage");
+  const html = provider.indexOf("view.webview.html = webviewHtml");
+  assert.ok(receiver >= 0 && html >= 0 && receiver < html);
+});
+
+test("Secondary recovers a missing sidecar as a placeholder and keeps failed saves local", async () => {
+  const provider = await readFile(
+    new URL("../src/secondary/provider.js", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    provider,
+    /if \(!\(await exists\(uri\)\)\)[\s\S]*notePlaceholderForUri\(target\)/u,
+  );
+  assert.match(
+    provider,
+    /if \(this\.documentUri && !\(await exists\(this\.documentUri\)\)\)/u,
+  );
+  assert.match(
+    provider,
+    /await vscode\.workspace\.fs\.writeFile\(this\.documentUri/u,
+  );
+  assert.match(
+    provider,
+    /let saved = false;[\s\S]*saved = await document\.save\(\)/u,
+  );
+  assert.match(provider, /Save failed · draft kept in the editor/u);
+});
+
+test("code, Mermaid, and link actions copy through the VS Code clipboard bridge", async () => {
+  const code = await readFile(
+    new URL("../vendor/markdown/handlers/code-fence.js", import.meta.url),
+    "utf8",
+  );
+  const mermaid = await readFile(
+    new URL("../vendor/markdown/mermaid.js", import.meta.url),
+    "utf8",
+  );
+  const link = await readFile(
+    new URL("../vendor/markdown/link-actions.js", import.meta.url),
+    "utf8",
+  );
+  const editor = await readFile(
+    new URL("../src/editor/provider.js", import.meta.url),
+    "utf8",
+  );
+  const secondary = await readFile(
+    new URL("../src/secondary/provider.js", import.meta.url),
+    "utf8",
+  );
+  const main = await readFile(
+    new URL("../src/webview/main.js", import.meta.url),
+    "utf8",
+  );
+  const details = await readFile(
+    new URL("../src/webview/details.js", import.meta.url),
+    "utf8",
+  );
+  assert.match(code, /cm-md-code-preview cm-md-block-preview/u);
+  assert.match(code, /copy\.textContent = "Copy"/u);
+  assert.match(
+    code,
+    /edit\.textContent = view\.state\.readOnly \? "View source" : "Edit"/u,
+  );
+  assert.match(code, /clipboard\.write/u);
+  assert.match(mermaid, /copy\.textContent = "Copy"/u);
+  assert.match(mermaid, /clipboard\.write/u);
+  assert.match(link, /makeLinkActionsExtension/u);
+  assert.match(link, /createLinkControl/u);
+  assert.match(link, /label: "link URL"/u);
+  assert.match(link, /clipboard\.write/u);
+  assert.match(editor, /vscode\.env\.clipboard\.writeText/u);
+  assert.match(secondary, /vscode\.env\.clipboard\.writeText/u);
+  assert.match(main, /makeCodeFenceExtension\(host\)/u);
+  assert.match(main, /makeMermaidExtension\(host\)/u);
+  assert.doesNotMatch(details, /inertPreviewClicks/u);
+  assert.match(details, /ignoreEvent\(\) \{[\s\S]*return true/u);
+});
+
+test("workspace initialization reconciles all Markdown and properties expose read-only note context", async () => {
+  const client = await readFile(
+    new URL("../src/sync/client.js", import.meta.url),
+    "utf8",
+  );
+  const provider = await readFile(
+    new URL("../src/secondary/provider.js", import.meta.url),
+    "utf8",
+  );
+  const relationships = await readFile(
+    new URL("../src/notes/relationships.js", import.meta.url),
+    "utf8",
+  );
+  const frontmatter = await readFile(
+    new URL("../vendor/markdown/handlers/frontmatter.js", import.meta.url),
+    "utf8",
+  );
+  assert.match(client, /async reconcileOpenWorkspaces/u);
+  assert.match(client, /importOpenWorkspaces\(\{ showProgress: false \}\)/u);
+  assert.match(client, /workspace\.findFiles\([\s\S]*\*\*\/\*\.md/u);
+  assert.match(client, /markdownKind\(uri\.path\) === "note"/u);
+  assert.match(client, /resolveConflicts: false/u);
+  const reconcile = client.slice(
+    client.indexOf("async reconcileOpenWorkspaces"),
+    client.indexOf("async _connect"),
+  );
+  assert.match(
+    reconcile,
+    /acceptResult: async \(candidate\)[\s\S]*openDocument\?\.isDirty[\s\S]*workspace\.fs\.writeFile/u,
+  );
+  const syncMethod = client.slice(client.lastIndexOf("async sync("));
+  assert.ok(
+    syncMethod.indexOf("workspaceState.update") <
+      syncMethod.indexOf("await acceptResult(result)"),
+  );
+  assert.match(provider, /initializeWorkspaceSync/u);
+  assert.match(provider, /noteRelationshipsForTarget/u);
+  assert.match(provider, /createFileSystemWatcher\("\*\*\/\*\.note\.md"\)/u);
+  assert.match(provider, /async refreshRelationships/u);
+  assert.match(provider, /type: "relationships"/u);
+  assert.match(relationships, /relation,\s*label:[\s\S]*exists:/u);
+  assert.match(frontmatter, /setNoteRelationships/u);
+  assert.match(frontmatter, /wrapper\.append\(relationships\)/u);
+  assert.match(frontmatter, /host\.bus\.publish\("note\.open"/u);
+  assert.doesNotMatch(frontmatter, /contenteditable/iu);
+});
+
+test("documents and notes stay visibly distinct and ordinary Ctrl+S synchronizes", async () => {
+  const extension = await readFile(
+    new URL("../src/extension.js", import.meta.url),
+    "utf8",
+  );
+  const tree = await readFile(
+    new URL("../src/notes/tree.js", import.meta.url),
+    "utf8",
+  );
+  const styles = await readFile(
+    new URL("../vendor/markdown/styles.js", import.meta.url),
+    "utf8",
+  );
+  assert.match(extension, /onDidSaveTextDocument/u);
+  assert.match(extension, /onWillSaveTextDocument/u);
+  assert.match(extension, /TextDocumentSaveReason\.Manual/u);
+  assert.match(extension, /explicitDocumentSaves\.delete/u);
+  assert.match(extension, /endsWith\("\.note\.md"\)/u);
+  assert.match(
+    extension,
+    /sync\.sync\(document\.uri, captured, \{[\s\S]*?interactive: false,[\s\S]*?resolveConflicts: true,[\s\S]*?acceptResult: async \(candidate\)/u,
+  );
+  assert.match(extension, /applyingDocumentPulls/u);
+  assert.match(
+    extension,
+    /workspace\.applyEdit\(edit\)[\s\S]*document\.save\(\)/u,
+  );
+  assert.match(tree, /createFileSystemWatcher\("\*\*\/\*\.md"\)/u);
+  assert.match(tree, /item\.description = "Document"/u);
+  assert.match(tree, /item\.description = \["Note"/u);
+  assert.match(
+    styles,
+    /\.cm-aic-link-actions \{ display: inline-flex; gap: \.15rem \}/u,
+  );
+  assert.doesNotMatch(styles, /\.cm-aic-link-actions[^}]*opacity:\s*0/u);
+});
+
 test("Standard Notes tags use a native parent graph and exact managed identities", async () => {
-  const model = await readFile(new URL("../src/secondary/model.js", import.meta.url), "utf8");
-  const client = await readFile(new URL("../src/sync/client.js", import.meta.url), "utf8");
-  const bridge = await readFile(new URL("../bridge/main.go", import.meta.url), "utf8");
-  assert.match(model, /supportsNestedTags \? \[project, \.\.\.parents\] : \[project\]/u);
+  const model = await readFile(
+    new URL("../src/secondary/model.js", import.meta.url),
+    "utf8",
+  );
+  const client = await readFile(
+    new URL("../src/sync/client.js", import.meta.url),
+    "utf8",
+  );
+  const bridge = await readFile(
+    new URL("../bridge/main.go", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    model,
+    /supportsNestedTags \? \[project, \.\.\.parents\] : \[project\]/u,
+  );
   assert.doesNotMatch(model, /join\("\."\)/u);
   assert.match(client, /previousTagUuids/u);
   assert.match(client, /managedTagUuids/u);
@@ -147,22 +482,50 @@ test("Standard Notes tags use a native parent graph and exact managed identities
   assert.match(bridge, /leafUUID/u);
   assert.match(bridge, /PreviousTagUUIDs/u);
   assert.match(bridge, /ManagedTagUUIDs/u);
+  assert.match(bridge, /noteHasActiveTagReference/u);
 });
 
 test("Secondary rejects non-substantive sync before API access and exposes one two-sided Trash action", async () => {
-  const provider = await readFile(new URL("../src/secondary/provider.js", import.meta.url), "utf8");
-  const admission = await readFile(new URL("../src/sync/admission.js", import.meta.url), "utf8");
-  const client = await readFile(new URL("../src/sync/client.js", import.meta.url), "utf8");
-  const bridge = await readFile(new URL("../bridge/main.go", import.meta.url), "utf8");
-  const deletion = await readFile(new URL("../src/notes/delete.js", import.meta.url), "utf8");
+  const provider = await readFile(
+    new URL("../src/secondary/provider.js", import.meta.url),
+    "utf8",
+  );
+  const admission = await readFile(
+    new URL("../src/sync/admission.js", import.meta.url),
+    "utf8",
+  );
+  const client = await readFile(
+    new URL("../src/sync/client.js", import.meta.url),
+    "utf8",
+  );
+  const bridge = await readFile(
+    new URL("../bridge/main.go", import.meta.url),
+    "utf8",
+  );
+  const deletion = await readFile(
+    new URL("../src/notes/delete.js", import.meta.url),
+    "utf8",
+  );
   assert.match(provider, /this\.documentUri/u);
   assert.match(provider, /this\.document\.isClosed/u);
   assert.match(provider, /workspace\.openTextDocument\(uri\)/u);
+  assert.match(provider, /async recoverPlaceholder\(uri/u);
+  assert.match(provider, /if \(!\(await exists\(uri\)\)\) \{/u);
+  const open = provider.slice(
+    provider.indexOf("async open(uri"),
+    provider.indexOf("async recoverPlaceholder"),
+  );
+  assert.ok(
+    open.indexOf("closeExactNoteTabs(uri)") < open.indexOf("focus(false)"),
+  );
   const performSync = provider.slice(
     provider.indexOf("async performSync"),
     provider.indexOf("async saveCurrent"),
   );
-  assert.ok(performSync.indexOf("syncAdmission") < performSync.indexOf("this.syncService.sync"));
+  assert.ok(
+    performSync.indexOf("syncAdmission") <
+      performSync.indexOf("this.syncService.sync"),
+  );
   assert.match(admission, /reason: "empty"/u);
   assert.match(admission, /reason: "placeholder"/u);
   assert.match(provider, /trashCurrentNote/u);
@@ -172,18 +535,31 @@ test("Secondary rejects non-substantive sync before API access and exposes one t
   assert.doesNotMatch(provider, /clearNoteContent/u);
   assert.match(client, /operation: "trash"/u);
   assert.match(client, /remoteUuid: previous\.remoteUuid/u);
-  assert.match(client, /workspaceState\.update\(workspaceStateKey\(uri\), undefined\)/u);
+  assert.match(
+    client,
+    /workspaceState\.update\(workspaceStateKey\(uri\), undefined\)/u,
+  );
   assert.match(bridge, /case "trash"/u);
   assert.match(bridge, /remote\.Content\.SetTrashed\(true\)/u);
   assert.match(bridge, /note\.UUID == input\.RemoteUUID/u);
-  assert.match(deletion, /trashNotesLocally\(uris, \{ beforeDelete, detail = "" \} = \{\}\)/u);
+  assert.match(
+    deletion,
+    /trashNotesLocally\([\s\S]*\{ beforeDelete, afterDelete, detail = "" \} = \{\}/u,
+  );
+  assert.match(deletion, /await afterDelete\?\.\(uri\)/u);
   assert.match(deletion, /useTrash: true/u);
   assert.match(deletion, /"Delete Permanently"/u);
 });
 
 test("portable agent workflow uses only a thin .vscode marker and typed AIC commands", async () => {
-  const contract = await readFile(new URL("../src/agents/contract.js", import.meta.url), "utf8");
-  const bootstrap = await readFile(new URL("../src/agents/bootstrap.js", import.meta.url), "utf8");
+  const contract = await readFile(
+    new URL("../src/agents/contract.js", import.meta.url),
+    "utf8",
+  );
+  const bootstrap = await readFile(
+    new URL("../src/agents/bootstrap.js", import.meta.url),
+    "utf8",
+  );
   assert.match(contract, /\["\.vscode", "aic-agent\.json"\]/u);
   assert.match(contract, /guideCommand: "aic guide --json"/u);
   assert.match(contract, /ownerNotes: "\*\.note\.md"/u);
@@ -196,13 +572,38 @@ test("portable agent workflow uses only a thin .vscode marker and typed AIC comm
 });
 
 test("release packaging includes the helper but excludes helper source", async () => {
-  const ignore = await readFile(new URL("../.vscodeignore", import.meta.url), "utf8");
+  const ignore = await readFile(
+    new URL("../.vscodeignore", import.meta.url),
+    "utf8",
+  );
   assert.match(ignore, /^bridge\/\*\*$/mu);
   assert.match(ignore, /^\*\.vsix\.sha256$/mu);
-  assert.doesNotMatch(ignore, /^bin\//mu);
-  const goMod = await readFile(new URL("../bridge/go.mod", import.meta.url), "utf8");
+  assert.match(ignore, /^bin\/\*\*$/mu);
+  assert.match(ignore, /^!bin\/linux-x64\/aic-notes-sn-bridge$/mu);
+  assert.match(ignore, /^!bin\/wasm\/aic-notes-sn-bridge\.wasm$/mu);
+  assert.match(ignore, /^!bin\/wasm\/wasm_exec\.js$/mu);
+  assert.doesNotMatch(
+    ignore,
+    /^!bin\/windows-x64\/aic-notes-sn-bridge\.exe$/mu,
+  );
+  assert.ok(packageJson.scripts["package:windows"]);
+  const goMod = await readFile(
+    new URL("../bridge/go.mod", import.meta.url),
+    "utf8",
+  );
   assert.match(goMod, /28e3820a341f/u);
-  const provenance = await readFile(new URL("../PROVENANCE.md", import.meta.url), "utf8");
-  assert.match(provenance, /5e8f000ca1dff2880ed1da5042a47bc511202ff7/u);
-  assert.match(provenance, /7716a0d940a0f6ae8e1f3b3f4f36299dc53e31b16840dbd171254312c41ca12e/u);
+  const provenance = await readFile(
+    new URL("../PROVENANCE.md", import.meta.url),
+    "utf8",
+  );
+  assert.match(provenance, /e1901966301c32181edfdf65e475c94b43bcad5a/u);
+  for (const artifact of [
+    "../bin/linux-x64/aic-notes-sn-bridge",
+    "../bin/wasm/aic-notes-sn-bridge.wasm",
+    "../bin/wasm/wasm_exec.js",
+  ]) {
+    const bytes = await readFile(new URL(artifact, import.meta.url));
+    const hash = createHash("sha256").update(bytes).digest("hex");
+    assert.match(provenance, new RegExp(hash, "u"));
+  }
 });

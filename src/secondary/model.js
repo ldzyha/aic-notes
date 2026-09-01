@@ -3,9 +3,20 @@ import { createHash } from "node:crypto";
 import { notePathFor } from "../notes/paths.js";
 
 export const NOTE_SUFFIX = ".note.md";
+export const MARKDOWN_SUFFIX = ".md";
 
 export function isNotePath(value) {
-  return String(value ?? "").replaceAll("\\", "/").endsWith(NOTE_SUFFIX);
+  return String(value ?? "")
+    .replaceAll("\\", "/")
+    .endsWith(NOTE_SUFFIX);
+}
+
+export function markdownKind(value) {
+  const normalized = String(value ?? "")
+    .replaceAll("\\", "/")
+    .toLowerCase();
+  if (!normalized.endsWith(MARKDOWN_SUFFIX)) return null;
+  return normalized.endsWith(NOTE_SUFFIX) ? "note" : "document";
 }
 
 export function linkedNotePath(relativePath) {
@@ -18,14 +29,22 @@ export function workspaceStateKey(uri) {
 }
 
 export function noteTitle(relativePath, markdown = "") {
-  const frontmatterTitle = /^---\s*\n[\s\S]*?^title:\s*(.+?)\s*$[\s\S]*?^(?:---|\.\.\.)\s*$/mu.exec(
-    markdown,
-  )?.[1];
+  if (markdownKind(relativePath) === "document") {
+    return path.posix.basename(relativePath) || "Markdown document";
+  }
+  const frontmatterTitle =
+    /^---\s*\n[\s\S]*?^title:\s*(.+?)\s*$[\s\S]*?^(?:---|\.\.\.)\s*$/mu.exec(
+      markdown,
+    )?.[1];
   if (frontmatterTitle?.trim()) return frontmatterTitle.trim();
   return path.posix.basename(relativePath, NOTE_SUFFIX) || "AIC note";
 }
 
-export function managedTagPath(folderName, parentPath, supportsNestedTags = true) {
+export function managedTagPath(
+  folderName,
+  parentPath,
+  supportsNestedTags = true,
+) {
   const project = String(folderName ?? "").trim() || "workspace";
   const parents = String(parentPath ?? "")
     .replaceAll("\\", "/")
@@ -51,19 +70,30 @@ export function applyTextChanges(value, changes) {
   let output = source;
   for (const change of ordered) {
     if (
-      !Number.isInteger(change.from) || !Number.isInteger(change.to) ||
-      change.from < 0 || change.to < change.from || change.to > source.length ||
+      !Number.isInteger(change.from) ||
+      !Number.isInteger(change.to) ||
+      change.from < 0 ||
+      change.to < change.from ||
+      change.to > source.length ||
       change.to > boundary
     ) {
-      throw new RangeError("text changes must be valid non-overlapping source ranges");
+      throw new RangeError(
+        "text changes must be valid non-overlapping source ranges",
+      );
     }
-    output = output.slice(0, change.from) + change.insert + output.slice(change.to);
+    output =
+      output.slice(0, change.from) + change.insert + output.slice(change.to);
     boundary = change.from;
   }
   return output;
 }
 
-export function threeWayDecision(localHash, remoteHash, baseHash, resolution = "") {
+export function threeWayDecision(
+  localHash,
+  remoteHash,
+  baseHash,
+  resolution = "",
+) {
   if (!baseHash) return remoteHash ? "conflict" : "push";
   const localChanged = localHash !== baseHash;
   const remoteChanged = remoteHash !== baseHash;

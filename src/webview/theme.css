@@ -67,30 +67,6 @@ html, body {
 .cm-editor.cm-focused { outline: none; }
 .cm-scroller { line-height: 1.6; }
 
-/* CM panels (the @codemirror/search bar) — chrome stays on VS Code widget
-   colors so the bar matches the workbench, not the document */
-.cm-panels {
-  background: var(--vscode-editorWidget-background, #1e1e1e);
-  color: var(--fg);
-  border-color: var(--border);
-}
-.cm-panels input, .cm-panels button, .cm-panels label {
-  font-family: var(--vscode-font-family);
-  color: var(--fg);
-}
-.cm-panels input {
-  background: var(--vscode-input-background, #17191d);
-  border: 1px solid var(--vscode-input-border, var(--border));
-}
-.cm-panels button {
-  background: var(--vscode-button-secondaryBackground, var(--chip));
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  cursor: pointer;
-}
-.cm-searchMatch { background: rgba(210, 153, 34, 0.28); }
-.cm-searchMatch-selected { background: rgba(255, 223, 0, 0.35); }
-
 /* ── markdown structure overrides ──────────────────────────────────────
    Win over the vendored MARKDOWN_CSS (loaded after this file) via
    specificity. Hierarchy comes from SIZE + one accent color; underline is
@@ -155,25 +131,7 @@ html, body {
   font: inherit;
 }
 
-/* tooltip + stub components */
-.cm-tooltip {
-  background: var(--vscode-editorWidget-background, #1e1e1e);
-  border: 1px solid var(--border);
-  color: var(--fg);
-}
-.aicn-iconbtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25em;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--fg);
-  padding: 0.1rem 0.4rem;
-  cursor: pointer;
-  font: inherit;
-}
-.aicn-iconbtn:hover { background: var(--chip); }
+/* minimal error-state icon used by Mermaid diagnostics */
 .aicn-icon { color: var(--muted); }
 .cm-md-mermaid-loading { color: var(--muted); font-style: italic; }
 
@@ -238,6 +196,11 @@ html, body {
   letter-spacing: 0.025em;
   text-transform: uppercase;
 }
+.cm-md-preview-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+}
 .cm-md-edit-source {
   min-height: 1.45rem;
   padding: 0 0.42rem;
@@ -257,7 +220,63 @@ html, body {
 }
 .cm-editor .cm-content .cm-md-table.cm-md-block-preview,
 .cm-editor .cm-content .cm-md-props.cm-md-block-preview { padding: 0; }
+.cm-editor .cm-content .cm-md-code-preview.cm-md-block-preview { padding: 0; }
+.cm-md-code-preview > pre {
+  box-sizing: border-box;
+  max-width: 100%;
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  overflow: auto;
+  background: color-mix(in srgb, var(--aic-bg) 88%, var(--aic-contrast-fg) 12%);
+  color: var(--aic-fg);
+  font: 400 0.86rem/1.5 "JetBrains Mono", var(--vscode-editor-font-family, monospace);
+  tab-size: 2;
+  white-space: pre;
+}
+.cm-md-code-preview > pre > code { font: inherit; }
 .cm-editor .cm-content .cm-md-block-preview > table { margin: 0.35rem; }
+.cm-aic-note-relations {
+  border-top: 1px solid var(--aic-details-border);
+  font: 500 0.78rem/1.35 var(--vscode-font-family, system-ui, sans-serif);
+}
+.cm-aic-note-relations-heading {
+  padding: 0.35rem 0.55rem 0.2rem;
+  color: var(--aic-muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+.cm-aic-note-relations ul { margin: 0; padding: 0.1rem 0 0.4rem; list-style: none; }
+.cm-aic-note-relations li { margin: 0; padding: 0; }
+.cm-aic-note-relation-open {
+  display: grid;
+  grid-template-columns: 0.8rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.35rem;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 1.7rem;
+  padding: 0.15rem 0.55rem 0.15rem min(calc(0.55rem + var(--aic-note-depth) * 0.72rem), 4rem);
+  border: 0;
+  background: transparent;
+  color: var(--aic-contrast-fg);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.cm-aic-note-relation-open:hover,
+.cm-aic-note-relation-open:focus-visible {
+  background: color-mix(in srgb, var(--aic-accent) 9%, transparent);
+  outline: none;
+}
+.cm-aic-note-relations [aria-current="true"] .cm-aic-note-relation-open {
+  color: var(--aic-accent);
+  font-weight: 650;
+}
+.cm-aic-note-relation-marker { color: var(--aic-muted); font-size: 0.65rem; }
+.cm-aic-note-relation-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cm-aic-note-relation-kind { color: var(--aic-muted); font-size: 0.7rem; }
 .cm-editor .cm-content .cm-md-mermaid.cm-md-block-preview { padding-top: 0; }
 .cm-md-mermaid.cm-md-block-preview .cm-md-mermaid-zoom { top: 2.25rem; }
 
@@ -426,12 +445,20 @@ body.aic-secondary-surface {
 
 .aic-secondary-surface .cm-editor { font-size: 0.875rem; }
 .aic-secondary-surface .cm-scroller { line-height: 1.42; }
+.aic-secondary-surface[data-save-state="saved"] .cm-editor {
+  background: color-mix(in srgb, var(--aic-bg) 96%, #5aa66a 4%);
+  box-shadow: inset 2px 0 color-mix(in srgb, #5aa66a 58%, transparent);
+}
+.aic-secondary-surface[data-save-state="placeholder"] .cm-editor {
+  background: color-mix(in srgb, var(--aic-bg) 93%, var(--aic-muted) 7%);
+  box-shadow: inset 2px 0 color-mix(in srgb, var(--aic-muted) 48%, transparent);
+}
 
 /* AIC details: source remains Markdown; compact summary is the only collapsed surface. */
 .cm-aic-details-summary {
   box-sizing: border-box;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.35rem;
   width: 100%;
   min-height: 1.75rem;
@@ -460,6 +487,7 @@ body.aic-secondary-surface {
 }
 .cm-aic-details-disclosure {
   display: inline-grid;
+  flex: 0 0 auto;
   width: 1.35rem;
   height: 1.35rem;
   place-items: center;
@@ -473,6 +501,7 @@ body.aic-secondary-surface {
 }
 .cm-aic-details-summary[data-open="true"] .cm-aic-details-chevron { transform: rotate(90deg); }
 .cm-aic-details-check {
+  flex: 0 0 auto;
   width: 1rem;
   height: 1rem;
   border: 1px solid currentColor !important;
@@ -497,8 +526,8 @@ body.aic-secondary-surface {
   overflow: hidden;
   color: inherit;
   text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
   cursor: pointer;
 }
 .cm-aic-details-edit { flex: 0 0 auto; }

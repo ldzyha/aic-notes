@@ -11,6 +11,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 
 	"github.com/jonhadfield/gosn-v2/auth"
 	"github.com/jonhadfield/gosn-v2/common"
@@ -33,8 +35,9 @@ type vaultEnvelope struct {
 }
 
 type sessionVault struct {
-	path string
-	key  []byte
+	path       string
+	key        []byte
+	windowsACL bool
 }
 
 type persistedSession struct {
@@ -53,20 +56,41 @@ type persistedSession struct {
 	RefreshTokenCookie string         `json:"refresh_token_cookie,omitempty"`
 }
 
-func newSessionVault(path, encodedKey string) (*sessionVault, error) {
-	clean := filepath.Clean(path)
-	if path == "" || !filepath.IsAbs(path) || clean != path || filepath.Base(clean) != vaultFileName {
+func unsafeVaultFile(info os.FileInfo, windowsACL bool) bool {
+	if info == nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
+		return true
+	}
+	// Windows secures this file through the user's profile ACL. Go's synthetic
+	// Unix permission bits remain group/world-readable after Chmod and cannot
+	// be used to evaluate the underlying ACL.
+	return !windowsACL && info.Mode().Perm()&0o077 != 0
+}
+
+func newSessionVault(vaultPath, encodedKey, hostPlatform string) (*sessionVault, error) {
+	windowsACL := runtime.GOOS == "windows" || hostPlatform == "win32"
+	clean := filepath.Clean(vaultPath)
+	canonical := clean == vaultPath
+	if windowsACL && runtime.GOOS == "js" {
+		normalized := strings.ReplaceAll(vaultPath, "\\", "/")
+		clean = filepath.Clean(normalized)
+		canonical = clean == normalized
+	}
+	abs := filepath.IsAbs(clean)
+	if windowsACL && runtime.GOOS == "js" {
+		abs = len(clean) >= 3 && ((clean[0] >= 'A' && clean[0] <= 'Z') || (clean[0] >= 'a' && clean[0] <= 'z')) && clean[1:3] == ":/"
+	}
+	if vaultPath == "" || !abs || !canonical || filepath.Base(clean) != vaultFileName {
 		return nil, errors.New("vault path is invalid")
 	}
 	key, err := base64.RawURLEncoding.DecodeString(encodedKey)
 	if err != nil || len(key) != 32 {
 		return nil, errors.New("vault key is invalid")
 	}
-	return &sessionVault{path: clean, key: key}, nil
+	return &sessionVault{path: clean, key: key, windowsACL: windowsACL}, nil
 }
 
 func vaultFromRequest(input request) (*sessionVault, error) {
-	return newSessionVault(input.VaultPath, input.VaultKey)
+	return newSessionVault(input.VaultPath, input.VaultKey, input.HostPlatform)
 }
 
 func (v *sessionVault) aead() (cipher.AEAD, error) {
@@ -112,7 +136,7 @@ func (v *sessionVault) Get(service, user string) (string, error) {
 	if errors.Is(err, os.ErrNotExist) {
 		return "", keyring.ErrNotFound
 	}
-	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm()&0o077 != 0 {
+	if err != nil || unsafeVaultFile(info, v.windowsACL) {
 		return "", errors.New("vault file is unsafe")
 	}
 	file, err := os.Open(v.path)
@@ -149,7 +173,7 @@ func (v *sessionVault) Delete(service, user string) error {
 	if errors.Is(err, os.ErrNotExist) {
 		return keyring.ErrNotFound
 	}
-	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm()&0o077 != 0 {
+	if err != nil || unsafeVaultFile(info, v.windowsACL) {
 		return errors.New("vault file is unsafe")
 	}
 	if err := os.Remove(v.path); err != nil {
@@ -170,8 +194,10 @@ func (v *sessionVault) writeAtomic(payload []byte) error {
 	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return errors.New("vault directory is unsafe")
 	}
-	if err := os.Chmod(directory, 0o700); err != nil {
-		return errors.New("vault directory permissions could not be secured")
+	if !v.windowsACL {
+		if err := os.Chmod(directory, 0o700); err != nil {
+			return errors.New("vault directory permissions could not be secured")
+		}
 	}
 	temporary, err := os.CreateTemp(directory, ".aic-notes-session-*")
 	if err != nil {
@@ -185,8 +211,10 @@ func (v *sessionVault) writeAtomic(payload []byte) error {
 			_ = temporary.Close()
 		}
 	}()
-	if err := temporary.Chmod(0o600); err != nil {
-		return errors.New("vault temporary permissions could not be secured")
+	if !v.windowsACL {
+		if err := temporary.Chmod(0o600); err != nil {
+			return errors.New("vault temporary permissions could not be secured")
+		}
 	}
 	if _, err := temporary.Write(payload); err != nil {
 		return errors.New("vault temporary file could not be written")
@@ -208,8 +236,10 @@ func (v *sessionVault) writeAtomic(payload []byte) error {
 	if err := os.Rename(temporaryPath, v.path); err != nil {
 		return errors.New("vault could not be replaced atomically")
 	}
-	if err := os.Chmod(v.path, 0o600); err != nil {
-		return errors.New("vault permissions could not be secured")
+	if !v.windowsACL {
+		if err := os.Chmod(v.path, 0o600); err != nil {
+			return errors.New("vault permissions could not be secured")
+		}
 	}
 	return nil
 }

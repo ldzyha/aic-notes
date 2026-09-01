@@ -25,3 +25,12 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 The bundled font files are licensed under the SIL Open Font License 1.1. The complete license is
 included at `src/webview/fonts/OFL.txt` in source and `dist/webview/fonts/OFL.txt` in the VSIX.
+
+## Go WebAssembly runtime
+
+Copyright 2009 The Go Authors. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted
+provided that the copyright notice, conditions, and disclaimer are retained. The bundled
+`wasm_exec.js` comes from the Go distribution and is used under its BSD-3-Clause license. The full
+license is available at https://go.dev/LICENSE.

@@ -10,7 +10,7 @@ export function makeHost(api, docState) {
       },
     },
     editor: {
-      // the vendored link-tooltip resolves relative local links against the
+      // the link action adapter resolves relative local links against the
       // "active buffer" — here, always this document
       getActiveBuffer: () => ({ path: docState.relativePath }),
     },

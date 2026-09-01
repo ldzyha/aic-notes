@@ -1,10 +1,12 @@
 # AIC Notes Standard Notes bridge
 
-This Linux x64 helper is the only process that handles Standard Notes authentication, encryption,
-item sync, and tag references. It uses the pinned MIT `gosn-v2` module in `go.mod` directly.
+This bridge core handles Standard Notes authentication, encryption, item sync, and tag references.
+Linux packages run it as a native helper; Windows packages run the same Go core as in-process
+WebAssembly so Smart App Control never has to launch an unsigned executable. It uses the pinned MIT
+`gosn-v2` module in `go.mod` directly.
 
 Protocol: one JSON object on stdin and one JSON object on stdout. Supported operations are
-`status`, `connect`, `disconnect`, `sync`, and `trash`. Input is limited to 2 MiB. The VS Code host additionally limits
+`status`, `connect`, `disconnect`, `pull-project`, `sync`, and `trash`. Input is limited to 2 MiB. The VS Code host additionally limits
 output to 4 MiB and execution to 45 seconds. Credentials are accepted only for `connect`, passed
 over stdin, and never persisted. Session tokens and encryption material are serialized by this
 bridge into an AES-256-GCM vault supplied by the extension. The vault file is restricted to `0600`
@@ -27,10 +29,18 @@ managed UUID path, and uses those UUIDs for later migration and Trash cleanup. I
 disabled in a compatible build, the same planner emits only the project root; it never encodes a
 hierarchy into one dotted title.
 
-Build with Go 1.25.1:
+`pull-project` is read-only. It returns active notes referenced by the exact native project tag
+hierarchy and recognizes the previous AIC `project:*`/`path:*` and dotted layouts for migration.
+An empty duplicate project tag left by an interrupted migration is ignored; two project roots that
+both contain notes still fail closed. Unrelated and trashed notes are omitted. A later unbound sync
+recovers an existing remote by exact managed path plus title before it considers creating a note.
+
+Build both release targets from the same package with Go 1.27.0:
 
 ```sh
 go test ./...
 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' \
   -o ../bin/linux-x64/aic-notes-sn-bridge .
+GOOS=js GOARCH=wasm CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' \
+  -o ../bin/wasm/aic-notes-sn-bridge.wasm .
 ```

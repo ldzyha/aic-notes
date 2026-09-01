@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"os"
 	"strings"
 	"time"
 
@@ -32,49 +30,38 @@ type request struct {
 	Token            string   `json:"token,omitempty"`
 	LocalContent     string   `json:"localContent,omitempty"`
 	Title            string   `json:"title,omitempty"`
+	Kind             string   `json:"kind,omitempty"`
 	Tags             []string `json:"tags,omitempty"`
 	PreviousTags     []string `json:"previousTags,omitempty"`
 	PreviousTagUUIDs []string `json:"previousTagUuids,omitempty"`
 	RemoteUUID       string   `json:"remoteUuid,omitempty"`
 	BaseHash         string   `json:"baseHash,omitempty"`
 	Resolution       string   `json:"resolution,omitempty"`
+	Project          string   `json:"project,omitempty"`
+	HostPlatform     string   `json:"hostPlatform,omitempty"`
 	VaultPath        string   `json:"vaultPath,omitempty"`
 	VaultKey         string   `json:"vaultKey,omitempty"`
 }
 
 type response struct {
-	OK              bool     `json:"ok"`
-	Code            string   `json:"code,omitempty"`
-	Message         string   `json:"message,omitempty"`
-	Fixes           []string `json:"fixes,omitempty"`
-	Connected       bool     `json:"connected,omitempty"`
-	Email           string   `json:"email,omitempty"`
-	MFARequired     bool     `json:"mfaRequired,omitempty"`
-	TokenName       string   `json:"tokenName,omitempty"`
-	Action          string   `json:"action,omitempty"`
-	LocalContent    string   `json:"localContent"`
-	RemoteUUID      string   `json:"remoteUuid,omitempty"`
-	BaseHash        string   `json:"baseHash,omitempty"`
-	SyncedAt        string   `json:"syncedAt,omitempty"`
-	ManagedTags     []string `json:"managedTags,omitempty"`
-	ManagedTagUUIDs []string `json:"managedTagUuids,omitempty"`
-	RemoteChanged   bool     `json:"remoteChanged,omitempty"`
-	ReadOnly        bool     `json:"readOnly,omitempty"`
-}
-
-func main() {
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			write(response{OK: false, Code: "sn_bridge_panic", Message: "the Standard Notes bridge stopped safely", Fixes: []string{"Retry, then reinstall the matching VSIX if the problem persists"}})
-		}
-	}()
-	limited := io.LimitReader(os.Stdin, maxRequestBytes+1)
-	payload, err := io.ReadAll(limited)
-	if err != nil {
-		write(response{OK: false, Code: "sn_bridge_protocol", Message: "request could not be read"})
-		return
-	}
-	write(handle(payload))
+	OK              bool                `json:"ok"`
+	Code            string              `json:"code,omitempty"`
+	Message         string              `json:"message,omitempty"`
+	Fixes           []string            `json:"fixes,omitempty"`
+	Connected       bool                `json:"connected,omitempty"`
+	Email           string              `json:"email,omitempty"`
+	MFARequired     bool                `json:"mfaRequired,omitempty"`
+	TokenName       string              `json:"tokenName,omitempty"`
+	Action          string              `json:"action,omitempty"`
+	LocalContent    string              `json:"localContent"`
+	RemoteUUID      string              `json:"remoteUuid,omitempty"`
+	BaseHash        string              `json:"baseHash,omitempty"`
+	SyncedAt        string              `json:"syncedAt,omitempty"`
+	ManagedTags     []string            `json:"managedTags,omitempty"`
+	ManagedTagUUIDs []string            `json:"managedTagUuids,omitempty"`
+	RemoteChanged   bool                `json:"remoteChanged,omitempty"`
+	ReadOnly        bool                `json:"readOnly,omitempty"`
+	Notes           []remoteProjectNote `json:"notes,omitempty"`
 }
 
 func handle(payload []byte) response {
@@ -94,6 +81,8 @@ func handle(payload []byte) response {
 		return disconnect(input)
 	case "sync":
 		return syncNote(input)
+	case "pull-project":
+		return pullProject(input)
 	case "trash":
 		return trashNote(input)
 	default:
@@ -110,12 +99,6 @@ func disconnect(input request) response {
 		return failure("sn_vault_delete_failed", err, "Check extension storage permissions and retry")
 	}
 	return response{OK: true, Connected: false, Action: "disconnected"}
-}
-
-func write(output response) {
-	encoder := json.NewEncoder(os.Stdout)
-	encoder.SetEscapeHTML(true)
-	_ = encoder.Encode(output)
 }
 
 func status(input request) response {
@@ -245,6 +228,19 @@ func syncNote(input request) response {
 			break
 		}
 	}
+	if input.RemoteUUID == "" {
+		discovered, discoverErr := discoverRemoteNote(
+			decrypted.Notes(),
+			decrypted.Tags(),
+			input.Title,
+			input.Tags,
+			input.Kind,
+		)
+		if discoverErr != nil {
+			return failure("sn_remote_ambiguous", discoverErr, "Resolve duplicate AIC note identities in Standard Notes and retry")
+		}
+		remote = discovered
+	}
 	if input.RemoteUUID != "" && remote == nil {
 		return response{OK: false, Code: "sn_remote_missing", Message: "the bound Standard Notes item no longer exists", Fixes: []string{"Restore that remote note or clear this note's workspace sync binding deliberately"}}
 	}
@@ -348,6 +344,92 @@ func syncNote(input request) response {
 		ManagedTagUUIDs: tagResult.UUIDs,
 		ReadOnly:        false,
 	}
+}
+
+// discoverRemoteNote recovers a lost local workspace binding without creating
+// a duplicate Standard Notes item. AIC's identity is the exact managed tag
+// path plus the exact note title; content is intentionally excluded because a
+// difference is what the three-way conflict flow must resolve once.
+func discoverRemoteNote(notes items.Notes, tags items.Tags, title string, tagPath []string, kind string) (*items.Note, error) {
+	if len(tagPath) == 0 || strings.TrimSpace(tagPath[0]) == "" {
+		return nil, nil
+	}
+	assignments, err := projectTagAssignments(tags, tagPath[0])
+	if err != nil {
+		return nil, err
+	}
+	wantedPath := strings.Join(tagPath, "\x00")
+	var found *items.Note
+	for _, note := range notes {
+		if note.IsDeleted() || (note.Content.Trashed != nil && *note.Content.Trashed) ||
+			note.Content.Title != title || !remoteMarkdownKindMatches(note, kind) {
+			continue
+		}
+		assignment, ok := assignments[note.UUID]
+		if !ok || strings.Join(assignment.Path, "\x00") != wantedPath {
+			continue
+		}
+		if found != nil {
+			return nil, fmt.Errorf("note title %q is duplicated at managed path %q", title, strings.Join(tagPath, "/"))
+		}
+		candidate := note
+		found = &candidate
+	}
+	// Releases before native project tags could leave the root sidecar
+	// completely untagged. Recover only the one canonical project-note whose
+	// title and frontmatter title both equal the workspace root; the next sync
+	// attaches the normal managed project tag before any deletion can occur.
+	if found == nil && kind == "note" && len(tagPath) == 1 {
+		for _, note := range notes {
+			_, tagged := assignments[note.UUID]
+			if tagged || noteHasActiveTagReference(tags, note.UUID) || note.IsDeleted() ||
+				(note.Content.Trashed != nil && *note.Content.Trashed) ||
+				note.Content.Title != title ||
+				markdownFrontmatterValue(note.Content.Text, "level") != "project-note" ||
+				markdownFrontmatterValue(note.Content.Text, "title") != tagPath[0] {
+				continue
+			}
+			if found != nil {
+				return nil, fmt.Errorf("untagged project note %q is duplicated", title)
+			}
+			candidate := note
+			found = &candidate
+		}
+	}
+	return found, nil
+}
+
+func remoteMarkdownKindMatches(note items.Note, kind string) bool {
+	if kind == "" {
+		return true
+	}
+	level := markdownFrontmatterValue(note.Content.Text, "level")
+	isSidecar := level == "project-note" || level == "folder-note" || level == "file-note"
+	if kind == "note" {
+		return isSidecar
+	}
+	if kind == "document" {
+		return !isSidecar
+	}
+	return false
+}
+
+func markdownFrontmatterValue(markdown string, wanted string) string {
+	text := strings.TrimPrefix(markdown, "\ufeff")
+	if strings.HasPrefix(text, "---\n") || strings.HasPrefix(text, "---\r\n") {
+		for _, line := range strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")[1:] {
+			if line == "---" || line == "..." {
+				break
+			}
+			if strings.HasPrefix(line, " ") || strings.HasPrefix(line, "\t") || strings.HasPrefix(line, "-") {
+				continue
+			}
+			if key, value, found := strings.Cut(line, ":"); found && strings.TrimSpace(key) == wanted {
+				return strings.TrimSpace(value)
+			}
+		}
+	}
+	return ""
 }
 
 func prepareRemoteTrash(remote *items.Note, tags items.Tags, previousTags, previousTagUUIDs []string, now time.Time) (items.Items, string, error) {
@@ -672,6 +754,15 @@ func detachManagedTagReferences(
 func tagHasReference(tag items.Tag, itemUUID string) bool {
 	for _, ref := range tag.Content.References() {
 		if ref.UUID == itemUUID {
+			return true
+		}
+	}
+	return false
+}
+
+func noteHasActiveTagReference(tags items.Tags, noteUUID string) bool {
+	for _, tag := range tags {
+		if !tag.IsDeleted() && tagHasReference(tag, noteUUID) {
 			return true
 		}
 	}

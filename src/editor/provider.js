@@ -167,6 +167,16 @@ export class MarkdownEditorProvider {
 
   async _routeBus(msg, document, folder, relativePath) {
     const { topic, payload } = msg;
+    if (topic === "clipboard.write") {
+      const text = typeof payload?.text === "string" ? payload.text : "";
+      if (Buffer.byteLength(text, "utf8") > 2 * 1024 * 1024) {
+        vscode.window.showWarningMessage("AIC Notes — clipboard payload exceeds 2 MiB");
+        return;
+      }
+      await vscode.env.clipboard.writeText(text);
+      vscode.window.setStatusBarMessage(`AIC Notes: copied ${String(payload?.label ?? "source")}`, 2000);
+      return;
+    }
     if (topic === "link.external") {
       const url = String(payload?.url ?? "");
       if (!/^(?:https?:|mailto:|tel:|vscode:)/i.test(url)) {

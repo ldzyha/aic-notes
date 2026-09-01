@@ -10,7 +10,6 @@ import { notePathFor, folderNotePathFor } from "./paths.js";
 import { noteMeta, stringifyFrontmatter } from "./frontmatter.js";
 import { loadTemplate, fillTemplate } from "./templates.js";
 import { structuredError, formatError } from "../errors.js";
-import { GLOBAL_NOTE_PATH } from "./tree.js";
 
 async function exists(uri) {
   try {
@@ -21,10 +20,10 @@ async function exists(uri) {
   }
 }
 
-async function fileNoteDescriptor(uri) {
+export async function noteDescriptorForUri(uri) {
   if (!uri || uri.scheme !== "file" || uri.path.endsWith(".note.md")) {
-    throw structuredError("notes_no_active_file", "no file-backed source is available", [
-      "Focus a workspace source file, then retry",
+    throw structuredError("notes_no_target", "no file-backed source or folder is available", [
+      "Choose a workspace file or folder, then retry",
     ]);
   }
   const folder = vscode.workspace.getWorkspaceFolder(uri);
@@ -33,24 +32,34 @@ async function fileNoteDescriptor(uri) {
       "Open the file's folder as a workspace first",
     ]);
   }
+  let stat;
   try {
-    const stat = await vscode.workspace.fs.stat(uri);
-    if (stat.type & vscode.FileType.Directory) {
-      throw structuredError("notes_source_not_file", `${uri.fsPath} is not a file`, [
-        "Choose a source file",
-      ]);
-    }
+    stat = await vscode.workspace.fs.stat(uri);
   } catch (error) {
-    if (error?.structured) throw error;
     throw structuredError("notes_source_missing", `${uri.fsPath} no longer exists`, [
-      "Restore the source or focus another file",
+      "Restore the source or choose another workspace item",
     ]);
   }
-  const relPath = vscode.workspace.asRelativePath(uri, false).replaceAll("\\", "/");
-  const notePath = notePathFor(relPath);
+  const isDirectory = Boolean(stat.type & vscode.FileType.Directory);
+  const isWorkspaceRoot = uri.toString() === folder.uri.toString();
+  const rawRelPath = vscode.workspace.asRelativePath(uri, false).replaceAll("\\", "/");
+  const relPath = isWorkspaceRoot || rawRelPath === "." ? "" : rawRelPath;
+  const level = isDirectory
+    ? isWorkspaceRoot ? "project-note" : "folder-note"
+    : "file-note";
+  const notePath = level === "project-note"
+    ? `${folder.name}.note.md`
+    : level === "folder-note"
+      ? folderNotePathFor(relPath)
+      : notePathFor(relPath);
+  if (!notePath) {
+    throw structuredError("notes_target_invalid", `${uri.fsPath} cannot have a linked note`, [
+      "Choose a workspace file or folder",
+    ]);
+  }
   const noteUri = vscode.Uri.joinPath(folder.uri, notePath);
-  const title = path.basename(relPath);
-  return { folder, relPath, notePath, noteUri, title };
+  const title = level === "project-note" ? folder.name : path.basename(relPath);
+  return { folder, relPath, notePath, noteUri, title, level, isDirectory, isWorkspaceRoot };
 }
 
 function workspaceReader(folder) {
@@ -86,20 +95,31 @@ export async function ensureNoteFile(folder, relNotePath, level, titleName) {
 // this for its editable placeholder so merely viewing a source never creates a
 // sidecar; the first document edit persists these same bytes plus that edit.
 export async function fileNotePlaceholderForUri(uri) {
-  const descriptor = await fileNoteDescriptor(uri);
-  const template = await loadTemplate("file-note", workspaceReader(descriptor.folder));
+  const descriptor = await noteDescriptorForUri(uri);
+  if (descriptor.level !== "file-note") {
+    throw structuredError("notes_source_not_file", `${uri.fsPath} is not a file`, [
+      "Choose a source file",
+    ]);
+  }
+  const template = await loadTemplate(descriptor.level, workspaceReader(descriptor.folder));
   const body = fillTemplate(template, descriptor.title);
   return {
     ...descriptor,
-    text: stringifyFrontmatter(body, noteMeta(descriptor.title, "file-note")),
+    text: stringifyFrontmatter(body, noteMeta(descriptor.title, descriptor.level)),
   };
 }
 
-// create <notePath> with header+template if missing, then open it
-async function ensureNote(folder, relNotePath, level, titleName, sourceUri) {
-  const uri = await ensureNoteFile(folder, relNotePath, level, titleName);
-  await openNoteDocument(uri, { pin: false, sourceUri });
-  return uri;
+// File, folder, and workspace-root notes share one lazy-creation contract.
+// Merely opening a target returns canonical bytes; only the first editor
+// change writes the sidecar to disk.
+export async function notePlaceholderForUri(uri) {
+  const descriptor = await noteDescriptorForUri(uri);
+  const template = await loadTemplate(descriptor.level, workspaceReader(descriptor.folder));
+  const body = fillTemplate(template, descriptor.title);
+  return {
+    ...descriptor,
+    text: stringifyFrontmatter(body, noteMeta(descriptor.title, descriptor.level)),
+  };
 }
 
 export async function noteForCurrentFile(secondary) {
@@ -141,44 +161,29 @@ export async function noteForExplorerItem(uri, secondary) {
     ]);
   }
   const stat = await vscode.workspace.fs.stat(uri);
-  const relPath = vscode.workspace.asRelativePath(uri, false).replaceAll("\\", "/");
   const isDir = Boolean(stat.type & vscode.FileType.Directory);
   if (!isDir && !uri.path.endsWith(".note.md")) {
     await secondary.followSource(uri, { force: true, preserveFocus: false });
     return;
   }
-  const notePath = isDir ? folderNotePathFor(relPath) : notePathFor(relPath);
-  if (!notePath) {
+  if (!isDir) {
     // the item IS a note — just open it
     await openNoteDocument(uri, { pin: true });
     return;
   }
-  await ensureNote(
-    folder,
-    notePath,
-    isDir ? "folder-note" : "file-note",
-    isDir ? `${path.basename(relPath)}` : path.basename(relPath),
-    uri,
-  );
+  await secondary.followTarget(uri, { force: true, preserveFocus: false });
 }
 
-export async function openProjectNote() {
-  const folder = vscode.workspace.workspaceFolders?.[0];
+export async function openProjectNote(secondary, targetUri) {
+  const folder = targetUri
+    ? vscode.workspace.getWorkspaceFolder(targetUri)
+    : vscode.workspace.workspaceFolders?.[0];
   if (!folder) {
     throw structuredError("notes_no_workspace", "no workspace folder is open", [
       "Open a folder first",
     ]);
   }
-  await ensureNote(folder, `${folder.name}.note.md`, "project-note", folder.name);
-}
-
-export async function openGlobalNote() {
-  const uri = vscode.Uri.file(GLOBAL_NOTE_PATH);
-  if (!(await exists(uri))) {
-    await vscode.workspace.fs.createDirectory(vscode.Uri.file(path.dirname(GLOBAL_NOTE_PATH)));
-    await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(""));
-  }
-  await openNoteDocument(uri);
+  await secondary.followTarget(folder.uri, { force: true, preserveFocus: false });
 }
 
 // shared command wrapper: structured errors surface as messages, never throw

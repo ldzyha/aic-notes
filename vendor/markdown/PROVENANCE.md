@@ -19,12 +19,12 @@ re-apply the adaptations listed here, bump the commit hash.
 | `handlers/link.js` | verbatim | — |
 | `handlers/blocks.js` | adapted | `hrHandler` renders a real horizontal rule: `.cm-md-hr-line` line decoration + transparent dashes, raw source on reveal (owner 2026-07-06 "--- is not visible"; aic keeps colored dashes) |
 | `handlers/code-fence.js` | verbatim | — |
-| `handlers/frontmatter.js` | verbatim | — |
-| `handlers/table.js` | adapted | cells render full inline markdown — code/link/bold/strike/italic, recursive (owner 2026-07-06; aic renders links only) via the new CM-free `handlers/cell-inline.js` (node-testable; a shared /g regex across the recursion froze v0.5.1 — regression-tested in `test/table-cell.test.js`); imports resolve against the adapted files below |
-| `link-tooltip.js` | adapted | `@aic/components` `IconButton` → `components-stub.js`; `window.open` → `host.bus.publish("link.external")` (webviews block window.open) |
+| `handlers/frontmatter.js` | replaced | interactive property inputs, add, and drag reorder delegate all Markdown mutations to `vendor/aic-editor-core/structured-preview.js` |
+| `handlers/table.js` | replaced | interactive cell/header inputs, add row/column, and drag reorder delegate all Markdown mutations to `vendor/aic-editor-core/structured-preview.js` |
+| `link-actions.js` | replaced | tooltip removed; direct open/copy/edit control delegates shared DOM behavior to `vendor/aic-editor-core/structured-preview.js`, with VS Code host routing for local/external links and clipboard |
 | `mermaid.js` | adapted | kept the widget path (`mermaidFences`, `MermaidWidget`, `renderInto`, `makeMermaidExtension`, lazy chunk + structured errors); stripped the visual builder profiles/console and AI explain; theme from the VS Code body class; aic's caret-follow preview (console slot) is reshaped as the in-buffer `EditingPreviewWidget` — the live diagram below a fence while its source is edited (no aic equivalent, CSS in `src/webview/theme.css`); `renderInto` keeps the upstream `context` param — "widget" = one-line error marker (detail in title), "float" = `ErrorCard` inline in the editing preview; both widgets wrap the render target in a `diagramShell` with a layout-only zoom bar (`attachZoom`, no aic equivalent; CSS in `src/webview/theme.css`) |
-| `styles.js` | verbatim | CSS variables (`--fg/--marker/--accent/…`) are supplied by `src/webview/theme.css` from `--vscode-*` |
-| `components-stub.js` | new | `Icon`/`IconButton`/`ErrorCard` stand-in for `@aic/components` (`ErrorCard` ≈ aic's `ErrorState`, consumed by `renderInto`'s "float" context) |
+| `styles.js` | adapted | shared direct-link and structured-preview controls added; CSS variables (`--fg/--marker/--accent/…`) are supplied by `src/webview/theme.css` from `--vscode-*` |
+| `components-stub.js` | new | minimal `Icon`/`ErrorCard` stand-in for `@aic/components` (`ErrorCard` ≈ aic's `ErrorState`, consumed by `renderInto`'s "float" context) |
 
 NOT vendored: `render.js` (chat preview renderer), `code-highlight.js` (the
 preview's static highlighter — the editor uses `@codemirror/language`

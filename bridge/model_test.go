@@ -186,6 +186,204 @@ func TestReconcileTagHierarchyRejectsMalformedParent(t *testing.T) {
 	}
 }
 
+func TestProjectTagAssignmentsReadsNativeHierarchy(t *testing.T) {
+	root, _ := items.NewTag("demo", nil)
+	src, _ := items.NewTag("src", items.ItemReferences{parentTagReference(root.UUID)})
+	leaf, _ := items.NewTag("lib", items.ItemReferences{
+		parentTagReference(src.UUID),
+		{UUID: "note", ContentType: common.SNItemTypeNote},
+	})
+	assignments, err := projectTagAssignments(items.Tags{root, src, leaf}, "demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assignment, ok := assignments["note"]
+	if !ok || strings.Join(assignment.Path, "/") != "demo/src/lib" {
+		t.Fatalf("native project note path was not recovered: %#v", assignments)
+	}
+	if len(assignment.ManagedUUIDs) != 3 || assignment.ManagedUUIDs[2] != leaf.UUID {
+		t.Fatalf("native managed UUID path was not preserved: %#v", assignment)
+	}
+}
+
+func TestProjectTagAssignmentsIgnoresEmptyDuplicateRoot(t *testing.T) {
+	active, _ := items.NewTag("demo", items.ItemReferences{{UUID: "note", ContentType: common.SNItemTypeNote}})
+	empty, _ := items.NewTag("demo", nil)
+	assignments, err := projectTagAssignments(items.Tags{empty, active}, "demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assignment, ok := assignments["note"]
+	if !ok || strings.Join(assignment.Path, "/") != "demo" || assignment.ManagedUUIDs[0] != active.UUID {
+		t.Fatalf("active project root was not selected: %#v", assignments)
+	}
+}
+
+func TestProjectTagAssignmentsRejectsTwoActiveDuplicateRoots(t *testing.T) {
+	first, _ := items.NewTag("demo", items.ItemReferences{{UUID: "first", ContentType: common.SNItemTypeNote}})
+	second, _ := items.NewTag("demo", items.ItemReferences{{UUID: "second", ContentType: common.SNItemTypeNote}})
+	_, err := projectTagAssignments(items.Tags{first, second}, "demo")
+	if err == nil || !strings.Contains(err.Error(), "multiple active roots") {
+		t.Fatalf("two active project roots did not fail closed: %v", err)
+	}
+}
+
+func TestDiscoverRemoteNoteRecoversExactManagedIdentity(t *testing.T) {
+	root, _ := items.NewTag("demo", nil)
+	src, _ := items.NewTag("src", items.ItemReferences{
+		parentTagReference(root.UUID),
+		{UUID: "wanted", ContentType: common.SNItemTypeNote},
+		{UUID: "other", ContentType: common.SNItemTypeNote},
+	})
+	wanted, _ := items.NewNote("app.ts", "---\nlevel: file-note\n---\nremote", nil)
+	wanted.UUID = "wanted"
+	other, _ := items.NewNote("other.ts", "remote", nil)
+	other.UUID = "other"
+	got, err := discoverRemoteNote(items.Notes{wanted, other}, items.Tags{root, src}, "app.ts", []string{"demo", "src"}, "note")
+	if err != nil || got == nil || got.UUID != wanted.UUID {
+		t.Fatalf("exact remote identity was not recovered: got=%#v err=%v", got, err)
+	}
+}
+
+func TestDiscoverRemoteNoteSeparatesDocumentFromSidecarWithSameTitle(t *testing.T) {
+	root, _ := items.NewTag("demo", items.ItemReferences{
+		{UUID: "sidecar", ContentType: common.SNItemTypeNote},
+		{UUID: "document", ContentType: common.SNItemTypeNote},
+	})
+	sidecar, _ := items.NewNote("README.md", "---\nlevel: file-note\n---\nnotes", nil)
+	sidecar.UUID = "sidecar"
+	document, _ := items.NewNote("README.md", "# Read me", nil)
+	document.UUID = "document"
+	gotNote, noteErr := discoverRemoteNote(
+		items.Notes{sidecar, document},
+		items.Tags{root},
+		"README.md",
+		[]string{"demo"},
+		"note",
+	)
+	gotDocument, documentErr := discoverRemoteNote(
+		items.Notes{sidecar, document},
+		items.Tags{root},
+		"README.md",
+		[]string{"demo"},
+		"document",
+	)
+	if noteErr != nil || gotNote == nil || gotNote.UUID != sidecar.UUID {
+		t.Fatalf("sidecar identity was not isolated: got=%#v err=%v", gotNote, noteErr)
+	}
+	if documentErr != nil || gotDocument == nil || gotDocument.UUID != document.UUID {
+		t.Fatalf("document identity was not isolated: got=%#v err=%v", gotDocument, documentErr)
+	}
+}
+
+func TestDiscoverRemoteNoteRejectsDuplicateManagedIdentity(t *testing.T) {
+	root, _ := items.NewTag("demo", items.ItemReferences{
+		{UUID: "first", ContentType: common.SNItemTypeNote},
+		{UUID: "second", ContentType: common.SNItemTypeNote},
+	})
+	first, _ := items.NewNote("app.ts", "one", nil)
+	first.UUID = "first"
+	second, _ := items.NewNote("app.ts", "two", nil)
+	second.UUID = "second"
+	_, err := discoverRemoteNote(items.Notes{first, second}, items.Tags{root}, "app.ts", []string{"demo"}, "")
+	if err == nil || !strings.Contains(err.Error(), "duplicated") {
+		t.Fatalf("duplicate remote identity did not fail closed: %v", err)
+	}
+}
+
+func TestProjectTagAssignmentsReadsLegacyProjectAndPath(t *testing.T) {
+	project, _ := items.NewTag("project:demo", items.ItemReferences{{UUID: "note", ContentType: common.SNItemTypeNote}})
+	path, _ := items.NewTag("path:src/lib", items.ItemReferences{{UUID: "note", ContentType: common.SNItemTypeNote}})
+	assignments, err := projectTagAssignments(items.Tags{project, path}, "demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assignment, ok := assignments["note"]
+	if !ok || strings.Join(assignment.Path, "/") != "demo/src/lib" {
+		t.Fatalf("legacy project note path was not recovered: %#v", assignments)
+	}
+	if len(assignment.ManagedUUIDs) != 2 {
+		t.Fatalf("legacy managed UUIDs were not preserved: %#v", assignment)
+	}
+}
+
+func TestCollectProjectNotesExcludesTrashedContent(t *testing.T) {
+	note, _ := items.NewNote("app.ts", "body", nil)
+	note.UUID = "note"
+	note.Content.SetTrashed(true)
+	root, _ := items.NewTag("demo", items.ItemReferences{{UUID: note.UUID, ContentType: common.SNItemTypeNote}})
+	got, err := collectProjectNotes(items.Notes{note}, items.Tags{root}, "demo", map[string]bool{}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("trashed note was imported: %#v", got)
+	}
+}
+
+func TestCollectProjectNotesRecoversOneCanonicalUntaggedRoot(t *testing.T) {
+	note, _ := items.NewNote(
+		"demo",
+		"---\ntitle: demo\nlevel: project-note\n---\n\nroot body",
+		nil,
+	)
+	note.UUID = "root-note"
+	got, err := collectProjectNotes(
+		items.Notes{note},
+		items.Tags{},
+		"demo",
+		map[string]bool{},
+		false,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].RemoteUUID != note.UUID ||
+		strings.Join(got[0].TagPath, "/") != "demo" || len(got[0].ManagedTagUUIDs) != 0 {
+		t.Fatalf("canonical untagged root was not recovered: %#v", got)
+	}
+}
+
+func TestCollectProjectNotesRejectsDuplicateCanonicalUntaggedRoots(t *testing.T) {
+	first, _ := items.NewNote("demo", "---\ntitle: demo\nlevel: project-note\n---", nil)
+	first.UUID = "first"
+	second, _ := items.NewNote("demo", "---\ntitle: demo\nlevel: project-note\n---", nil)
+	second.UUID = "second"
+	_, err := collectProjectNotes(
+		items.Notes{first, second},
+		items.Tags{},
+		"demo",
+		map[string]bool{},
+		false,
+	)
+	if err == nil || !strings.Contains(err.Error(), "duplicated") {
+		t.Fatalf("duplicate canonical roots did not fail closed: %v", err)
+	}
+}
+
+func TestCollectProjectNotesDoesNotStealCanonicalRootFromAnotherTag(t *testing.T) {
+	note, _ := items.NewNote("demo", "---\ntitle: demo\nlevel: project-note\n---", nil)
+	note.UUID = "root-note"
+	personal, _ := items.NewTag("personal", items.ItemReferences{{UUID: note.UUID, ContentType: common.SNItemTypeNote}})
+	got, err := collectProjectNotes(
+		items.Notes{note},
+		items.Tags{personal},
+		"demo",
+		map[string]bool{},
+		false,
+	)
+	if err != nil || len(got) != 0 {
+		t.Fatalf("another tag's note was recovered as an untagged root: got=%#v err=%v", got, err)
+	}
+}
+
+func TestMarkdownFrontmatterValueReadsOnlyTopLevelProperties(t *testing.T) {
+	markdown := "---\ndocument:\n  level: file-note\nlevel: document\n---\nBody"
+	if got := markdownFrontmatterValue(markdown, "level"); got != "document" {
+		t.Fatalf("nested property shadowed top-level level: %q", got)
+	}
+}
+
 func TestReconcileTagHierarchyMigratesOnlyOwnedReferences(t *testing.T) {
 	noteRef := items.ItemReference{UUID: "note", ContentType: common.SNItemTypeNote}
 	otherRef := items.ItemReference{UUID: "other", ContentType: common.SNItemTypeNote}

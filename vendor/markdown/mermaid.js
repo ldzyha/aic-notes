@@ -97,7 +97,7 @@ export async function renderInto(el, source, context = "widget") {
     }
     const marker = document.createElement("span");
     marker.className = "cm-md-mermaid-broken";
-    marker.append(Icon("warn"), ` mermaid: ${structured.error} — use Edit source`);
+    marker.append(Icon("warn"), ` mermaid: ${structured.error} — use Edit`);
     marker.title = structured.detail;
     el.replaceChildren(marker);
     return false;
@@ -145,11 +145,12 @@ function diagramShell(className) {
 }
 
 class MermaidWidget extends WidgetType {
-  constructor(source, from, textFrom) {
+  constructor(source, from, textFrom, host) {
     super();
     this.source = source;
     this.from = from;
     this.textFrom = textFrom;
+    this.host = host;
   }
   eq(other) {
     return other.source === this.source && other.from === this.from;
@@ -163,17 +164,29 @@ class MermaidWidget extends WidgetType {
     header.className = "cm-md-preview-header";
     const title = document.createElement("span");
     title.textContent = "Mermaid";
+    const actions = document.createElement("span");
+    actions.className = "cm-md-preview-actions";
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "cm-md-edit-source";
+    copy.textContent = "Copy";
+    copy.onmousedown = (event) => event.preventDefault();
+    copy.onclick = (event) => {
+      event.stopPropagation();
+      this.host.bus.publish("clipboard.write", { text: this.source, label: "Mermaid source" });
+    };
     const edit = document.createElement("button");
     edit.type = "button";
     edit.className = "cm-md-edit-source";
-    edit.textContent = "Edit source";
+    edit.textContent = view.state.readOnly ? "View source" : "Edit";
     edit.onmousedown = (event) => event.preventDefault();
     edit.onclick = (event) => {
       event.stopPropagation();
       view.dispatch({ selection: { anchor: this.textFrom }, scrollIntoView: true });
       view.focus();
     };
-    header.append(title, edit);
+    actions.append(copy, edit);
+    header.append(title, actions);
     el.prepend(header);
     renderInto(body, this.source);
     return el;
@@ -250,7 +263,7 @@ export function mermaidFences(state) {
 // scroll, not only on click.
 const refreshMermaid = StateEffect.define();
 
-export function makeMermaidExtension() {
+export function makeMermaidExtension(host) {
   // Block widgets live in a StateField mapped through changes (pinned:
   // CM6 requires block decorations outside ViewPlugins).
   const field = StateField.define({
@@ -284,7 +297,7 @@ export function makeMermaidExtension() {
       } else {
         decorations.push(
           Decoration.replace({
-            widget: new MermaidWidget(fence.source, fence.from, fence.textFrom),
+            widget: new MermaidWidget(fence.source, fence.from, fence.textFrom, host),
             block: true,
           }).range(fence.from, fence.to),
         );

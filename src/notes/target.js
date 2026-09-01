@@ -26,6 +26,7 @@ async function siblingMatch(folder, t) {
 
 // → target Uri, or null when the note is an orphan
 export async function resolveTarget(folder, relNotePath) {
+  if (relNotePath === `${folder.name}.note.md`) return folder.uri;
   const t = noteTargetStem(relNotePath);
   if (!t) return null;
   const stemUri = vscode.Uri.joinPath(folder.uri, t.stem);
@@ -40,6 +41,7 @@ export async function resolveTarget(folder, relNotePath) {
 
 // → "folder" | "file" | null (orphan)
 export async function targetKind(folder, relNotePath) {
+  if (relNotePath === `${folder.name}.note.md`) return "folder";
   const t = noteTargetStem(relNotePath);
   if (!t) return null;
   const stemUri = vscode.Uri.joinPath(folder.uri, t.stem);

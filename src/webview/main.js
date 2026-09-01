@@ -1,7 +1,7 @@
 // The markdown editor webview — the FULL aic markdown session (owner
 // 2026-07-03, reversing the same-day minimal directive: claim every *.md and
 // carry the complete custom syntax): the reveal-rule handler set (headings,
-// emphasis, inline code, lists + task boxes, links + tooltip, blockquote/hr/
+// emphasis, inline code, lists + task boxes, direct link actions, blockquote/hr/
 // strikethrough, code fences), nested fenced-code highlighting (lazy chunks),
 // and the three block widgets — the live table grid, the frontmatter props
 // table, and in-place mermaid.
@@ -19,21 +19,25 @@
 
 import { EditorView, keymap, drawSelection } from "@codemirror/view";
 import { EditorState, Annotation, Prec, Compartment } from "@codemirror/state";
-import { defaultKeymap } from "@codemirror/commands";
+import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { syntaxHighlighting } from "@codemirror/language";
-import { search, searchKeymap } from "@codemirror/search";
 
 import { HANDLERS, decorationPlugin } from "../../vendor/markdown/session.js";
-import { linkTooltip } from "../../vendor/markdown/link-tooltip.js";
+import { makeLinkActionsExtension } from "../../vendor/markdown/link-actions.js";
 import { listKeymap } from "../../vendor/markdown/handlers/list.js";
 import { makeTableExtension } from "../../vendor/markdown/handlers/table.js";
-import { makeFrontmatterExtension } from "../../vendor/markdown/handlers/frontmatter.js";
+import {
+  makeFrontmatterExtension,
+  setNoteRelationships,
+} from "../../vendor/markdown/handlers/frontmatter.js";
+import { makeCodeFenceExtension } from "../../vendor/markdown/handlers/code-fence.js";
 import { makeMermaidExtension } from "../../vendor/markdown/mermaid.js";
 import { MARKDOWN_CSS } from "../../vendor/markdown/styles.js";
 import { makeFencedMarkdown } from "./fenced-local.js";
 import { darkHighlight } from "./highlight.js";
 import { makeHost } from "./host-shim.js";
 import { detailsExtension } from "./details.js";
+import { DraftSession } from "../../vendor/aic-editor-core/draft-session.js";
 import THEME_CSS from "./theme.css";
 
 const api = acquireVsCodeApi();
@@ -43,8 +47,22 @@ const editableCompartment = new Compartment();
 const secondarySurface = Boolean(document.getElementById("secondary-controls"));
 if (secondarySurface) document.documentElement.classList.add("aic-secondary-shell");
 
-const docState = { relativePath: "", generation: 0, readOnly: false, placeholder: false };
+const docState = {
+  relativePath: "",
+  generation: 0,
+  readOnly: false,
+  placeholder: false,
+  relationships: [],
+};
+const draft = new DraftSession();
 const host = makeHost(api, docState);
+
+function reflectSaveState() {
+  if (!secondarySurface) return;
+  document.body.dataset.saveState = draft.dirty
+    ? "dirty"
+    : docState.placeholder ? "placeholder" : "saved";
+}
 
 // bundled JetBrains Mono (OFL, dist/webview/fonts): the @font-face URLs must
 // be built at runtime — they resolve against this script's own webview URI
@@ -120,10 +138,16 @@ function postEdit(update) {
   if (changes.length) api.postMessage({ type: "edit", changes, generation: docState.generation });
 }
 
+function commitDraft(reason) {
+  if (!secondarySurface || !view || docState.readOnly) return;
+  const commit = draft.begin(reason);
+  if (commit) api.postMessage({ type: "commit", ...commit });
+}
+
 function makeEditor(text) {
   const parent = document.getElementById("editor");
   parent.innerHTML = "";
-  return new EditorView({
+  const editor = new EditorView({
     parent,
     state: EditorState.create({
       doc: text,
@@ -135,47 +159,55 @@ function makeEditor(text) {
         // owned by the handler classes (theme.css bumps their specificity)
         syntaxHighlighting(darkHighlight, { fallback: true }),
         decorationPlugin(HANDLERS),
-        linkTooltip(host),
+        makeLinkActionsExtension(host),
         makeTableExtension(host),
-        ...makeFrontmatterExtension(),
-        makeMermaidExtension(),
+        ...makeFrontmatterExtension(host, () => docState.relationships),
+        ...makeCodeFenceExtension(host),
+        makeMermaidExtension(host),
         ...detailsExtension(host),
         drawSelection(),
-        search({ top: true }),
+        ...(secondarySurface ? [history()] : []),
         // List Enter must win over defaultKeymap for continuation and
         // renumbering. Replacement previews expose their
-        // source only through the visible Edit source button.
+        // source only through the visible Edit button.
         Prec.high(keymap.of(listKeymap)),
         keymap.of([
-          // the TextDocument owns the undo stack — route the chords host-side
-          { key: "Mod-z", run: () => (api.postMessage({ type: "undo" }), true) },
-          { key: "Mod-y", mac: "Mod-Shift-z", run: () => (api.postMessage({ type: "redo" }), true) },
-          { key: "Mod-Shift-z", run: () => (api.postMessage({ type: "redo" }), true) },
-          { key: "Mod-s", run: () => (api.postMessage({ type: "save" }), true) },
-          ...searchKeymap,
+          ...(secondarySurface
+            ? historyKeymap
+            : [
+                // Ordinary Markdown still delegates undo to its TextDocument.
+                { key: "Mod-z", run: () => (api.postMessage({ type: "undo" }), true) },
+                { key: "Mod-y", mac: "Mod-Shift-z", run: () => (api.postMessage({ type: "redo" }), true) },
+                { key: "Mod-Shift-z", run: () => (api.postMessage({ type: "redo" }), true) },
+              ]),
+          {
+            key: "Mod-s",
+            run: () => {
+              if (secondarySurface) commitDraft("explicit");
+              else api.postMessage({ type: "save" });
+              return true;
+            },
+          },
           ...defaultKeymap,
         ]),
         EditorView.lineWrapping, // a note wraps, never scrolls sideways
         EditorView.updateListener.of((update) => {
           if (update.docChanged && !update.transactions.some((tr) => tr.annotation(remote))) {
-            postEdit(update);
+            if (secondarySurface) {
+              draft.edit(update.state.doc.toString());
+              reflectSaveState();
+              api.postMessage({ type: "draft.state", dirty: draft.dirty });
+            } else postEdit(update);
           }
           if (update.selectionSet || update.docChanged) {
             const { anchor, head } = update.state.selection.main;
             api.setState({ anchor, head, path: docState.relativePath });
           }
         }),
-        EditorView.domEventHandlers({
-          blur: () => {
-            if (secondarySurface && !docState.readOnly && !docState.placeholder) {
-              api.postMessage({ type: "save", reason: "blur" });
-            }
-            return false;
-          },
-        }),
       ],
     }),
   });
+  return editor;
 }
 
 window.addEventListener("message", (event) => {
@@ -186,6 +218,11 @@ window.addEventListener("message", (event) => {
       docState.generation = msg.generation;
       docState.readOnly = secondarySurface && Boolean(msg.readOnly);
       docState.placeholder = secondarySurface && Boolean(msg.placeholder);
+      docState.relationships = secondarySurface && Array.isArray(msg.relationships)
+        ? msg.relationships
+        : [];
+      draft.hydrate(msg.text, msg.generation, { discardLocal: true });
+      reflectSaveState();
       view?.destroy();
       view = makeEditor(msg.text);
       const requested = msg.selection;
@@ -211,11 +248,17 @@ window.addEventListener("message", (event) => {
     }
     case "external": {
       if (!view) return;
+      if (secondarySurface && draft.dirty) {
+        api.postMessage({ type: "draft.externalConflict" });
+        return;
+      }
       docState.generation = msg.generation;
       view.dispatch({
         changes: msg.changes,
         annotations: [remote.of(true)],
       });
+      if (secondarySurface) draft.hydrate(view.state.doc.toString(), msg.generation);
+      reflectSaveState();
       break;
     }
     case "reset": {
@@ -225,12 +268,28 @@ window.addEventListener("message", (event) => {
         changes: { from: 0, to: view.state.doc.length, insert: msg.text },
         annotations: [remote.of(true)],
       });
+      if (secondarySurface) draft.hydrate(msg.text, msg.generation, { discardLocal: true });
+      reflectSaveState();
+      break;
+    }
+    case "relationships": {
+      if (!secondarySurface || !view) return;
+      docState.relationships = Array.isArray(msg.relationships) ? msg.relationships : [];
+      view.dispatch({ effects: setNoteRelationships.of(docState.relationships) });
+      break;
+    }
+    case "committed": {
+      if (!view) return;
+      docState.generation = msg.generation;
+      draft.acknowledge(msg);
+      reflectSaveState();
       break;
     }
     case "paneState": {
       document.title = msg.title;
       docState.placeholder = secondarySurface && Boolean(msg.hasPlaceholder);
       document.body.dataset.placeholder = String(docState.placeholder);
+      reflectSaveState();
       const filename = document.getElementById("pane-filename");
       if (filename) filename.textContent = msg.title || "Linked Note";
       const breadcrumb = document.getElementById("pane-breadcrumb");
@@ -277,4 +336,12 @@ window.addEventListener("message", (event) => {
 });
 
 wirePaneControls();
+document.addEventListener("keydown", (event) => {
+  if (
+    !secondarySurface || event.defaultPrevented ||
+    !(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "s"
+  ) return;
+  event.preventDefault();
+  commitDraft("explicit");
+});
 api.postMessage({ type: "ready" });

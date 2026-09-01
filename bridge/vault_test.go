@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -69,7 +70,7 @@ func TestVaultRoundTripUsesAuthenticatedRandomizedCiphertext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fileInfo.Mode().Perm() != 0o600 || dirInfo.Mode().Perm() != 0o700 {
+	if runtime.GOOS != "windows" && (fileInfo.Mode().Perm() != 0o600 || dirInfo.Mode().Perm() != 0o700) {
 		t.Fatalf("unsafe permissions: file=%#o dir=%#o", fileInfo.Mode().Perm(), dirInfo.Mode().Perm())
 	}
 }
@@ -110,11 +111,13 @@ func TestVaultRejectsWrongKeyTamperingAndUnsafeFiles(t *testing.T) {
 		t.Fatal("tampered vault was accepted")
 	}
 
-	if err := os.Chmod(input.VaultPath, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := vault.Get(session.KeyringService, session.KeyringApplicationName); err == nil {
-		t.Fatal("world-readable vault was accepted")
+	if runtime.GOOS != "windows" {
+		if err := os.Chmod(input.VaultPath, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := vault.Get(session.KeyringService, session.KeyringApplicationName); err == nil {
+			t.Fatal("world-readable vault was accepted")
+		}
 	}
 }
 
@@ -199,6 +202,9 @@ func TestDisconnectRefusesUnsafeVaultObjects(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := os.Symlink(target, input.VaultPath); err != nil {
+		if runtime.GOOS == "windows" {
+			t.Skipf("Windows account cannot create the test symlink: %v", err)
+		}
 		t.Fatal(err)
 	}
 	got := disconnect(input)

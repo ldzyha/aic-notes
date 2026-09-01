@@ -2,13 +2,15 @@ export function mergeSyncRequests(previous, next) {
   return {
     uri: next.uri ?? previous.uri,
     interactive: Boolean(previous.interactive || next.interactive),
+    resolveConflicts: Boolean(previous.resolveConflicts || next.resolveConflicts),
     markdown: typeof next.markdown === "string" ? next.markdown : previous.markdown,
+    draftEpoch: Number.isSafeInteger(next.draftEpoch) ? next.draftEpoch : previous.draftEpoch,
   };
 }
 
 // One runner per key, with at most one latest pending value behind it. This
-// prevents overlapping bridge processes while save+blur bursts collapse to
-// the newest persisted Markdown and retain any explicit interactive request.
+// prevents overlapping bridge processes while repeated save requests collapse to
+// the newest persisted Markdown and retain explicit interaction/conflict intent.
 export class CoalescingQueue {
   constructor(run, merge = (_previous, next) => next) {
     this.run = run;

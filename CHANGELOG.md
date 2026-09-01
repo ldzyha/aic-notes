@@ -1,5 +1,73 @@
 # Changelog
 
+## 11.4.6 — 2026-09-01
+
+Release sequence 11 · 4 feature outcomes · 6 fixed-bug outcomes.
+
+- F01: a connected extension now bootstraps every open workspace as an inventory reconciliation:
+  it pulls the complete Standard Notes project tag subtree, imports missing canonical sidecars,
+  binds existing matches without resetting their common ancestor, synchronizes every substantive
+  local note whether opened or not, and refreshes Explorer. A remote sidecar whose target is gone
+  is imported as an orphan when its real parent directory still exists.
+- F02: the Properties preview now includes a dynamic, read-only context tree for project, parent,
+  current, component, and sibling notes. It also appears in editable placeholders, offers lazy
+  higher-level candidates, opens a selected relationship in Secondary, and is absent when the
+  Markdown document has no valid properties block.
+- F03: Standard Notes inventory and save synchronization now cover every workspace `*.md` file,
+  not only `*.note.md` sidecars. Remote Markdown filenames materialize at their exact project-tag
+  path, local documents push or pull on explicit Ctrl+S/Cmd+S even in the native editor, and the
+  project tree labels sidecars as **Note** and ordinary Markdown as **Document**. A document edited
+  during an in-flight pull keeps the newer local text and asks for another save.
+- F04: upgrade the shared AIC Editor Core to 2.1 and render nested YAML maps and sequences as a
+  hierarchical Properties preview. Indentation and list levels remain visible, leaf values are
+  directly editable, structural groups cannot become invalid scalars, and drag-and-drop moves a
+  complete branch only among valid siblings. Unsupported YAML stays safely in raw source mode.
+
+- B01: opening a lazy project note now closes any stale main-editor tab before focusing the
+  Secondary Side Bar. If a bound sidecar disappears between actions, the pane reconstructs its
+  editable owner-backed placeholder instead of asking VS Code to open the nonexistent file.
+- B02: linked-code accordions keep their body directly editable for comments, their task checkbox
+  owns its click without a CodeMirror recreation race, and long summaries wrap instead of
+  compressing the checkbox and source actions.
+- B03: Secondary drafts no longer save on input or blur. Ctrl+S/Cmd+S is the only persistence and
+  sync boundary; dirty drafts visibly say `Unsaved`, saved notes receive a subtle green state,
+  placeholders are gray, and navigation cannot discard an unsaved draft. A completed network sync
+  records its new common base before applying remote text, so typing during the request does not
+  create a false conflict on the next save.
+- B04: Properties and Table now start in preview regardless of the initial cursor. Repeated or
+  double clicks cannot expose raw Markdown; only **Edit** enters source mode, and leaving the block
+  restores preview.
+- B05: link **Copy** and **Edit** actions remain visible instead of reserving an empty hover-only
+  gap, keeping link interaction compact and immediately understandable.
+- B06: recover legacy canonical project notes that were created outside the project tag, bind and
+  migrate them without duplication, and make Explorer deletion remote-first. A bound Standard
+  Notes item reaches recoverable Trash before its local sidecar; failed local Trash retains the
+  binding for an idempotent retry, while each successfully removed file clears only its own binding.
+
+Compatibility: VS Code/Code 1.106 or newer; Windows x64 uses the bundled in-process WebAssembly
+bridge and Linux x64 uses the bundled static helper. No Marketplace/Open VSX publication is implied.
+
+## 10.4.2 — 2026-08-31
+
+Release sequence 10 · 4 feature outcomes · 2 fixed-bug outcomes.
+
+- F01: introduce AIC Editor Core 2.0, a dependency-free structured-preview contract shared
+  byte-for-byte with the Standard Notes component. Table/property mutation, validation,
+  serialization, reorder behavior, and the compact link control no longer diverge by host.
+- F02: replace the cursor tooltip with one direct link control. Clicking the label opens the link;
+  adjacent **Copy** and **Edit** actions remain explicit, and bare URLs use the same interaction.
+- F03: table previews now edit headers and cells in place, add rows or columns, and reorder either
+  dimension with drag handles while persisting one valid Markdown table transaction.
+- F04: properties previews now edit keys and values in place, validate simple YAML keys, add unique
+  properties, and reorder rows with drag handles while Markdown remains the sole stored value.
+- B01: focus moving between structured controls no longer triggers an early save. A Secondary draft
+  commits only after focus leaves the complete editor surface or through Ctrl+S/Cmd+S.
+- B02: a missing sidecar recovers as its source-backed placeholder, and a dirty attached draft can
+  recreate the sidecar. Save races retain the draft instead of surfacing a disruptive host error.
+
+Compatibility: VS Code/Code 1.106 or newer; Windows x64 uses the bundled in-process WebAssembly
+bridge and Linux x64 uses the bundled static helper. No Marketplace/Open VSX publication is implied.
+
 ## 9.0.1 — 2026-08-21
 
 Release sequence 9 · 0 feature outcomes · 1 fixed-bug outcome.

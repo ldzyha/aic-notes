@@ -1,161 +1,365 @@
-// table — render a GFM pipe table as an aligned grid (owner 2026-06-19: "live
-// rendered table … editable line by line"). Block widget in a StateField — the
-// SAME pattern mermaid uses (CM6 requires block decorations outside
-// ViewPlugins). Reveal rule: the cursor INSIDE the table shows the raw source
-// (edit any line); OUTSIDE, the rendered grid. Markdown-internal (not a HANDLERS
-// member, since those are mark/line decorations over view.visibleRanges).
-
-import { Decoration, EditorView, WidgetType } from "@codemirror/view";
-import { StateField } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
-import { openLink } from "../link-tooltip.js";
-import { fillCell } from "./cell-inline.js";
+import { StateEffect, StateField } from "@codemirror/state";
+import { Decoration, EditorView, WidgetType } from "@codemirror/view";
+import {
+  addTableColumn,
+  addTableRow,
+  moveTableColumn,
+  moveTableRow,
+  serializeTable,
+  updateTableCell,
+} from "../../aic-editor-core/structured-preview.js";
 
-// cell inline-markdown rendering lives in the CM-free cell-inline.js (so
-// node:test can cover it); links route through the SAME openLink as the
-// link tooltip — scheme-less open the local file, external opens a new tab
-function cell(el, text, host) {
-  fillCell(el, text, host, openLink);
+const editSource = StateEffect.define({
+  map: (value, mapping) => ({ ...value, from: mapping.mapPos(value.from) }),
+});
+
+function selectionIntersects(state, from, to) {
+  return state.selection.ranges.some((range) =>
+    range.empty
+      ? range.from >= from && range.from < to
+      : range.from < to && range.to > from,
+  );
 }
 
-// split a pipe row into trimmed cells, dropping the empties the leading/trailing
-// `|` produce (a pipe inside a cell would need escaping — a preview stays simple)
 function splitRow(line) {
   return line
     .replace(/^\s*\|/, "")
     .replace(/\|\s*$/, "")
-    .split(/(?<!\\)\|/) // a backslash-escaped pipe stays INSIDE one cell (GFM)
-    .map((c) => c.trim().replace(/\\\|/g, "|")); // then unescape \| → |
+    .split(/(?<!\\)\|/)
+    .map((cell) => cell.trim().replace(/\\\|/g, "|"));
 }
 
-function parseTable(src) {
-  const lines = src.split("\n").filter((l) => l.trim());
-  if (lines.length < 2) return null; // header + delimiter at minimum
+export function parseTable(source) {
+  const lines = source.split(/\r?\n/).filter((line) => line.trim());
+  if (lines.length < 2) return null;
   const header = splitRow(lines[0]);
-  const aligns = splitRow(lines[1]).map((d) => {
-    const l = d.startsWith(":");
-    const r = d.endsWith(":");
-    return l && r ? "center" : r ? "right" : l ? "left" : "";
+  const delimiters = splitRow(lines[1]);
+  if (
+    !header.length ||
+    delimiters.length !== header.length ||
+    delimiters.some((value) => !/^:?-{3,}:?$/.test(value))
+  ) {
+    return null;
+  }
+  const aligns = delimiters.map((value) => {
+    const left = value.startsWith(":");
+    const right = value.endsWith(":");
+    return left && right ? "center" : right ? "right" : left ? "left" : "";
   });
-  const rows = lines.slice(2).map(splitRow);
-  return { header, aligns, rows };
+  return { header, aligns, rows: lines.slice(2).map(splitRow) };
 }
 
-function previewHeader(label, onEdit) {
+function action(document, label, run, disabled = false) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "cm-md-edit-source";
+  button.textContent = label;
+  button.setAttribute("aria-label", label);
+  button.disabled = disabled;
+  button.onmousedown = (event) => event.preventDefault();
+  button.onclick = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    run();
+  };
+  return button;
+}
+
+function previewHeader(document, label, actions) {
   const header = document.createElement("div");
   header.className = "cm-md-preview-header";
   const title = document.createElement("span");
   title.textContent = label;
-  const edit = document.createElement("button");
-  edit.type = "button";
-  edit.className = "cm-md-edit-source";
-  edit.textContent = "Edit source";
-  edit.onmousedown = (event) => event.preventDefault();
-  edit.onclick = (event) => {
-    event.stopPropagation();
-    onEdit();
-  };
-  header.append(title, edit);
+  const group = document.createElement("span");
+  group.className = "cm-md-preview-actions";
+  group.append(...actions);
+  header.append(title, group);
   return header;
 }
 
+function input(document, value, label, onChange, readOnly) {
+  const field = document.createElement("input");
+  field.type = "text";
+  field.className = "cm-aic-structure-input";
+  field.value = value;
+  field.setAttribute("aria-label", label);
+  field.readOnly = readOnly;
+  field.addEventListener("change", () => onChange(field.value));
+  field.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      field.blur();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      field.value = value;
+      field.blur();
+    }
+  });
+  return field;
+}
+
+function dragHandle(document, label, kind, index, readOnly) {
+  const handle = document.createElement("button");
+  handle.type = "button";
+  handle.className = "cm-aic-drag-handle";
+  handle.textContent = "⠿";
+  handle.setAttribute("aria-label", label);
+  handle.draggable = !readOnly;
+  handle.disabled = readOnly;
+  handle.addEventListener("pointerdown", (event) => event.stopPropagation());
+  handle.addEventListener("dragstart", (event) => {
+    event.dataTransfer?.setData(`application/x-aic-${kind}`, String(index));
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+  });
+  return handle;
+}
+
+function dropTarget(element, kind, index, onMove, readOnly) {
+  if (readOnly) return;
+  element.addEventListener("dragover", (event) => {
+    if (!event.dataTransfer?.types.includes(`application/x-aic-${kind}`))
+      return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  });
+  element.addEventListener("drop", (event) => {
+    const value =
+      event.dataTransfer?.getData(`application/x-aic-${kind}`) ?? "";
+    const from = Number(value);
+    if (!Number.isInteger(from)) return;
+    event.preventDefault();
+    onMove(from, index);
+  });
+}
+
 class TableWidget extends WidgetType {
-  constructor(src, from, host) {
+  constructor(source, from, readOnly) {
     super();
-    this.src = src;
+    this.source = source;
     this.from = from;
-    this.host = host;
+    this.readOnly = readOnly;
   }
+
   eq(other) {
-    return other.src === this.src && other.from === this.from; // host is stable per session
-  }
-  toDOM(view) {
-    const wrap = document.createElement("div");
-    wrap.className = "cm-md-table cm-md-block-preview";
-    wrap.setAttribute("role", "region");
-    wrap.setAttribute("aria-label", "Markdown table preview");
-    wrap.appendChild(
-      previewHeader("Table", () => {
-        view.dispatch({ selection: { anchor: this.from }, scrollIntoView: true });
-        view.focus();
-      }),
+    return (
+      other.source === this.source &&
+      other.from === this.from &&
+      other.readOnly === this.readOnly
     );
-    const data = parseTable(this.src);
-    if (!data) {
-      const fallback = document.createElement("pre");
-      fallback.textContent = this.src; // unparseable — show it verbatim
-      wrap.appendChild(fallback);
-      return wrap;
-    }
-    const table = document.createElement("table");
-    const thead = document.createElement("thead");
-    const htr = document.createElement("tr");
-    data.header.forEach((c, i) => {
-      const th = document.createElement("th");
-      cell(th, c, this.host);
-      if (data.aligns[i]) th.style.textAlign = data.aligns[i];
-      htr.appendChild(th);
-    });
-    thead.appendChild(htr);
-    table.appendChild(thead);
-    const tbody = document.createElement("tbody");
-    for (const row of data.rows) {
-      const tr = document.createElement("tr");
-      data.header.forEach((_, i) => {
-        const td = document.createElement("td");
-        cell(td, row[i] ?? "", this.host);
-        if (data.aligns[i]) td.style.textAlign = data.aligns[i];
-        tr.appendChild(td);
-      });
-      tbody.appendChild(tr);
-    }
-    table.appendChild(tbody);
-    wrap.appendChild(table);
-    return wrap;
   }
-  // Preview content is inert for source editing. Links and the explicit Edit
-  // source button own their DOM actions; CodeMirror must never translate a
-  // table-body click into a source selection.
+
+  toDOM(view) {
+    const document = view.dom.ownerDocument;
+    const wrapper = document.createElement("div");
+    wrapper.className = "cm-md-table cm-md-block-preview";
+    wrapper.setAttribute("role", "region");
+    wrapper.setAttribute("aria-label", "Interactive Markdown table");
+    const parsed = parseTable(this.source);
+    const replace = (model) => {
+      const lineEnding = this.source.includes("\r\n") ? "\r\n" : "\n";
+      const markdown = serializeTable(model, lineEnding);
+      if (!markdown || markdown === this.source) return;
+      view.dispatch({
+        changes: {
+          from: this.from,
+          to: this.from + this.source.length,
+          insert: markdown,
+        },
+        userEvent: "input",
+      });
+    };
+    const reveal = () => {
+      view.dispatch({
+        selection: { anchor: this.from },
+        effects: editSource.of({ from: this.from }),
+        scrollIntoView: true,
+      });
+      view.focus();
+    };
+    if (!parsed) {
+      const fallback = document.createElement("pre");
+      fallback.textContent = this.source;
+      wrapper.append(
+        previewHeader(document, "Table", [action(document, "Edit", reveal)]),
+        fallback,
+      );
+      return wrapper;
+    }
+    wrapper.append(
+      previewHeader(document, "Table", [
+        action(
+          document,
+          "Add row",
+          () => replace(addTableRow(parsed)),
+          this.readOnly,
+        ),
+        action(
+          document,
+          "Add column",
+          () => replace(addTableColumn(parsed)),
+          this.readOnly,
+        ),
+        action(document, this.readOnly ? "View source" : "Edit", reveal),
+      ]),
+    );
+    const table = document.createElement("table");
+    const head = document.createElement("thead");
+    const headRow = document.createElement("tr");
+    const headHandle = document.createElement("th");
+    headHandle.className = "cm-aic-structure-handle-cell";
+    headRow.append(headHandle);
+    parsed.header.forEach((value, columnIndex) => {
+      const cell = document.createElement("th");
+      const content = document.createElement("span");
+      content.className = "cm-aic-structure-cell";
+      content.append(
+        dragHandle(
+          document,
+          `Move column ${value || columnIndex + 1}`,
+          "column",
+          columnIndex,
+          this.readOnly,
+        ),
+        input(
+          document,
+          value,
+          `Column ${columnIndex + 1} name`,
+          (next) => replace(updateTableCell(parsed, -1, columnIndex, next)),
+          this.readOnly,
+        ),
+      );
+      cell.append(content);
+      if (parsed.aligns[columnIndex])
+        cell.style.textAlign = parsed.aligns[columnIndex];
+      dropTarget(
+        cell,
+        "column",
+        columnIndex,
+        (from, to) => replace(moveTableColumn(parsed, from, to)),
+        this.readOnly,
+      );
+      headRow.append(cell);
+    });
+    head.append(headRow);
+    table.append(head);
+    const body = document.createElement("tbody");
+    parsed.rows.forEach((row, rowIndex) => {
+      const rowElement = document.createElement("tr");
+      const handleCell = document.createElement("td");
+      handleCell.className = "cm-aic-structure-handle-cell";
+      handleCell.append(
+        dragHandle(
+          document,
+          `Move row ${rowIndex + 1}`,
+          "row",
+          rowIndex,
+          this.readOnly,
+        ),
+      );
+      rowElement.append(handleCell);
+      parsed.header.forEach((_, columnIndex) => {
+        const cell = document.createElement("td");
+        cell.append(
+          input(
+            document,
+            row[columnIndex] ?? "",
+            `Row ${rowIndex + 1}, column ${columnIndex + 1}`,
+            (next) =>
+              replace(updateTableCell(parsed, rowIndex, columnIndex, next)),
+            this.readOnly,
+          ),
+        );
+        if (parsed.aligns[columnIndex])
+          cell.style.textAlign = parsed.aligns[columnIndex];
+        rowElement.append(cell);
+      });
+      dropTarget(
+        rowElement,
+        "row",
+        rowIndex,
+        (from, to) => replace(moveTableRow(parsed, from, to)),
+        this.readOnly,
+      );
+      body.append(rowElement);
+    });
+    table.append(body);
+    wrapper.append(table);
+    return wrapper;
+  }
+
   ignoreEvent() {
     return true;
   }
 }
 
 export function tableNodes(state) {
-  const out = [];
+  const nodes = [];
   try {
     syntaxTree(state).iterate({
       enter(node) {
-        if (node.name === "Table") out.push({ from: node.from, to: node.to });
+        if (node.name === "Table") nodes.push({ from: node.from, to: node.to });
       },
     });
   } catch {
-    // a half-parsed tree mid-edit — skip; the next update rebuilds
+    // Half-parsed source is left raw until the next transaction.
   }
-  return out;
+  return nodes;
 }
 
-export function makeTableExtension(host) {
-  function build(state) {
-    const head = state.selection.main.head;
+export function makeTableExtension() {
+  const sourceOverrides = StateField.define({
+    create: () => null,
+    update(value, transaction) {
+      let next = value
+        ? { ...value, from: transaction.changes.mapPos(value.from) }
+        : null;
+      for (const effect of transaction.effects) {
+        if (effect.is(editSource)) next = effect.value;
+      }
+      if (!next) return null;
+      const node = tableNodes(transaction.state).find(
+        ({ from }) => from === next.from,
+      );
+      return node && selectionIntersects(transaction.state, node.from, node.to)
+        ? next
+        : null;
+    },
+  });
+  const build = (state) => {
     const decorations = [];
-    for (const t of tableNodes(state)) {
-      const inside = head >= t.from && head <= t.to; // boundaries count → reveal
-      const src = state.sliceDoc(t.from, t.to);
-      if (!inside && src.trim()) {
+    const source = state.field(sourceOverrides);
+    for (const node of tableNodes(state)) {
+      const markdown = state.sliceDoc(node.from, node.to);
+      if (
+        source?.from !== node.from &&
+        markdown.trim() &&
+        parseTable(markdown)
+      ) {
         decorations.push(
-          Decoration.replace({ widget: new TableWidget(src, t.from, host), block: true }).range(t.from, t.to),
+          Decoration.replace({
+            widget: new TableWidget(markdown, node.from, state.readOnly),
+            block: true,
+          }).range(node.from, node.to),
         );
       }
     }
     return Decoration.set(decorations, true);
-  }
-  return StateField.define({
-    create: (state) => build(state),
-    update(value, tr) {
-      if (!tr.docChanged && !tr.selection) return value;
-      return build(tr.state);
-    },
-    provide: (f) => EditorView.decorations.from(f),
-  });
+  };
+  return [
+    sourceOverrides,
+    StateField.define({
+      create: build,
+      update(value, transaction) {
+        if (
+          !transaction.docChanged &&
+          !transaction.selection &&
+          transaction.startState.readOnly === transaction.state.readOnly
+        )
+          return value;
+        return build(transaction.state);
+      },
+      provide: (field) => EditorView.decorations.from(field),
+    }),
+  ];
 }

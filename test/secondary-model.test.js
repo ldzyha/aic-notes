@@ -2,8 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   isNotePath,
+  markdownKind,
   linkedNotePath,
   managedTagPath,
+  noteTitle,
   applyTextChanges,
   threeWayDecision,
 } from "../src/secondary/model.js";
@@ -14,6 +16,21 @@ test("note paths are Secondary-only candidates without note-of-note recursion", 
   assert.equal(linkedNotePath("src/app.ts"), "src/app.note.md");
   assert.equal(linkedNotePath("src/README.md"), "src/README.note.md");
   assert.equal(linkedNotePath("src/app.note.md"), "src/app.note.md");
+});
+
+test("all Markdown paths have an explicit note or document identity", () => {
+  assert.equal(markdownKind("src/app.note.md"), "note");
+  assert.equal(markdownKind("docs/README.md"), "document");
+  assert.equal(markdownKind("docs/README.MD"), "document");
+  assert.equal(markdownKind("src/app.ts"), null);
+  assert.equal(
+    noteTitle("docs/README.md", "---\ntitle: Friendly\n---\n"),
+    "README.md",
+  );
+  assert.equal(
+    noteTitle("src/app.note.md", "---\ntitle: app.ts\nlevel: file-note\n---\n"),
+    "app.ts",
+  );
 });
 
 test("managed tag paths are native, root-aware, and project-only without nesting", () => {
@@ -37,7 +54,11 @@ test("placeholder changes apply atomically against one source generation", () =>
     "aXdeY",
   );
   assert.throws(
-    () => applyTextChanges("abc", [{ from: 1, to: 3, insert: "x" }, { from: 2, to: 2, insert: "y" }]),
+    () =>
+      applyTextChanges("abc", [
+        { from: 1, to: 3, insert: "x" },
+        { from: 2, to: 2, insert: "y" },
+      ]),
     /non-overlapping/u,
   );
 });

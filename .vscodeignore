@@ -15,7 +15,10 @@ package-lock.json
 *.vsix
 *.vsix.sha256
 !dist/**
+bin/**
 !bin/linux-x64/aic-notes-sn-bridge
+!bin/wasm/aic-notes-sn-bridge.wasm
+!bin/wasm/wasm_exec.js
 **/*.map
 dist/*.map
 dist/**/*.map

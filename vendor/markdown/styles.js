@@ -80,6 +80,23 @@ export const MARKDOWN_CSS = `
   padding: .2rem .5rem; text-align: left; vertical-align: top }
 .cm-md-table thead th { background: var(--chip); font-weight: 700 }
 .cm-md-table-link { color: var(--accent); text-decoration: underline; cursor: pointer }
+.cm-aic-structure-cell { display: flex; align-items: center; gap: .2rem }
+.cm-aic-structure-input { box-sizing: border-box; width: 100%; min-width: 7ch;
+  padding: .18rem .3rem; border: 1px solid transparent;
+  border-radius: var(--radius); background: transparent; color: inherit;
+  font: inherit }
+.cm-aic-structure-input:hover { border-color: var(--border) }
+.cm-aic-structure-input:focus { border-color: var(--accent);
+  background: var(--bg); outline: none }
+.cm-aic-structure-input[readonly] { cursor: default }
+.cm-aic-structure-handle-cell { width: 1.8rem; min-width: 1.8rem;
+  padding: .1rem !important; text-align: center !important }
+.cm-aic-drag-handle { width: 1.45rem; height: 1.45rem; padding: 0;
+  border: 0; background: transparent; color: var(--muted); cursor: grab;
+  font: inherit; line-height: 1 }
+.cm-aic-drag-handle:active { cursor: grabbing }
+.cm-aic-drag-handle:disabled { cursor: default; opacity: .35 }
+.cm-md-block-preview:focus-within { border-color: var(--accent) !important }
 /* props (frontmatter) table (owner 2026-07-01): the leading --- YAML block
    rendered as a read-only key/value grid — the cursor entering it reveals the
    raw YAML (edit line by line), the same reveal rule as the table widget */
@@ -90,6 +107,13 @@ export const MARKDOWN_CSS = `
 .cm-md-props th { background: var(--chip); color: var(--muted); font-weight: 700;
   text-align: right; white-space: nowrap }
 .cm-md-props td { color: var(--fg); text-align: left; white-space: pre-wrap }
+.cm-aic-property-key-cell { min-width: 13rem; padding: .12rem .35rem !important }
+.cm-aic-property-key { display: flex; align-items: center; gap: .2rem;
+  padding-inline-start: calc(var(--aic-property-depth, 0) * .9rem) }
+.cm-aic-property-level { width: .9rem; flex: 0 0 .9rem; color: var(--muted);
+  text-align: center }
+.cm-aic-property-item, .cm-aic-property-group { color: var(--muted);
+  font-style: italic; font-weight: 400 }
 .cm-md-mermaid { padding: .5rem 0; position: relative }
 .cm-md-mermaid svg { max-width: 100% }
 /* the mermaid preview rides the console Dialog SLOT now (owner 2026-06-24: "той
@@ -109,11 +133,20 @@ export const MARKDOWN_CSS = `
 .cm-md-mermaid[role="button"] { cursor: pointer }
 .cm-md-mermaid[role="button"]:focus-visible { outline: 1px solid var(--accent);
   outline-offset: -1px; border-radius: var(--radius) }
-.cm-md-link-tooltip { display: flex; gap: .4rem; align-items: center;
-  background: var(--chip); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: .35rem .5rem }
-.cm-md-link-tooltip span { color: var(--muted); max-width: 16rem;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.cm-aic-link-control { display: inline-flex; align-items: center; gap: .25rem;
+  max-width: 100%; vertical-align: baseline }
+.cm-aic-link-open, .cm-aic-link-action { border: 0; background: transparent;
+  color: inherit; font: inherit; cursor: pointer }
+.cm-aic-link-open { min-width: 0; overflow: hidden; padding: 0;
+  color: var(--accent); text-decoration: underline; text-overflow: ellipsis;
+  white-space: nowrap }
+.cm-aic-link-actions { display: inline-flex; gap: .15rem }
+.cm-aic-link-action { padding: .05rem .28rem; border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--muted); font-size: .78em;
+  text-decoration: none }
+.cm-aic-link-action:hover, .cm-aic-link-action:focus-visible {
+  color: var(--fg); border-color: var(--accent); outline: none }
+.cm-aic-link-open:disabled, .cm-aic-link-action:disabled { cursor: default; opacity: .5 }
 `;
 
 export function injectStyles() {
