@@ -596,6 +596,7 @@ export class StandardNotesSync {
       baseHash: previous.baseHash || "",
     };
 
+    let request = base;
     let result = interactive
       ? await vscode.window.withProgress(
           {
@@ -603,9 +604,68 @@ export class StandardNotesSync {
             title: "AIC Notes: synchronizing",
             cancellable: false,
           },
-          () => this._invoke(base),
+          () => this._invoke(request),
         )
-      : await this._invoke(base);
+      : await this._invoke(request);
+    if (result.action === "identity-conflict") {
+      if (!resolveConflicts)
+        return {
+          ...result,
+          skipped: true,
+          conflict: true,
+          identityConflict: true,
+        };
+      const candidates = Array.isArray(result.identityCandidates)
+        ? result.identityCandidates.filter((candidate) => candidate?.remoteUuid)
+        : [];
+      if (candidates.length === 0) {
+        throw structuredError(
+          "sn_remote_ambiguous",
+          "Standard Notes returned no usable identity candidates",
+          ["Reconnect and retry the explicit save"],
+        );
+      }
+      const writable = candidates.find((candidate) => !candidate.readOnly);
+      const choices = [];
+      if (writable) {
+        choices.push({
+          label: "$(arrow-up) Keep local file",
+          description: "Send this Markdown to Standard Notes",
+          detail: "Establish one stable binding; no duplicate note is deleted.",
+          remoteUuid: writable.remoteUuid,
+          resolution: "local",
+        });
+      }
+      for (const candidate of candidates) {
+        const parsedDate = Date.parse(candidate.updatedAt || "");
+        const updated = Number.isFinite(parsedDate)
+          ? new Intl.DateTimeFormat(undefined, {
+              dateStyle: "medium",
+              timeStyle: "short",
+            }).format(new Date(parsedDate))
+          : "date unavailable";
+        choices.push({
+          label: `$(arrow-down) Use Standard Notes copy · ${updated}`,
+          description: candidate.readOnly ? "Read-only" : "",
+          detail:
+            String(candidate.preview || "").trim() || "Empty Markdown note",
+          remoteUuid: candidate.remoteUuid,
+          resolution: "remote",
+        });
+      }
+      const selected = await vscode.window.showQuickPick(choices, {
+        title: "Resolve duplicate Standard Notes identity",
+        placeHolder: "Choose the content to keep for this local file",
+        ignoreFocusOut: true,
+      });
+      if (!selected) return null;
+      request = {
+        ...base,
+        remoteUuid: selected.remoteUuid,
+        resolution: selected.resolution,
+      };
+      result = await this._invoke(request);
+    }
     if (result.action === "conflict") {
       if (!resolveConflicts)
         return { ...result, skipped: true, conflict: true };
@@ -621,9 +681,19 @@ export class StandardNotesSync {
       );
       if (!resolution) return null;
       result = await this._invoke({
-        ...base,
+        ...request,
         resolution: resolution === "Use Local" ? "local" : "remote",
       });
+    }
+    if (
+      result.action === "conflict" ||
+      result.action === "identity-conflict"
+    ) {
+      throw structuredError(
+        "sn_conflict_unresolved",
+        "the selected Standard Notes conflict resolution was not applied",
+        ["Reconnect and retry the explicit save"],
+      );
     }
     await this.context.workspaceState.update(key, {
       remoteUuid: result.remoteUuid,

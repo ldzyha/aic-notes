@@ -31,9 +31,12 @@ hierarchy into one dotted title.
 
 `pull-project` is read-only. It returns active notes referenced by the exact native project tag
 hierarchy and recognizes the previous AIC `project:*`/`path:*` and dotted layouts for migration.
-An empty duplicate project tag left by an interrupted migration is ignored; two project roots that
-both contain notes still fail closed. Unrelated and trashed notes are omitted. A later unbound sync
-recovers an existing remote by exact managed path plus title before it considers creating a note.
+An empty duplicate project tag left by an interrupted migration is ignored. Multiple historical
+active roots are read as one logical project inventory and writes follow the branch already holding
+the exact note, or one stable branch for a new attachment. Unrelated and trashed notes are omitted.
+A later unbound sync recovers an existing remote by exact managed path plus title before it considers
+creating a note. Divergent duplicate identities are returned as candidates for one host-side choice;
+the bridge never deletes the unselected items.
 
 Build both release targets from the same package with Go 1.25.1:
 

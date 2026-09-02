@@ -7,8 +7,8 @@ const packageJson = JSON.parse(
   await readFile(new URL("../package.json", import.meta.url), "utf8"),
 );
 
-test("17.3.3 manifest separates Primary management from Secondary note content", () => {
-  assert.equal(packageJson.version, "17.3.3");
+test("18.1.3 manifest separates Primary management from Secondary note content", () => {
+  assert.equal(packageJson.version, "18.1.3");
   assert.equal(packageJson.aicEditorCore, "2.5.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.equal(packageJson.scripts.publish, undefined);
@@ -584,6 +584,11 @@ test("Standard Notes tags use a native parent graph and exact managed identities
   assert.match(bridge, /PreviousTagUUIDs/u);
   assert.match(bridge, /ManagedTagUUIDs/u);
   assert.match(bridge, /noteHasActiveTagReference/u);
+  assert.match(bridge, /Action:\s+"identity-conflict"/u);
+  assert.match(bridge, /discoverRemoteIdentity/u);
+  assert.match(client, /Resolve duplicate Standard Notes identity/u);
+  assert.match(client, /remoteUuid: selected\.remoteUuid/u);
+  assert.match(client, /resolution: selected\.resolution/u);
 });
 
 test("Secondary rejects non-substantive sync before API access and exposes one two-sided Trash action", async () => {

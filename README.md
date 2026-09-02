@@ -7,12 +7,12 @@ with Standard Notes.
 
 ## Install on VS Code or code-server
 
-Download `aic-notes-17.3.3-linux-x64.vsix` and its `.sha256` file from the
-[v17.3.3 release](https://github.com/ldzyha/aic-notes/releases/tag/v17.3.3), then verify and install:
+Download `aic-notes-18.1.3-linux-x64.vsix` and its `.sha256` file from the
+[v18.1.3 release](https://github.com/ldzyha/aic-notes/releases/tag/v18.1.3), then verify and install:
 
 ```sh
-sha256sum -c aic-notes-17.3.3-linux-x64.vsix.sha256
-code-server --install-extension aic-notes-17.3.3-linux-x64.vsix --force
+sha256sum -c aic-notes-18.1.3-linux-x64.vsix.sha256
+code-server --install-extension aic-notes-18.1.3-linux-x64.vsix --force
 ```
 
 Reload the browser window after installation. The extension targets Code/VS Code 1.106 or newer;
@@ -21,7 +21,7 @@ the bundled Standard Notes helper in this release targets Linux x64.
 For local 64-bit Windows VS Code, install the matching `win32-x64` VSIX:
 
 ```powershell
-code --install-extension .\aic-notes-17.3.3-win32-x64.vsix --force
+code --install-extension .\aic-notes-18.1.3-win32-x64.vsix --force
 ```
 
 Then run **Developer: Reload Window**. Do not install the Linux VSIX into Windows VS Code. Windows
@@ -155,7 +155,10 @@ For substantive notes:
    its network request was in flight. The completed request still advances the common base, so the
    next save sends only that newer local change instead of producing a false conflict. Identical
    unbased bodies bind without a prompt; byte-identical duplicate remote identities choose the same
-   stable UUID on every client, while divergent duplicates still fail closed.
+   stable UUID on every client. If old clients left divergent copies at one exact identity, a unique
+   local-body match binds automatically. Otherwise one picker previews every remote copy and offers
+   the local file; the chosen UUID and common base are persisted, so the question is not repeated.
+   No unselected Standard Notes item is deleted or overwritten.
 7. A Standard Notes `locked` item or read-only account session never receives a push. The Secondary
    editor becomes read-only and remains so until a later sync reports write access again.
 
@@ -168,8 +171,10 @@ Byte-identical duplicate identities collapse to one stable import candidate; dif
 that collide at one local destination and unrelated Standard Notes notes fail closed. Differing
 local content is bound for one later three-way decision and is never overwritten by bulk pull.
 One legacy canonical root note with matching `project-note` frontmatter is recovered when it has no
-active tag, then attached to the native project tag on normal sync. Multiple matches or a note owned
-by another tag fail closed.
+active tag, then attached to the native project tag on normal sync. Historical duplicate active
+project roots are read as one logical inventory. Existing notes remain on their own physical branch;
+new attachments choose one stable branch. A malformed hierarchy, conflicting logical paths for the
+same UUID, multiple untagged root notes, or a note owned by another tag still fails closed.
 
 The pinned footer and Notes Explorer Trash actions are two-sided. They target only UUIDs stored in
 local bindings, mark those exact Standard Notes notes as trashed, remove their AIC-managed tag
@@ -255,7 +260,7 @@ Standard Notes account is intentionally not mutated by unattended tests.
 ## Release accounting
 
 This project uses the global `R.F.B` convention: release sequence, release-local feature outcomes,
-release-local fixed-bug outcomes. `17.3.3` is sequence 17 with three feature outcomes and three
+release-local fixed-bug outcomes. `18.1.3` is sequence 18 with one feature outcome and three
 fixed-bug outcomes. It is not a SemVer compatibility claim. See [`CHANGELOG.md`](CHANGELOG.md).
 
 ## License and provenance

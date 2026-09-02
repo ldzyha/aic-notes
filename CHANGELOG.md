@@ -1,5 +1,27 @@
 # Changelog
 
+## 18.1.3 — 2026-09-02
+
+Release sequence 18 · 1 feature outcome · 3 fixed-bug outcomes.
+
+- F01: replace the terminal `sn_remote_ambiguous` notification with a one-time identity resolver.
+  A unique local-body match binds automatically; otherwise the picker shows dated previews for all
+  Standard Notes copies plus a local-content option. The selected UUID and common base persist in
+  workspace state, while every unselected remote copy remains untouched and recoverable.
+- B01: honor explicit local/remote resolution when a first binding has no common ancestor. Previous
+  builds returned the same conflict after either button, so initialization or the next save could ask
+  indefinitely without ever establishing a binding. Read-only items now also permit an explicit pull.
+- B02: treat historical duplicate active project-root tags as physical branches of one logical
+  project inventory. Import includes every branch; synchronization follows the branch containing the
+  exact note and chooses a deterministic branch only for new attachments, without deleting tags or
+  remote notes.
+- B03: separate malformed tag graphs from duplicate note identities in the bridge protocol. Invalid
+  parent/path structures now retain a distinct stable error, while divergent valid note candidates
+  reach the resolver instead of being collapsed into the generic `sn_remote_ambiguous` failure.
+
+Compatibility: VS Code/Code 1.106 or newer; Windows x64 uses the bundled in-process WebAssembly
+bridge and Linux x64 uses the bundled static helper. No Marketplace/Open VSX publication is implied.
+
 ## 17.3.3 — 2026-09-02
 
 Release sequence 17 · 3 feature outcomes · 3 fixed-bug outcomes.

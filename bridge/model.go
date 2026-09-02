@@ -19,6 +19,15 @@ func syncDecision(localHash, remoteHash, baseHash, resolution string) string {
 		if localHash == remoteHash {
 			return "noop"
 		}
+		// A first binding has no common ancestor, but an explicit user choice is
+		// still authoritative. Ignoring it here made the host ask the same
+		// question after every retry without ever establishing a binding.
+		if resolution == "local" {
+			return "push"
+		}
+		if resolution == "remote" {
+			return "pull"
+		}
 		return "conflict"
 	}
 	localChanged := localHash != baseHash
@@ -41,10 +50,15 @@ func syncDecision(localHash, remoteHash, baseHash, resolution string) string {
 	}
 }
 
-func readOnlySyncDecision(localHash, remoteHash, baseHash string) (action string, useRemote bool, nextBase string) {
+func readOnlySyncDecision(localHash, remoteHash, baseHash, resolution string) (action string, useRemote bool, nextBase string) {
 	switch {
 	case localHash == remoteHash:
 		return "noop", false, remoteHash
+	case resolution == "remote":
+		// Read-only prevents a push, not an explicit decision to accept the
+		// remote body. This is also how a locked duplicate can be chosen as the
+		// canonical local binding.
+		return "pull", true, remoteHash
 	case baseHash != "" && localHash == baseHash:
 		return "pull", true, remoteHash
 	default:

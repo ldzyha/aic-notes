@@ -45,24 +45,32 @@ type request struct {
 }
 
 type response struct {
-	OK              bool                `json:"ok"`
-	Code            string              `json:"code,omitempty"`
-	Message         string              `json:"message,omitempty"`
-	Fixes           []string            `json:"fixes,omitempty"`
-	Connected       bool                `json:"connected,omitempty"`
-	Email           string              `json:"email,omitempty"`
-	MFARequired     bool                `json:"mfaRequired,omitempty"`
-	TokenName       string              `json:"tokenName,omitempty"`
-	Action          string              `json:"action,omitempty"`
-	LocalContent    string              `json:"localContent"`
-	RemoteUUID      string              `json:"remoteUuid,omitempty"`
-	BaseHash        string              `json:"baseHash,omitempty"`
-	SyncedAt        string              `json:"syncedAt,omitempty"`
-	ManagedTags     []string            `json:"managedTags,omitempty"`
-	ManagedTagUUIDs []string            `json:"managedTagUuids,omitempty"`
-	RemoteChanged   bool                `json:"remoteChanged,omitempty"`
-	ReadOnly        bool                `json:"readOnly,omitempty"`
-	Notes           []remoteProjectNote `json:"notes,omitempty"`
+	OK                 bool                      `json:"ok"`
+	Code               string                    `json:"code,omitempty"`
+	Message            string                    `json:"message,omitempty"`
+	Fixes              []string                  `json:"fixes,omitempty"`
+	Connected          bool                      `json:"connected,omitempty"`
+	Email              string                    `json:"email,omitempty"`
+	MFARequired        bool                      `json:"mfaRequired,omitempty"`
+	TokenName          string                    `json:"tokenName,omitempty"`
+	Action             string                    `json:"action,omitempty"`
+	LocalContent       string                    `json:"localContent"`
+	RemoteUUID         string                    `json:"remoteUuid,omitempty"`
+	BaseHash           string                    `json:"baseHash,omitempty"`
+	SyncedAt           string                    `json:"syncedAt,omitempty"`
+	ManagedTags        []string                  `json:"managedTags,omitempty"`
+	ManagedTagUUIDs    []string                  `json:"managedTagUuids,omitempty"`
+	RemoteChanged      bool                      `json:"remoteChanged,omitempty"`
+	ReadOnly           bool                      `json:"readOnly,omitempty"`
+	Notes              []remoteProjectNote       `json:"notes,omitempty"`
+	IdentityCandidates []remoteIdentityCandidate `json:"identityCandidates,omitempty"`
+}
+
+type remoteIdentityCandidate struct {
+	RemoteUUID string `json:"remoteUuid"`
+	UpdatedAt  string `json:"updatedAt,omitempty"`
+	Preview    string `json:"preview,omitempty"`
+	ReadOnly   bool   `json:"readOnly,omitempty"`
 }
 
 func handle(payload []byte) response {
@@ -230,15 +238,24 @@ func syncNote(input request) response {
 		}
 	}
 	if input.RemoteUUID == "" {
-		discovered, discoverErr := discoverRemoteNote(
+		discovered, ambiguous, discoverErr := discoverRemoteIdentity(
 			decrypted.Notes(),
 			decrypted.Tags(),
 			input.Title,
 			input.Tags,
 			input.Kind,
+			input.LocalContent,
 		)
 		if discoverErr != nil {
-			return failure("sn_remote_ambiguous", discoverErr, "Resolve duplicate AIC note identities in Standard Notes and retry")
+			return failure("sn_tag_identity_invalid", discoverErr, "Repair the malformed AIC project tag hierarchy in Standard Notes and retry")
+		}
+		if len(ambiguous) > 0 {
+			return response{
+				OK:                 true,
+				Action:             "identity-conflict",
+				IdentityCandidates: identityCandidateResponses(ambiguous, lockedNotes, s.ReadOnlyAccess),
+				RemoteChanged:      true,
+			}
 		}
 		remote = discovered
 	}
@@ -255,7 +272,7 @@ func syncNote(input request) response {
 		return response{OK: false, Code: "sn_note_read_only", Message: "the Standard Notes session is read-only", Fixes: []string{"Reconnect with write access before creating the remote note"}, ReadOnly: true}
 	}
 	if remote != nil && readOnly {
-		action, useRemote, baseHash := readOnlySyncDecision(localHash, remoteHash, input.BaseHash)
+		action, useRemote, baseHash := readOnlySyncDecision(localHash, remoteHash, input.BaseHash, input.Resolution)
 		content := input.LocalContent
 		if useRemote {
 			content = remote.Content.Text
@@ -347,17 +364,33 @@ func syncNote(input request) response {
 	}
 }
 
-// discoverRemoteNote recovers a lost local workspace binding without creating
-// a duplicate Standard Notes item. AIC's identity is the exact managed tag
-// path plus the exact note title; content is intentionally excluded because a
-// difference is what the three-way conflict flow must resolve once.
+// discoverRemoteNote is the strict discovery contract used by model tests and
+// non-interactive callers: divergent duplicates remain an error. The sync
+// endpoint uses discoverRemoteIdentity so the host can offer one explicit,
+// persistent binding choice instead of an unactionable failure notification.
 func discoverRemoteNote(notes items.Notes, tags items.Tags, title string, tagPath []string, kind string) (*items.Note, error) {
+	note, ambiguous, err := discoverRemoteIdentity(notes, tags, title, tagPath, kind, "")
+	if err != nil {
+		return nil, err
+	}
+	if len(ambiguous) > 0 {
+		return nil, fmt.Errorf("note title %q is duplicated with divergent content at managed path %q", title, strings.Join(tagPath, "/"))
+	}
+	return note, nil
+}
+
+// discoverRemoteIdentity recovers a lost local workspace binding without creating
+// a duplicate Standard Notes item. AIC's identity is the exact managed tag
+// path plus the exact note title. When old clients produced divergent duplicate
+// identities, an exact local-body match is a safe automatic discriminator;
+// otherwise every candidate is returned for one explicit host-side choice.
+func discoverRemoteIdentity(notes items.Notes, tags items.Tags, title string, tagPath []string, kind string, localContent string) (*items.Note, items.Notes, error) {
 	if len(tagPath) == 0 || strings.TrimSpace(tagPath[0]) == "" {
-		return nil, nil
+		return nil, nil, nil
 	}
 	assignments, err := projectTagAssignments(tags, tagPath[0])
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	wantedPath := strings.Join(tagPath, "\x00")
 	matches := items.Notes{}
@@ -373,7 +406,8 @@ func discoverRemoteNote(notes items.Notes, tags items.Tags, title string, tagPat
 		matches = append(matches, note)
 	}
 	if len(matches) > 0 {
-		return canonicalEquivalentRemote(matches, title, tagPath)
+		selected, ambiguous := selectRemoteIdentity(matches, localContent)
+		return selected, ambiguous, nil
 	}
 	// Releases before native project tags could leave the root sidecar
 	// completely untagged. Recover only the one canonical project-note whose
@@ -393,30 +427,64 @@ func discoverRemoteNote(notes items.Notes, tags items.Tags, title string, tagPat
 			matches = append(matches, note)
 		}
 		if len(matches) > 0 {
-			return canonicalEquivalentRemote(matches, title, tagPath)
+			selected, ambiguous := selectRemoteIdentity(matches, localContent)
+			return selected, ambiguous, nil
 		}
 	}
-	return nil, nil
+	return nil, nil, nil
 }
 
-// Equivalent duplicate items can be produced when a client loses its local
-// UUID binding after a successful push. They carry no conflicting information,
-// so every client chooses the same UUID without deleting either Standard Notes
-// item. Divergent bodies still fail closed for an explicit user decision.
-func canonicalEquivalentRemote(matches items.Notes, title string, tagPath []string) (*items.Note, error) {
+// selectRemoteIdentity makes every safe choice deterministically and returns
+// divergent candidates without mutating Standard Notes. The host persists the
+// UUID selected by the user, so the question is not repeated for that file.
+func selectRemoteIdentity(matches items.Notes, localContent string) (*items.Note, items.Notes) {
 	if len(matches) == 0 {
 		return nil, nil
 	}
 	ordered := append(items.Notes(nil), matches...)
 	sort.Slice(ordered, func(left, right int) bool { return ordered[left].UUID < ordered[right].UUID })
-	content := ordered[0].Content.Text
-	for _, note := range ordered[1:] {
-		if note.Content.Text != content {
-			return nil, fmt.Errorf("note title %q is duplicated with divergent content at managed path %q", title, strings.Join(tagPath, "/"))
+	representatives := make(items.Notes, 0, len(ordered))
+	seenContent := map[string]bool{}
+	for _, note := range ordered {
+		if !seenContent[note.Content.Text] {
+			seenContent[note.Content.Text] = true
+			representatives = append(representatives, note)
 		}
 	}
-	canonical := ordered[0]
-	return &canonical, nil
+	if len(representatives) == 1 {
+		canonical := representatives[0]
+		return &canonical, nil
+	}
+	for _, note := range representatives {
+		if note.Content.Text == localContent {
+			candidate := note
+			return &candidate, nil
+		}
+	}
+	return nil, representatives
+}
+
+func identityCandidateResponses(notes items.Notes, locked map[string]bool, sessionReadOnly bool) []remoteIdentityCandidate {
+	result := make([]remoteIdentityCandidate, 0, len(notes))
+	for _, note := range notes {
+		updatedAt := note.GetUpdatedAt()
+		if strings.TrimSpace(updatedAt) == "" {
+			if updated, err := note.Content.GetUpdateTime(); err == nil && !updated.IsZero() {
+				updatedAt = updated.UTC().Format(time.RFC3339)
+			}
+		}
+		preview := strings.TrimSpace(note.Content.PreviewPlain)
+		if preview == "" {
+			preview = plainPreview(note.Content.Text)
+		}
+		result = append(result, remoteIdentityCandidate{
+			RemoteUUID: note.UUID,
+			UpdatedAt:  updatedAt,
+			Preview:    preview,
+			ReadOnly:   sessionReadOnly || locked[note.UUID],
+		})
+	}
+	return result
 }
 
 func remoteMarkdownKindMatches(note items.Note, kind string) bool {
@@ -574,7 +642,7 @@ func reconcileTagHierarchy(
 	pathUUIDs := map[string]bool{}
 	parentUUID := ""
 	for _, title := range path {
-		index, findErr := findTagByParentAndTitle(working, parentUUID, title)
+		index, findErr := findTagByParentAndTitle(working, parentUUID, title, noteUUID)
 		if findErr != nil {
 			return tagReconciliation{}, findErr
 		}
@@ -645,7 +713,7 @@ func normalizedTagPath(input []string, nestedSupported bool) ([]string, error) {
 	return path, nil
 }
 
-func findTagByParentAndTitle(tags items.Tags, parentUUID, title string) (int, error) {
+func findTagByParentAndTitle(tags items.Tags, parentUUID, title, noteUUID string) (int, error) {
 	candidates := []int{}
 	for index := range tags {
 		if tags[index].IsDeleted() || tags[index].Content.Title != title {
@@ -667,21 +735,60 @@ func findTagByParentAndTitle(tags items.Tags, parentUUID, title string) (int, er
 		return -1, nil
 	}
 	active := []int{}
+	containingNote := []int{}
 	for _, index := range candidates {
 		if projectSubtreeNoteCount(tags, tags[index].UUID) > 0 {
 			active = append(active, index)
+			if projectSubtreeHasNote(tags, tags[index].UUID, noteUUID) {
+				containingNote = append(containingNote, index)
+			}
 		}
 	}
-	if len(active) > 1 {
-		return -1, fmt.Errorf("managed tag %q has duplicate active children under one parent", title)
+	if len(containingNote) > 0 {
+		sort.Slice(containingNote, func(left, right int) bool {
+			return tags[containingNote[left]].UUID < tags[containingNote[right]].UUID
+		})
+		return containingNote[0], nil
 	}
-	if len(active) == 1 {
+	if len(active) > 0 {
+		// Old clients could create parallel active tag branches. They are all
+		// readable as one logical path; for a new attachment choose the same
+		// stable branch on every client without deleting any existing branch.
+		sort.Slice(active, func(left, right int) bool {
+			return tags[active[left]].UUID < tags[active[right]].UUID
+		})
 		return active[0], nil
 	}
 	sort.Slice(candidates, func(left, right int) bool {
 		return tags[candidates[left]].UUID < tags[candidates[right]].UUID
 	})
 	return candidates[0], nil
+}
+
+func projectSubtreeHasNote(tags items.Tags, rootUUID, noteUUID string) bool {
+	if strings.TrimSpace(noteUUID) == "" {
+		return false
+	}
+	inside := map[string]bool{rootUUID: true}
+	for changed := true; changed; {
+		changed = false
+		for _, tag := range tags {
+			if inside[tag.UUID] {
+				continue
+			}
+			parent, err := tagParentUUID(tag)
+			if err == nil && inside[parent] {
+				inside[tag.UUID] = true
+				changed = true
+			}
+		}
+	}
+	for _, tag := range tags {
+		if inside[tag.UUID] && tagHasReference(tag, noteUUID) {
+			return true
+		}
+	}
+	return false
 }
 
 func tagParentUUID(tag items.Tag) (string, error) {

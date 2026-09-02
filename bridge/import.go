@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -152,11 +153,11 @@ func projectTagAssignments(tags items.Tags, project string) (map[string]projectT
 	}
 	assignments := map[string]projectTagAssignment{}
 
-	rootIndex, err := selectProjectImportRoot(active, project)
+	rootIndexes, err := selectProjectImportRoots(active, project)
 	if err != nil {
 		return nil, err
 	}
-	if rootIndex >= 0 {
+	for _, rootIndex := range rootIndexes {
 		paths := map[string][]string{active[rootIndex].UUID: {project}}
 		uuids := map[string][]string{active[rootIndex].UUID: {active[rootIndex].UUID}}
 		seenPaths := map[string]string{project: active[rootIndex].UUID}
@@ -197,8 +198,16 @@ func projectTagAssignments(tags items.Tags, project string) (map[string]projectT
 				if ref.ContentType != common.SNItemTypeNote || strings.TrimSpace(ref.UUID) == "" {
 					continue
 				}
-				if _, duplicate := assignments[ref.UUID]; duplicate {
-					return nil, fmt.Errorf("note %q is attached to multiple project tag paths", ref.UUID)
+				if previous, duplicate := assignments[ref.UUID]; duplicate {
+					if strings.Join(previous.Path, "\x00") != strings.Join(path, "\x00") {
+						return nil, fmt.Errorf("note %q is attached to multiple project tag paths", ref.UUID)
+					}
+					// The same logical attachment can exist below duplicate root
+					// tags created by an older client. Keep one stable physical
+					// path while exposing the note only once.
+					if strings.Join(previous.ManagedUUIDs, "\x00") <= strings.Join(uuids[tag.UUID], "\x00") {
+						continue
+					}
 				}
 				assignments[ref.UUID] = projectTagAssignment{
 					Path:          append([]string{}, path...),
@@ -215,11 +224,11 @@ func projectTagAssignments(tags items.Tags, project string) (map[string]projectT
 	return assignments, nil
 }
 
-// selectProjectImportRoot is deliberately more tolerant than the write path.
-// Standard Notes can retain an empty duplicate tag after an interrupted or
-// older AIC migration. Import may safely ignore such a shell, but it must still
-// fail closed when two duplicate project trees both contain notes.
-func selectProjectImportRoot(tags items.Tags, project string) (int, error) {
+// selectProjectImportRoots treats historical duplicate roots as physical
+// branches of one logical project. Importing their union is read-only and
+// prevents valid notes from disappearing merely because an older client made
+// a second root tag.
+func selectProjectImportRoots(tags items.Tags, project string) ([]int, error) {
 	candidates := []int{}
 	for index, tag := range tags {
 		if tag.Content.Title != project {
@@ -232,10 +241,7 @@ func selectProjectImportRoot(tags items.Tags, project string) (int, error) {
 		candidates = append(candidates, index)
 	}
 	if len(candidates) <= 1 {
-		if len(candidates) == 1 {
-			return candidates[0], nil
-		}
-		return -1, nil
+		return candidates, nil
 	}
 
 	active := []int{}
@@ -244,14 +250,13 @@ func selectProjectImportRoot(tags items.Tags, project string) (int, error) {
 			active = append(active, index)
 		}
 	}
-	switch len(active) {
-	case 0:
-		return -1, nil
-	case 1:
-		return active[0], nil
-	default:
-		return -1, fmt.Errorf("managed project tag %q has multiple active roots", project)
+	if len(active) > 0 {
+		sort.Slice(active, func(left, right int) bool {
+			return tags[active[left]].UUID < tags[active[right]].UUID
+		})
+		return active, nil
 	}
+	return nil, nil
 }
 
 func projectSubtreeNoteCount(tags items.Tags, rootUUID string) int {

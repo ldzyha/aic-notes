@@ -17,6 +17,8 @@ func TestSyncDecision(t *testing.T) {
 		{"create", "local", "", "", "", "push"},
 		{"unbased but identical", "same", "same", "", "", "noop"},
 		{"initial remote ambiguity", "local", "remote", "", "", "conflict"},
+		{"initial choose local", "local", "remote", "", "local", "push"},
+		{"initial choose remote", "local", "remote", "", "remote", "pull"},
 		{"local only", "local-2", "base", "base", "", "push"},
 		{"remote only", "base", "remote-2", "base", "", "pull"},
 		{"both", "local-2", "remote-2", "base", "", "conflict"},
@@ -36,17 +38,19 @@ func TestSyncDecision(t *testing.T) {
 func TestReadOnlySyncDecisionNeverPushes(t *testing.T) {
 	tests := []struct {
 		name, local, remote, base, action, nextBase string
+		resolution                                  string
 		useRemote                                   bool
 	}{
-		{"same", "same", "same", "old", "noop", "same", false},
-		{"remote only", "base", "remote", "base", "pull", "remote", true},
-		{"local only", "local", "base", "base", "locked", "base", false},
-		{"both", "local", "remote", "base", "locked", "base", false},
-		{"unbased", "local", "remote", "", "locked", "", false},
+		{"same", "same", "same", "old", "noop", "same", "", false},
+		{"remote only", "base", "remote", "base", "pull", "remote", "", true},
+		{"local only", "local", "base", "base", "locked", "base", "", false},
+		{"both", "local", "remote", "base", "locked", "base", "", false},
+		{"unbased", "local", "remote", "", "locked", "", "", false},
+		{"explicit remote", "local", "remote", "", "pull", "remote", "remote", true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			action, useRemote, nextBase := readOnlySyncDecision(test.local, test.remote, test.base)
+			action, useRemote, nextBase := readOnlySyncDecision(test.local, test.remote, test.base, test.resolution)
 			if action != test.action || useRemote != test.useRemote || nextBase != test.nextBase {
 				t.Fatalf("got %q, %v, %q; want %q, %v, %q", action, useRemote, nextBase, test.action, test.useRemote, test.nextBase)
 			}
@@ -170,19 +174,21 @@ func TestReconcileTagHierarchyCanonicalizesEmptyDuplicateRoot(t *testing.T) {
 	}
 }
 
-func TestReconcileTagHierarchyRejectsDuplicateActiveRoots(t *testing.T) {
+func TestReconcileTagHierarchyUsesStableDuplicateActiveRoot(t *testing.T) {
 	first, _ := items.NewTag("demo", items.ItemReferences{{UUID: "one", ContentType: common.SNItemTypeNote}})
+	first.UUID = "z-root"
 	second, _ := items.NewTag("demo", items.ItemReferences{{UUID: "two", ContentType: common.SNItemTypeNote}})
-	_, err := reconcileTagHierarchy(
+	second.UUID = "a-root"
+	result, err := reconcileTagHierarchy(
 		items.Tags{first, second},
-		"note",
+		"new-note",
 		[]string{"demo"},
 		nil,
 		nil,
 		true,
 	)
-	if err == nil || !strings.Contains(err.Error(), "duplicate active") {
-		t.Fatalf("duplicate active roots did not fail closed: %v", err)
+	if err != nil || len(result.UUIDs) != 1 || result.UUIDs[0] != "a-root" {
+		t.Fatalf("duplicate active roots were not routed deterministically: result=%#v err=%v", result, err)
 	}
 }
 
@@ -238,12 +244,12 @@ func TestProjectTagAssignmentsIgnoresEmptyDuplicateRoot(t *testing.T) {
 	}
 }
 
-func TestProjectTagAssignmentsRejectsTwoActiveDuplicateRoots(t *testing.T) {
+func TestProjectTagAssignmentsMergesTwoActiveDuplicateRoots(t *testing.T) {
 	first, _ := items.NewTag("demo", items.ItemReferences{{UUID: "first", ContentType: common.SNItemTypeNote}})
 	second, _ := items.NewTag("demo", items.ItemReferences{{UUID: "second", ContentType: common.SNItemTypeNote}})
-	_, err := projectTagAssignments(items.Tags{first, second}, "demo")
-	if err == nil || !strings.Contains(err.Error(), "multiple active roots") {
-		t.Fatalf("two active project roots did not fail closed: %v", err)
+	assignments, err := projectTagAssignments(items.Tags{first, second}, "demo")
+	if err != nil || len(assignments) != 2 || assignments["first"].Path[0] != "demo" || assignments["second"].Path[0] != "demo" {
+		t.Fatalf("two active project roots were not merged: assignments=%#v err=%v", assignments, err)
 	}
 }
 
@@ -344,6 +350,60 @@ func TestDiscoverRemoteNoteCanonicalizesEquivalentDuplicateIdentity(t *testing.T
 	)
 	if err != nil || got == nil || got.UUID != "a-note" {
 		t.Fatalf("equivalent duplicates were not canonicalized: got=%#v err=%v", got, err)
+	}
+}
+
+func TestDiscoverRemoteIdentityUsesUniqueLocalContentMatch(t *testing.T) {
+	root, _ := items.NewTag("demo", items.ItemReferences{
+		{UUID: "first", ContentType: common.SNItemTypeNote},
+		{UUID: "second", ContentType: common.SNItemTypeNote},
+	})
+	first, _ := items.NewNote("app.md", "local body", nil)
+	first.UUID = "first"
+	second, _ := items.NewNote("app.md", "other body", nil)
+	second.UUID = "second"
+	got, ambiguous, err := discoverRemoteIdentity(
+		items.Notes{first, second}, items.Tags{root}, "app.md", []string{"demo"}, "document", "local body",
+	)
+	if err != nil || got == nil || got.UUID != "first" || len(ambiguous) != 0 {
+		t.Fatalf("unique local match was not recovered: got=%#v ambiguous=%#v err=%v", got, ambiguous, err)
+	}
+}
+
+func TestDiscoverRemoteIdentityCanonicalizesMatchingContentGroup(t *testing.T) {
+	root, _ := items.NewTag("demo", items.ItemReferences{
+		{UUID: "z-same", ContentType: common.SNItemTypeNote},
+		{UUID: "a-same", ContentType: common.SNItemTypeNote},
+		{UUID: "other", ContentType: common.SNItemTypeNote},
+	})
+	later, _ := items.NewNote("app.md", "local body", nil)
+	later.UUID = "z-same"
+	canonical, _ := items.NewNote("app.md", "local body", nil)
+	canonical.UUID = "a-same"
+	other, _ := items.NewNote("app.md", "other body", nil)
+	other.UUID = "other"
+	got, ambiguous, err := discoverRemoteIdentity(
+		items.Notes{later, canonical, other}, items.Tags{root}, "app.md", []string{"demo"}, "document", "local body",
+	)
+	if err != nil || got == nil || got.UUID != "a-same" || len(ambiguous) != 0 {
+		t.Fatalf("matching content group was not canonicalized: got=%#v ambiguous=%#v err=%v", got, ambiguous, err)
+	}
+}
+
+func TestDiscoverRemoteIdentityReturnsDivergentCandidates(t *testing.T) {
+	root, _ := items.NewTag("demo", items.ItemReferences{
+		{UUID: "z-note", ContentType: common.SNItemTypeNote},
+		{UUID: "a-note", ContentType: common.SNItemTypeNote},
+	})
+	first, _ := items.NewNote("app.md", "one", nil)
+	first.UUID = "z-note"
+	second, _ := items.NewNote("app.md", "two", nil)
+	second.UUID = "a-note"
+	got, ambiguous, err := discoverRemoteIdentity(
+		items.Notes{first, second}, items.Tags{root}, "app.md", []string{"demo"}, "document", "local",
+	)
+	if err != nil || got != nil || len(ambiguous) != 2 || ambiguous[0].UUID != "a-note" {
+		t.Fatalf("divergent candidates were not returned stably: got=%#v ambiguous=%#v err=%v", got, ambiguous, err)
 	}
 }
 

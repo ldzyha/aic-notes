@@ -43,8 +43,8 @@ does not modify source bytes.
 - License: MIT; notice reproduced in `THIRD_PARTY_NOTICES.md`
 - Shared Linux/WebAssembly build toolchain: Go `1.25.1` Windows amd64 with the official
   cross-compilers (`linux/amd64` and `js/wasm`), both with `CGO_ENABLED=0`.
-- Linux helper SHA-256: `2f8fbcab59ec889679bdf3746dab51e0a551aeef2e797c19f364b5a71f2de719`
-- WebAssembly helper SHA-256: `a124065689bc7891ed014a986fc16aec0062cd803459eb66e173e6a6c9b82a5b`
+- Linux helper SHA-256: `7cab7afaa1a6a878284eede6d29ef1f802046b0fc9a1f4e45372d8b298810546`
+- WebAssembly helper SHA-256: `6cf342d026299b7f542a663d942ce298b6f171c332a28994e4c4106358bec3e2`
 - Go WebAssembly runtime SHA-256: `0c949f4996f9a89698e4b5c586de32249c3b69b7baadb64d220073cc04acba14`
 
 The bridge is independently authored for this extension. It imports the MIT library directly and
