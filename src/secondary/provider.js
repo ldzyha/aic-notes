@@ -7,6 +7,7 @@ import {
   isNotePath,
   NavigationQueue,
   paneCapabilities,
+  preferredWorkspaceFolder,
 } from "./model.js";
 import { resolveTarget } from "../notes/target.js";
 import { noteDescriptorForUri, notePlaceholderForUri } from "../notes/create.js";
@@ -330,10 +331,24 @@ export class SecondaryNotePane {
 
   async followActive() {
     if (this.suppressFollowing > 0) return false;
+    const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
     const activeEditorUri = vscode.window.activeTextEditor?.document.uri;
-    const activeTabUri = uriFromTab(vscode.window.tabGroups.activeTabGroup.activeTab);
-    const uri = activeResource(activeTabUri, activeEditorUri);
-    if (!uri) return false;
+    const activeTabUri = uriFromTab(activeTab);
+    const uri = activeResource(
+      activeTabUri,
+      activeEditorUri,
+      Boolean(activeTab),
+    );
+    if (!uri) {
+      const folder = preferredWorkspaceFolder(
+        [this.sourceUri, this.documentUri, this.placeholderUri],
+        vscode.workspace.workspaceFolders,
+        (candidate) => vscode.workspace.getWorkspaceFolder(candidate),
+      );
+      return folder
+        ? this.followTarget(folder.uri, { preserveFocus: true })
+        : false;
+    }
     if (isNotePath(uri.path)) {
       return this.open(uri, { reveal: true });
     }
@@ -347,7 +362,7 @@ export class SecondaryNotePane {
     );
     if (uri?.scheme === "file" && isNotePath(uri.path))
       return this.open(uri, { reveal: true });
-    return false;
+    return this.followActive();
   }
 
   async closeExactNoteTabs(uri) {

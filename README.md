@@ -46,7 +46,9 @@ to launch or trust an unsigned helper executable.
   same editable, no-write-until-explicit-save placeholder as file notes. The cross-project global
   `~/.config/aic/note.md` entry and command are intentionally absent.
 - An unpinned Secondary pane always follows the active source; **Pin** freezes the current
-  relationship. The title follows the note filename and its parent path is a read-only breadcrumb.
+  relationship. When no file buffer is active, it shows the lazy project note for the most recently
+  active workspace (or the first workspace in a fresh multi-root window). The title follows the note
+  filename and its parent path is a read-only breadcrumb.
   The icon-only footer exposes **Log in/Log out** and **Pin**. **Source** appears whenever the
   current note has an existing owner, and one **Move note to Trash** action appears for every
   existing writable note; neither depends on Pin. There is no manual Sync button or

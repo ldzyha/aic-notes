@@ -27,8 +27,27 @@ export function linkedNotePath(relativePath) {
 // VS Code can keep activeTextEditor pointed at the last native editor while a
 // custom-editor tab is active. The active tab is therefore authoritative and
 // the text editor is only a fallback.
-export function activeResource(activeTabUri, activeEditorUri) {
-  return activeTabUri ?? activeEditorUri;
+export function activeResource(
+  activeTabUri,
+  activeEditorUri,
+  activeTabPresent = activeTabUri !== undefined,
+) {
+  // A Welcome/settings/terminal tab is an active tab but not an active file
+  // buffer. Do not revive VS Code's stale native editor in that state.
+  return activeTabPresent ? activeTabUri : activeEditorUri;
+}
+
+export function preferredWorkspaceFolder(
+  candidateUris,
+  workspaceFolders,
+  resolveFolder,
+) {
+  for (const uri of candidateUris ?? []) {
+    if (!uri) continue;
+    const folder = resolveFolder?.(uri);
+    if (folder) return folder;
+  }
+  return workspaceFolders?.[0];
 }
 
 export function paneCapabilities({

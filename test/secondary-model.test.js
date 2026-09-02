@@ -9,6 +9,7 @@ import {
   NavigationQueue,
   noteTitle,
   paneCapabilities,
+  preferredWorkspaceFolder,
   threeWayDecision,
 } from "../src/secondary/model.js";
 
@@ -17,6 +18,29 @@ test("active custom-editor tab wins over a stale native text editor", () => {
   const staleEditor = { path: "/project/previous.md" };
   assert.equal(activeResource(tab, staleEditor), tab);
   assert.equal(activeResource(undefined, staleEditor), staleEditor);
+  assert.equal(activeResource(undefined, staleEditor, true), undefined);
+});
+
+test("no active buffer falls back to the last project, then the first workspace", () => {
+  const first = { name: "first" };
+  const recent = { name: "recent" };
+  const recentUri = { folder: recent };
+  assert.equal(
+    preferredWorkspaceFolder(
+      [undefined, recentUri],
+      [first, recent],
+      (uri) => uri.folder,
+    ),
+    recent,
+  );
+  assert.equal(
+    preferredWorkspaceFolder([], [first, recent], () => undefined),
+    first,
+  );
+  assert.equal(
+    preferredWorkspaceFolder([], undefined, () => undefined),
+    undefined,
+  );
 });
 
 test("note actions depend on note existence, never pin state", () => {

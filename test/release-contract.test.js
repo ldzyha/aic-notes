@@ -76,9 +76,14 @@ test("note association, linked-note hotkey, and footer surface are explicit", as
   assert.doesNotMatch(provider, /id="pane-(?:auto|sync|create|note-actions)"/u);
   assert.match(provider, /tabGroups\.close/u);
   assert.match(provider, /new NavigationQueue\(\)/u);
-  assert.match(provider, /activeResource\(activeTabUri, activeEditorUri\)/u);
+  assert.match(
+    provider,
+    /activeResource\(\s*activeTabUri,\s*activeEditorUri,\s*Boolean\(activeTab\),\s*\)/u,
+  );
   assert.match(provider, /routeActiveNoteTab/u);
   assert.doesNotMatch(provider, /routeNoteTabs|routingTabs|pin: true/u);
+  assert.match(provider, /preferredWorkspaceFolder/u);
+  assert.match(provider, /this\.followTarget\(folder\.uri, \{ preserveFocus: true \}\)/u);
   assert.match(
     create,
     /secondary\.followSource\(uri, \{ force: true, preserveFocus: false \}\)/u,
