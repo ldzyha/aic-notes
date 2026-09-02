@@ -2,8 +2,8 @@
   "name": "aic-notes",
   "displayName": "AIC Notes",
   "description": "AIC Markdown documents plus Secondary-Side-Bar-only *.note.md notes with explicit-save Standard Notes sync.",
-  "version": "16.2.1",
-  "aicEditorCore": "2.4.0",
+  "version": "17.3.3",
+  "aicEditorCore": "2.5.0",
   "publisher": "ldzyha",
   "icon": "media/icon.png",
   "license": "MIT",
@@ -128,7 +128,8 @@
       {
         "command": "aicNotes.openProjectNote",
         "title": "Open Project Note",
-        "category": "AIC Notes"
+        "category": "AIC Notes",
+        "icon": "$(root-folder-opened)"
       },
       {
         "command": "aicNotes.refreshTree",
@@ -220,6 +221,11 @@
         }
       ],
       "view/title": [
+        {
+          "command": "aicNotes.openProjectNote",
+          "when": "view == aicNotes.tree && workspaceFolderCount > 0",
+          "group": "navigation@0"
+        },
         {
           "command": "aicNotes.noteForCurrentFile",
           "when": "view == aicNotes.tree",

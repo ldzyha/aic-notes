@@ -2,7 +2,9 @@ import { StateEffect, StateField } from "@codemirror/state";
 import { Decoration, EditorView, WidgetType } from "@codemirror/view";
 import {
   addProperty,
+  createCellEditor,
   createIconButton,
+  formatPropertyValue,
   moveProperty,
   parseFrontmatterRows,
   selectionRevealsPreview,
@@ -48,35 +50,6 @@ function action(document, label, icon, run, disabled = false) {
     disabled,
     onActivate: run,
   });
-}
-
-function field(document, value, label, onChange, readOnly, key = false) {
-  const input = document.createElement("input");
-  input.type = "text";
-  input.className = "cm-aic-structure-input";
-  input.value = value;
-  input.readOnly = readOnly;
-  input.setAttribute("aria-label", label);
-  input.addEventListener("change", () => {
-    if (key && !validPropertyKey(input.value.trim())) {
-      input.setCustomValidity("Use letters, numbers, dot, underscore, or dash");
-      input.reportValidity();
-      return;
-    }
-    input.setCustomValidity("");
-    onChange(input.value);
-  });
-  input.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      input.blur();
-    } else if (event.key === "Escape") {
-      event.preventDefault();
-      input.value = value;
-      input.blur();
-    }
-  });
-  return input;
 }
 
 function dragHandle(document, index, readOnly) {
@@ -241,15 +214,17 @@ class FrontmatterWidget extends WidgetType {
         keyContent.append(itemLabel);
       } else {
         keyContent.append(
-          field(
-            document,
-            item.key,
-            `Property ${index + 1} name`,
-            (value) =>
+          createCellEditor(document, {
+            value: item.key,
+            label: `Property ${index + 1} name`,
+            readOnly: this.readOnly,
+            validate: (value) =>
+              validPropertyKey(value.trim())
+                ? ""
+                : "Use letters, numbers, dot, underscore, or dash",
+            onCommit: (value) =>
               replace(updateProperty(this.block.rows, index, "key", value)),
-            this.readOnly,
-            true,
-          ),
+          }),
         );
       }
       key.append(keyContent);
@@ -265,14 +240,15 @@ class FrontmatterWidget extends WidgetType {
         value.append(group);
       } else {
         value.append(
-          field(
-            document,
-            item.value,
-            `Property ${item.key || "list item"} value`,
-            (next) =>
+          createCellEditor(document, {
+            value: item.value,
+            displayValue: formatPropertyValue(item.key, item.value),
+            label: `Property ${item.key || "list item"} value`,
+            multiline: true,
+            readOnly: this.readOnly,
+            onCommit: (next) =>
               replace(updateProperty(this.block.rows, index, "value", next)),
-            this.readOnly,
-          ),
+          }),
         );
       }
       if (!this.readOnly) {

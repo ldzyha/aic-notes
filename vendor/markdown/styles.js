@@ -81,22 +81,38 @@ export const MARKDOWN_CSS = `
 .cm-md-table .cm-aic-table-scroll > table { width: max-content; min-width: 100%;
   border-collapse: collapse; table-layout: auto; font-family: monospace }
 .cm-md-table th, .cm-md-table td { border: 1px solid var(--border);
-  padding: .2rem .5rem; text-align: left; vertical-align: top }
+  width: auto; max-width: min(32rem, 72vw); padding: .2rem .5rem;
+  text-align: left; vertical-align: top; word-break: normal;
+  overflow-wrap: normal; hyphens: none }
 .cm-md-table thead th { background: var(--chip); font-weight: 700 }
 .cm-md-table-link { color: var(--accent); text-decoration: underline; cursor: pointer }
 .cm-aic-structure-cell { display: flex; align-items: center; gap: .2rem }
-.cm-aic-structure-input { box-sizing: border-box; width: 100%; min-width: 7ch;
-  padding: .18rem .3rem; border: 1px solid transparent;
-  border-radius: var(--radius); background: transparent; color: inherit;
-  font: inherit }
-.cm-aic-structure-input:hover { border-color: var(--border) }
-.cm-aic-structure-input:focus { border-color: var(--accent);
-  background: var(--bg); outline: none }
-.cm-aic-structure-input[readonly] { cursor: default }
-.cm-md-table .cm-aic-structure-input { display: block; min-width: 14rem;
-  min-height: 2rem; max-height: 12rem; line-height: 1.35;
-  white-space: pre-wrap; overflow-wrap: anywhere; overflow-y: auto;
-  resize: vertical }
+.cm-aic-cell-value { box-sizing: border-box; display: block; width: max-content;
+  min-width: 5ch; max-width: min(32rem, 72vw); padding: .18rem .3rem;
+  border: 1px solid transparent; border-radius: var(--radius); color: inherit;
+  line-height: 1.4; white-space: pre-wrap; word-break: normal;
+  overflow-wrap: normal; hyphens: none }
+.cm-aic-cell-value[role="button"] { cursor: text }
+.cm-aic-cell-value[role="button"]:hover,
+.cm-aic-cell-value[role="button"]:focus-visible { border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, transparent); outline: none }
+.cm-aic-cell-value[data-empty="true"] { color: var(--muted); font-style: italic }
+.cm-aic-cell-popover { position: fixed; z-index: 10000; box-sizing: border-box;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .35rem;
+  padding: .4rem; border: 1px solid var(--accent); border-radius: var(--radius);
+  background: var(--bg); color: var(--fg); box-shadow: 0 .5rem 1.5rem #0006 }
+.cm-aic-cell-editor { box-sizing: border-box; width: 100%; min-width: 0;
+  min-height: 2rem; max-height: min(40vh, 18rem); padding: .35rem .45rem;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--input-bg, var(--bg)); color: inherit; font: inherit;
+  line-height: 1.4; resize: vertical }
+.cm-aic-cell-editor:focus { border-color: var(--accent); outline: none }
+.cm-aic-cell-popover-actions { display: flex; align-items: flex-start; gap: .15rem }
+.cm-aic-cell-popover-action { border: 1px solid var(--border);
+  border-radius: var(--radius); background: transparent; color: var(--muted) }
+.cm-aic-cell-popover-action:hover,
+.cm-aic-cell-popover-action:focus-visible { border-color: var(--accent);
+  color: var(--fg); outline: none }
 .cm-aic-structure-handle-cell { width: 1.8rem; min-width: 1.8rem;
   padding: .1rem !important; text-align: center !important }
 .cm-aic-drag-handle { width: 1.45rem; height: 1.45rem; padding: 0;
@@ -109,13 +125,17 @@ export const MARKDOWN_CSS = `
    rendered as a read-only key/value grid — the cursor entering it reveals the
    raw YAML (edit line by line), the same reveal rule as the table widget */
 .cm-md-props { padding: .3rem 0; overflow-x: auto }
-.cm-md-props table { border-collapse: collapse; font-family: monospace }
+.cm-md-props table { width: max-content; min-width: 100%; border-collapse: collapse;
+  table-layout: auto; font-family: monospace }
 .cm-md-props th, .cm-md-props td { border: 1px solid var(--border);
   padding: .2rem .5rem; vertical-align: top }
 .cm-md-props th { background: var(--chip); color: var(--muted); font-weight: 700;
   text-align: right; white-space: nowrap }
-.cm-md-props td { color: var(--fg); text-align: left; white-space: pre-wrap }
-.cm-aic-property-key-cell { min-width: 13rem; padding: .12rem .35rem !important }
+.cm-md-props td { max-width: min(32rem, 72vw); color: var(--fg);
+  text-align: left; white-space: normal; word-break: normal;
+  overflow-wrap: normal; hyphens: none }
+.cm-aic-property-key-cell { width: 1%; min-width: 8rem;
+  max-width: min(20rem, 45vw); padding: .12rem .35rem !important }
 .cm-aic-property-key { display: flex; align-items: center; gap: .2rem;
   padding-inline-start: calc(var(--aic-property-depth, 0) * .9rem) }
 .cm-aic-property-level { width: .9rem; flex: 0 0 .9rem; color: var(--muted);

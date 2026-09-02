@@ -37,7 +37,7 @@ export function noteTitle(relativePath, markdown = "") {
       markdown,
     )?.[1];
   if (frontmatterTitle?.trim()) return frontmatterTitle.trim();
-  return path.posix.basename(relativePath, NOTE_SUFFIX) || "AIC note";
+  return path.posix.basename(relativePath) || "AIC note";
 }
 
 export function managedTagPath(
@@ -94,7 +94,10 @@ export function threeWayDecision(
   baseHash,
   resolution = "",
 ) {
-  if (!baseHash) return remoteHash ? "conflict" : "push";
+  if (!baseHash) {
+    if (!remoteHash) return "push";
+    return localHash === remoteHash ? "noop" : "conflict";
+  }
   const localChanged = localHash !== baseHash;
   const remoteChanged = remoteHash !== baseHash;
   if (!localChanged && !remoteChanged) return "noop";

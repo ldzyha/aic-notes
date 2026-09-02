@@ -100,8 +100,21 @@ func collectProjectNotes(notes items.Notes, tags items.Tags, project string, loc
 	// canonical project sidecar before attaching any project tag. Surface only
 	// an exact project-note identity as a synthetic root-path candidate. The
 	// host binds it first; the following normal sync adds the managed tag.
+	hasTaggedRoot := false
+	for _, candidate := range result {
+		if len(candidate.TagPath) == 1 && candidate.TagPath[0] == project &&
+			candidate.Title == project &&
+			markdownFrontmatterValue(candidate.LocalContent, "level") == "project-note" &&
+			markdownFrontmatterValue(candidate.LocalContent, "title") == project {
+			hasTaggedRoot = true
+			break
+		}
+	}
 	var rootCandidate *remoteProjectNote
 	for uuid, note := range byUUID {
+		if hasTaggedRoot {
+			break
+		}
 		if _, tagged := assignments[uuid]; tagged ||
 			noteHasActiveTagReference(tags, uuid) ||
 			note.Content.Title != project ||

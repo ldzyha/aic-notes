@@ -10,6 +10,7 @@ import { openSourceAtHref } from "../notes/navigation.js";
 import { trashNotesLocally } from "../notes/delete.js";
 import { CoalescingQueue, mergeSyncRequests } from "../sync/coalescing-queue.js";
 import { syncAdmission } from "../sync/admission.js";
+import { stampFileProperties } from "../../vendor/aic-editor-core/file-properties.js";
 
 export const SECONDARY_VIEW_ID = "aicNotes.secondary";
 
@@ -20,6 +21,24 @@ async function exists(uri) {
   } catch {
     return false;
   }
+}
+
+async function stampNoteProperties(markdown, uri) {
+  const updatedAt = new Date().toISOString();
+  let createdAt = updatedAt;
+  try {
+    const stat = await vscode.workspace.fs.stat(uri);
+    if (Number.isFinite(stat.ctime) && stat.ctime > 0)
+      createdAt = new Date(stat.ctime).toISOString();
+  } catch {
+    // A new placeholder has no file stat yet; its first explicit save is the
+    // creation timestamp.
+  }
+  return stampFileProperties(markdown, {
+    fileName: path.basename(uri.fsPath),
+    createdAt,
+    updatedAt,
+  });
 }
 
 function uriFromTab(tab) {
@@ -692,7 +711,7 @@ export class SecondaryNotePane {
   }
 
   async commitDraft(text, generation, reason = "explicit") {
-    const draft = String(text ?? "");
+    let draft = String(text ?? "");
     if (this.readOnly) {
       await this.view?.webview.postMessage({
         type: "committed",
@@ -714,18 +733,26 @@ export class SecondaryNotePane {
       return { action: "stale-draft", skipped: true };
     }
 
+    if (
+      !this.documentUri &&
+      this.placeholderUri &&
+      draft === this.placeholderText
+    ) {
+      await this.view?.webview.postMessage({
+        type: "committed",
+        text: draft,
+        generation: this.generation,
+        saved: true,
+      });
+      await this.sendPaneState("Not saved · unchanged placeholder");
+      return { action: "placeholder", skipped: true };
+    }
+
+    const noteUri = this.documentUri ?? this.placeholderUri;
+    if (noteUri) draft = await stampNoteProperties(draft, noteUri);
+
     let document;
     if (!this.documentUri && this.placeholderUri) {
-      if (draft === this.placeholderText) {
-        await this.view?.webview.postMessage({
-          type: "committed",
-          text: draft,
-          generation: this.generation,
-          saved: true,
-        });
-        await this.sendPaneState("Not saved · unchanged placeholder");
-        return { action: "placeholder", skipped: true };
-      }
       const uri = this.placeholderUri;
       if (await exists(uri)) {
         await this.view?.webview.postMessage({

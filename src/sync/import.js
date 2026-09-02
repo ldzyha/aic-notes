@@ -36,7 +36,8 @@ export function remoteNoteTarget(remote, workspaceName) {
   const title = safeSegment(meta.title);
 
   if (level === "project-note") {
-    if (!title || tagPath.length !== 1) return null;
+    if (!title || title !== safeSegment(remote?.title) || title !== project || tagPath.length !== 1)
+      return null;
     return {
       level,
       notePath: `${project}.note.md`,
@@ -48,7 +49,7 @@ export function remoteNoteTarget(remote, workspaceName) {
   const parent = tagPath.slice(1).join("/");
   const targetPath = parent ? `${parent}/${title}` : title;
   if (level === "folder-note") {
-    if (!title) return null;
+    if (!title || title !== safeSegment(remote?.title)) return null;
     return {
       level,
       notePath: folderNotePathFor(targetPath),
@@ -57,7 +58,7 @@ export function remoteNoteTarget(remote, workspaceName) {
     };
   }
   if (level === "file-note") {
-    if (!title) return null;
+    if (!title || title !== safeSegment(remote?.title)) return null;
     return {
       level,
       notePath: notePathFor(targetPath),
@@ -87,13 +88,40 @@ export function remoteNoteTarget(remote, workspaceName) {
 
 export function importCandidates(notes, workspaceName) {
   const candidates = [];
-  const counts = new Map();
   for (const remote of Array.isArray(notes) ? notes : []) {
     const target = remoteNoteTarget(remote, workspaceName);
     if (!target?.notePath || !remote?.remoteUuid) continue;
     const candidate = { remote, ...target };
     candidates.push(candidate);
-    counts.set(target.notePath, (counts.get(target.notePath) ?? 0) + 1);
   }
-  return candidates.filter((candidate) => counts.get(candidate.notePath) === 1);
+  const byPath = new Map();
+  for (const candidate of candidates) {
+    const group = byPath.get(candidate.notePath) ?? [];
+    group.push(candidate);
+    byPath.set(candidate.notePath, group);
+  }
+  const result = [];
+  for (const group of byPath.values()) {
+    if (group.length === 1) {
+      result.push(group[0]);
+      continue;
+    }
+    const [first] = group;
+    const equivalent = group.every(
+      (candidate) =>
+        candidate.level === first.level &&
+        candidate.targetPath === first.targetPath &&
+        candidate.targetKind === first.targetKind &&
+        candidate.remote.title === first.remote.title &&
+        candidate.remote.localContent === first.remote.localContent,
+    );
+    if (equivalent) {
+      result.push(
+        [...group].sort((left, right) =>
+          left.remote.remoteUuid.localeCompare(right.remote.remoteUuid),
+        )[0],
+      );
+    }
+  }
+  return result;
 }

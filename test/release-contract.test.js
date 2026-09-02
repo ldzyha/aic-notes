@@ -7,9 +7,9 @@ const packageJson = JSON.parse(
   await readFile(new URL("../package.json", import.meta.url), "utf8"),
 );
 
-test("16.2.1 manifest separates Primary management from Secondary note content", () => {
-  assert.equal(packageJson.version, "16.2.1");
-  assert.equal(packageJson.aicEditorCore, "2.4.0");
+test("17.3.3 manifest separates Primary management from Secondary note content", () => {
+  assert.equal(packageJson.version, "17.3.3");
+  assert.equal(packageJson.aicEditorCore, "2.5.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.equal(packageJson.scripts.publish, undefined);
   assert.ok(packageJson.scripts["release:gate"]);
@@ -93,7 +93,7 @@ test("note association, linked-note hotkey, and footer surface are explicit", as
   assert.match(extension, /noteForCurrentFile\(secondary\)/u);
   assert.match(target, /relNotePath === `\$\{folder\.name\}\.note\.md`/u);
   assert.match(tree, /projectPlaceholder/u);
-  assert.match(tree, /Note · not created yet/u);
+  assert.match(tree, /Project note/u);
   assert.doesNotMatch(tree, /global note|GLOBAL_NOTE_PATH/u);
 });
 
@@ -128,8 +128,35 @@ test("source selections expose the AIC linked-comment action without targeting n
   assert.match(selection, /await document\.save\(\)/u);
   assert.match(selection, /document\.getText\(editor\.selection\)/u);
   assert.match(selection, /secondary\.open[\s\S]*selection:/u);
+  assert.match(selection, /activeSourceSelection/u);
   assert.doesNotMatch(selection, /mode: "(?:edit|preview)"/u);
   assert.doesNotMatch(selection, /edit\.replace\(document\.uri/u);
+});
+
+test("custom Markdown selections cross the webview boundary for linked comments", async () => {
+  const provider = await readFile(
+    new URL("../src/editor/provider.js", import.meta.url),
+    "utf8",
+  );
+  const webview = await readFile(
+    new URL("../src/webview/main.js", import.meta.url),
+    "utf8",
+  );
+  const extension = await readFile(
+    new URL("../src/extension.js", import.meta.url),
+    "utf8",
+  );
+  assert.match(provider, /async activeSourceSelection\(\)/u);
+  assert.match(provider, /messageQueue = messageQueue\.then/u);
+  assert.match(provider, /finally \{[\s\S]*state\.applying--/u);
+  assert.match(provider, /type: "selection\.request"/u);
+  assert.match(provider, /case "selection\.snapshot"/u);
+  assert.match(webview, /case "selection\.request"/u);
+  assert.match(webview, /type: "selection\.snapshot"/u);
+  assert.match(webview, /type: "selection", anchor, head/u);
+  assert.match(webview, /type: "selection\.link", anchor, head/u);
+  assert.match(provider, /case "selection\.link"/u);
+  assert.match(extension, /linkSelectionToNote\(secondary, markdownEditor\)/u);
 });
 
 test("Secondary editable placeholder, explicit save, and theme-safe controls are scoped", async () => {
@@ -376,7 +403,7 @@ test("code, Mermaid, and link actions copy through the VS Code clipboard bridge"
   assert.match(details, /ignoreEvent\(\) \{[\s\S]*return true/u);
 });
 
-test("table preview uses multiline cells and a dedicated horizontal scroller", async () => {
+test("table preview uses transient cell editors and a dedicated horizontal scroller", async () => {
   const table = await readFile(
     new URL("../vendor/markdown/handlers/table.js", import.meta.url),
     "utf8",
@@ -389,13 +416,21 @@ test("table preview uses multiline cells and a dedicated horizontal scroller", a
     new URL("../src/webview/main.js", import.meta.url),
     "utf8",
   );
-  assert.match(table, /createElement\("textarea"\)/u);
+  const core = await readFile(
+    new URL("../vendor/aic-editor-core/structured-preview.js", import.meta.url),
+    "utf8",
+  );
+  assert.match(table, /createCellEditor/u);
+  assert.doesNotMatch(table, /createElement\("textarea"\)/u);
+  assert.match(core, /className = "cm-aic-cell-popover"/u);
+  assert.match(core, /document\.createElement\("textarea"\)/u);
   assert.match(table, /cm-aic-table-scroll/u);
   assert.match(table, /label: "Markdown table"/u);
   assert.match(table, /"Copy table", "copy"/u);
   assert.match(table, /makeTableExtension\(host\)/u);
   assert.match(styles, /width: max-content; min-width: 100%/u);
-  assert.match(styles, /min-width: 14rem/u);
+  assert.match(styles, /word-break: normal/u);
+  assert.match(styles, /\.cm-aic-cell-popover/u);
   assert.match(main, /wirePreviewSelection/u);
   assert.match(main, /userEvent: "select\.pointer"/u);
 });
@@ -498,7 +533,10 @@ test("documents and notes stay visibly distinct and ordinary Ctrl+S synchronizes
   assert.match(extension, /onWillSaveTextDocument/u);
   assert.match(extension, /TextDocumentSaveReason\.Manual/u);
   assert.match(extension, /stampFileProperties/u);
-  assert.match(extension, /event\.waitUntil\(filePropertyEdits\(event\.document\)\)/u);
+  assert.match(
+    extension,
+    /event\.waitUntil\(legacyPropertyCleanupEdits\(event\.document\)\)/u,
+  );
   assert.match(extension, /explicitDocumentSaves\.delete/u);
   assert.match(extension, /endsWith\("\.note\.md"\)/u);
   assert.match(
@@ -512,7 +550,7 @@ test("documents and notes stay visibly distinct and ordinary Ctrl+S synchronizes
   );
   assert.match(tree, /createFileSystemWatcher\("\*\*\/\*\.md"\)/u);
   assert.match(tree, /item\.description = "Document"/u);
-  assert.match(tree, /item\.description = \["Note"/u);
+  assert.match(tree, /element\.forcedLevel === "project"/u);
   assert.match(
     styles,
     /\.cm-aic-link-actions \{ display: inline-flex; gap: \.15rem \}/u,
@@ -659,7 +697,7 @@ test("release packaging includes the helper but excludes helper source", async (
     new URL("../PROVENANCE.md", import.meta.url),
     "utf8",
   );
-  assert.match(provenance, /1cf72517cb082401492faf1d02b7d02c8677d06e/u);
+  assert.match(provenance, /7052aeea01f39c9299cbdef8d77d384b75b85c80/u);
   for (const artifact of [
     "../bin/linux-x64/aic-notes-sn-bridge",
     "../bin/wasm/aic-notes-sn-bridge.wasm",

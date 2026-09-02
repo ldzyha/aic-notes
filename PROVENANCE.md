@@ -3,8 +3,8 @@
 ## AIC for Standard Notes contract
 
 - Source repository: `https://github.com/ldzyha/standard-notes-aic`
-- Paired editor contract: `12.2.0` / AIC Editor Core `2.4.0`
-- Commit: `1cf72517cb082401492faf1d02b7d02c8677d06e`
+- Paired editor contract: `13.2.1` / AIC Editor Core `2.5.0`
+- Commit: `7052aeea01f39c9299cbdef8d77d384b75b85c80`
 - Authority files reviewed: `src/styles.css`, `src/editor.ts`, `src/language.ts`,
   `src/markdown-decorations.ts`, `src/block-views.ts`, `src/commands.ts`, `src/toolbar.ts`,
   `src/link-actions.ts`, `src/core/structured-preview.js`, `src/core/icons.css`,
@@ -41,10 +41,10 @@ does not modify source bytes.
 - Commit: `28e3820a341fad50b42f0ed29adb690077e87b46`
 - Go module version: `v0.0.0-20260523114812-28e3820a341f`
 - License: MIT; notice reproduced in `THIRD_PARTY_NOTICES.md`
-- Shared Linux/WebAssembly build toolchain: Go `1.27.0` Windows amd64 with the official
+- Shared Linux/WebAssembly build toolchain: Go `1.25.1` Windows amd64 with the official
   cross-compilers (`linux/amd64` and `js/wasm`), both with `CGO_ENABLED=0`.
-- Linux helper SHA-256: `4124e41b6c959c3f41a5dfc937e241ada0ea26b5c648f1952fe33eb035456f08`
-- WebAssembly helper SHA-256: `2ae7496e59b439a9e8f9a0523f7ddf40ed5ccf5a93140b80aae04622d0c8680e`
+- Linux helper SHA-256: `2f8fbcab59ec889679bdf3746dab51e0a551aeef2e797c19f364b5a71f2de719`
+- WebAssembly helper SHA-256: `a124065689bc7891ed014a986fc16aec0062cd803459eb66e173e6a6c9b82a5b`
 - Go WebAssembly runtime SHA-256: `0c949f4996f9a89698e4b5c586de32249c3b69b7baadb64d220073cc04acba14`
 
 The bridge is independently authored for this extension. It imports the MIT library directly and
@@ -55,24 +55,25 @@ text are not included in success/error output. AIC Notes does not call the libra
 keyring persistence: the extension supplies an authenticated local vault and a wrapping key held by
 VS Code SecretStorage.
 
-The Windows artifact compiles the same bridge package to `js/wasm` with Go `1.27.0` and bundles
+The Windows artifact compiles the same bridge package to `js/wasm` with Go `1.25.1` and bundles
 the matching Go `wasm_exec.js` runtime under its BSD-3-Clause license. No Standard Notes AGPL SDK
 or executable wrapper is bundled. The WebAssembly module runs in the VS Code extension host and
 uses the same encrypted vault protocol as the native Linux build.
 
 ## Shared editor core
 
-- Core contract version: `2.4.0`
+- Core contract version: `2.5.0`
 - VS Code snapshot: `vendor/aic-editor-core/draft-session.js`
 - Standard Notes snapshot: `src/core/draft-session.js` in `ldzyha/standard-notes-aic`
 - VS Code structured snapshot: `vendor/aic-editor-core/structured-preview.js`
 - Standard Notes structured snapshot: `src/core/structured-preview.js`
-- Structured snapshot SHA-256: `8d564702b143cefa4fd248cce483647ea1eeaf03a21faafefaa0922bafb01f99`
+- Structured snapshot SHA-256: `f495b0d04984d31bfd25d4866002142641daee72226cbe8c4e693807354402a4`
 - VS Code icon snapshot: `vendor/aic-editor-core/icons.css`
 - Standard Notes icon snapshot: `src/core/icons.css`
-- Icon snapshot SHA-256: `7b4dbec2a8a66d465dadcf09475bae85b08fd396f01c39a018d61926ca57c089`
+- Icon snapshot SHA-256: `0a9cc905d6e6d9f2eafb6e376d069db76e500d47a0b7950877eb0e6be65cd6ad`
 - VS Code file-properties snapshot: `vendor/aic-editor-core/file-properties.js`
 - Standard Notes file-properties snapshot: `src/core/file-properties.js`
+- File-properties snapshot SHA-256: `bcdfef5cc49aa25259d06ba5a316b3b70f2dd44fe8f1315ff8e3eef0231edd36`
 
 The byte-equivalent dependency-free state machine owns hydration, dirty drafts, commit boundaries,
 failed-save retention, and external-update rejection. Each product keeps only a thin host adapter:
@@ -82,8 +83,9 @@ nested YAML parsing and hierarchy-preserving reorder behavior, validation, seria
 selection-driven source disclosure, direct open/copy/edit link-control composition, icon-only
 action semantics, accessible feedback state, and restricted-client clipboard fallback. The CSS
 snapshot paints embedded SVG data URIs as masks without requiring inline SVG in action-button DOM.
-The file-properties module owns ordinary Markdown filename/creation/update stamping at the explicit
-save boundary while excluding `*.note.md` sidecars.
+The file-properties module owns `*.note.md` filename/creation/update stamping at the explicit save
+boundary, preserves all authored note frontmatter, and removes only the exact legacy managed
+signature from ordinary Markdown.
 
 ## Existing AIC Markdown sources
 

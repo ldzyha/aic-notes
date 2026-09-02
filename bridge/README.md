@@ -35,7 +35,7 @@ An empty duplicate project tag left by an interrupted migration is ignored; two 
 both contain notes still fail closed. Unrelated and trashed notes are omitted. A later unbound sync
 recovers an existing remote by exact managed path plus title before it considers creating a note.
 
-Build both release targets from the same package with Go 1.27.0:
+Build both release targets from the same package with Go 1.25.1:
 
 ```sh
 go test ./...

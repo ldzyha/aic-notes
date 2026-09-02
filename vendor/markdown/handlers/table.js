@@ -1,9 +1,10 @@
-import { syntaxTree } from "@codemirror/language";
+import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
 import { StateEffect, StateField } from "@codemirror/state";
 import { Decoration, EditorView, WidgetType } from "@codemirror/view";
 import {
   addTableColumn,
   addTableRow,
+  createCellEditor,
   createIconButton,
   moveTableColumn,
   moveTableRow,
@@ -73,33 +74,6 @@ function previewHeader(document, label, actions) {
   group.append(...actions);
   header.append(title, group);
   return header;
-}
-
-function input(document, value, label, onChange, readOnly) {
-  const field = document.createElement("textarea");
-  field.rows = 1;
-  field.className = "cm-aic-structure-input";
-  field.value = value;
-  field.setAttribute("aria-label", label);
-  field.readOnly = readOnly;
-  const fit = () => {
-    field.style.height = "0";
-    field.style.height = `${Math.max(30, field.scrollHeight)}px`;
-  };
-  field.addEventListener("input", fit);
-  field.addEventListener("change", () => onChange(field.value));
-  field.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      field.blur();
-    } else if (event.key === "Escape") {
-      event.preventDefault();
-      field.value = value;
-      field.blur();
-    }
-  });
-  queueMicrotask(fit);
-  return field;
 }
 
 function dragHandle(document, label, kind, index, readOnly) {
@@ -245,13 +219,14 @@ class TableWidget extends WidgetType {
           columnIndex,
           this.readOnly,
         ),
-        input(
-          document,
+        createCellEditor(document, {
           value,
-          `Column ${columnIndex + 1} name`,
-          (next) => replace(updateTableCell(parsed, -1, columnIndex, next)),
-          this.readOnly,
-        ),
+          label: `Column ${columnIndex + 1} name`,
+          multiline: true,
+          readOnly: this.readOnly,
+          onCommit: (next) =>
+            replace(updateTableCell(parsed, -1, columnIndex, next)),
+        }),
       );
       cell.append(content);
       if (parsed.aligns[columnIndex])
@@ -285,14 +260,14 @@ class TableWidget extends WidgetType {
       parsed.header.forEach((_, columnIndex) => {
         const cell = document.createElement("td");
         cell.append(
-          input(
-            document,
-            row[columnIndex] ?? "",
-            `Row ${rowIndex + 1}, column ${columnIndex + 1}`,
-            (next) =>
+          createCellEditor(document, {
+            value: row[columnIndex] ?? "",
+            label: `Row ${rowIndex + 1}, column ${columnIndex + 1}`,
+            multiline: true,
+            readOnly: this.readOnly,
+            onCommit: (next) =>
               replace(updateTableCell(parsed, rowIndex, columnIndex, next)),
-            this.readOnly,
-          ),
+          }),
         );
         if (parsed.aligns[columnIndex])
           cell.style.textAlign = parsed.aligns[columnIndex];
@@ -323,7 +298,9 @@ class TableWidget extends WidgetType {
 export function tableNodes(state) {
   const nodes = [];
   try {
-    syntaxTree(state).iterate({
+    const tree =
+      ensureSyntaxTree(state, state.doc.length, 100) ?? syntaxTree(state);
+    tree.iterate({
       enter(node) {
         if (node.name === "Table") nodes.push({ from: node.from, to: node.to });
       },

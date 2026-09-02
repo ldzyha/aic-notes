@@ -45,18 +45,79 @@ async function resolveWikiTarget(folder, fromRelPath, target) {
 
 export class MarkdownEditorProvider {
   static register(context) {
-    return vscode.window.registerCustomEditorProvider(
+    const provider = new MarkdownEditorProvider(context);
+    provider.registration = vscode.window.registerCustomEditorProvider(
       "aicNotes.markdown",
-      new MarkdownEditorProvider(context),
+      provider,
       {
         webviewOptions: { retainContextWhenHidden: true },
         supportsMultipleEditorsPerDocument: false,
       },
     );
+    return provider;
   }
 
   constructor(context) {
     this.context = context;
+    this.sessions = new Set();
+    this.selectionRequest = 0;
+  }
+
+  dispose() {
+    this.registration?.dispose();
+    for (const session of this.sessions) {
+      for (const resolve of session.selectionWaiters.values()) resolve(null);
+      session.selectionWaiters.clear();
+    }
+    this.sessions.clear();
+  }
+
+  async activeSourceSelection() {
+    const session = [...this.sessions].find(({ panel }) => panel.active);
+    if (!session || session.document.isClosed) return null;
+    if (session.commandSelection) {
+      session.commandSelection = false;
+      return this._sourceSelection(session, session.selection);
+    }
+
+    const requestId = `selection-${++this.selectionRequest}`;
+    const requested = new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        session.selectionWaiters.delete(requestId);
+        resolve(session.selection);
+      }, 750);
+      session.selectionWaiters.set(requestId, (selection) => {
+        clearTimeout(timeout);
+        resolve(selection);
+      });
+    });
+    if (!(await session.panel.webview.postMessage({ type: "selection.request", requestId }))) {
+      session.selectionWaiters.get(requestId)?.(session.selection);
+      session.selectionWaiters.delete(requestId);
+    }
+    const selection = await requested;
+    return this._sourceSelection(session, selection);
+  }
+
+  _sourceSelection(session, selection) {
+    if (
+      !selection ||
+      !Number.isInteger(selection.anchor) ||
+      !Number.isInteger(selection.head) ||
+      selection.anchor === selection.head
+    )
+      return null;
+    const length = session.document.getText().length;
+    const anchor = Math.max(0, Math.min(selection.anchor, length));
+    const head = Math.max(0, Math.min(selection.head, length));
+    if (anchor === head) return null;
+    return {
+      document: session.document,
+      selection: new vscode.Selection(
+        session.document.positionAt(anchor),
+        session.document.positionAt(head),
+      ),
+    };
   }
 
   async resolveCustomTextEditor(document, webviewPanel) {
@@ -66,6 +127,13 @@ export class MarkdownEditorProvider {
     webview.html = this._html(webview, distRoot);
 
     const state = { generation: 0, applying: 0 };
+    const session = {
+      document,
+      panel: webviewPanel,
+      selection: null,
+      selectionWaiters: new Map(),
+    };
+    this.sessions.add(session);
     const relativePath = vscode.workspace.asRelativePath(document.uri, false).replaceAll("\\", "/");
     const folder = vscode.workspace.getWorkspaceFolder(document.uri);
 
@@ -101,9 +169,11 @@ export class MarkdownEditorProvider {
       });
     });
 
-    const messageSub = webview.onDidReceiveMessage(async (msg) => {
-      try {
-        switch (msg.type) {
+    let messageQueue = Promise.resolve();
+    const messageSub = webview.onDidReceiveMessage((msg) => {
+      messageQueue = messageQueue.then(async () => {
+        try {
+          switch (msg.type) {
           case "ready":
             sendInit();
             break;
@@ -126,8 +196,12 @@ export class MarkdownEditorProvider {
               );
             }
             state.applying++;
-            const ok = await vscode.workspace.applyEdit(edit);
-            state.applying--;
+            let ok;
+            try {
+              ok = await vscode.workspace.applyEdit(edit);
+            } finally {
+              state.applying--;
+            }
             if (!ok) sendReset();
             break;
           }
@@ -140,6 +214,31 @@ export class MarkdownEditorProvider {
           case "save":
             await document.save();
             break;
+          case "selection":
+            session.selection = {
+              anchor: Number(msg.anchor),
+              head: Number(msg.head),
+            };
+            break;
+          case "selection.link":
+            session.selection = {
+              anchor: Number(msg.anchor),
+              head: Number(msg.head),
+            };
+            session.commandSelection = true;
+            await vscode.commands.executeCommand("aicNotes.linkSelectionToNote");
+            break;
+          case "selection.snapshot": {
+            const resolve = session.selectionWaiters.get(msg.requestId);
+            if (!resolve) break;
+            session.selectionWaiters.delete(msg.requestId);
+            session.selection = {
+              anchor: Number(msg.anchor),
+              head: Number(msg.head),
+            };
+            resolve(session.selection);
+            break;
+          }
           case "bus":
             await this._routeBus(msg, document, folder, relativePath);
             break;
@@ -153,15 +252,19 @@ export class MarkdownEditorProvider {
           case "diagnostic":
             console.warn("aic-notes webview:", msg.key, msg.value);
             break;
+          }
+        } catch (e) {
+          vscode.window.showErrorMessage(`AIC Notes — ${formatError(e)}`);
         }
-      } catch (e) {
-        vscode.window.showErrorMessage(`AIC Notes — ${formatError(e)}`);
-      }
+      });
     });
 
     webviewPanel.onDidDispose(() => {
       changeSub.dispose();
       messageSub.dispose();
+      this.sessions.delete(session);
+      for (const resolve of session.selectionWaiters.values()) resolve(null);
+      session.selectionWaiters.clear();
     });
   }
 

@@ -5,6 +5,7 @@ import { importCandidates, remoteNoteTarget } from "../src/sync/import.js";
 function remote(level, title, tagPath, uuid = `${level}-${title}`) {
   return {
     remoteUuid: uuid,
+    title,
     tagPath,
     localContent: `---\ntitle: ${title}\nlevel: ${level}\n---\n\nbody\n`,
   };
@@ -114,4 +115,24 @@ test("remote import drops ambiguous destinations instead of choosing a note", ()
   const first = remote("file-note", "app.ts", ["demo", "src"], "one");
   const second = remote("file-note", "app.js", ["demo", "src"], "two");
   assert.deepEqual(importCandidates([first, second], "demo"), []);
+});
+
+test("remote import deterministically binds byte-identical duplicate identities", () => {
+  const later = remote("file-note", "app.ts", ["demo", "src"], "z-note");
+  const canonical = remote("file-note", "app.ts", ["demo", "src"], "a-note");
+  assert.deepEqual(importCandidates([later, canonical], "demo"), [
+    {
+      remote: canonical,
+      level: "file-note",
+      notePath: "src/app.note.md",
+      targetPath: "src/app.ts",
+      targetKind: "file",
+    },
+  ]);
+});
+
+test("remote import rejects sidecars whose Standard Notes title disagrees with frontmatter", () => {
+  const inconsistent = remote("file-note", "app.ts", ["demo", "src"], "bad");
+  inconsistent.title = "other.ts";
+  assert.equal(remoteNoteTarget(inconsistent, "demo"), null);
 });

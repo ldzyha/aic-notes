@@ -27,6 +27,7 @@ test("all Markdown paths have an explicit note or document identity", () => {
     noteTitle("docs/README.md", "---\ntitle: Friendly\n---\n"),
     "README.md",
   );
+  assert.equal(noteTitle("notes/topic.note.md", "Body"), "topic.note.md");
   assert.equal(
     noteTitle("src/app.note.md", "---\ntitle: app.ts\nlevel: file-note\n---\n"),
     "app.ts",
@@ -65,6 +66,7 @@ test("placeholder changes apply atomically against one source generation", () =>
 
 test("three-way sync never resolves divergent content silently", () => {
   assert.equal(threeWayDecision("local", "", ""), "push");
+  assert.equal(threeWayDecision("same", "same", ""), "noop");
   assert.equal(threeWayDecision("local", "remote", ""), "conflict");
   assert.equal(threeWayDecision("local2", "base", "base"), "push");
   assert.equal(threeWayDecision("base", "remote2", "base"), "pull");

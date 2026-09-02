@@ -41,12 +41,16 @@ async function verifiedTarget(folder, sourcePath) {
   };
 }
 
-export async function linkSelectionToNote(secondary) {
-  const editor = vscode.window.activeTextEditor;
+export async function linkSelectionToNote(secondary, markdownEditor) {
+  const nativeEditor = vscode.window.activeTextEditor;
+  const editor =
+    nativeEditor?.document?.uri?.scheme === "file" && !nativeEditor.selection.isEmpty
+      ? nativeEditor
+      : await markdownEditor?.activeSourceSelection?.();
   const document = editor?.document;
   if (!editor || !document || document.uri.scheme !== "file") {
-    throw structuredError("selection_required", "select source lines in a saved workspace file", [
-      "Focus a file-backed text editor, select one or more lines, then retry",
+    throw structuredError("selection_required", "select source text in a saved workspace file", [
+      "Select one or more source characters in the native or AIC Markdown editor, then retry",
     ]);
   }
   if (document.isDirty) {

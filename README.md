@@ -7,12 +7,12 @@ with Standard Notes.
 
 ## Install on VS Code or code-server
 
-Download `aic-notes-16.2.1-linux-x64.vsix` and its `.sha256` file from the
-[v16.2.1 release](https://github.com/ldzyha/aic-notes/releases/tag/v16.2.1), then verify and install:
+Download `aic-notes-17.3.3-linux-x64.vsix` and its `.sha256` file from the
+[v17.3.3 release](https://github.com/ldzyha/aic-notes/releases/tag/v17.3.3), then verify and install:
 
 ```sh
-sha256sum -c aic-notes-16.2.1-linux-x64.vsix.sha256
-code-server --install-extension aic-notes-16.2.1-linux-x64.vsix --force
+sha256sum -c aic-notes-17.3.3-linux-x64.vsix.sha256
+code-server --install-extension aic-notes-17.3.3-linux-x64.vsix --force
 ```
 
 Reload the browser window after installation. The extension targets Code/VS Code 1.106 or newer;
@@ -21,7 +21,7 @@ the bundled Standard Notes helper in this release targets Linux x64.
 For local 64-bit Windows VS Code, install the matching `win32-x64` VSIX:
 
 ```powershell
-code --install-extension .\aic-notes-16.2.1-win32-x64.vsix --force
+code --install-extension .\aic-notes-17.3.3-win32-x64.vsix --force
 ```
 
 Then run **Developer: Reload Window**. Do not install the Linux VSIX into Windows VS Code. Windows
@@ -32,6 +32,9 @@ to launch or trust an unsigned helper executable.
 
 - Open the **Notes** Activity Bar item to see project Markdown. Every `*.note.md` sidecar is marked
   **Note**; every other `*.md` file is marked **Document** and opens as a normal Markdown document.
+- **Project note** is always the first row for a workspace, even before its file exists. Click that
+  row or the root-folder icon in the view title; the first edit plus `Ctrl+S` creates
+  `<workspace-name>.note.md`.
 - Press `Ctrl+Alt+N` on Linux/Windows or `Cmd+Alt+N` on macOS to open or create the linked note.
   Change the binding for `AIC Notes: Open Linked Note` in Keyboard Shortcuts at any time.
 - Use the note icon in an ordinary file's editor title to open its existing sidecar or explicitly
@@ -96,15 +99,16 @@ frontmatter properties, tables, fenced code, and Mermaid are rendered in place.
 Details use exact `>>>|open| Title` / `>>> Title` / standalone `<<<` markers. The title and real SVG
 chevron toggle disclosure; open cards join their summary and body on a dedicated sidebar-derived
 surface. A link label opens directly and keeps compact **Copy** and **Edit** actions beside it—there
-is no second tooltip surface. **Table** and **Properties** previews edit values in place, add data,
-and reorder rows/columns with drag handles. Nested maps and sequences preserve visible indentation
+is no second tooltip surface. **Table** and **Properties** previews show static, selectable values
+and open one focused editor popover only after activation. They add data and reorder rows/columns
+with drag handles. Nested maps and sequences preserve visible indentation
 levels, structural groups remain protected, and a moved property carries its complete branch only
 among valid siblings; every action replaces exactly one valid Markdown block.
 A non-empty selection reveals raw Markdown for every preview block it crosses;
 `Ctrl+A`/`Cmd+A` therefore exits preview for the complete document. A collapsed cursor retains
 preview, while **Edit** still opens one focused source block.
-Table cells use wrapping, auto-height textareas. The table fills its card and places only the grid
-inside a horizontal scroller when its readable columns are wider than the editor.
+Table columns size to their content and wrap only at word boundaries. The table fills its card and
+places only the grid inside a horizontal scroller when its readable columns are wider than the editor.
 The explicit **Edit** action reveals and focuses the full raw source for that structure. In read-only
 notes the same action reveals exact non-editable Markdown.
 
@@ -136,28 +140,33 @@ For substantive notes:
    `secret-tool`.
 4. The workspace stores only the remote item UUID, last common content hash, sync timestamp, and
    exact titles plus UUIDs of the last AIC-managed native tag path.
-5. `Ctrl/Cmd+S` inside an attached note drains the current draft, saves locally, and schedules one
-   serialized sync. Saving an ordinary Markdown document schedules the same sync after its local
-   save, including when it is opened in VS Code's native editor. Before that save, its managed
-   properties are normalized to `file`, stable `created`, and a fresh UTC `updated` timestamp;
-   `*.note.md` sidecars are excluded. Repeated explicit-save requests collapse to the newest persisted
-   Markdown. Automatic sync never opens a login prompt: a disconnected note
+5. `Ctrl/Cmd+S` inside an attached note drains the current draft, normalizes its managed `file`,
+   stable `created`, and fresh `updated` properties, saves locally, and schedules one serialized
+   sync. Dates render in the user's locale while their portable UTC source stays stable. Saving an
+   ordinary Markdown document schedules the same sync after its local save, including in VS Code's
+   native editor, but creates no properties; the old three-field auto-header is removed when its
+   exact legacy signature is present. Repeated explicit-save requests collapse to the newest
+   persisted Markdown. Automatic sync never opens a login prompt: a disconnected note
    stays safely local and shows a compact login status. **AIC Notes: Sync Current Note** remains an
    explicit command-palette recovery action and may offer Connect/Reconnect.
 6. First sync creates one Markdown note. Later syncs use a three-way comparison. One-sided changes
    propagate; two-sided changes stop and ask whether the complete local or Standard Notes body is
    authoritative. Nothing is merged silently, and a remote result never replaces text typed while
    its network request was in flight. The completed request still advances the common base, so the
-   next save sends only that newer local change instead of producing a false conflict.
+   next save sends only that newer local change instead of producing a false conflict. Identical
+   unbased bodies bind without a prompt; byte-identical duplicate remote identities choose the same
+   stable UUID on every client, while divergent duplicates still fail closed.
 7. A Standard Notes `locked` item or read-only account session never receives a push. The Secondary
    editor becomes read-only and remains so until a later sync reports write access again.
 
 Project pull accepts the current native nested tag hierarchy and the older AIC
 `project:*`/`path:*` and dotted-tag layouts. Canonical sidecars use unambiguous AIC `project-note`,
 `folder-note`, or `file-note` frontmatter; an ordinary remote document must have an exact safe
-Markdown filename such as `README.md`. Missing local Markdown is created only when its real parent
-directory already exists. Duplicate destinations and unrelated Standard Notes notes fail closed;
-differing local content is bound for one later three-way decision and is never overwritten by bulk pull.
+Markdown filename such as `README.md`, while a free-standing note retains its full `*.note.md`
+title. Missing local Markdown is created only when its real parent directory already exists.
+Byte-identical duplicate identities collapse to one stable import candidate; different identities
+that collide at one local destination and unrelated Standard Notes notes fail closed. Differing
+local content is bound for one later three-way decision and is never overwritten by bulk pull.
 One legacy canonical root note with matching `project-note` frontmatter is recovered when it has no
 active tag, then attached to the native project tag on normal sync. Multiple matches or a note owned
 by another tag fail closed.
@@ -220,7 +229,7 @@ extension fails closed and asks the owner to use the official AIC installer or r
 
 ## Build and verify
 
-Requirements: Node.js 20.19+, npm, and Go 1.27.0 for the Linux and WebAssembly helpers.
+Requirements: Node.js 20.19+, npm, and Go 1.25.1 for the Linux and WebAssembly helpers.
 
 ```sh
 npm ci
@@ -246,8 +255,8 @@ Standard Notes account is intentionally not mutated by unattended tests.
 ## Release accounting
 
 This project uses the global `R.F.B` convention: release sequence, release-local feature outcomes,
-release-local fixed-bug outcomes. `16.2.1` is sequence 16 with two feature outcomes and one
-fixed-bug outcome. It is not a SemVer compatibility claim. See [`CHANGELOG.md`](CHANGELOG.md).
+release-local fixed-bug outcomes. `17.3.3` is sequence 17 with three feature outcomes and three
+fixed-bug outcomes. It is not a SemVer compatibility claim. See [`CHANGELOG.md`](CHANGELOG.md).
 
 ## License and provenance
 

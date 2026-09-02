@@ -234,6 +234,28 @@ function makeEditor(text) {
               return true;
             },
           },
+          ...(!secondarySurface
+            ? [
+                {
+                  key: "Mod-Shift-/",
+                  run: (editor) => {
+                    const { anchor, head } = editor.state.selection.main;
+                    if (anchor === head) return false;
+                    api.postMessage({ type: "selection.link", anchor, head });
+                    return true;
+                  },
+                },
+                {
+                  key: "Mod-Alt-l",
+                  run: (editor) => {
+                    const { anchor, head } = editor.state.selection.main;
+                    if (anchor === head) return false;
+                    api.postMessage({ type: "selection.link", anchor, head });
+                    return true;
+                  },
+                },
+              ]
+            : []),
           ...defaultKeymap,
         ]),
         EditorView.lineWrapping, // a note wraps, never scrolls sideways
@@ -248,6 +270,7 @@ function makeEditor(text) {
           if (update.selectionSet || update.docChanged) {
             const { anchor, head } = update.state.selection.main;
             api.setState({ anchor, head, path: docState.relativePath });
+            if (!secondarySurface) api.postMessage({ type: "selection", anchor, head });
           }
         }),
       ],
@@ -260,6 +283,11 @@ function makeEditor(text) {
 window.addEventListener("message", (event) => {
   const msg = event.data;
   switch (msg.type) {
+    case "selection.request": {
+      const { anchor, head } = view?.state.selection.main ?? { anchor: 0, head: 0 };
+      api.postMessage({ type: "selection.snapshot", requestId: msg.requestId, anchor, head });
+      break;
+    }
     case "init": {
       docState.relativePath = msg.relativePath;
       docState.generation = msg.generation;

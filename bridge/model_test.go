@@ -15,6 +15,7 @@ func TestSyncDecision(t *testing.T) {
 		name, local, remote, base, resolution, want string
 	}{
 		{"create", "local", "", "", "", "push"},
+		{"unbased but identical", "same", "same", "", "", "noop"},
 		{"initial remote ambiguity", "local", "remote", "", "", "conflict"},
 		{"local only", "local-2", "base", "base", "", "push"},
 		{"remote only", "base", "remote-2", "base", "", "pull"},
@@ -151,9 +152,27 @@ func TestReconcileTagHierarchyReusesSameTitleUnderExactParent(t *testing.T) {
 	}
 }
 
-func TestReconcileTagHierarchyRejectsDuplicateRoot(t *testing.T) {
+func TestReconcileTagHierarchyCanonicalizesEmptyDuplicateRoot(t *testing.T) {
 	first, _ := items.NewTag("demo", nil)
+	first.UUID = "z-root"
 	second, _ := items.NewTag("demo", nil)
+	second.UUID = "a-root"
+	result, err := reconcileTagHierarchy(
+		items.Tags{first, second},
+		"note",
+		[]string{"demo"},
+		nil,
+		nil,
+		true,
+	)
+	if err != nil || len(result.UUIDs) != 1 || result.UUIDs[0] != "a-root" {
+		t.Fatalf("empty duplicate root was not canonicalized: result=%#v err=%v", result, err)
+	}
+}
+
+func TestReconcileTagHierarchyRejectsDuplicateActiveRoots(t *testing.T) {
+	first, _ := items.NewTag("demo", items.ItemReferences{{UUID: "one", ContentType: common.SNItemTypeNote}})
+	second, _ := items.NewTag("demo", items.ItemReferences{{UUID: "two", ContentType: common.SNItemTypeNote}})
 	_, err := reconcileTagHierarchy(
 		items.Tags{first, second},
 		"note",
@@ -162,8 +181,8 @@ func TestReconcileTagHierarchyRejectsDuplicateRoot(t *testing.T) {
 		nil,
 		true,
 	)
-	if err == nil || !strings.Contains(err.Error(), "duplicate") {
-		t.Fatalf("duplicate root did not fail closed: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "duplicate active") {
+		t.Fatalf("duplicate active roots did not fail closed: %v", err)
 	}
 }
 
@@ -235,7 +254,7 @@ func TestDiscoverRemoteNoteRecoversExactManagedIdentity(t *testing.T) {
 		{UUID: "wanted", ContentType: common.SNItemTypeNote},
 		{UUID: "other", ContentType: common.SNItemTypeNote},
 	})
-	wanted, _ := items.NewNote("app.ts", "---\nlevel: file-note\n---\nremote", nil)
+	wanted, _ := items.NewNote("app.ts", "---\ntitle: app.ts\nlevel: file-note\n---\nremote", nil)
 	wanted.UUID = "wanted"
 	other, _ := items.NewNote("other.ts", "remote", nil)
 	other.UUID = "other"
@@ -250,7 +269,7 @@ func TestDiscoverRemoteNoteSeparatesDocumentFromSidecarWithSameTitle(t *testing.
 		{UUID: "sidecar", ContentType: common.SNItemTypeNote},
 		{UUID: "document", ContentType: common.SNItemTypeNote},
 	})
-	sidecar, _ := items.NewNote("README.md", "---\nlevel: file-note\n---\nnotes", nil)
+	sidecar, _ := items.NewNote("README.md", "---\ntitle: README.md\nlevel: file-note\n---\nnotes", nil)
 	sidecar.UUID = "sidecar"
 	document, _ := items.NewNote("README.md", "# Read me", nil)
 	document.UUID = "document"
@@ -276,6 +295,22 @@ func TestDiscoverRemoteNoteSeparatesDocumentFromSidecarWithSameTitle(t *testing.
 	}
 }
 
+func TestDiscoverRemoteNotePreservesFreeStandingNoteFilename(t *testing.T) {
+	root, _ := items.NewTag("demo", items.ItemReferences{{UUID: "note", ContentType: common.SNItemTypeNote}})
+	note, _ := items.NewNote("topic.note.md", "Body", nil)
+	note.UUID = "note"
+	got, err := discoverRemoteNote(
+		items.Notes{note},
+		items.Tags{root},
+		"topic.note.md",
+		[]string{"demo"},
+		"note",
+	)
+	if err != nil || got == nil || got.UUID != note.UUID {
+		t.Fatalf("free-standing note identity was not preserved: got=%#v err=%v", got, err)
+	}
+}
+
 func TestDiscoverRemoteNoteRejectsDuplicateManagedIdentity(t *testing.T) {
 	root, _ := items.NewTag("demo", items.ItemReferences{
 		{UUID: "first", ContentType: common.SNItemTypeNote},
@@ -288,6 +323,27 @@ func TestDiscoverRemoteNoteRejectsDuplicateManagedIdentity(t *testing.T) {
 	_, err := discoverRemoteNote(items.Notes{first, second}, items.Tags{root}, "app.ts", []string{"demo"}, "")
 	if err == nil || !strings.Contains(err.Error(), "duplicated") {
 		t.Fatalf("duplicate remote identity did not fail closed: %v", err)
+	}
+}
+
+func TestDiscoverRemoteNoteCanonicalizesEquivalentDuplicateIdentity(t *testing.T) {
+	root, _ := items.NewTag("demo", items.ItemReferences{
+		{UUID: "z-note", ContentType: common.SNItemTypeNote},
+		{UUID: "a-note", ContentType: common.SNItemTypeNote},
+	})
+	later, _ := items.NewNote("app.ts", "---\ntitle: app.ts\nlevel: file-note\n---\nsame", nil)
+	later.UUID = "z-note"
+	canonical, _ := items.NewNote("app.ts", "---\ntitle: app.ts\nlevel: file-note\n---\nsame", nil)
+	canonical.UUID = "a-note"
+	got, err := discoverRemoteNote(
+		items.Notes{later, canonical},
+		items.Tags{root},
+		"app.ts",
+		[]string{"demo"},
+		"note",
+	)
+	if err != nil || got == nil || got.UUID != "a-note" {
+		t.Fatalf("equivalent duplicates were not canonicalized: got=%#v err=%v", got, err)
 	}
 }
 
@@ -341,6 +397,32 @@ func TestCollectProjectNotesRecoversOneCanonicalUntaggedRoot(t *testing.T) {
 	if len(got) != 1 || got[0].RemoteUUID != note.UUID ||
 		strings.Join(got[0].TagPath, "/") != "demo" || len(got[0].ManagedTagUUIDs) != 0 {
 		t.Fatalf("canonical untagged root was not recovered: %#v", got)
+	}
+}
+
+func TestCollectProjectNotesIgnoresLegacyUntaggedRootWhenTaggedRootExists(t *testing.T) {
+	tagged, _ := items.NewNote(
+		"demo",
+		"---\ntitle: demo\nlevel: project-note\n---\n\ncurrent",
+		nil,
+	)
+	tagged.UUID = "tagged"
+	legacy, _ := items.NewNote(
+		"demo",
+		"---\ntitle: demo\nlevel: project-note\n---\n\nlegacy",
+		nil,
+	)
+	legacy.UUID = "legacy"
+	root, _ := items.NewTag("demo", items.ItemReferences{{UUID: tagged.UUID, ContentType: common.SNItemTypeNote}})
+	got, err := collectProjectNotes(
+		items.Notes{tagged, legacy},
+		items.Tags{root},
+		"demo",
+		map[string]bool{},
+		false,
+	)
+	if err != nil || len(got) != 1 || got[0].RemoteUUID != tagged.UUID {
+		t.Fatalf("tagged root did not suppress the legacy fallback: got=%#v err=%v", got, err)
 	}
 }
 

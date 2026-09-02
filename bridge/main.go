@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -359,7 +360,7 @@ func discoverRemoteNote(notes items.Notes, tags items.Tags, title string, tagPat
 		return nil, err
 	}
 	wantedPath := strings.Join(tagPath, "\x00")
-	var found *items.Note
+	matches := items.Notes{}
 	for _, note := range notes {
 		if note.IsDeleted() || (note.Content.Trashed != nil && *note.Content.Trashed) ||
 			note.Content.Title != title || !remoteMarkdownKindMatches(note, kind) {
@@ -369,17 +370,17 @@ func discoverRemoteNote(notes items.Notes, tags items.Tags, title string, tagPat
 		if !ok || strings.Join(assignment.Path, "\x00") != wantedPath {
 			continue
 		}
-		if found != nil {
-			return nil, fmt.Errorf("note title %q is duplicated at managed path %q", title, strings.Join(tagPath, "/"))
-		}
-		candidate := note
-		found = &candidate
+		matches = append(matches, note)
+	}
+	if len(matches) > 0 {
+		return canonicalEquivalentRemote(matches, title, tagPath)
 	}
 	// Releases before native project tags could leave the root sidecar
 	// completely untagged. Recover only the one canonical project-note whose
 	// title and frontmatter title both equal the workspace root; the next sync
 	// attaches the normal managed project tag before any deletion can occur.
-	if found == nil && kind == "note" && len(tagPath) == 1 {
+	if kind == "note" && len(tagPath) == 1 {
+		matches = items.Notes{}
 		for _, note := range notes {
 			_, tagged := assignments[note.UUID]
 			if tagged || noteHasActiveTagReference(tags, note.UUID) || note.IsDeleted() ||
@@ -389,14 +390,33 @@ func discoverRemoteNote(notes items.Notes, tags items.Tags, title string, tagPat
 				markdownFrontmatterValue(note.Content.Text, "title") != tagPath[0] {
 				continue
 			}
-			if found != nil {
-				return nil, fmt.Errorf("untagged project note %q is duplicated", title)
-			}
-			candidate := note
-			found = &candidate
+			matches = append(matches, note)
+		}
+		if len(matches) > 0 {
+			return canonicalEquivalentRemote(matches, title, tagPath)
 		}
 	}
-	return found, nil
+	return nil, nil
+}
+
+// Equivalent duplicate items can be produced when a client loses its local
+// UUID binding after a successful push. They carry no conflicting information,
+// so every client chooses the same UUID without deleting either Standard Notes
+// item. Divergent bodies still fail closed for an explicit user decision.
+func canonicalEquivalentRemote(matches items.Notes, title string, tagPath []string) (*items.Note, error) {
+	if len(matches) == 0 {
+		return nil, nil
+	}
+	ordered := append(items.Notes(nil), matches...)
+	sort.Slice(ordered, func(left, right int) bool { return ordered[left].UUID < ordered[right].UUID })
+	content := ordered[0].Content.Text
+	for _, note := range ordered[1:] {
+		if note.Content.Text != content {
+			return nil, fmt.Errorf("note title %q is duplicated with divergent content at managed path %q", title, strings.Join(tagPath, "/"))
+		}
+	}
+	canonical := ordered[0]
+	return &canonical, nil
 }
 
 func remoteMarkdownKindMatches(note items.Note, kind string) bool {
@@ -406,10 +426,14 @@ func remoteMarkdownKindMatches(note items.Note, kind string) bool {
 	level := markdownFrontmatterValue(note.Content.Text, "level")
 	isSidecar := level == "project-note" || level == "folder-note" || level == "file-note"
 	if kind == "note" {
-		return isSidecar
+		if isSidecar {
+			return markdownFrontmatterValue(note.Content.Text, "title") == note.Content.Title
+		}
+		return level == "" && strings.HasSuffix(strings.ToLower(note.Content.Title), ".note.md")
 	}
 	if kind == "document" {
-		return !isSidecar
+		lowerTitle := strings.ToLower(note.Content.Title)
+		return !isSidecar && strings.HasSuffix(lowerTitle, ".md") && !strings.HasSuffix(lowerTitle, ".note.md")
 	}
 	return false
 }
@@ -622,7 +646,7 @@ func normalizedTagPath(input []string, nestedSupported bool) ([]string, error) {
 }
 
 func findTagByParentAndTitle(tags items.Tags, parentUUID, title string) (int, error) {
-	found := -1
+	candidates := []int{}
 	for index := range tags {
 		if tags[index].IsDeleted() || tags[index].Content.Title != title {
 			continue
@@ -634,12 +658,30 @@ func findTagByParentAndTitle(tags items.Tags, parentUUID, title string) (int, er
 		if candidateParent != parentUUID {
 			continue
 		}
-		if found >= 0 {
-			return -1, fmt.Errorf("managed tag %q has duplicate children under one parent", title)
-		}
-		found = index
+		candidates = append(candidates, index)
 	}
-	return found, nil
+	if len(candidates) <= 1 {
+		if len(candidates) == 1 {
+			return candidates[0], nil
+		}
+		return -1, nil
+	}
+	active := []int{}
+	for _, index := range candidates {
+		if projectSubtreeNoteCount(tags, tags[index].UUID) > 0 {
+			active = append(active, index)
+		}
+	}
+	if len(active) > 1 {
+		return -1, fmt.Errorf("managed tag %q has duplicate active children under one parent", title)
+	}
+	if len(active) == 1 {
+		return active[0], nil
+	}
+	sort.Slice(candidates, func(left, right int) bool {
+		return tags[candidates[left]].UUID < tags[candidates[right]].UUID
+	})
+	return candidates[0], nil
 }
 
 func tagParentUUID(tag items.Tag) (string, error) {

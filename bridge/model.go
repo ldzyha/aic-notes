@@ -16,6 +16,9 @@ func syncDecision(localHash, remoteHash, baseHash, resolution string) string {
 		if remoteHash == "" {
 			return "push"
 		}
+		if localHash == remoteHash {
+			return "noop"
+		}
 		return "conflict"
 	}
 	localChanged := localHash != baseHash

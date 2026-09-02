@@ -6,7 +6,7 @@
 
 import { Decoration, EditorView, WidgetType, ViewPlugin } from "@codemirror/view";
 import { StateEffect, StateField } from "@codemirror/state";
-import { syntaxTree } from "@codemirror/language";
+import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
 import {
   createIconButton,
   selectionRevealsPreview,
@@ -128,7 +128,8 @@ class CodeFenceWidget extends WidgetType {
 
 export function codeFences(state) {
   const blocks = [];
-  syntaxTree(state).iterate({
+  const tree = ensureSyntaxTree(state, state.doc.length, 100) ?? syntaxTree(state);
+  tree.iterate({
     enter(nodeRef) {
       if (nodeRef.name !== "FencedCode") return;
       const language = fenceInfo(state, nodeRef).split(/\s+/u)[0] || "";

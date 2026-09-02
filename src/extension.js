@@ -22,33 +22,21 @@ import { deleteNotes } from "./notes/delete.js";
 import { AgentWorkflowBootstrap } from "./agents/bootstrap.js";
 import { stampFileProperties } from "../vendor/aic-editor-core/file-properties.js";
 
-async function filePropertyEdits(document) {
-  const version = document.version;
+function legacyPropertyCleanupEdits(document) {
   const relativePath = vscode.workspace
     .asRelativePath(document.uri, false)
     .replaceAll("\\", "/");
   const fileName = relativePath.split("/").pop() ?? "";
-  const updatedAt = new Date().toISOString();
-  let createdAt = updatedAt;
-  try {
-    const stat = await vscode.workspace.fs.stat(document.uri);
-    if (Number.isFinite(stat.ctime) && stat.ctime > 0)
-      createdAt = new Date(stat.ctime).toISOString();
-  } catch {
-    // The save itself remains authoritative when a virtual provider has no stat.
-  }
-  if (document.version !== version) return [];
   const source = document.getText();
-  const stamped = stampFileProperties(source, {
+  const cleaned = stampFileProperties(source, {
     fileName,
-    createdAt,
-    updatedAt,
+    updatedAt: new Date().toISOString(),
   });
-  if (stamped === source) return [];
+  if (cleaned === source) return [];
   return [
     vscode.TextEdit.replace(
       new vscode.Range(document.positionAt(0), document.positionAt(source.length)),
-      stamped,
+      cleaned,
     ),
   ];
 }
@@ -58,6 +46,7 @@ export function activate(context) {
   const tree = new NotesTree();
   const sync = new StandardNotesSync(context);
   const secondary = SecondaryNotePane.register(context, sync);
+  const markdownEditor = MarkdownEditorProvider.register(context);
   const remoteFirstTrash = (uris) => {
     const bound = uris.filter((uri) => sync.bindingState(uri).bound);
     return {
@@ -93,7 +82,7 @@ export function activate(context) {
     }
     if (event.reason === vscode.TextDocumentSaveReason.Manual) {
       explicitDocumentSaves.add(saveKey);
-      event.waitUntil(filePropertyEdits(event.document));
+      event.waitUntil(legacyPropertyCleanupEdits(event.document));
     } else explicitDocumentSaves.delete(saveKey);
   });
   const documentSync = vscode.workspace.onDidSaveTextDocument(
@@ -165,7 +154,7 @@ export function activate(context) {
     documentWillSave,
     documentSync,
     vscode.window.registerTreeDataProvider("aicNotes.tree", tree),
-    MarkdownEditorProvider.register(context),
+    markdownEditor,
 
     vscode.commands.registerCommand(
       "aicNotes.openInSecondary",
@@ -178,7 +167,7 @@ export function activate(context) {
     ),
     vscode.commands.registerCommand(
       "aicNotes.linkSelectionToNote",
-      commandHandler(() => linkSelectionToNote(secondary)),
+      commandHandler(() => linkSelectionToNote(secondary, markdownEditor)),
     ),
     vscode.commands.registerCommand(
       "aicNotes.syncCurrentNote",

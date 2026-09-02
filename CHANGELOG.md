@@ -1,5 +1,35 @@
 # Changelog
 
+## 17.3.3 — 2026-09-02
+
+Release sequence 17 · 3 feature outcomes · 3 fixed-bug outcomes.
+
+- F01: limit generated `file`, `created`, and `updated` properties to `*.note.md`; preserve every
+  authored note property and body; localize dates only in preview; and remove the exact legacy
+  generated header from ordinary Markdown on explicit save without adding replacement metadata.
+- F02: move table and Properties editing into one transient popover per selected cell. Static values
+  stay selectable, flexible columns size to content without breaking words, overflow scrolls
+  horizontally, and table copy plus every preview action uses renderer-independent CSS-mask icons.
+  AIC Editor Core 2.5 provides the byte-identical structured/property contract to both editors.
+- F03: make the project note the first, explicitly named Notes Explorer row and expose the same
+  action in the view title. Its placeholder remains gray and creates the real root sidecar only on
+  first edit plus Ctrl/Cmd+S; ordinary Markdown remains visually and behaviorally a document.
+- B01: force a complete CodeMirror syntax tree before constructing code, table, and frontmatter
+  previews, preventing partially initialized blocks and first-render table/property gaps.
+- B02: carry exact word selections from the AIC Markdown webview to the extension host. The linked
+  comment shortcuts now work in both native and custom editors, retain the selected source fragment,
+  open the details block, and place the caret in its comment body. Edit, selection, comment, and save
+  messages cross that boundary in one ordered queue, so a comment can never anchor to stale bytes.
+- B03: make initialization, import, discovery, and save share one Standard Notes identity contract.
+  Identical unbased content no longer prompts as a conflict; byte-identical duplicate notes and empty
+  duplicate tag shells choose a stable canonical UUID; a tagged project root suppresses the legacy
+  untagged fallback; inconsistent sidecar titles fail closed; and free-standing `*.note.md` filenames
+  remain stable across import and subsequent saves. Both bridge targets are rebuilt with pinned Go
+  1.25.1.
+
+Compatibility: VS Code/Code 1.106 or newer; Windows x64 uses the bundled in-process WebAssembly
+bridge and Linux x64 uses the bundled static helper. No Marketplace/Open VSX publication is implied.
+
 ## 16.2.1 — 2026-09-01
 
 Release sequence 16 · 2 feature outcomes · 1 fixed-bug outcome.

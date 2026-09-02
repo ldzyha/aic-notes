@@ -119,11 +119,12 @@ export class NotesTree {
       if (n.relPath === projectNoteRel) {
         hasProjectNote = true;
         items.push(
-          new Item("note", folder.name, {
+          new Item("note", "Project note", {
             uri: n.uri,
             relPath: n.relPath,
             folder,
             forcedLevel: "project",
+            projectName: folder.name,
           }),
         );
       } else if (n.relPath.startsWith(".aic/notes/")) {
@@ -144,7 +145,7 @@ export class NotesTree {
       }
     }
     if (!hasProjectNote) {
-      items.unshift(new Item("projectPlaceholder", folder.name, { folder }));
+      items.unshift(new Item("projectPlaceholder", "Project note", { folder }));
     }
     if (bucket.length)
       items.push(
@@ -213,7 +214,7 @@ export class NotesTree {
         element.label,
         vscode.TreeItemCollapsibleState.None,
       );
-      item.description = "Note · not created yet";
+      item.description = `${element.folder.name} · create on first save`;
       item.iconPath = new vscode.ThemeIcon("circle-outline");
       item.command = {
         command: "aicNotes.openProjectNote",
@@ -268,7 +269,10 @@ export class NotesTree {
       vscode.TreeItemCollapsibleState.None,
     );
     item.resourceUri = element.uri;
-    item.description = ["Note", orphan ? "orphan" : null]
+    item.description = [
+      element.forcedLevel === "project" ? element.projectName : "Note",
+      orphan ? "orphan" : null,
+    ]
       .filter(Boolean)
       .join(" · ");
     item.iconPath = !visible
