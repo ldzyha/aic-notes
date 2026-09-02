@@ -1,5 +1,17 @@
 # Changelog
 
+## 21.0.1 — 2026-09-02
+
+Release sequence 21 · 0 feature outcomes · 1 fixed-bug outcome.
+
+- B01: when no file buffer is active, show the lazy project-root note instead of retaining an old
+  file note or an empty Secondary pane. Multi-root workspaces prefer the most recently active
+  project and fall back to the first workspace; Pin and unsaved drafts remain authoritative.
+
+Compatibility: VS Code/Code 1.106 or newer; Windows x64 uses the bundled in-process WebAssembly
+bridge and Linux x64 uses the bundled static helper. Paired editor contract: Standard Notes 15.1.2
+and AIC Editor Core 2.7.0. No Marketplace/Open VSX publication is implied.
+
 ## 20.1.6 — 2026-09-02
 
 Release sequence 20 · 1 feature outcome · 6 fixed-bug outcomes.
