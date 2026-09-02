@@ -1,6 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fillTemplate, loadTemplate, TEMPLATE_PATHS } from "../src/notes/templates.js";
+import {
+  fillTemplate,
+  loadTemplate,
+  stripTemplateFrontmatter,
+  TEMPLATE_PATHS,
+} from "../src/notes/templates.js";
 
 test("fillTemplate fills {{name}} and drops unfilled token lines", () => {
   const out = fillTemplate("# {{name}}\n\n## Essence\n{{essence}}\n\n## TODO\n", "app.js");
@@ -10,6 +15,13 @@ test("fillTemplate fills {{name}} and drops unfilled token lines", () => {
 test("fillTemplate collapses blank runs left by dropped lines", () => {
   const out = fillTemplate("# {{name}}\n{{a}}\n{{b}}\n\n\nEnd\n", "x");
   assert.ok(!out.includes("\n\n\n"));
+});
+
+test("legacy template properties never leak into a fresh placeholder", async () => {
+  const template =
+    "---\r\ntitle: old\r\nlevel: file-note\r\nscope: \r\nstatus: live\r\nupdated: old\r\ncreated: old\r\nagent: true\r\n---\r\n# {{name}}\r\n";
+  assert.equal(stripTemplateFrontmatter(template), "# {{name}}\r\n");
+  assert.equal(await loadTemplate("file-note", async () => template), "# {{name}}\r\n");
 });
 
 test("loadTemplate: override wins only when it contains a token", () => {

@@ -56,6 +56,35 @@ test("restamping preserves authored note properties, creation, and body", () => 
   );
 });
 
+test("restamping removes the complete legacy generated note signature", () => {
+  const source =
+    "---\n" +
+    "file: app.note.md\n" +
+    "created: 2026-07-10\n" +
+    "updated: 2026-07-11\n" +
+    "title: app.js\n" +
+    "level: file-note\n" +
+    "scope: \n" +
+    "status: live\n" +
+    "agent: true\n" +
+    "owner: team-a\n" +
+    "---\n\n" +
+    "Body\n";
+  assert.equal(
+    stampFileProperties(source, {
+      fileName: "app.note.md",
+      updatedAt: "2026-09-02T08:00:00.000Z",
+    }),
+    "---\n" +
+      "file: app.note.md\n" +
+      "created: 2026-07-10\n" +
+      "updated: 2026-09-02T08:00:00.000Z\n" +
+      "owner: team-a\n" +
+      "---\n\n" +
+      "Body\n",
+  );
+});
+
 test("ordinary Markdown documents remain byte-identical", () => {
   const source = "---\nstatus: document\n---\n\n# Document\n";
   assert.equal(

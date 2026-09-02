@@ -1,5 +1,5 @@
 // Note path derivation — vendored verbatim from aic
-// modules/notes/web/src/index.js (notePathFor / folderNotePathFor / noteSeed);
+// modules/notes/web/src/index.js (notePathFor / folderNotePathFor);
 // see vendor/markdown/PROVENANCE.md for the pinned commit. The naming rules are
 // the contract that keeps notes byte-compatible between aic and this extension.
 
@@ -28,25 +28,4 @@ export function noteTargetStem(notePath) {
   const stem = notePath.slice(0, -".note.md".length);
   const dir = stem.includes("/") ? stem.slice(0, stem.lastIndexOf("/")) : "";
   return { stem, dir };
-}
-
-// the seed of a fresh note: the DOCS_CONVENTION props header (title/level/scope/
-// status/updated/created/agent) then a one line "# notes: <path>" naming what it
-// is for. Key set/order matches noteMeta in frontmatter.js — aic's upgrade
-// guards compare against this exact seed.
-export function noteSeed(path, kind) {
-  const dir = kind === "directory";
-  const title = dir ? (path.split("/").pop() || path) : path.slice(path.lastIndexOf("/") + 1);
-  const today = new Date().toISOString().slice(0, 10);
-  const header =
-    "---\n" +
-    `title: ${title}\n` +
-    `level: ${dir ? "folder-note" : "file-note"}\n` +
-    "scope: \n" +
-    "status: live\n" +
-    `updated: ${today}\n` +
-    `created: ${today}\n` +
-    "agent: true\n" +
-    "---\n";
-  return `${header}# notes: ${dir ? `${path}/` : path}\n\n`;
 }

@@ -1,15 +1,16 @@
 // Quick note creation/opening — the ctrl+alt+m path. Mirrors aic's Mod-m
 // feel: on a source file it creates/opens the sidecar note beside; on a note
-// it jumps back to the target. Fresh notes get the DOCS_CONVENTION
-// frontmatter (same keys/order as aic's noteSeed — byte-compatible) plus the
-// level's template body (project `.aic/templates/` override honored).
+// it jumps back to the target. Fresh notes get only the shared managed
+// file/created/updated properties plus the level's template body (project
+// `.aic/templates/` override honored).
 
 import * as vscode from "vscode";
 import * as path from "node:path";
 import { notePathFor, folderNotePathFor } from "./paths.js";
-import { noteMeta, stringifyFrontmatter } from "./frontmatter.js";
 import { loadTemplate, fillTemplate } from "./templates.js";
 import { structuredError, formatError } from "../errors.js";
+import { activeResource } from "../secondary/model.js";
+import { stampFileProperties } from "../../vendor/aic-editor-core/file-properties.js";
 
 async function exists(uri) {
   try {
@@ -69,6 +70,15 @@ function workspaceReader(folder) {
   };
 }
 
+function freshNoteText(body, noteUri) {
+  const timestamp = new Date().toISOString();
+  return stampFileProperties(body, {
+    fileName: path.basename(noteUri.fsPath),
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  });
+}
+
 export async function openNoteDocument(uri, options = {}) {
   if (uri.path.endsWith(".note.md")) {
     await vscode.commands.executeCommand("aicNotes.openInSecondary", uri, options);
@@ -85,7 +95,7 @@ export async function ensureNoteFile(folder, relNotePath, level, titleName) {
   if (!(await exists(uri))) {
     const template = await loadTemplate(level, workspaceReader(folder));
     const body = fillTemplate(template, titleName);
-    const text = stringifyFrontmatter(body, noteMeta(titleName, level));
+    const text = freshNoteText(body, uri);
     await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(text));
   }
   return uri;
@@ -93,7 +103,7 @@ export async function ensureNoteFile(folder, relNotePath, level, titleName) {
 
 // Produce the exact fresh file-note bytes without writing them. Secondary uses
 // this for its editable placeholder so merely viewing a source never creates a
-// sidecar; the first document edit persists these same bytes plus that edit.
+// sidecar; the first explicit save persists these same bytes plus the draft.
 export async function fileNotePlaceholderForUri(uri) {
   const descriptor = await noteDescriptorForUri(uri);
   if (descriptor.level !== "file-note") {
@@ -105,26 +115,30 @@ export async function fileNotePlaceholderForUri(uri) {
   const body = fillTemplate(template, descriptor.title);
   return {
     ...descriptor,
-    text: stringifyFrontmatter(body, noteMeta(descriptor.title, descriptor.level)),
+    text: freshNoteText(body, descriptor.noteUri),
   };
 }
 
 // File, folder, and workspace-root notes share one lazy-creation contract.
-// Merely opening a target returns canonical bytes; only the first editor
-// change writes the sidecar to disk.
+// Merely opening a target returns canonical bytes; only the first explicit
+// save writes the sidecar to disk.
 export async function notePlaceholderForUri(uri) {
   const descriptor = await noteDescriptorForUri(uri);
   const template = await loadTemplate(descriptor.level, workspaceReader(descriptor.folder));
   const body = fillTemplate(template, descriptor.title);
   return {
     ...descriptor,
-    text: stringifyFrontmatter(body, noteMeta(descriptor.title, descriptor.level)),
+    text: freshNoteText(body, descriptor.noteUri),
   };
 }
 
 export async function noteForCurrentFile(secondary) {
   const editor = vscode.window.activeTextEditor;
-  const uri = editor?.document.uri ?? vscode.window.tabGroups.activeTabGroup.activeTab?.input?.uri;
+  const tabInput = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
+  const uri = activeResource(
+    tabInput?.uri ?? tabInput?.modified,
+    editor?.document.uri,
+  );
   if (!uri || uri.scheme !== "file") {
     throw structuredError("notes_no_active_file", "no file-backed editor is active", [
       "Focus a file editor, then run the command again",
@@ -168,7 +182,7 @@ export async function noteForExplorerItem(uri, secondary) {
   }
   if (!isDir) {
     // the item IS a note — just open it
-    await openNoteDocument(uri, { pin: true });
+    await openNoteDocument(uri, { reveal: true });
     return;
   }
   await secondary.followTarget(uri, { force: true, preserveFocus: false });

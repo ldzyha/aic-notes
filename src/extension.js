@@ -21,6 +21,7 @@ import { linkSelectionToNote } from "./notes/selection.js";
 import { deleteNotes } from "./notes/delete.js";
 import { AgentWorkflowBootstrap } from "./agents/bootstrap.js";
 import { stampFileProperties } from "../vendor/aic-editor-core/file-properties.js";
+import { passiveConnectionState } from "./sync/connection-state.js";
 
 function legacyPropertyCleanupEdits(document) {
   const relativePath = vscode.workspace
@@ -145,6 +146,7 @@ export function activate(context) {
           );
         }
       } catch (error) {
+        if (passiveConnectionState(error)) return;
         vscode.window.showErrorMessage(`AIC Notes — ${formatError(error)}`);
       }
     },

@@ -5,14 +5,16 @@ Source files stay in the editor. Every `*.note.md` sidecar stays in the **Second
 it follows the active file until pinned, stays directly editable, and synchronizes only after explicit save
 with Standard Notes.
 
+The complete, test-owned behavior map is in [`FUNCTIONAL_INDEX.md`](FUNCTIONAL_INDEX.md).
+
 ## Install on VS Code or code-server
 
-Download `aic-notes-19.1.1-linux-x64.vsix` and its `.sha256` file from the
-[v19.1.1 release](https://github.com/ldzyha/aic-notes/releases/tag/v19.1.1), then verify and install:
+Download `aic-notes-20.1.6-linux-x64.vsix` and its `.sha256` file from the
+[v20.1.6 release](https://github.com/ldzyha/aic-notes/releases/tag/v20.1.6), then verify and install:
 
 ```sh
-sha256sum -c aic-notes-19.1.1-linux-x64.vsix.sha256
-code-server --install-extension aic-notes-19.1.1-linux-x64.vsix --force
+sha256sum -c aic-notes-20.1.6-linux-x64.vsix.sha256
+code-server --install-extension aic-notes-20.1.6-linux-x64.vsix --force
 ```
 
 Reload the browser window after installation. The extension targets Code/VS Code 1.106 or newer;
@@ -21,7 +23,7 @@ the bundled Standard Notes helper in this release targets Linux x64.
 For local 64-bit Windows VS Code, install the matching `win32-x64` VSIX:
 
 ```powershell
-code --install-extension .\aic-notes-19.1.1-win32-x64.vsix --force
+code --install-extension .\aic-notes-20.1.6-win32-x64.vsix --force
 ```
 
 Then run **Developer: Reload Window**. Do not install the Linux VSIX into Windows VS Code. Windows
@@ -41,19 +43,20 @@ to launch or trust an unsigned helper executable.
   create one. Merely focusing a file never creates a note.
 - From VS Code Explorer, choose **Open Linked Note** on a folder. A normal folder maps to its
   sibling `<folder>.note.md`; the workspace root maps to `<workspace-name>.note.md`. Both use the
-  same editable, no-write-until-first-edit placeholder as file notes. The cross-project global
+  same editable, no-write-until-explicit-save placeholder as file notes. The cross-project global
   `~/.config/aic/note.md` entry and command are intentionally absent.
 - An unpinned Secondary pane always follows the active source; **Pin** freezes the current
   relationship. The title follows the note filename and its parent path is a read-only breadcrumb.
-  The icon-only footer exposes **Log in/Log out** and **Pin**. **Source** and one **Move note to
-  Trash** action appear only for a pinned existing note. There is no manual Sync button or
+  The icon-only footer exposes **Log in/Log out** and **Pin**. **Source** appears whenever the
+  current note has an existing owner, and one **Move note to Trash** action appears for every
+  existing writable note; neither depends on Pin. There is no manual Sync button or
   Preview/Edit switch:
   an attached note is an editor unless Standard Notes reports its item or session as read-only.
   Opening a `*.note.md` through Explorer, Quick Open, a link, a restored tab, or a command is
   intercepted and routed to this panel; the note is not left in an editor tab.
 - When no sidecar exists, the Secondary panel shows its complete fresh-note seed as an editable
-  placeholder. Viewing or focusing it writes nothing; the first real edit atomically persists the
-  canonical `*.note.md` bytes and continues in the same editor.
+  placeholder. Viewing, editing, or focusing it writes nothing; the first explicit `Ctrl/Cmd+S`
+  atomically persists the canonical `*.note.md` bytes and continues in the same editor.
 - Select source text and press `Ctrl+Alt+L` on Linux/Windows or `Cmd+Alt+L` on macOS
   (`Ctrl/Cmd+Shift+/` remains a compatibility alias), or choose **AIC Notes: Link Selection to
   Note** from the editor context menu. The extension first saves a dirty file so line anchors
@@ -61,7 +64,7 @@ to launch or trust an unsigned helper executable.
   `## Linked code`. Its summary contains a
   checkbox and compact `file · Lx–Ly` link; the copied selection and an editable comment live inside.
   Clicking the link returns to the exact source lines. The source file is never modified.
-- Pin a note to expose the footer **Move note to Trash** icon. One confirmation moves the exact
+- Use the footer **Move note to Trash** icon on an existing note. One confirmation moves the exact
   bound Standard Notes item to its recoverable Trash first, then moves the local sidecar to the
   operating-system Trash. An unbound note is local-only. Remote failure leaves the local file in
   place; local failure after remote success retains the binding so the idempotent action can be
@@ -75,7 +78,8 @@ The sidecar mapping remains AIC-compatible:
 - project note → `<workspace-name>.note.md`
 - project-global notes → `.aic/notes/*.note.md`
 
-Fresh file notes contain the existing AIC frontmatter properties, a blank separation, and two
+Fresh notes contain only the managed `file`, `created`, and `updated` frontmatter properties,
+a blank separation, and two
 action sections: `## Todo` and `## Open questions`, each with an empty checklist item. Folder and
 project templates remain unchanged. A workspace can override templates in
 `.aic/templates/{file-note,folder-note,project-note}.md`.
@@ -92,7 +96,7 @@ Secondary Side Bar. Its compact layout keeps controls, headings, tables, and bod
 narrow pane while preserving visible theme-derived foregrounds. The Secondary view always exposes
 the Markdown editor and persists changes through the VS Code document model. If the linked remote
 item is locked, the same view becomes fixed read-only after synchronization; there is no
-local mode toggle. The visual/editor contract follows AIC for Standard Notes v14.1.1: exact
+local mode toggle. The visual/editor contract follows AIC for Standard Notes v15.1.2: exact
 Markdown remains the only persisted value while headings, emphasis, tasks, lists, links,
 frontmatter properties, tables, fenced code, and Mermaid are rendered in place.
 
@@ -181,7 +185,7 @@ project roots are read as one logical inventory. Existing notes remain on their 
 new attachments choose one stable branch. A malformed hierarchy, conflicting logical paths for the
 same UUID, multiple untagged root notes, or a note owned by another tag still fails closed.
 
-The pinned footer and Notes Explorer Trash actions are two-sided. They target only UUIDs stored in
+The footer and Notes Explorer Trash actions are two-sided. They target only UUIDs stored in
 local bindings, mark those exact Standard Notes notes as trashed, remove their AIC-managed tag
 references, then trash each local sidecar. They never title-match, create a replacement, or
 permanently delete remote content. Missing, ambiguous, locked, or read-only remote identity fails
@@ -265,8 +269,8 @@ Standard Notes account is intentionally not mutated by unattended tests.
 ## Release accounting
 
 This project uses the global `R.F.B` convention: release sequence, release-local feature outcomes,
-release-local fixed-bug outcomes. `19.1.1` is sequence 19 with one feature outcome and one
-fixed-bug outcome. It is not a SemVer compatibility claim. See [`CHANGELOG.md`](CHANGELOG.md).
+release-local fixed-bug outcomes. `20.1.6` is sequence 20 with one feature outcome and six
+fixed-bug outcomes. It is not a SemVer compatibility claim. See [`CHANGELOG.md`](CHANGELOG.md).
 
 ## License and provenance
 

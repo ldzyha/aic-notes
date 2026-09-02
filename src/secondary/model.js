@@ -24,6 +24,49 @@ export function linkedNotePath(relativePath) {
   return isNotePath(normalized) ? normalized : notePathFor(normalized);
 }
 
+// VS Code can keep activeTextEditor pointed at the last native editor while a
+// custom-editor tab is active. The active tab is therefore authoritative and
+// the text editor is only a fallback.
+export function activeResource(activeTabUri, activeEditorUri) {
+  return activeTabUri ?? activeEditorUri;
+}
+
+export function paneCapabilities({
+  hasDocument = false,
+  hasPlaceholder = false,
+  hasSource = false,
+} = {}) {
+  const hasSurface = Boolean(hasDocument || hasPlaceholder);
+  return Object.freeze({
+    hasSurface,
+    canPin: Boolean(hasSurface || hasSource),
+    canOpenTarget: Boolean(hasSource),
+    canTrash: Boolean(hasDocument),
+  });
+}
+
+// Navigation requests arrive from several VS Code event streams. Serializing
+// them prevents a slower file-stat/open operation from overtaking the user's
+// latest tab or tree selection. A rejected request never poisons the queue.
+export class NavigationQueue {
+  constructor() {
+    this.tail = Promise.resolve();
+  }
+
+  enqueue(task) {
+    if (typeof task !== "function")
+      return Promise.reject(
+        new TypeError("navigation task must be a function"),
+      );
+    const result = this.tail.then(task, task);
+    this.tail = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }
+}
+
 export function workspaceStateKey(uri) {
   return `aicNotes.standardNotes.${createHash("sha256").update(uri.toString()).digest("hex")}`;
 }
@@ -52,40 +95,6 @@ export function managedTagPath(
     .map((value) => value.trim())
     .filter((value) => value && value !== ".");
   return supportsNestedTags ? [project, ...parents] : [project];
-}
-
-// CodeMirror change coordinates refer to the same pre-transaction document.
-// Applying validated, non-overlapping ranges from right to left produces the
-// exact first edited placeholder bytes without creating an intermediate file.
-export function applyTextChanges(value, changes) {
-  const source = String(value ?? "");
-  const ordered = [...changes]
-    .map((change) => ({
-      from: Number(change?.from),
-      to: Number(change?.to),
-      insert: String(change?.insert ?? ""),
-    }))
-    .sort((left, right) => right.from - left.from || right.to - left.to);
-  let boundary = source.length;
-  let output = source;
-  for (const change of ordered) {
-    if (
-      !Number.isInteger(change.from) ||
-      !Number.isInteger(change.to) ||
-      change.from < 0 ||
-      change.to < change.from ||
-      change.to > source.length ||
-      change.to > boundary
-    ) {
-      throw new RangeError(
-        "text changes must be valid non-overlapping source ranges",
-      );
-    }
-    output =
-      output.slice(0, change.from) + change.insert + output.slice(change.to);
-    boundary = change.from;
-  }
-  return output;
 }
 
 export function threeWayDecision(

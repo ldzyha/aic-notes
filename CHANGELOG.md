@@ -1,5 +1,38 @@
 # Changelog
 
+## 20.1.6 — 2026-09-02
+
+Release sequence 20 · 1 feature outcome · 6 fixed-bug outcomes.
+
+- F01: add a release-gated functional index for every surface, command, state boundary,
+  interaction, side effect, failure mode, platform adapter, and verification owner. Tests require
+  every public command to remain both registered and indexed, and both VSIX archives ship the map.
+- B01: make the active custom-editor tab authoritative over stale native editor state, route only
+  the active note tab, remove implicit pinning from every open path, suppress follow events caused
+  by exact-tab closure, never drop a second rapid tab event, and serialize navigation so slower
+  requests cannot restore an older note.
+- B02: derive Secondary footer capabilities from the actual surface: Open source is available for
+  every known file/folder/project owner including a placeholder, Trash for every existing writable
+  note, and Pin for any note or placeholder. These actions no longer disappear merely because the
+  pane is unpinned.
+- B03: generate exactly `file`, `created`, and `updated` for every lazy sidecar placeholder and
+  remove the retired seven-field seed API. Old frontmatter embedded in project templates is treated
+  as non-body configuration and cannot leak into a fresh placeholder. Explicit save safely migrates
+  the exact old generated signature while preserving every additional authored property.
+- B04: classify missing authorization, unreadable sessions, and unavailable secure storage as
+  passive disconnected states throughout activation, project reconciliation, ordinary Markdown
+  save, and Secondary background save. Local persistence succeeds without repeated error toasts or
+  an automatic login prompt; explicit connection actions still report actionable failures.
+- B05: keep Mermaid fit/zoom dimensions independent of rotation. Quarter-turns swap stable source
+  bounds instead of fitting the rotated width again, avoiding extreme aspect-ratio growth while
+  preserving real horizontal and vertical scrolling.
+- B06: serialize identical tag release runs and make asset publication idempotent, so a duplicated
+  GitHub tag delivery updates verified assets instead of leaving a false-red pipeline.
+
+Compatibility: VS Code/Code 1.106 or newer; Windows x64 uses the bundled in-process WebAssembly
+bridge and Linux x64 uses the bundled static helper. Paired editor contract: Standard Notes 15.1.2
+and AIC Editor Core 2.7.0. No Marketplace/Open VSX publication is implied.
+
 ## 19.1.1 — 2026-09-02
 
 Release sequence 19 · 1 feature outcome · 1 fixed-bug outcome.

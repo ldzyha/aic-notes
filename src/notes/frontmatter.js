@@ -1,6 +1,6 @@
 // Note frontmatter — vendored verbatim from aic
 // modules/notes/web/src/lazy/sync.js (parseFrontmatter / stringifyFrontmatter /
-// isAgentVisible / noteMeta). Line-based `key: value` only; multiline values do
+// isAgentVisible). Line-based `key: value` only; multiline values do
 // not round-trip (which is why aic omits `ai:` from seeded headers).
 
 const FRONTMATTER_RE = /^---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/;
@@ -36,12 +36,4 @@ export function isAgentVisible(text) {
   const { meta } = parseFrontmatter(text);
   if (meta.agent === false || meta.private === true || meta.visibility === "private") return false;
   return true;
-}
-
-// the DOCS_CONVENTION props header: title/level/scope/status/updated + the
-// machine keys created/agent. `scope` stays EMPTY — an invitation to fill the
-// one-line document description.
-export function noteMeta(title, level) {
-  const today = new Date().toISOString().slice(0, 10);
-  return { title, level, scope: "", status: "live", updated: today, created: today, agent: true };
 }

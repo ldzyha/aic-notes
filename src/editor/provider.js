@@ -302,7 +302,6 @@ export class MarkdownEditorProvider {
       }
       if (uri.path.endsWith(".note.md")) {
         await vscode.commands.executeCommand("aicNotes.openInSecondary", uri, {
-          pin: true,
           reveal: true,
         });
       } else {
@@ -320,7 +319,6 @@ export class MarkdownEditorProvider {
         return;
       }
       await vscode.commands.executeCommand("aicNotes.openInSecondary", uri, {
-        pin: true,
         reveal: true,
       });
     }

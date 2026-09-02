@@ -3,8 +3,8 @@
 ## AIC for Standard Notes contract
 
 - Source repository: `https://github.com/ldzyha/standard-notes-aic`
-- Paired editor contract: `14.1.1` / AIC Editor Core `2.6.0`
-- Commit: `ae799fc7e32b5b905368ce3414447effab0565aa`
+- Paired editor contract: `15.1.2` / AIC Editor Core `2.7.0`
+- Commit: `cdeac5fac8974276be9a183ee75d0aca3be3ed80`
 - Authority files reviewed: `src/styles.css`, `src/editor.ts`, `src/language.ts`,
   `src/markdown-decorations.ts`, `src/block-views.ts`, `src/commands.ts`, `src/toolbar.ts`,
   `src/link-actions.ts`, `src/core/structured-preview.js`, `src/core/icons.css`,
@@ -62,9 +62,10 @@ uses the same encrypted vault protocol as the native Linux build.
 
 ## Shared editor core
 
-- Core contract version: `2.6.0`
+- Core contract version: `2.7.0`
 - VS Code snapshot: `vendor/aic-editor-core/draft-session.js`
 - Standard Notes snapshot: `src/core/draft-session.js` in `ldzyha/standard-notes-aic`
+- Draft-session snapshot SHA-256: `2b9a02ead705469b9f85be59662ab124ca2452fa8bdd78c4e8c9615d4e1ad6e4`
 - VS Code structured snapshot: `vendor/aic-editor-core/structured-preview.js`
 - Standard Notes structured snapshot: `src/core/structured-preview.js`
 - Structured snapshot SHA-256: `f495b0d04984d31bfd25d4866002142641daee72226cbe8c4e693807354402a4`
@@ -74,7 +75,7 @@ uses the same encrypted vault protocol as the native Linux build.
 - VS Code Mermaid viewport snapshot: `vendor/aic-editor-core/mermaid-viewport.js`
 - Standard Notes Mermaid viewport snapshot: `src/core/mermaid-viewport.js`
 - Mermaid viewport snapshot SHA-256:
-  `5f726131617d20bedc1e6f4c3d34adbf5545332411ec0a3b55a42e4f7a64dd9f`
+  `05e4c7e6e0fcef298aba490fe6f49ed9c6bdc774f5423ecf4d3182455b5ad006`
 - VS Code Mermaid viewport CSS: `vendor/aic-editor-core/mermaid-viewport.css`
 - Standard Notes Mermaid viewport CSS: `src/core/mermaid-viewport.css`
 - Mermaid viewport CSS SHA-256:
@@ -85,7 +86,7 @@ uses the same encrypted vault protocol as the native Linux build.
   `bd886ed5204363312c176275429b746da05e31d1106869acf9565ac412b25ebe`
 - VS Code file-properties snapshot: `vendor/aic-editor-core/file-properties.js`
 - Standard Notes file-properties snapshot: `src/core/file-properties.js`
-- File-properties snapshot SHA-256: `bcdfef5cc49aa25259d06ba5a316b3b70f2dd44fe8f1315ff8e3eef0231edd36`
+- File-properties snapshot SHA-256: `2692d4ed30ee5f09b30cc3275fe8b88385be26c39400bb44574e43cccc5391bd`
 
 The byte-equivalent dependency-free state machine owns hydration, dirty drafts, commit boundaries,
 failed-save retention, and external-update rejection. Each product keeps only a thin host adapter:
@@ -98,8 +99,8 @@ Mermaid viewport owns zoom, focusable two-dimensional scrolling, 90° rotation, 
 layout bounds, and accessible icon controls without a renderer-specific dependency. The CSS
 snapshot paints embedded SVG data URIs as masks without requiring inline SVG in action-button DOM.
 The file-properties module owns `*.note.md` filename/creation/update stamping at the explicit save
-boundary, preserves all authored note frontmatter, and removes only the exact legacy managed
-signature from ordinary Markdown.
+boundary, preserves all authored note frontmatter, removes only the exact legacy managed signature
+from ordinary Markdown, and migrates only the complete legacy seven-field sidecar signature.
 
 ## Existing AIC Markdown sources
 

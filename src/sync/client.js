@@ -13,6 +13,10 @@ import { sessionVaultConfig } from "./vault.js";
 import { importCandidates } from "./import.js";
 import { runWasmBridge } from "./wasm-bridge.js";
 import { syncAdmission } from "./admission.js";
+import {
+  disconnectedSyncResult,
+  passiveConnectionState,
+} from "./connection-state.js";
 
 const MAX_REQUEST_BYTES = 2 * 1024 * 1024;
 const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
@@ -170,13 +174,14 @@ export class StandardNotesSync {
   async connectionState() {
     try {
       const status = await this._invoke({ operation: "status" });
-      return { connected: Boolean(status.connected), reconnect: false };
+      return {
+        connected: Boolean(status.connected),
+        reconnect: false,
+        available: true,
+      };
     } catch (error) {
-      const code = error?.structured?.error;
-      if (code === "sn_not_connected")
-        return { connected: false, reconnect: false };
-      if (code === "sn_vault_unreadable")
-        return { connected: false, reconnect: true };
+      const passive = passiveConnectionState(error);
+      if (passive) return passive;
       throw error;
     }
   }
@@ -334,6 +339,7 @@ export class StandardNotesSync {
       return {
         connected: false,
         reconnect: state.reconnect,
+        available: state.available,
         imported: null,
         local: 0,
         synced: 0,
@@ -346,7 +352,22 @@ export class StandardNotesSync {
     const work = async () => {
       // Pull inventory first so every canonical remote identity is bound
       // before local-only sidecars are pushed.
-      const imported = await this.importOpenWorkspaces({ showProgress: false });
+      let imported;
+      try {
+        imported = await this.importOpenWorkspaces({ showProgress: false });
+      } catch (error) {
+        const passive = passiveConnectionState(error);
+        if (!passive) throw error;
+        return {
+          ...passive,
+          imported: null,
+          local: 0,
+          synced: 0,
+          conflicts: 0,
+          skipped: 0,
+          failed: 0,
+        };
+      }
       const notes = await vscode.workspace.findFiles(
         "**/*.md",
         "{**/node_modules/**,**/.git/**,**/dist/**}",
@@ -354,6 +375,7 @@ export class StandardNotesSync {
       const summary = {
         connected: true,
         reconnect: false,
+        available: true,
         imported,
         local: notes.length,
         synced: 0,
@@ -399,6 +421,13 @@ export class StandardNotesSync {
               return true;
             },
           });
+          if (result?.action === "disconnected") {
+            summary.connected = false;
+            summary.reconnect = Boolean(result.reconnect);
+            summary.available = result.available !== false;
+            summary.skipped++;
+            break;
+          }
           if (result?.conflict) summary.conflicts++;
           else if (result?.skipped) summary.skipped++;
           else if (result) summary.synced++;
@@ -596,17 +625,30 @@ export class StandardNotesSync {
       baseHash: previous.baseHash || "",
     };
 
+    const invokeRequest = async (payload, showProgress = false) => {
+      try {
+        return showProgress
+          ? await vscode.window.withProgress(
+              {
+                location: vscode.ProgressLocation.Notification,
+                title: "AIC Notes: synchronizing",
+                cancellable: false,
+              },
+              () => this._invoke(payload),
+            )
+          : await this._invoke(payload);
+      } catch (error) {
+        const disconnected = interactive
+          ? null
+          : disconnectedSyncResult(error);
+        if (disconnected) return disconnected;
+        throw error;
+      }
+    };
+
     let request = base;
-    let result = interactive
-      ? await vscode.window.withProgress(
-          {
-            location: vscode.ProgressLocation.Notification,
-            title: "AIC Notes: synchronizing",
-            cancellable: false,
-          },
-          () => this._invoke(request),
-        )
-      : await this._invoke(request);
+    let result = await invokeRequest(request, interactive);
+    if (result.action === "disconnected") return result;
     if (result.action === "identity-conflict") {
       if (!resolveConflicts)
         return {
@@ -664,7 +706,8 @@ export class StandardNotesSync {
         remoteUuid: selected.remoteUuid,
         resolution: selected.resolution,
       };
-      result = await this._invoke(request);
+      result = await invokeRequest(request);
+      if (result.action === "disconnected") return result;
     }
     if (result.action === "conflict") {
       if (!resolveConflicts)
@@ -680,10 +723,11 @@ export class StandardNotesSync {
         "Use Standard Notes",
       );
       if (!resolution) return null;
-      result = await this._invoke({
+      result = await invokeRequest({
         ...request,
         resolution: resolution === "Use Local" ? "local" : "remote",
       });
+      if (result.action === "disconnected") return result;
     }
     if (
       result.action === "conflict" ||

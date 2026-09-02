@@ -32,6 +32,7 @@ const required = [
   "extension/LICENSE.txt",
   "extension/PROVENANCE.md",
   "extension/THIRD_PARTY_NOTICES.md",
+  "extension/FUNCTIONAL_INDEX.md",
 ];
 const forbidden = [
   "extension/bridge/",

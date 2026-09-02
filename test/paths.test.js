@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { notePathFor, folderNotePathFor, noteTargetStem, noteSeed } from "../src/notes/paths.js";
+import { notePathFor, folderNotePathFor, noteTargetStem } from "../src/notes/paths.js";
 
 test("notePathFor strips only the final extension", () => {
   assert.equal(notePathFor("src/app.js"), "src/app.note.md");
@@ -29,13 +29,4 @@ test("noteTargetStem inverts the naming", () => {
   assert.deepEqual(noteTargetStem("src/app.note.md"), { stem: "src/app", dir: "src" });
   assert.deepEqual(noteTargetStem("lib.note.md"), { stem: "lib", dir: "" });
   assert.equal(noteTargetStem("src/app.md"), null);
-});
-
-test("noteSeed writes the DOCS_CONVENTION header + naming line", () => {
-  const s = noteSeed("src/app.js", "file");
-  assert.match(s, /^---\ntitle: app\.js\nlevel: file-note\nscope: \nstatus: live\n/);
-  assert.match(s, /agent: true\n---\n# notes: src\/app\.js\n\n$/);
-  const d = noteSeed("src/lib", "directory");
-  assert.match(d, /level: folder-note/);
-  assert.match(d, /# notes: src\/lib\/\n\n$/);
 });

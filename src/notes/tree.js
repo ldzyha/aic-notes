@@ -284,7 +284,7 @@ export class NotesTree {
     item.command = {
       command: "aicNotes.openInSecondary",
       title: "Open Note",
-      arguments: [element.uri, { pin: true, reveal: true }],
+      arguments: [element.uri, { reveal: true }],
     };
     item.contextValue = "note";
     return item;

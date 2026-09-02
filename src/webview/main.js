@@ -397,13 +397,14 @@ window.addEventListener("message", (event) => {
       }
       const target = document.getElementById("pane-target");
       if (target) {
-        target.hidden = !msg.showPinnedActions;
-        target.disabled = !msg.showPinnedActions || Boolean(msg.actionPending);
+        target.hidden = !msg.canOpenTarget;
+        target.disabled = !msg.canOpenTarget || Boolean(msg.actionPending);
       }
       const clear = document.getElementById("pane-clear");
       if (clear) {
-        clear.hidden = !msg.showPinnedActions;
-        clear.disabled = !msg.showPinnedActions || Boolean(msg.readOnly) || Boolean(msg.actionPending);
+        clear.hidden = !msg.canTrash;
+        clear.disabled =
+          !msg.canTrash || Boolean(msg.readOnly) || Boolean(msg.actionPending);
       }
       const empty = document.getElementById("pane-empty");
       const editor = document.getElementById("editor");

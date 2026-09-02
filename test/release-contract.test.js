@@ -7,9 +7,9 @@ const packageJson = JSON.parse(
   await readFile(new URL("../package.json", import.meta.url), "utf8"),
 );
 
-test("19.1.1 manifest separates Primary management from Secondary note content", () => {
-  assert.equal(packageJson.version, "19.1.1");
-  assert.equal(packageJson.aicEditorCore, "2.6.0");
+test("20.1.6 manifest separates Primary management from Secondary note content", () => {
+  assert.equal(packageJson.version, "20.1.6");
+  assert.equal(packageJson.aicEditorCore, "2.7.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.equal(packageJson.scripts.publish, undefined);
   assert.ok(packageJson.scripts["release:gate"]);
@@ -75,6 +75,10 @@ test("note association, linked-note hotkey, and footer surface are explicit", as
   assert.doesNotMatch(provider, /id="pane-delete"/u);
   assert.doesNotMatch(provider, /id="pane-(?:auto|sync|create|note-actions)"/u);
   assert.match(provider, /tabGroups\.close/u);
+  assert.match(provider, /new NavigationQueue\(\)/u);
+  assert.match(provider, /activeResource\(activeTabUri, activeEditorUri\)/u);
+  assert.match(provider, /routeActiveNoteTab/u);
+  assert.doesNotMatch(provider, /routeNoteTabs|routingTabs|pin: true/u);
   assert.match(
     create,
     /secondary\.followSource\(uri, \{ force: true, preserveFocus: false \}\)/u,
@@ -90,6 +94,9 @@ test("note association, linked-note hotkey, and footer surface are explicit", as
     ),
   );
   assert.doesNotMatch(create, /ensureFileNoteForUri/u);
+  assert.match(create, /freshNoteText/u);
+  assert.match(create, /stampFileProperties/u);
+  assert.doesNotMatch(create, /noteMeta|stringifyFrontmatter/u);
   assert.match(extension, /noteForCurrentFile\(secondary\)/u);
   assert.match(target, /relNotePath === `\$\{folder\.name\}\.note\.md`/u);
   assert.match(tree, /projectPlaceholder/u);
@@ -178,7 +185,8 @@ test("Secondary editable placeholder, explicit save, and theme-safe controls are
   );
   assert.match(provider, /notePlaceholderForUri/u);
   assert.match(provider, /async followTarget/u);
-  assert.match(provider, /createFromPlaceholder/u);
+  assert.doesNotMatch(provider, /createFromPlaceholder|async applyChanges|case "edit"/u);
+  assert.match(provider, /case "commit"[\s\S]*commitDraft/u);
   assert.match(provider, /workspace\.fs\.writeFile/u);
   assert.match(provider, /id="pane-breadcrumb"/u);
   assert.match(provider, /id="pane-filename"/u);
@@ -190,7 +198,14 @@ test("Secondary editable placeholder, explicit save, and theme-safe controls are
   assert.doesNotMatch(provider, /class="aic-pane-icon[^\n]*title=/u);
   assert.match(provider, /Standard Notes · Connected/u);
   assert.match(provider, /Standard Notes · Disconnected/u);
-  assert.match(provider, /showPinnedActions/u);
+  assert.match(provider, /paneCapabilities/u);
+  assert.match(provider, /canOpenTarget: capabilities\.canOpenTarget/u);
+  assert.match(provider, /canTrash: capabilities\.canTrash/u);
+  assert.match(provider, /async openCurrentTarget\(\)/u);
+  assert.match(provider, /executeCommand\("revealInExplorer", target\)/u);
+  assert.doesNotMatch(provider, /showPinnedActions/u);
+  assert.match(webview, /target\.hidden = !msg\.canOpenTarget/u);
+  assert.match(webview, /clear\.hidden = !msg\.canTrash/u);
   assert.doesNotMatch(provider, /onDidSaveTextDocument/u);
   assert.doesNotMatch(provider, /onDocumentSaved/u);
   assert.match(provider, /CoalescingQueue/u);
@@ -284,6 +299,32 @@ test("headless authorization uses SecretStorage plus the encrypted bridge vault"
   assert.match(bridge, /ReadOnly/u);
   assert.match(bridge, /case "disconnect"/u);
   assert.match(client, /async logout\(\)/u);
+});
+
+test("background sync treats missing authorization as a quiet state", async () => {
+  const client = await readFile(
+    new URL("../src/sync/client.js", import.meta.url),
+    "utf8",
+  );
+  const connection = await readFile(
+    new URL("../src/sync/connection-state.js", import.meta.url),
+    "utf8",
+  );
+  const provider = await readFile(
+    new URL("../src/secondary/provider.js", import.meta.url),
+    "utf8",
+  );
+  const extension = await readFile(
+    new URL("../src/extension.js", import.meta.url),
+    "utf8",
+  );
+  assert.match(connection, /sn_not_connected/u);
+  assert.match(connection, /sn_vault_unavailable/u);
+  assert.match(connection, /sn_vault_unreadable/u);
+  assert.match(client, /passiveConnectionState\(error\)/u);
+  assert.match(client, /disconnectedSyncResult\(error\)/u);
+  assert.match(provider, /if \(passive\)[\s\S]*return false/u);
+  assert.match(extension, /if \(passiveConnectionState\(error\)\) return/u);
 });
 
 test("first login and explicit recovery pull only tagged project notes", async () => {
@@ -485,6 +526,9 @@ test("release gate hashes CI-built VSIX files before publishing all assets", asy
   assert.match(workflow, /npm run package:windows[\s\S]*sha256sum/u);
   assert.match(workflow, /sha256sum[\s\S]*npm run release:verify/u);
   assert.match(workflow, /gh release create/u);
+  assert.match(workflow, /group: release-\$\{\{ github\.ref \}\}/u);
+  assert.match(workflow, /gh release view "\$GITHUB_REF_NAME"/u);
+  assert.match(workflow, /gh release upload[\s\S]*--clobber/u);
   assert.match(workflow, /linux-x64\.vsix\.sha256/u);
   assert.match(workflow, /win32-x64\.vsix\.sha256/u);
 });
@@ -638,11 +682,17 @@ test("Secondary rejects non-substantive sync before API access and exposes one t
   assert.match(provider, /async recoverPlaceholder\(uri/u);
   assert.match(provider, /if \(!\(await exists\(uri\)\)\) \{/u);
   const open = provider.slice(
-    provider.indexOf("async open(uri"),
+    provider.indexOf("async openNow(uri"),
+    provider.indexOf("async recoverPlaceholder"),
+  );
+  assert.match(open, /finishNoteRouting\(uri, reveal\)/u);
+  const routing = provider.slice(
+    provider.indexOf("async finishNoteRouting"),
     provider.indexOf("async recoverPlaceholder"),
   );
   assert.ok(
-    open.indexOf("closeExactNoteTabs(uri)") < open.indexOf("focus(false)"),
+    routing.indexOf("closeExactNoteTabs(uri)") <
+      routing.indexOf("focus(false)"),
   );
   const performSync = provider.slice(
     provider.indexOf("async performSync"),
@@ -722,7 +772,7 @@ test("release packaging includes the helper but excludes helper source", async (
     new URL("../PROVENANCE.md", import.meta.url),
     "utf8",
   );
-  assert.match(provenance, /ae799fc7e32b5b905368ce3414447effab0565aa/u);
+  assert.match(provenance, /cdeac5fac8974276be9a183ee75d0aca3be3ed80/u);
   for (const artifact of [
     "../bin/linux-x64/aic-notes-sn-bridge",
     "../bin/wasm/aic-notes-sn-bridge.wasm",
@@ -733,10 +783,13 @@ test("release packaging includes the helper but excludes helper source", async (
     assert.match(provenance, new RegExp(hash, "u"));
   }
   for (const snapshot of [
+    "../vendor/aic-editor-core/draft-session.js",
+    "../vendor/aic-editor-core/structured-preview.js",
     "../vendor/aic-editor-core/icons.css",
     "../vendor/aic-editor-core/mermaid-viewport.js",
     "../vendor/aic-editor-core/mermaid-viewport.css",
     "../vendor/aic-editor-core/mermaid-viewport.d.ts",
+    "../vendor/aic-editor-core/file-properties.js",
   ]) {
     const bytes = await readFile(new URL(snapshot, import.meta.url));
     const hash = createHash("sha256").update(bytes).digest("hex");

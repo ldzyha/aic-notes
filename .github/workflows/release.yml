@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   verify-linux-x64:
     runs-on: ubuntu-latest
@@ -46,11 +50,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          gh release create "$GITHUB_REF_NAME" \
-            "aic-notes-$VERSION-linux-x64.vsix" \
-            "aic-notes-$VERSION-linux-x64.vsix.sha256" \
-            "aic-notes-$VERSION-win32-x64.vsix" \
-            "aic-notes-$VERSION-win32-x64.vsix.sha256" \
-            --verify-tag \
-            --title "AIC Notes $VERSION" \
-            --generate-notes
+          ASSETS=(
+            "aic-notes-$VERSION-linux-x64.vsix"
+            "aic-notes-$VERSION-linux-x64.vsix.sha256"
+            "aic-notes-$VERSION-win32-x64.vsix"
+            "aic-notes-$VERSION-win32-x64.vsix.sha256"
+          )
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "${ASSETS[@]}" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              "${ASSETS[@]}" \
+              --verify-tag \
+              --title "AIC Notes $VERSION" \
+              --generate-notes
+          fi
