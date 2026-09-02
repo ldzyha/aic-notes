@@ -14,14 +14,37 @@ import {
 import { enableExplorerNesting, hintIfShadowed } from "./notes/nesting.js";
 import { resolveTarget } from "./notes/target.js";
 import { MarkdownEditorProvider } from "./editor/provider.js";
-import { structuredError, formatError } from "./errors.js";
+import { structuredError } from "./errors.js";
 import { SecondaryNotePane } from "./secondary/provider.js";
-import { StandardNotesSync } from "./sync/client.js";
 import { linkSelectionToNote } from "./notes/selection.js";
 import { deleteNotes } from "./notes/delete.js";
 import { AgentWorkflowBootstrap } from "./agents/bootstrap.js";
 import { stampFileProperties } from "../vendor/aic-editor-core/file-properties.js";
-import { passiveConnectionState } from "./sync/connection-state.js";
+
+const RETIRED_SYNC_STATE_PREFIX = "aicNotes.standardNotes.";
+const RETIRED_SYNC_SECRET = "aicNotes.standardNotes.vaultKey.v1";
+const RETIRED_SYNC_CLEANUP_KEY = "aicNotes.migrations.standardNotesRemoved.v22";
+
+async function removeRetiredSyncData(context) {
+  if (context.globalState.get(RETIRED_SYNC_CLEANUP_KEY, false)) return;
+  const removals = [
+    context.secrets.delete(RETIRED_SYNC_SECRET),
+    ...context.workspaceState
+      .keys()
+      .filter((key) => key.startsWith(RETIRED_SYNC_STATE_PREFIX))
+      .map((key) => context.workspaceState.update(key, undefined)),
+  ];
+  if (context.globalStorageUri) {
+    removals.push(
+      vscode.workspace.fs.delete(
+        vscode.Uri.joinPath(context.globalStorageUri, "standard-notes"),
+        { recursive: true, useTrash: false },
+      ),
+    );
+  }
+  await Promise.allSettled(removals);
+  await context.globalState.update(RETIRED_SYNC_CLEANUP_KEY, true);
+}
 
 function legacyPropertyCleanupEdits(document) {
   const relativePath = vscode.workspace
@@ -42,32 +65,12 @@ function legacyPropertyCleanupEdits(document) {
   ];
 }
 
-export function activate(context) {
+export async function activate(context) {
+  await removeRetiredSyncData(context);
   AgentWorkflowBootstrap.register(context);
   const tree = new NotesTree();
-  const sync = new StandardNotesSync(context);
-  const secondary = SecondaryNotePane.register(context, sync);
+  const secondary = SecondaryNotePane.register(context);
   const markdownEditor = MarkdownEditorProvider.register(context);
-  const remoteFirstTrash = (uris) => {
-    const bound = uris.filter((uri) => sync.bindingState(uri).bound);
-    return {
-      detail: bound.length
-        ? `${bound.length} bound Standard Notes item(s) move to remote Trash before local files.`
-        : "These notes have no Standard Notes binding; only local files move to Trash.",
-      beforeDelete: async () => {
-        for (const uri of bound) {
-          if (!(await sync.trash(uri))) return false;
-        }
-        return true;
-      },
-      afterDelete: async (uri) => {
-        if (bound.some((candidate) => candidate.toString() === uri.toString()))
-          await sync.completeTrash(uri);
-      },
-    };
-  };
-  const explicitDocumentSaves = new Set();
-  const applyingDocumentPulls = new Set();
   const documentWillSave = vscode.workspace.onWillSaveTextDocument((event) => {
     const lowerPath = event.document.uri.path.toLowerCase();
     if (
@@ -76,85 +79,13 @@ export function activate(context) {
       !vscode.workspace.getWorkspaceFolder(event.document.uri)
     )
       return;
-    const saveKey = event.document.uri.toString();
-    if (applyingDocumentPulls.has(saveKey)) {
-      explicitDocumentSaves.delete(saveKey);
-      return;
-    }
     if (event.reason === vscode.TextDocumentSaveReason.Manual) {
-      explicitDocumentSaves.add(saveKey);
       event.waitUntil(legacyPropertyCleanupEdits(event.document));
-    } else explicitDocumentSaves.delete(saveKey);
+    }
   });
-  const documentSync = vscode.workspace.onDidSaveTextDocument(
-    async (document) => {
-      const saveKey = document.uri.toString();
-      if (
-        !document.uri.path.toLowerCase().endsWith(".md") ||
-        document.uri.path.toLowerCase().endsWith(".note.md") ||
-        !vscode.workspace.getWorkspaceFolder(document.uri) ||
-        !explicitDocumentSaves.delete(saveKey)
-      )
-        return;
-      try {
-        const captured = document.getText();
-        const result = await sync.sync(document.uri, captured, {
-          interactive: false,
-          resolveConflicts: true,
-          acceptResult: async (candidate) => {
-            if (
-              typeof candidate.localContent !== "string" ||
-              candidate.localContent === captured
-            )
-              return true;
-            if (document.isDirty || document.getText() !== captured)
-              return false;
-            const edit = new vscode.WorkspaceEdit();
-            edit.replace(
-              document.uri,
-              new vscode.Range(
-                document.positionAt(0),
-                document.positionAt(document.getText().length),
-              ),
-              candidate.localContent,
-            );
-            applyingDocumentPulls.add(saveKey);
-            try {
-              return (
-                (await vscode.workspace.applyEdit(edit)) &&
-                (await document.save())
-              );
-            } finally {
-              applyingDocumentPulls.delete(saveKey);
-            }
-          },
-        });
-        if (result?.action === "disconnected") {
-          vscode.window.setStatusBarMessage(
-            "AIC Notes: document saved locally · log in to sync",
-            4000,
-          );
-        } else if (result?.stale) {
-          vscode.window.setStatusBarMessage(
-            "AIC Notes: changed during sync · local edit kept · save again",
-            5000,
-          );
-        } else if (result && !result.skipped) {
-          vscode.window.setStatusBarMessage(
-            `AIC Notes: document synchronized · ${result.action}`,
-            3000,
-          );
-        }
-      } catch (error) {
-        if (passiveConnectionState(error)) return;
-        vscode.window.showErrorMessage(`AIC Notes — ${formatError(error)}`);
-      }
-    },
-  );
   context.subscriptions.push(
     tree,
     documentWillSave,
-    documentSync,
     vscode.window.registerTreeDataProvider("aicNotes.tree", tree),
     markdownEditor,
 
@@ -170,14 +101,6 @@ export function activate(context) {
     vscode.commands.registerCommand(
       "aicNotes.linkSelectionToNote",
       commandHandler(() => linkSelectionToNote(secondary, markdownEditor)),
-    ),
-    vscode.commands.registerCommand(
-      "aicNotes.syncCurrentNote",
-      commandHandler(() => secondary.syncCurrent()),
-    ),
-    vscode.commands.registerCommand(
-      "aicNotes.pullProjectNotes",
-      commandHandler(() => secondary.importProjectNotes()),
     ),
     vscode.commands.registerCommand(
       "aicNotes.noteForExplorerItem",
@@ -232,15 +155,7 @@ export function activate(context) {
       "aicNotes.deleteNote",
       commandHandler(async (item) => {
         if (item?.uri) {
-          const trash = remoteFirstTrash([item.uri]);
-          await deleteNotes(
-            [item.uri],
-            `note "${item.relPath}"`,
-            tree,
-            trash.detail,
-            trash.beforeDelete,
-            trash.afterDelete,
-          );
+          await deleteNotes([item.uri], `note "${item.relPath}"`, tree);
         }
       }),
     ),
@@ -252,15 +167,7 @@ export function activate(context) {
           .map((child) => child.uri)
           .filter(Boolean);
         if (uris.length) {
-          const trash = remoteFirstTrash(uris);
-          await deleteNotes(
-            uris,
-            `${uris.length} note(s) under "${item.label}"`,
-            tree,
-            trash.detail,
-            trash.beforeDelete,
-            trash.afterDelete,
-          );
+          await deleteNotes(uris, `${uris.length} note(s) under "${item.label}"`, tree);
         }
       }),
     ),
@@ -290,11 +197,6 @@ export function activate(context) {
   );
 
   hintIfShadowed(context);
-  queueMicrotask(() => {
-    secondary
-      .initializeWorkspaceSync()
-      .catch((error) => secondary.reportSyncError(error));
-  });
 }
 
 export function deactivate() {}

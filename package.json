@@ -1,8 +1,8 @@
 {
   "name": "aic-notes",
   "displayName": "AIC Notes",
-  "description": "AIC Markdown documents plus Secondary-Side-Bar-only *.note.md notes with explicit-save Standard Notes sync.",
-  "version": "21.0.1",
+  "description": "Local AIC Markdown documents plus Secondary-Side-Bar-only *.note.md notes with explicit Ctrl+S saving.",
+  "version": "22.1.1",
   "aicEditorCore": "2.7.0",
   "publisher": "ldzyha",
   "icon": "media/icon.png",
@@ -39,7 +39,7 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": true,
-      "description": "Local rendering and editing are supported; connected Markdown documents and *.note.md notes synchronize after explicit Ctrl+S/Cmd+S save."
+      "description": "Markdown documents and *.note.md sidecars are rendered and edited locally with explicit Ctrl+S/Cmd+S saving."
     },
     "virtualWorkspaces": {
       "supported": "limited",
@@ -50,11 +50,11 @@
     "build": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
     "test": "node --test --test-concurrency=1 test/*.test.js",
-    "package": "npm run build && vsce package --no-dependencies --target linux-x64 --out aic-notes-$npm_package_version-linux-x64.vsix",
-    "package:windows": "npm run build && vsce package --no-dependencies --target win32-x64 --out aic-notes-$npm_package_version-win32-x64.vsix",
-    "install:vsix": "npm run package && code-server --install-extension aic-notes-$npm_package_version-linux-x64.vsix --force",
+    "package": "npm run build && vsce package --no-dependencies --out aic-notes-$npm_package_version.vsix",
+    "install:vsix": "npm run package && code --install-extension aic-notes-$npm_package_version.vsix --force",
+    "release:checksum": "node scripts/checksum.mjs",
     "release:verify": "node scripts/verify-release.mjs",
-    "release:gate": "npm test && npm run package && npm run package:windows && npm run release:verify"
+    "release:gate": "npm test && npm run package && npm run release:checksum && npm run release:verify"
   },
   "contributes": {
     "viewsContainers": {
@@ -103,17 +103,6 @@
         "title": "Link Selection to Note",
         "category": "AIC Notes",
         "icon": "$(comment-discussion)"
-      },
-      {
-        "command": "aicNotes.syncCurrentNote",
-        "title": "Sync Current Note",
-        "category": "AIC Notes",
-        "icon": "$(sync)"
-      },
-      {
-        "command": "aicNotes.pullProjectNotes",
-        "title": "Pull Project Notes from Standard Notes",
-        "category": "AIC Notes"
       },
       {
         "command": "aicNotes.openInSecondary",
@@ -331,16 +320,6 @@
     "configuration": {
       "title": "AIC Notes",
       "properties": {
-        "aicNotes.standardNotes.server": {
-          "type": "string",
-          "default": "https://api.standardnotes.com",
-          "description": "Standard Notes API server used only by explicit Connect/Sync actions."
-        },
-        "aicNotes.standardNotes.bridgePath": {
-          "type": "string",
-          "default": "",
-          "description": "Optional absolute path to a compatible native helper on Linux. Windows uses the bundled in-process WebAssembly bridge."
-        },
         "aicNotes.agentWorkflow.aicPath": {
           "type": "string",
           "default": "aic",

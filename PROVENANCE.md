@@ -35,31 +35,6 @@ details block in a canonical note section, the copied source fragment, an annota
 comment, deduplication, exact source navigation, and fail-closed `*.ai.md` owner verification. It
 does not modify source bytes.
 
-## Standard Notes bridge
-
-- Direct dependency: `github.com/jonhadfield/gosn-v2`
-- Commit: `28e3820a341fad50b42f0ed29adb690077e87b46`
-- Go module version: `v0.0.0-20260523114812-28e3820a341f`
-- License: MIT; notice reproduced in `THIRD_PARTY_NOTICES.md`
-- Shared Linux/WebAssembly build toolchain: Go `1.25.1` Windows amd64 with the official
-  cross-compilers (`linux/amd64` and `js/wasm`), both with `CGO_ENABLED=0`.
-- Linux helper SHA-256: `7cab7afaa1a6a878284eede6d29ef1f802046b0fc9a1f4e45372d8b298810546`
-- WebAssembly helper SHA-256: `6cf342d026299b7f542a663d942ce298b6f171c332a28994e4c4106358bec3e2`
-- Go WebAssembly runtime SHA-256: `0c949f4996f9a89698e4b5c586de32249c3b69b7baadb64d220073cc04acba14`
-
-The bridge is independently authored for this extension. It imports the MIT library directly and
-does not import, execute, or bundle `sn-cli`. The pinned client sends the current Standard Notes
-client/version headers on authentication and sync requests. The bridge accepts one bounded JSON
-request on stdin and emits one bounded JSON response on stdout. Secret values and upstream response
-text are not included in success/error output. AIC Notes does not call the library's operating-system
-keyring persistence: the extension supplies an authenticated local vault and a wrapping key held by
-VS Code SecretStorage.
-
-The Windows artifact compiles the same bridge package to `js/wasm` with Go `1.25.1` and bundles
-the matching Go `wasm_exec.js` runtime under its BSD-3-Clause license. No Standard Notes AGPL SDK
-or executable wrapper is bundled. The WebAssembly module runs in the VS Code extension host and
-uses the same encrypted vault protocol as the native Linux build.
-
 ## Shared editor core
 
 - Core contract version: `2.7.0`
@@ -110,6 +85,6 @@ adaptations. The bundled JetBrains Mono files retain their OFL notice under
 
 ## Release artifact identity
 
-The GitHub release must contain the exact locally tested Linux x64 and Windows x64 VSIX files plus
-their SHA-256 sidecars. Both target manifests, bundled core artifacts, and checksums are verified;
-published VSIX files are redownloaded and byte-compared before the release is considered complete.
+The GitHub release must contain one exact locally tested universal VSIX plus its SHA-256 sidecar.
+The release gate rejects platform-targeted manifests, native/WASM helpers, development sources,
+retired synchronization commands/settings, missing core artifacts, or a mismatched checksum.

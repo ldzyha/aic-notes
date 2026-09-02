@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  verify-linux-x64:
+  verify-universal:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,27 +22,13 @@ jobs:
         with:
           node-version: 20.19.2
           cache: npm
-      - uses: actions/setup-go@v5
-        with:
-          go-version: 1.25.1
-          cache-dependency-path: bridge/go.sum
       - name: Verify tag and R.F.B version
         if: startsWith(github.ref, 'refs/tags/')
         run: test "${GITHUB_REF_NAME}" = "v$(node -p 'require(`./package.json`).version')"
       - run: npm ci
       - run: npm test
-      - run: npm run build
-      - name: Test and build pinned Standard Notes bridge
-        working-directory: bridge
-        run: |
-          go test ./...
-          CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o ../bin/linux-x64/aic-notes-sn-bridge .
       - run: npm run package
-      - run: npm run package:windows
-      - name: Generate package checksums
-        run: |
-          sha256sum "aic-notes-${GITHUB_REF_NAME#v}-linux-x64.vsix" > "aic-notes-${GITHUB_REF_NAME#v}-linux-x64.vsix.sha256"
-          sha256sum "aic-notes-${GITHUB_REF_NAME#v}-win32-x64.vsix" > "aic-notes-${GITHUB_REF_NAME#v}-win32-x64.vsix.sha256"
+      - run: npm run release:checksum
       - run: npm run release:verify
       - name: Publish GitHub release
         if: startsWith(github.ref, 'refs/tags/')
@@ -51,10 +37,8 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           ASSETS=(
-            "aic-notes-$VERSION-linux-x64.vsix"
-            "aic-notes-$VERSION-linux-x64.vsix.sha256"
-            "aic-notes-$VERSION-win32-x64.vsix"
-            "aic-notes-$VERSION-win32-x64.vsix.sha256"
+            "aic-notes-$VERSION.vsix"
+            "aic-notes-$VERSION.vsix.sha256"
           )
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" "${ASSETS[@]}" --clobber

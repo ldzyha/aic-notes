@@ -1,5 +1,22 @@
 # Changelog
 
+## 22.1.1 — 2026-09-02
+
+Release sequence 22 · 1 feature outcome · 1 fixed-bug outcome.
+
+- F01: make AIC Notes a fully local extension. Remove Standard Notes authorization, import,
+  synchronization, conflict resolution, remote identity/tag state, remote Trash handling, API
+  configuration, the Go/WebAssembly bridge, and their platform-specific packages. Existing local
+  Markdown files are never removed; retired credentials, sessions, and workspace bindings are
+  cleaned locally during upgrade without contacting a remote service.
+- B01: isolate every editor action from network state. `Ctrl/Cmd+S` now has one deterministic local
+  persistence path, Trash affects only the selected local sidecar, the pane reports only local
+  saved/dirty/placeholder state, and disconnected-account errors can no longer interrupt editing.
+
+Compatibility: VS Code/Code 1.106 or newer on Windows, Linux, macOS, and code-server through one
+universal VSIX. AIC Editor Core 2.7.0 remains shared with the independent Standard Notes editor
+plugin; no account connection or data synchronization exists between the products.
+
 ## 21.0.1 — 2026-09-02
 
 Release sequence 21 · 0 feature outcomes · 1 fixed-bug outcome.

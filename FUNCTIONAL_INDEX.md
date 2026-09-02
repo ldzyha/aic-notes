@@ -1,109 +1,90 @@
-# AIC Notes functional index
+# Functional index
 
-This is the release contract for the VS Code/code-server client. Every feature is
-listed by owner, trigger, state boundary, side effect, failure behavior, and
-automated coverage. A release is incomplete when a public command is missing
-from this index or when an invariant below is not enforced by tests.
+This index is the release contract for AIC Notes 22.1.1. Every public command, state boundary,
+side effect, failure rule, and platform assumption is represented here and checked by tests or the
+release archive verifier.
 
-## Global invariants
+## Product boundary
 
-- An ordinary `*.md` file is a **Document**. A `*.note.md` file is a linked or
-  free-standing **Note** and is routed only to the Secondary Side Bar.
-- Markdown is the sole persisted value. Preview widgets never keep a second
-  data model and every mutation replaces one exact Markdown range.
-- `Ctrl/Cmd+S` is the only note persistence and synchronization boundary.
-  Input, focus, blur, tab changes, shutdown, and remote refresh never save.
-- The active custom-editor tab is authoritative. A stale native text editor
-  cannot keep the Secondary pane on an old file.
-- Pinning affects only automatic following. Source and Trash capabilities are
-  based on the current note and source, never on pin state.
-- A fresh sidecar owns exactly `file`, `created`, and `updated`. A complete old
-  seven-field generated signature is migrated on explicit save; authored
-  properties survive.
-- Missing Standard Notes authorization, an unreadable session, and unavailable
-  secure storage are passive disconnected states during activation/background
-  save. They never create error notifications or login prompts.
-- Remote replacement is accepted only if the captured local document and its
-  webview draft are still current. Two-sided divergence is never auto-merged.
-- Remote deletion always targets a persisted UUID binding. There is no
-  title-matched or guessed destructive operation.
+- The extension reads and writes only local workspace `*.md` and `*.note.md` files.
+- There is no Standard Notes authorization, API client, import, synchronization, remote identity,
+  tag graph, conflict resolver, remote Trash action, native helper, or WebAssembly helper.
+- The independent Standard Notes editor plugin may share byte-equivalent AIC Editor Core files;
+  sharing presentation logic does not create an account or data connection.
+- One universal VSIX supports Windows, Linux, macOS, and code-server without platform binaries.
+- Upgrade cleanup removes only retired local session material and binding metadata. It never
+  deletes Markdown or contacts a remote service.
 
-## Surface and lifecycle matrix
+## State contracts
 
-| Surface / owner | Entry and behavior | Mutable state | Side effects / failure boundary | Coverage |
-| --- | --- | --- | --- | --- |
-| Extension activation (`src/extension.js`) | Registers all providers and commands; starts one quiet workspace reconciliation | explicit document-save set, in-flight pulled documents | Disconnected sync returns a state; only genuine operational failures notify | release contract, connection-state |
-| Markdown editor (`src/editor/provider.js`) | Default custom editor for ordinary `*.md`; renders full AIC Markdown | VS Code `TextDocument`, selection snapshot | Edits are FIFO workspace edits; save stays owned by VS Code | release contract, preview suites |
-| Note redirect (`src/secondary/provider.js`) | Intercepts an active `*.note.md` tab, routes it to Secondary, then closes only that exact tab | ordered navigation queue | Does not scan background tabs and never auto-pins | secondary-model, release contract |
-| Secondary follow | Follows the authoritative active source while unpinned; without an active file buffer it shows the current project's lazy root note | document URI, source URI, placeholder URI, pin, last workspace | Dirty draft blocks switching with status; ordered requests cannot finish out of order; multi-root fallback prefers the last project | secondary-model, draft-session |
-| Secondary footer | Login/logout, Open source, Trash, Pin | auth, read-only, action-pending, pin | Source appears whenever an owner is known, including placeholders; Trash for an existing note; Pin for any surface | secondary-model, release contract |
-| Notes & Documents tree (`src/notes/tree.js`) | Indexes every workspace `*.md`, labels Note/Document, and exposes lazy project/folder/file note entries | watched workspace inventory | Created/changed/deleted Markdown refreshes the tree; invisible/private notes are filtered | paths, frontmatter, release contract |
-| Lazy placeholder (`src/notes/create.js`) | Maps source/folder/project to a canonical sidecar without writing it | generated Markdown draft | Only explicit save creates the file; fresh managed frontmatter has exactly three fields even when an old custom template contains frontmatter | templates, file-properties, sync-admission |
-| Linked source comment (`src/notes/selection.js`) | Adds one deduplicated details block for the exact selected characters/lines | source selection and owner note | Dirty source is saved before anchoring; source itself is never edited | selection-model, release contract |
-| Standard Notes service (`src/sync/client.js`) | Auth, full project import, inventory reconcile, three-way note sync, Trash | encrypted session, local UUID/base/tag bindings | Passive disconnection is quiet; ambiguity/read-only/conflict fails closed | import, admission, queue, Go bridge tests |
-| Agent workflow (`src/agents/bootstrap.js`) | Writes a thin project marker and invokes typed AIC rules commands | marker and activation version | Untrusted workspaces and owner-managed global instructions fail closed | agent-contract, release contract |
+- `Ctrl/Cmd+S` is the only Secondary note persistence boundary. Input and blur do not save.
+- Dirty drafts remain in the webview until local save succeeds. A failed or stale save leaves the
+  draft dirty and visible.
+- Saved, unsaved, and placeholder states are visually distinct; the status text contains only
+  local state.
+- The active custom-editor tab is authoritative over a stale native editor. With no active file
+  buffer, the last relevant workspace project note is used, then the first workspace.
+- Pinning affects only automatic following. Explicit file/folder/project/note navigation can
+  always select the requested context.
+- Navigation is serialized. A slower open/stat operation cannot replace a later user selection,
+  and one rejected navigation request cannot poison the queue.
+- A missing sidecar is a lazy placeholder. Unchanged scaffolding does not create a file.
+- Generated sidecar frontmatter contains exactly `file`, `created`, and `updated`; `updated` is
+  refreshed only at explicit save. Ordinary Markdown receives no generated properties.
+- Context relationships are derived dynamically and displayed only below existing note
+  frontmatter. They are never serialized or edited.
+- Trash is local, confirmed, and routed through the operating-system Trash where supported.
 
-## Markdown interaction index
+## Surfaces
 
-| Feature | Preview interaction | Edit interaction | Copy / navigation | Read-only behavior |
-| --- | --- | --- | --- | --- |
-| Headings, emphasis, strike, quote, HR | Rendered in place | Cursor/selection reveals exact source | Native selection | Source can be revealed but not changed |
-| Lists and tasks | Task checkbox toggles the Markdown marker | Space completes task syntax; normal text editing | Native selection | Checkbox and edits disabled |
-| Links and wiki links | Label opens the resolved target | Always-visible Edit icon reveals source | Always-visible Copy icon; external schemes are allow-listed | Open and Copy remain available |
-| Details / linked code | Chevron or summary toggles; checkbox remains independently clickable | Comment stays inside the expanded body | Source label returns to exact lines; Copy is always visible | Disclosure, open, and copy remain available |
-| Fenced code | Highlighted preview for known languages | Edit icon reveals the complete fence | Copy icon copies exact fence body | Copy remains available |
-| Mermaid | Rendered diagram with zoom, reset, rotate | Edit icon reveals the fence | Copy copies Mermaid source; viewport scrolls on both axes | View controls and copy remain available |
-| Tables | Content-sized, word-boundary columns in a dedicated horizontal scroller | One transient textarea popover; add/reorder row/column | Copy icon copies the exact table source | Select/copy/scroll remain available |
-| Frontmatter properties | Nested, read-only preview below the managed three fields; relationship tree follows frontmatter | One transient textarea popover; add/reorder valid sibling branches | Values remain selectable | Preview remains visible; edit actions disabled |
-| Selection | Collapsed cursor retains preview | Non-empty selection reveals intersected source; `Ctrl/Cmd+A` reveals all | Native copy | Same reveal contract |
+| Surface | Owner | Persistent side effect | Failure behavior |
+| --- | --- | --- | --- |
+| AIC Markdown custom editor | `src/editor/provider.js`, `src/webview/main.js` | explicit VS Code document save | stale generations reset or retain the visible draft |
+| Linked Note Secondary pane | `src/secondary/provider.js` | explicit local sidecar write/save or local Trash | never replaces an unsaved draft; reports a compact local error |
+| Notes & Documents tree | `src/notes/tree.js` | none | refreshes from workspace files and lazy project placeholders |
+| Selection-to-note command | `src/notes/selection.js` | saves source, updates one local sidecar on its later explicit save | rejects unsaved/unbacked/out-of-workspace sources |
+| Structured previews | `vendor/markdown`, `vendor/aic-editor-core` | exact Markdown transactions only | invalid source remains editable instead of being normalized silently |
+| AIC agent workflow | `src/agents/bootstrap.js` | thin marker and explicit AIC-owned rule update | typed command errors; unrelated editor use remains available |
 
 ## Commands
 
-| Command | Scope and contract |
+| Command | Contract |
 | --- | --- |
-| `aicNotes.noteForCurrentFile` | Open the canonical linked note/placeholder for the authoritative active tab |
-| `aicNotes.linkSelectionToNote` | Link the exact non-empty source selection into its canonical owner note |
-| `aicNotes.syncCurrentNote` | Explicit recovery sync; may request login/conflict resolution |
-| `aicNotes.pullProjectNotes` | Explicit full tagged-project pull and reconciliation |
-| `aicNotes.openInSecondary` | Internal/public Secondary routing boundary for `*.note.md` |
-| `aicNotes.noteForExplorerItem` | Open a file, folder, or workspace-root placeholder from Explorer |
-| `aicNotes.openProjectNote` | Open the selected/current workspace root note placeholder |
-| `aicNotes.refreshTree` | Re-index the Notes & Documents tree |
-| `aicNotes.enableExplorerNesting` | Apply supported Explorer sidecar nesting settings |
-| `aicNotes.openTarget` | Resolve a tree note to its existing source/folder |
-| `aicNotes.copyWikiLink` | Copy the selected note's project-relative wiki link |
-| `aicNotes.useNativeForMarkdown` | Restore native editor association for ordinary Markdown only |
-| `aicNotes.deleteNote` | Confirm and Trash one exact note, remote-bound side first |
-| `aicNotes.deleteFolderNotes` | Confirm and Trash the indexed notes under one tree folder |
-| `aicNotes.enableAgentWorkflow` | Add the portable AIC marker to a trusted project |
-| `aicNotes.syncAgentInstructions` | Explicitly verify/synchronize the installed AIC rules contract |
-| `aicNotes.openNote` | Internal tree routing alias that preserves the Secondary-only rule |
+| `aicNotes.noteForCurrentFile` | Follow or create a lazy linked note for the active local file; global keybinding works with no active file by showing the project note |
+| `aicNotes.linkSelectionToNote` | Copy selected source into one deduplicated linked-comment block and focus its comment caret |
+| `aicNotes.openInSecondary` | Route an existing sidecar or placeholder to the Secondary pane |
+| `aicNotes.noteForExplorerItem` | Follow a file or folder selected in Explorer, using the same lazy placeholder rule |
+| `aicNotes.openProjectNote` | Show the selected/current workspace root note or its placeholder |
+| `aicNotes.refreshTree` | Re-index local Markdown and note files |
+| `aicNotes.enableExplorerNesting` | Add workspace Explorer nesting patterns for sidecars |
+| `aicNotes.openTarget` | Open the file owner or reveal the folder/project owner of a note |
+| `aicNotes.copyWikiLink` | Copy the local note's wiki-link path |
+| `aicNotes.openNote` | Open a tree note through the Secondary routing path |
+| `aicNotes.useNativeForMarkdown` | Set the user association for plain `*.md` back to the native editor while preserving the note redirect |
+| `aicNotes.deleteNote` | Confirm and move one local sidecar to Trash |
+| `aicNotes.deleteFolderNotes` | Confirm and move the indexed local sidecars under one tree node to Trash |
+| `aicNotes.enableAgentWorkflow` | Write the thin workspace marker and validate AIC-owned rule status |
+| `aicNotes.syncAgentInstructions` | Explicitly verify/update the installed AIC agent-rule contract; this is unrelated to note files or Standard Notes |
 
-## Save and synchronization state machine
+## Preview interaction contracts
 
-1. Input changes only the in-memory CodeMirror/VS Code draft and marks it dirty.
-2. A note switch is accepted only when the draft is clean; otherwise the
-   current note remains visible and the status requests `Ctrl/Cmd+S`.
-3. Explicit save stamps the three managed properties and persists the complete
-   latest draft once.
-4. Empty/generated scaffolds stop before Standard Notes API access.
-5. A disconnected session returns `disconnected` and leaves the local save
-   successful without a toast.
-6. A connected request compares local, remote, and last common base. A
-   one-sided change propagates; a two-sided change requires an explicit choice.
-7. A result that became stale during the request advances no visible draft;
-   the newer local text remains dirty for the next save.
+- Text selection and `Ctrl/Cmd+A` disclose the corresponding Markdown source from preview mode.
+- Link main-click opens; Open, Copy, and Edit icon controls remain visible.
+- Code fences expose Copy and Edit controls.
+- Mermaid exposes Copy, Edit, zoom, fit, focusable two-dimensional scroll, and 90° rotation.
+- Tables expose Copy, insertion, drag reorder, content-sized word-wrapped columns, horizontal scroll,
+  and one transient popover editor for the selected cell.
+- Note properties expose insertion, hierarchy-preserving reorder, nested YAML, and one transient
+  popover editor. Plain Markdown has no generated property card.
+- Details accordions preserve comments, task-checkbox interaction, collapsed/open state, and links.
+- Action glyphs are CSS SVG masks; no renderer must accept inline SVG button markup.
 
-## Release verification matrix
+## Verification ownership
 
-- Pure models: paths, selection ownership/ranges, details markers, table and
-  property operations, navigation queue, drafts, admission, import identity.
-- Client integration: command registration, provider wiring, webview protocol,
-  Windows in-process WASM, Linux helper packaging, disconnected state.
-- Native core: Go authentication classification, encryption/session payloads,
-  locked/read-only behavior, import/tag graph, deterministic identities.
-- UI: standalone renderer interaction in a browser and installed VS Code
-  verification for note following, pin/unpin, persistent actions, placeholder,
-  explicit-save state, and quiet disconnected operation.
-- Distribution: both platform VSIX archives, SHA-256 assets, shared-core
-  provenance, release tag/version parity, and GitHub release pipelines.
+- Pure behavior: `test/*.test.js`.
+- Manifest, UI wiring, local-only boundary, upgrade cleanup, and packaging contract:
+  `test/release-contract.test.js`.
+- Command registration/index completeness: `test/function-index.test.js`.
+- Bundle construction: `esbuild.mjs`.
+- Universal archive/checksum/secret scan: `scripts/verify-release.mjs`.
+- Tag build and GitHub asset publication: `.github/workflows/release.yml`.

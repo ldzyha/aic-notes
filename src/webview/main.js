@@ -10,7 +10,7 @@
 // extension host, the resulting document change flows back as a remote-tagged
 // transaction.
 //
-// Sync protocol (see src/editor/provider.js): the webview applies its own
+// Edit protocol (see src/editor/provider.js): the webview applies its own
 // edits locally and posts {type:"edit", changes, generation}; the extension
 // applies them FIFO. Any non-echo document change (undo, git checkout,
 // another editor) arrives as {type:"external"} with a bumped generation; a
@@ -44,15 +44,12 @@ import THEME_CSS from "./theme.css";
 
 const api = acquireVsCodeApi();
 const remote = Annotation.define();
-const readOnlyCompartment = new Compartment();
-const editableCompartment = new Compartment();
 const secondarySurface = Boolean(document.getElementById("secondary-controls"));
 if (secondarySurface) document.documentElement.classList.add("aic-secondary-shell");
 
 const docState = {
   relativePath: "",
   generation: 0,
-  readOnly: false,
   placeholder: false,
   relationships: [],
 };
@@ -93,18 +90,6 @@ for (const css of [
 }
 
 let view = null;
-function setReadOnly(value) {
-  docState.readOnly = secondarySurface && Boolean(value);
-  if (view) {
-    view.dispatch({
-      effects: [
-        readOnlyCompartment.reconfigure(EditorState.readOnly.of(docState.readOnly)),
-        editableCompartment.reconfigure(EditorView.editable.of(!docState.readOnly)),
-      ],
-    });
-  }
-  document.body.dataset.readOnly = String(docState.readOnly);
-}
 
 function wirePaneControls() {
   if (!secondarySurface) return;
@@ -113,9 +98,6 @@ function wirePaneControls() {
   );
   document.getElementById("pane-target")?.addEventListener("click", () =>
     api.postMessage({ type: "pane.target" }),
-  );
-  document.getElementById("pane-auth")?.addEventListener("click", () =>
-    api.postMessage({ type: "pane.auth" }),
   );
   document.getElementById("pane-clear")?.addEventListener("click", () =>
     api.postMessage({ type: "pane.clear" }),
@@ -147,7 +129,7 @@ function postEdit(update) {
 }
 
 function commitDraft(reason) {
-  if (!secondarySurface || !view || docState.readOnly) return;
+  if (!secondarySurface || !view) return;
   const commit = draft.begin(reason);
   if (commit) api.postMessage({ type: "commit", ...commit });
 }
@@ -205,8 +187,6 @@ function makeEditor(text) {
     state: EditorState.create({
       doc: text,
       extensions: [
-        readOnlyCompartment.of(EditorState.readOnly.of(docState.readOnly)),
-        editableCompartment.of(EditorView.editable.of(!docState.readOnly)),
         langCompartment.of(fencedLang()),
         // colors nested fenced-code tokens; markdown structure styling is
         // owned by the handler classes (theme.css bumps their specificity)
@@ -298,7 +278,6 @@ window.addEventListener("message", (event) => {
     case "init": {
       docState.relativePath = msg.relativePath;
       docState.generation = msg.generation;
-      docState.readOnly = secondarySurface && Boolean(msg.readOnly);
       docState.placeholder = secondarySurface && Boolean(msg.placeholder);
       docState.relationships = secondarySurface && Array.isArray(msg.relationships)
         ? msg.relationships
@@ -325,7 +304,7 @@ window.addEventListener("message", (event) => {
           /* stale saved selection — keep the default */
         }
       }
-      if (!docState.readOnly) requestAnimationFrame(() => view?.focus());
+      requestAnimationFrame(() => view?.focus());
       break;
     }
     case "external": {
@@ -384,17 +363,6 @@ window.addEventListener("message", (event) => {
       }
       const status = document.getElementById("pane-status");
       if (status) status.textContent = msg.status || "";
-      if (secondarySurface) setReadOnly(Boolean(msg.readOnly));
-      const auth = document.getElementById("pane-auth");
-      if (auth) {
-        const authLabel = msg.authPending
-          ? msg.authConnected ? "Logging out…" : "Logging in…"
-          : msg.authConnected ? "Log out" : "Log in";
-        auth.setAttribute("aria-label", authLabel);
-        auth.dataset.aicIcon = msg.authConnected ? "logout" : "login";
-        auth.dataset.connected = String(Boolean(msg.authConnected));
-        auth.disabled = Boolean(msg.authPending);
-      }
       const target = document.getElementById("pane-target");
       if (target) {
         target.hidden = !msg.canOpenTarget;
@@ -403,8 +371,7 @@ window.addEventListener("message", (event) => {
       const clear = document.getElementById("pane-clear");
       if (clear) {
         clear.hidden = !msg.canTrash;
-        clear.disabled =
-          !msg.canTrash || Boolean(msg.readOnly) || Boolean(msg.actionPending);
+        clear.disabled = !msg.canTrash || Boolean(msg.actionPending);
       }
       const empty = document.getElementById("pane-empty");
       const editor = document.getElementById("editor");

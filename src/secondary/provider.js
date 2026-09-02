@@ -14,9 +14,6 @@ import { noteDescriptorForUri, notePlaceholderForUri } from "../notes/create.js"
 import { noteRelationshipsForTarget } from "../notes/relationships.js";
 import { openSourceAtHref } from "../notes/navigation.js";
 import { trashNotesLocally } from "../notes/delete.js";
-import { CoalescingQueue, mergeSyncRequests } from "../sync/coalescing-queue.js";
-import { syncAdmission } from "../sync/admission.js";
-import { passiveConnectionState } from "../sync/connection-state.js";
 import { stampFileProperties } from "../../vendor/aic-editor-core/file-properties.js";
 
 export const SECONDARY_VIEW_ID = "aicNotes.secondary";
@@ -53,8 +50,8 @@ function uriFromTab(tab) {
 }
 
 export class SecondaryNotePane {
-  static register(context, syncService) {
-    const pane = new SecondaryNotePane(context, syncService);
+  static register(context) {
+    const pane = new SecondaryNotePane(context);
     const noteWatcher = vscode.workspace.createFileSystemWatcher("**/*.note.md");
     context.subscriptions.push(
       pane,
@@ -80,9 +77,8 @@ export class SecondaryNotePane {
     return pane;
   }
 
-  constructor(context, syncService) {
+  constructor(context) {
     this.context = context;
-    this.syncService = syncService;
     this.view = undefined;
     this.document = undefined;
     this.documentUri = undefined;
@@ -92,23 +88,14 @@ export class SecondaryNotePane {
     this.pinned = false;
     this.ready = false;
     this.generation = 0;
-    this.draftEpoch = 0;
     this.draftDirty = false;
     this.applying = 0;
     this.editQueue = Promise.resolve();
     this.pendingViewState = undefined;
-    this.readOnly = false;
-    this.authConnected = false;
-    this.authReconnect = false;
-    this.authPending = false;
     this.actionPending = false;
     this.disposables = [];
     this.suppressFollowing = 0;
     this.navigation = new NavigationQueue();
-    this.syncRequests = new CoalescingQueue(
-      (_key, request) => this.performSync(request.uri, request),
-      mergeSyncRequests,
-    );
   }
 
   dispose() {
@@ -143,7 +130,6 @@ export class SecondaryNotePane {
       </div>
       <div id="editor"></div>
       <footer id="secondary-footer" aria-label="Linked note actions">
-        <button id="pane-auth" class="aic-pane-icon cm-aic-icon-button" type="button" data-aic-icon="login" aria-label="Log in to Standard Notes"></button>
         <button id="pane-target" class="aic-pane-icon cm-aic-icon-button" type="button" data-aic-icon="source" aria-label="Open source" hidden></button>
         <button id="pane-clear" class="aic-pane-icon cm-aic-icon-button danger" type="button" data-aic-icon="trash" aria-label="Move note to Trash" hidden></button>
         <span class="aic-pane-footer-spacer"></span>
@@ -153,7 +139,6 @@ export class SecondaryNotePane {
     );
     if (this.documentUri || this.placeholderUri) await this.sendInit();
     else await this.sendPaneState();
-    await this.refreshAuthState();
   }
 
   async focus(preserveFocus = false) {
@@ -240,13 +225,11 @@ export class SecondaryNotePane {
     this.documentUri = undefined;
     this.placeholderUri = placeholder.noteUri;
     this.placeholderText = placeholder.text;
-    this.readOnly = false;
     this.generation++;
     return true;
   }
 
   async attach(uri) {
-    this.readOnly = this.syncService.isReadOnly(uri);
     this.documentUri = uri;
     this.placeholderUri = undefined;
     this.placeholderText = undefined;
@@ -274,7 +257,6 @@ export class SecondaryNotePane {
     }
     if (!this.document || this.document.isClosed || this.document.uri.toString() !== uri.toString()) {
       this.document = await vscode.workspace.openTextDocument(uri);
-      this.readOnly = this.syncService.isReadOnly(uri);
       this.generation++;
     }
     return this.document;
@@ -317,7 +299,6 @@ export class SecondaryNotePane {
       const placeholder = await notePlaceholderForUri(uri);
       this.placeholderUri = placeholder.noteUri;
       this.placeholderText = placeholder.text;
-      this.readOnly = false;
       this.generation++;
       await this.sendInit();
       await this.focus(preserveFocus);
@@ -391,131 +372,6 @@ export class SecondaryNotePane {
     });
   }
 
-  reportSyncError(error) {
-    const passive = passiveConnectionState(error);
-    if (passive) {
-      this.authConnected = false;
-      this.authReconnect = passive.reconnect;
-      this.sendPaneState().catch(() => undefined);
-      return false;
-    }
-    this.sendPaneState("Sync failed").catch(() => undefined);
-    vscode.window.showErrorMessage(`AIC Notes — ${formatError(error)}`);
-    return true;
-  }
-
-  queueSync(uri, { interactive = false, resolveConflicts = interactive, markdown } = {}) {
-    const key = uri.toString();
-    return this.syncRequests.enqueue(key, { uri, interactive, resolveConflicts, markdown });
-  }
-
-  async placeholderForSync(uri) {
-    const folder = vscode.workspace.getWorkspaceFolder(uri);
-    if (!folder) return "";
-    const notePath = vscode.workspace.asRelativePath(uri, false).replaceAll("\\", "/");
-    let source = this.sourceUri;
-    if (source) {
-      const sourceFolder = vscode.workspace.getWorkspaceFolder(source);
-      const descriptor = sourceFolder ? await noteDescriptorForUri(source) : undefined;
-      if (sourceFolder?.uri.toString() !== folder.uri.toString() || descriptor?.notePath !== notePath) {
-        source = undefined;
-      }
-    }
-    source ??= await resolveTarget(folder, notePath);
-    if (!source) return "";
-    return (await notePlaceholderForUri(source)).text;
-  }
-
-  async performSync(uri, { interactive, resolveConflicts, markdown, draftEpoch }) {
-    const document = await vscode.workspace.openTextDocument(uri);
-    const attached = this.documentUri?.toString() === uri.toString();
-    const captured = typeof markdown === "string" ? markdown : document.getText();
-    const admission = syncAdmission(captured, await this.placeholderForSync(document.uri));
-    if (!admission.admit) {
-      if (attached) {
-        await this.sendPaneState(
-          admission.reason === "placeholder"
-            ? "Not synced · unchanged placeholder"
-            : "Not synced · empty note",
-        );
-      }
-      return { action: `skipped-${admission.reason}`, skipped: true, admission: true };
-    }
-    if (attached) await this.sendPaneState("Synchronizing…");
-    const result = await this.syncService.sync(
-      document.uri,
-      captured,
-      {
-        interactive,
-        resolveConflicts,
-        acceptResult: (candidate) => {
-          const changedDuringSync = document.getText() !== captured;
-          const newerWebviewDraft = Number.isSafeInteger(draftEpoch) && this.draftEpoch !== draftEpoch;
-          const wouldReplaceCaptured = typeof candidate.localContent === "string" &&
-            candidate.localContent !== captured;
-          return !((changedDuringSync || newerWebviewDraft) && wouldReplaceCaptured);
-        },
-      },
-    );
-    if (!result) {
-      if (attached) await this.sendPaneState("");
-      return null;
-    }
-    if (result.conflict) {
-      this.authConnected = true;
-      this.authReconnect = false;
-      if (attached) await this.sendPaneState("Conflict · save again to choose a version");
-      return result;
-    }
-    if (result.skipped) {
-      this.authConnected = false;
-      this.authReconnect = Boolean(result.reconnect);
-      if (attached) {
-        await this.sendPaneState(
-          result.reconnect ? "Saved locally · log in again to sync" : "Saved locally · log in to sync",
-        );
-      }
-      return result;
-    }
-    if (result.stale) {
-      if (attached) await this.sendPaneState("Changed during sync · save again");
-      return result;
-    }
-    this.authConnected = true;
-    this.authReconnect = false;
-    if (typeof result.localContent === "string" && result.localContent !== captured) {
-      await this.replaceDocument(result.localContent, uri);
-    }
-    if (attached) {
-      this.readOnly = Boolean(result.readOnly);
-      await this.sendPaneState(
-        result.action === "locked" ? "Locked in Standard Notes" : `Synced · ${result.action}`,
-      );
-    }
-    return result;
-  }
-
-  async saveCurrent({ interactive = false } = {}) {
-    await this.editQueue.catch(() => undefined);
-    const document = await this.currentDocument();
-    if (!document) {
-      if (this.placeholderUri) await this.sendPaneState("Not synced · unchanged placeholder");
-      return this.placeholderUri
-        ? { action: "skipped-placeholder", skipped: true, admission: true }
-        : null;
-    }
-    const saved = await document.save();
-    if (!saved) {
-      await this.sendPaneState("Save failed · note kept in the editor");
-      return { action: "save-failed", skipped: true };
-    }
-    return this.queueSync(document.uri, { interactive, markdown: document.getText() });
-  }
-
-  async syncCurrent() {
-    return this.saveCurrent({ interactive: true });
-  }
-
   async sendInit() {
     if (!this.view || !this.ready) {
       await this.sendPaneState();
@@ -545,7 +401,6 @@ export class SecondaryNotePane {
       generation: this.generation,
       relativePath,
       surface: "secondary",
-      readOnly: this.readOnly,
       placeholder: !document,
       relationships,
       selection: viewState?.selection,
@@ -589,11 +444,11 @@ export class SecondaryNotePane {
     });
     const visibleStatus = this.draftDirty
       ? "Unsaved · Ctrl+S"
-      : status || (this.authReconnect
-        ? "Standard Notes · Reconnect required"
-        : this.authConnected
-          ? "Standard Notes · Connected"
-          : "Standard Notes · Disconnected");
+      : status || (this.documentUri
+        ? "Saved locally"
+        : this.placeholderUri
+          ? "Placeholder · Ctrl+S to create"
+          : "");
     this.view.title = title;
     this.view.description = "";
     await this.view.webview.postMessage({
@@ -609,92 +464,12 @@ export class SecondaryNotePane {
       canPin: capabilities.canPin,
       candidatePath,
       status: visibleStatus,
-      readOnly: this.readOnly,
-      authConnected: this.authConnected,
-      authReconnect: this.authReconnect,
-      authPending: this.authPending,
       actionPending: this.actionPending,
     });
   }
 
-  async replaceDocument(text, uri = this.documentUri) {
-    const document = uri ? await vscode.workspace.openTextDocument(uri) : undefined;
-    if (!document || text === document.getText()) return;
-    const edit = new vscode.WorkspaceEdit();
-    edit.replace(
-      document.uri,
-      new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)),
-      text,
-    );
-    this.applying++;
-    const key = document.uri.toString();
-    try {
-      if (!(await vscode.workspace.applyEdit(edit))) throw new Error("workspace rejected synced note");
-      await document.save();
-      if (this.documentUri?.toString() === key) {
-        this.document = document;
-        this.generation++;
-        await this.view?.webview.postMessage({ type: "reset", text, generation: this.generation });
-      }
-    } finally {
-      this.applying--;
-    }
-  }
-
-  async refreshAuthState(status = "") {
-    try {
-      const state = await this.syncService.connectionState();
-      this.authConnected = state.connected;
-      this.authReconnect = state.reconnect;
-      await this.sendPaneState(status);
-    } catch (error) {
-      this.authConnected = false;
-      this.authReconnect = true;
-      await this.sendPaneState(status || "Session unavailable");
-      return error;
-    }
-    return undefined;
-  }
-
-  async authenticate() {
-    if (this.authPending) return;
-    this.authPending = true;
-    await this.editQueue.catch(() => undefined);
-    await this.sendPaneState(this.authConnected ? "Logging out…" : "Logging in…");
-    try {
-      if (this.authConnected) {
-        const choice = await vscode.window.showWarningMessage(
-          "Log out of Standard Notes on this device?",
-          {
-            modal: true,
-            detail: "Only the encrypted local session is removed. Remote notes, local sidecars, sync bindings, and the SecretStorage wrapping key remain unchanged.",
-          },
-          "Log out locally",
-        );
-        if (choice !== "Log out locally") return;
-        await this.syncService.logout();
-      } else {
-        const connected = await this.syncService.login();
-        if (connected) await this.importProjectNotes({ ensureConnected: false });
-      }
-    } finally {
-      this.authPending = false;
-      await this.refreshAuthState();
-    }
-  }
-
-  async commitDraft(text, generation, reason = "explicit") {
+  async commitDraft(text, generation) {
     let draft = String(text ?? "");
-    if (this.readOnly) {
-      await this.view?.webview.postMessage({
-        type: "committed",
-        text: draft,
-        generation: this.generation,
-        saved: false,
-      });
-      await this.sendPaneState("Read-only · draft not saved");
-      return { action: "read-only", skipped: true };
-    }
     if (generation !== this.generation) {
       await this.view?.webview.postMessage({
         type: "committed",
@@ -830,55 +605,8 @@ export class SecondaryNotePane {
       return { action: "save-failed", skipped: true };
     }
     this.draftDirty = false;
-    await this.sendPaneState("Saved · synchronizing…");
-    return this.queueSync(document.uri, {
-      interactive: false,
-      resolveConflicts: true,
-      markdown: draft,
-      draftEpoch: this.draftEpoch,
-    });
-  }
-
-  async importProjectNotes({ ensureConnected = true } = {}) {
-    if (ensureConnected && !(await this.syncService.ensureConnected())) return null;
-    await this.sendPaneState("Connected · reconciling workspace notes…");
-    const summary = await this.syncService.reconcileOpenWorkspaces({ showProgress: true });
-    await vscode.commands.executeCommand("aicNotes.refreshTree");
-    if (this.placeholderUri && await exists(this.placeholderUri)) {
-      await this.attach(this.placeholderUri);
-    } else if (this.documentUri || this.placeholderUri) {
-      if (this.draftDirty) await this.refreshRelationships();
-      else await this.sendInit();
-    }
-    vscode.window.showInformationMessage(
-      `AIC Notes: imported ${summary.imported?.created ?? 0}, linked ${summary.imported?.linked ?? 0}, synchronized ${summary.synced}, conflicts ${summary.conflicts}, skipped ${summary.skipped}, failed ${summary.failed}`,
-    );
-    return summary;
-  }
-
-  async initializeWorkspaceSync() {
-    const summary = await this.syncService.reconcileOpenWorkspaces({ showProgress: false });
-    if (!summary.connected) {
-      this.authConnected = false;
-      this.authReconnect = Boolean(summary.reconnect);
-      await this.sendPaneState();
-      return summary;
-    }
-    this.authConnected = true;
-    this.authReconnect = false;
-    await vscode.commands.executeCommand("aicNotes.refreshTree");
-    if (this.placeholderUri && await exists(this.placeholderUri)) {
-      await this.attach(this.placeholderUri);
-    } else if (this.documentUri || this.placeholderUri) {
-      if (this.draftDirty) await this.refreshRelationships();
-      else await this.sendInit();
-    }
-    await this.sendPaneState(
-      summary.failed
-        ? `Workspace sync finished · ${summary.failed} failed`
-        : `Workspace notes ready · ${summary.synced} synchronized`,
-    );
-    return summary;
+    await this.sendPaneState("Saved locally");
+    return { action: "saved", saved: true };
   }
 
   async trashCurrentNote() {
@@ -888,46 +616,28 @@ export class SecondaryNotePane {
     if (!document) return;
     const uri = document.uri;
     const relativePath = vscode.workspace.asRelativePath(uri, false);
-    const binding = this.syncService.bindingState(uri);
     const choice = await vscode.window.showWarningMessage(
       `Move note "${relativePath}" to Trash?`,
       {
         modal: true,
-        detail: binding.bound
-          ? "The exact bound note moves to Standard Notes Trash first, then the local sidecar moves to the system Trash. The sync binding is removed only after both operations succeed."
-          : "This note has no Standard Notes binding. Only the local sidecar moves to the system Trash.",
+        detail: "Only the local sidecar moves to the operating-system Trash.",
       },
       "Move to Trash",
     );
     if (choice !== "Move to Trash") return;
     this.actionPending = true;
     let finalStatus = "";
-    await this.sendPaneState(binding.bound ? "Moving remote note to Trash…" : "Moving local note to Trash…");
+    await this.sendPaneState("Moving local note to Trash…");
     try {
       if (!(await document.save())) {
         throw structuredError("notes_save_failed", "the note could not be saved before moving it to Trash", [
           "Resolve the file-system error and retry",
         ]);
       }
-
-      if (binding.bound) {
-        const remote = await this.syncService.trash(uri);
-        if (!remote) {
-          finalStatus = "Trash cancelled · note kept locally";
-          return;
-        }
-        await this.sendPaneState("Remote in Trash · moving local note…");
-      }
-
       const deleted = await trashNotesLocally([uri]);
-      if (!deleted && binding.bound) {
-        finalStatus = "Remote in Trash · local note kept for retry";
-      }
       if (!deleted) return;
-      await this.syncService.completeTrash(uri);
       this.document = undefined;
       this.documentUri = undefined;
-      this.readOnly = false;
       this.pendingViewState = undefined;
       if (this.sourceUri) {
         const placeholder = await notePlaceholderForUri(this.sourceUri);
@@ -940,9 +650,7 @@ export class SecondaryNotePane {
       this.generation++;
       await vscode.commands.executeCommand("aicNotes.refreshTree");
       if (this.placeholderUri) await this.sendInit();
-      finalStatus = binding.bound
-        ? "Moved to Trash locally and in Standard Notes"
-        : "Moved local note to Trash";
+      finalStatus = "Moved local note to Trash";
     } finally {
       this.actionPending = false;
       await this.sendPaneState(finalStatus);
@@ -974,18 +682,14 @@ export class SecondaryNotePane {
       switch (message.type) {
         case "ready":
           this.ready = true;
-          await this.refreshAuthState();
           if (this.documentUri || this.placeholderUri) await this.sendInit();
           else await this.followActive();
           break;
         case "commit":
           this.editQueue = this.editQueue.catch(() => undefined).then(() =>
-            this.commitDraft(message.text, message.generation, message.reason),
+            this.commitDraft(message.text, message.generation),
           );
           await this.editQueue;
-          break;
-        case "save":
-          await this.saveCurrent({ interactive: false });
           break;
         case "undo":
         case "redo":
@@ -995,9 +699,6 @@ export class SecondaryNotePane {
           this.pinned = !this.pinned;
           await this.sendPaneState();
           if (!this.pinned) await this.followActive();
-          break;
-        case "pane.auth":
-          await this.authenticate();
           break;
         case "pane.clear":
         case "pane.delete":
@@ -1017,7 +718,6 @@ export class SecondaryNotePane {
           await this.sendPaneState("File changed externally · current draft was not replaced");
           break;
         case "draft.state":
-          this.draftEpoch++;
           this.draftDirty = Boolean(message.dirty);
           await this.sendPaneState();
           break;

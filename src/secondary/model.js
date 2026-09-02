@@ -1,5 +1,3 @@
-import * as path from "node:path";
-import { createHash } from "node:crypto";
 import { notePathFor } from "../notes/paths.js";
 
 export const NOTE_SUFFIX = ".note.md";
@@ -84,55 +82,4 @@ export class NavigationQueue {
     );
     return result;
   }
-}
-
-export function workspaceStateKey(uri) {
-  return `aicNotes.standardNotes.${createHash("sha256").update(uri.toString()).digest("hex")}`;
-}
-
-export function noteTitle(relativePath, markdown = "") {
-  if (markdownKind(relativePath) === "document") {
-    return path.posix.basename(relativePath) || "Markdown document";
-  }
-  const frontmatterTitle =
-    /^---\s*\n[\s\S]*?^title:\s*(.+?)\s*$[\s\S]*?^(?:---|\.\.\.)\s*$/mu.exec(
-      markdown,
-    )?.[1];
-  if (frontmatterTitle?.trim()) return frontmatterTitle.trim();
-  return path.posix.basename(relativePath) || "AIC note";
-}
-
-export function managedTagPath(
-  folderName,
-  parentPath,
-  supportsNestedTags = true,
-) {
-  const project = String(folderName ?? "").trim() || "workspace";
-  const parents = String(parentPath ?? "")
-    .replaceAll("\\", "/")
-    .split("/")
-    .map((value) => value.trim())
-    .filter((value) => value && value !== ".");
-  return supportsNestedTags ? [project, ...parents] : [project];
-}
-
-export function threeWayDecision(
-  localHash,
-  remoteHash,
-  baseHash,
-  resolution = "",
-) {
-  if (!baseHash) {
-    if (!remoteHash) return "push";
-    return localHash === remoteHash ? "noop" : "conflict";
-  }
-  const localChanged = localHash !== baseHash;
-  const remoteChanged = remoteHash !== baseHash;
-  if (!localChanged && !remoteChanged) return "noop";
-  if (localChanged && !remoteChanged) return "push";
-  if (!localChanged && remoteChanged) return "pull";
-  if (localHash === remoteHash) return "noop";
-  if (resolution === "local") return "push";
-  if (resolution === "remote") return "pull";
-  return "conflict";
 }

@@ -25,8 +25,8 @@ test("functional index records the release-critical state contracts", () => {
     "active custom-editor tab is authoritative",
     "Pinning affects only automatic following",
     "file`, `created`, and `updated",
-    "passive disconnected states",
-    "Two-sided divergence is never auto-merged",
-    "persisted UUID binding",
+    "There is no Standard Notes authorization",
+    "One universal VSIX",
+    "Trash is local",
   ]) assert.ok(index.includes(contract), `missing contract: ${contract}`);
 });
