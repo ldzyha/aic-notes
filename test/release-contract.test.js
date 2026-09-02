@@ -7,9 +7,9 @@ const packageJson = JSON.parse(
   await readFile(new URL("../package.json", import.meta.url), "utf8"),
 );
 
-test("18.1.3 manifest separates Primary management from Secondary note content", () => {
-  assert.equal(packageJson.version, "18.1.3");
-  assert.equal(packageJson.aicEditorCore, "2.5.0");
+test("19.1.1 manifest separates Primary management from Secondary note content", () => {
+  assert.equal(packageJson.version, "19.1.1");
+  assert.equal(packageJson.aicEditorCore, "2.6.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.equal(packageJson.scripts.publish, undefined);
   assert.ok(packageJson.scripts["release:gate"]);
@@ -379,6 +379,20 @@ test("code, Mermaid, and link actions copy through the VS Code clipboard bridge"
     new URL("../src/webview/main.js", import.meta.url),
     "utf8",
   );
+  const viewport = await readFile(
+    new URL(
+      "../vendor/aic-editor-core/mermaid-viewport.js",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const viewportCss = await readFile(
+    new URL(
+      "../vendor/aic-editor-core/mermaid-viewport.css",
+      import.meta.url,
+    ),
+    "utf8",
+  );
   const details = await readFile(
     new URL("../src/webview/details.js", import.meta.url),
     "utf8",
@@ -399,6 +413,12 @@ test("code, Mermaid, and link actions copy through the VS Code clipboard bridge"
   assert.match(secondary, /vscode\.env\.clipboard\.writeText/u);
   assert.match(main, /makeCodeFenceExtension\(host\)/u);
   assert.match(main, /makeMermaidExtension\(host\)/u);
+  assert.match(main, /MERMAID_VIEWPORT_CSS/u);
+  assert.match(mermaid, /createMermaidViewport/u);
+  assert.match(viewport, /Rotate diagram 90° clockwise/u);
+  assert.match(viewport, /boundsHeight = sideways/u);
+  assert.match(viewportCss, /\.cm-aic-mermaid-viewport[\s\S]*overflow: auto/u);
+  assert.match(viewportCss, /--aic-mermaid-rotation/u);
   assert.doesNotMatch(details, /inertPreviewClicks/u);
   assert.match(details, /ignoreEvent\(\) \{[\s\S]*return true/u);
 });
@@ -702,13 +722,23 @@ test("release packaging includes the helper but excludes helper source", async (
     new URL("../PROVENANCE.md", import.meta.url),
     "utf8",
   );
-  assert.match(provenance, /7052aeea01f39c9299cbdef8d77d384b75b85c80/u);
+  assert.match(provenance, /ae799fc7e32b5b905368ce3414447effab0565aa/u);
   for (const artifact of [
     "../bin/linux-x64/aic-notes-sn-bridge",
     "../bin/wasm/aic-notes-sn-bridge.wasm",
     "../bin/wasm/wasm_exec.js",
   ]) {
     const bytes = await readFile(new URL(artifact, import.meta.url));
+    const hash = createHash("sha256").update(bytes).digest("hex");
+    assert.match(provenance, new RegExp(hash, "u"));
+  }
+  for (const snapshot of [
+    "../vendor/aic-editor-core/icons.css",
+    "../vendor/aic-editor-core/mermaid-viewport.js",
+    "../vendor/aic-editor-core/mermaid-viewport.css",
+    "../vendor/aic-editor-core/mermaid-viewport.d.ts",
+  ]) {
+    const bytes = await readFile(new URL(snapshot, import.meta.url));
     const hash = createHash("sha256").update(bytes).digest("hex");
     assert.match(provenance, new RegExp(hash, "u"));
   }

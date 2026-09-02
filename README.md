@@ -7,12 +7,12 @@ with Standard Notes.
 
 ## Install on VS Code or code-server
 
-Download `aic-notes-18.1.3-linux-x64.vsix` and its `.sha256` file from the
-[v18.1.3 release](https://github.com/ldzyha/aic-notes/releases/tag/v18.1.3), then verify and install:
+Download `aic-notes-19.1.1-linux-x64.vsix` and its `.sha256` file from the
+[v19.1.1 release](https://github.com/ldzyha/aic-notes/releases/tag/v19.1.1), then verify and install:
 
 ```sh
-sha256sum -c aic-notes-18.1.3-linux-x64.vsix.sha256
-code-server --install-extension aic-notes-18.1.3-linux-x64.vsix --force
+sha256sum -c aic-notes-19.1.1-linux-x64.vsix.sha256
+code-server --install-extension aic-notes-19.1.1-linux-x64.vsix --force
 ```
 
 Reload the browser window after installation. The extension targets Code/VS Code 1.106 or newer;
@@ -21,7 +21,7 @@ the bundled Standard Notes helper in this release targets Linux x64.
 For local 64-bit Windows VS Code, install the matching `win32-x64` VSIX:
 
 ```powershell
-code --install-extension .\aic-notes-18.1.3-win32-x64.vsix --force
+code --install-extension .\aic-notes-19.1.1-win32-x64.vsix --force
 ```
 
 Then run **Developer: Reload Window**. Do not install the Linux VSIX into Windows VS Code. Windows
@@ -92,7 +92,7 @@ Secondary Side Bar. Its compact layout keeps controls, headings, tables, and bod
 narrow pane while preserving visible theme-derived foregrounds. The Secondary view always exposes
 the Markdown editor and persists changes through the VS Code document model. If the linked remote
 item is locked, the same view becomes fixed read-only after synchronization; there is no
-local mode toggle. The visual/editor contract follows AIC for Standard Notes v4.0.1: exact
+local mode toggle. The visual/editor contract follows AIC for Standard Notes v14.1.1: exact
 Markdown remains the only persisted value while headings, emphasis, tasks, lists, links,
 frontmatter properties, tables, fenced code, and Mermaid are rendered in place.
 
@@ -111,6 +111,11 @@ Table columns size to their content and wrap only at word boundaries. The table 
 places only the grid inside a horizontal scroller when its readable columns are wider than the editor.
 The explicit **Edit** action reveals and focuses the full raw source for that structure. In read-only
 notes the same action reveals exact non-editable Markdown.
+
+Mermaid previews keep Zoom out, Zoom in, Reset, and Rotate actions permanently visible. Rotate
+turns the diagram clockwise by 90° per activation; Reset restores both 100% scale and the original
+direction. A dedicated focusable viewport scrolls on both axes after zoom or rotation, while the
+outer preview remains stable and the fenced Markdown stays hidden until an explicit edit.
 
 Run **AIC Notes: Use Native Editor for Plain Markdown** if ordinary Markdown should use VS Code's
 text editor. This does not relax the `*.note.md` Secondary-only rule.
@@ -260,8 +265,8 @@ Standard Notes account is intentionally not mutated by unattended tests.
 ## Release accounting
 
 This project uses the global `R.F.B` convention: release sequence, release-local feature outcomes,
-release-local fixed-bug outcomes. `18.1.3` is sequence 18 with one feature outcome and three
-fixed-bug outcomes. It is not a SemVer compatibility claim. See [`CHANGELOG.md`](CHANGELOG.md).
+release-local fixed-bug outcomes. `19.1.1` is sequence 19 with one feature outcome and one
+fixed-bug outcome. It is not a SemVer compatibility claim. See [`CHANGELOG.md`](CHANGELOG.md).
 
 ## License and provenance
 

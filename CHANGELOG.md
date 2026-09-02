@@ -1,5 +1,19 @@
 # Changelog
 
+## 19.1.1 — 2026-09-02
+
+Release sequence 19 · 1 feature outcome · 1 fixed-bug outcome.
+
+- F01: add permanent icon-only Mermaid zoom, reset, and clockwise quarter-turn controls to both
+  read previews and the live editing preview. Rotation advances through 0°, 90°, 180°, and 270°;
+  Reset restores both scale and direction without exposing the fenced source.
+- B01: replace the conflicting transform-only overflow rules with AIC Editor Core 2.6's shared
+  two-dimensional viewport and explicit transformed stage bounds. Enlarged diagrams now scroll on
+  both axes after zoom or rotation instead of being clipped by the outer preview card.
+
+Compatibility: VS Code/Code 1.106 or newer; Windows x64 uses the bundled in-process WebAssembly
+bridge and Linux x64 uses the bundled static helper. No Marketplace/Open VSX publication is implied.
+
 ## 18.1.3 — 2026-09-02
 
 Release sequence 18 · 1 feature outcome · 3 fixed-bug outcomes.

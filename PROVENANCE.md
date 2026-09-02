@@ -3,19 +3,19 @@
 ## AIC for Standard Notes contract
 
 - Source repository: `https://github.com/ldzyha/standard-notes-aic`
-- Paired editor contract: `13.2.1` / AIC Editor Core `2.5.0`
-- Commit: `7052aeea01f39c9299cbdef8d77d384b75b85c80`
+- Paired editor contract: `14.1.1` / AIC Editor Core `2.6.0`
+- Commit: `ae799fc7e32b5b905368ce3414447effab0565aa`
 - Authority files reviewed: `src/styles.css`, `src/editor.ts`, `src/language.ts`,
   `src/markdown-decorations.ts`, `src/block-views.ts`, `src/commands.ts`, `src/toolbar.ts`,
   `src/link-actions.ts`, `src/core/structured-preview.js`, `src/core/icons.css`,
-  `src/core/file-properties.js`, and
-  Mermaid modules.
+  `src/core/file-properties.js`, `src/core/mermaid-viewport.js`,
+  `src/core/mermaid-viewport.css`, and Mermaid adapter modules.
 
 AIC Notes adapts that editor's observable contract to VS Code: exact Markdown source, styled
 in-place structures, task/table/frontmatter/Mermaid behavior, and its `--aic-*` visual tokens mapped
-to VS Code theme tokens. Standard Notes account/runtime code is not bundled. The existing AIC Notes
-Markdown implementation remains the runtime engine; the v6.6.1 adapter keeps the Secondary surface,
-adds the exact AIC details markers, and preserves the Standard Notes AIC theme/interaction contract.
+to VS Code theme tokens. Standard Notes account/runtime code is not bundled. The AIC Notes Markdown
+implementation remains the runtime engine; its thin adapter keeps the Secondary surface, exact AIC
+details markers, and the Standard Notes AIC theme/interaction contract.
 
 ## AIC selection-note contract
 
@@ -62,7 +62,7 @@ uses the same encrypted vault protocol as the native Linux build.
 
 ## Shared editor core
 
-- Core contract version: `2.5.0`
+- Core contract version: `2.6.0`
 - VS Code snapshot: `vendor/aic-editor-core/draft-session.js`
 - Standard Notes snapshot: `src/core/draft-session.js` in `ldzyha/standard-notes-aic`
 - VS Code structured snapshot: `vendor/aic-editor-core/structured-preview.js`
@@ -70,7 +70,19 @@ uses the same encrypted vault protocol as the native Linux build.
 - Structured snapshot SHA-256: `f495b0d04984d31bfd25d4866002142641daee72226cbe8c4e693807354402a4`
 - VS Code icon snapshot: `vendor/aic-editor-core/icons.css`
 - Standard Notes icon snapshot: `src/core/icons.css`
-- Icon snapshot SHA-256: `0a9cc905d6e6d9f2eafb6e376d069db76e500d47a0b7950877eb0e6be65cd6ad`
+- Icon snapshot SHA-256: `ac08a5c524f84edd975f44bceda7e86b2c5e2a1a6db7e383690fc11340ab862a`
+- VS Code Mermaid viewport snapshot: `vendor/aic-editor-core/mermaid-viewport.js`
+- Standard Notes Mermaid viewport snapshot: `src/core/mermaid-viewport.js`
+- Mermaid viewport snapshot SHA-256:
+  `5f726131617d20bedc1e6f4c3d34adbf5545332411ec0a3b55a42e4f7a64dd9f`
+- VS Code Mermaid viewport CSS: `vendor/aic-editor-core/mermaid-viewport.css`
+- Standard Notes Mermaid viewport CSS: `src/core/mermaid-viewport.css`
+- Mermaid viewport CSS SHA-256:
+  `460442d21f918f6b9ff82ea40fd5ecf28dcde36f5dd5f36dd60dc811d6487e20`
+- VS Code Mermaid viewport declarations: `vendor/aic-editor-core/mermaid-viewport.d.ts`
+- Standard Notes Mermaid viewport declarations: `src/core/mermaid-viewport.d.ts`
+- Mermaid viewport declaration SHA-256:
+  `bd886ed5204363312c176275429b746da05e31d1106869acf9565ac412b25ebe`
 - VS Code file-properties snapshot: `vendor/aic-editor-core/file-properties.js`
 - Standard Notes file-properties snapshot: `src/core/file-properties.js`
 - File-properties snapshot SHA-256: `bcdfef5cc49aa25259d06ba5a316b3b70f2dd44fe8f1315ff8e3eef0231edd36`
@@ -81,7 +93,9 @@ VS Code persists through `workspace.fs`/`TextDocument`, while the component pers
 Standard Notes extension API. The byte-equivalent structured module owns table/property mutation,
 nested YAML parsing and hierarchy-preserving reorder behavior, validation, serialization,
 selection-driven source disclosure, direct open/copy/edit link-control composition, icon-only
-action semantics, accessible feedback state, and restricted-client clipboard fallback. The CSS
+action semantics, accessible feedback state, and restricted-client clipboard fallback. The shared
+Mermaid viewport owns zoom, focusable two-dimensional scrolling, 90° rotation, real transformed
+layout bounds, and accessible icon controls without a renderer-specific dependency. The CSS
 snapshot paints embedded SVG data URIs as masks without requiring inline SVG in action-button DOM.
 The file-properties module owns `*.note.md` filename/creation/update stamping at the explicit save
 boundary, preserves all authored note frontmatter, and removes only the exact legacy managed

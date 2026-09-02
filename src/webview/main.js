@@ -39,6 +39,7 @@ import { makeHost } from "./host-shim.js";
 import { detailsExtension } from "./details.js";
 import { DraftSession } from "../../vendor/aic-editor-core/draft-session.js";
 import ICONS_CSS from "../../vendor/aic-editor-core/icons.css";
+import MERMAID_VIEWPORT_CSS from "../../vendor/aic-editor-core/mermaid-viewport.css";
 import THEME_CSS from "./theme.css";
 
 const api = acquireVsCodeApi();
@@ -79,7 +80,13 @@ const FONT_CSS = [
   )
   .join("\n");
 
-for (const css of [FONT_CSS, THEME_CSS, MARKDOWN_CSS, ICONS_CSS]) {
+for (const css of [
+  FONT_CSS,
+  THEME_CSS,
+  MARKDOWN_CSS,
+  ICONS_CSS,
+  MERMAID_VIEWPORT_CSS,
+]) {
   const style = document.createElement("style");
   style.textContent = css;
   document.head.appendChild(style);

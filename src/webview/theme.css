@@ -135,44 +135,20 @@ html, body {
 .aicn-icon { color: var(--muted); }
 .cm-md-mermaid-loading { color: var(--muted); font-style: italic; }
 
-/* diagrams: FULL-BLEED (span the whole editor pane, escaping the centered
-   76ch column) and zoomable. Zoom is layout-only — the svg's width rides
-   --mmd-zoom (set by the widget's zoom bar), the wrapper pans via
-   overflow-x — no CSS transform (Crostini GPU rule). */
+/* Diagrams span the whole editor pane. The shared core owns the inner
+   two-dimensional viewport and exact transformed stage bounds. */
 .cm-editor .cm-content .cm-md-mermaid {
   margin-left: calc(50% - 50vw + 1rem);
   margin-right: calc(50% - 50vw + 1rem);
-  overflow-x: auto;
+  overflow: hidden;
 }
-/* !important is load-bearing: mermaid writes an INLINE style="max-width:
-   <natural>px" on every svg (useMaxWidth) — only an !important author rule
-   outranks an inline style, and without it the diagram stays capped at its
-   natural width no matter how wide the container is */
-.cm-editor .cm-content .cm-md-mermaid svg {
-  width: var(--mmd-zoom, 100%) !important;
-  max-width: none !important;
-  height: auto !important;
+.cm-md-mermaid-body { min-height: 6rem; }
+.cm-md-mermaid-editing > .cm-aic-mermaid-controls {
+  box-sizing: border-box;
+  width: 100%;
+  justify-content: flex-end;
+  padding: 0.12rem 0.2rem;
 }
-.cm-md-mermaid-zoom {
-  position: absolute;
-  top: 0.3rem;
-  right: 0.3rem;
-  display: none;
-  gap: 0.2rem;
-}
-.cm-md-mermaid:hover .cm-md-mermaid-zoom { display: flex; }
-.cm-md-mermaid-zoom button {
-  background: var(--chip);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  color: var(--fg);
-  width: 1.7rem;
-  height: 1.5rem;
-  font: inherit;
-  line-height: 1;
-  cursor: pointer;
-}
-.cm-md-mermaid-zoom button:hover { border-color: var(--accent); }
 
 /* Every replacement preview uses an explicit caption action. The preview
    body is not an implicit source-edit target. */
@@ -278,7 +254,6 @@ html, body {
 .cm-aic-note-relation-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cm-aic-note-relation-kind { color: var(--aic-muted); font-size: 0.7rem; }
 .cm-editor .cm-content .cm-md-mermaid.cm-md-block-preview { padding-top: 0; }
-.cm-md-mermaid.cm-md-block-preview .cm-md-mermaid-zoom { top: 2.25rem; }
 
 /* inline mermaid editing preview — the live diagram below a fence while its
    source is being edited; flat and compact, a hairline rule ties it to the

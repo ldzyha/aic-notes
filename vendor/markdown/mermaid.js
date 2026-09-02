@@ -22,6 +22,7 @@ import {
   selectionRevealsPreview,
   showIconFeedback,
 } from "../aic-editor-core/structured-preview.js";
+import { createMermaidViewport } from "../aic-editor-core/mermaid-viewport.js";
 
 let mermaidPromise = null;
 let renderSeq = 0;
@@ -68,11 +69,10 @@ export async function renderInto(el, source, context = "widget") {
   // keep the current diagram visible while the next one renders, then SWAP
   // the <svg> in place; the loading chip shows only on first paint
   if (!el.querySelector("svg")) {
-    el.innerHTML = "";
     const loading = document.createElement("span");
     loading.className = "cm-md-mermaid-loading";
     loading.textContent = "loading mermaid…";
-    el.appendChild(loading);
+    el.__aicMermaidViewport?.replaceContent(loading);
   }
   try {
     const mermaid = await loadMermaid();
@@ -82,8 +82,16 @@ export async function renderInto(el, source, context = "widget") {
     holder.innerHTML = svg;
     const next = holder.firstElementChild;
     const cur = el.querySelector("svg");
-    if (cur && next) cur.replaceWith(next);
-    else el.replaceChildren(next || holder);
+    if (next) {
+      next.setAttribute("inert", "");
+      next.setAttribute("aria-hidden", "true");
+    }
+    if (cur && next) {
+      cur.replaceWith(next);
+      el.__aicMermaidViewport?.refresh();
+    } else {
+      el.__aicMermaidViewport?.replaceContent(next || holder);
+    }
     return true;
   } catch (e) {
     // belt to suppressErrorRendering's suspenders: drop any orphan DOM
@@ -97,55 +105,30 @@ export async function renderInto(el, source, context = "widget") {
       fix: ["Put the cursor inside the fence to edit the source"],
     };
     if (context === "float") {
-      el.replaceChildren(ErrorCard(structured));
+      el.__aicMermaidViewport?.replaceContent(ErrorCard(structured));
       return false;
     }
     const marker = document.createElement("span");
     marker.className = "cm-md-mermaid-broken";
     marker.append(Icon("warn"), ` mermaid: ${structured.error} — use Edit`);
     marker.title = structured.detail;
-    el.replaceChildren(marker);
+    el.__aicMermaidViewport?.replaceContent(marker);
     return false;
   }
 }
 
-// zoom bar (owner 2026-07-06: diagrams full width + zoomable). Layout-only
-// zoom — the svg's CSS width rides --mmd-zoom, container pans via
-// overflow-x — no CSS transform (Crostini GPU rule). Lives on the WRAPPER,
-// outside renderInto's replaceChildren target, so it survives re-renders.
-// Buttons stop propagation so they never move the editor selection.
-function attachZoom(el) {
-  let zoom = 100;
-  const bar = document.createElement("div");
-  bar.className = "cm-md-mermaid-zoom";
-  const apply = () => el.style.setProperty("--mmd-zoom", `${zoom}%`);
-  const btn = (label, icon, fn) => {
-    const b = createIconButton(document, {
-      label,
-      icon,
-      className: "cm-md-mermaid-zoom-action",
-      onActivate: () => {
-        fn();
-        apply();
-      },
-    });
-    bar.appendChild(b);
-  };
-  btn("Zoom out", "zoom-out", () => (zoom = Math.max(50, zoom - 25)));
-  btn("Zoom in", "zoom-in", () => (zoom = Math.min(400, zoom + 25)));
-  btn("Reset zoom", "reset", () => (zoom = 100));
-  el.appendChild(bar);
-}
-
-// wrapper = .cm-md-mermaid (zoom bar + var); inner body = renderInto target
+// The shared viewport owns zoom, two-dimensional scrolling, and 90° rotation.
+// Its stage has the transformed diagram's real layout bounds, unlike a bare
+// CSS transform whose overflow area remains unrotated.
 function diagramShell(className) {
   const el = document.createElement("div");
   el.className = className;
-  const body = document.createElement("div");
-  body.className = "cm-md-mermaid-body";
-  el.appendChild(body);
-  attachZoom(el);
-  return { el, body };
+  const controller = createMermaidViewport(document);
+  const body = controller.viewport;
+  body.classList.add("cm-md-mermaid-body");
+  body.__aicMermaidViewport = controller;
+  el.append(controller.controls, body);
+  return { el, body, controls: controller.controls, controller };
 }
 
 class MermaidWidget extends WidgetType {
@@ -162,7 +145,7 @@ class MermaidWidget extends WidgetType {
       other.to === this.to;
   }
   toDOM(view) {
-    const { el, body } = diagramShell("cm-md-mermaid");
+    const { el, body, controls } = diagramShell("cm-md-mermaid");
     el.classList.add("cm-md-block-preview");
     el.dataset.aicSourceFrom = String(this.from);
     el.dataset.aicSourceTo = String(this.to);
@@ -192,11 +175,14 @@ class MermaidWidget extends WidgetType {
         view.focus();
       },
     });
-    actions.append(copy, edit);
+    actions.append(copy, edit, controls);
     header.append(title, actions);
     el.prepend(header);
     renderInto(body, this.source);
     return el;
+  }
+  destroy(el) {
+    el.querySelector(".cm-md-mermaid-body")?.__aicMermaidViewport?.destroy();
   }
   ignoreEvent() {
     return true; // the widget owns its activation — CM must not move the
@@ -234,6 +220,7 @@ class EditingPreviewWidget extends WidgetType {
   }
   destroy(el) {
     clearTimeout(el.__aicnTimer);
+    el.querySelector(".cm-md-mermaid-body")?.__aicMermaidViewport?.destroy();
   }
   ignoreEvent() {
     return true; // read-only surface — clicks must not move the caret

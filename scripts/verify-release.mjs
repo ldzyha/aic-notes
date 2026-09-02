@@ -93,6 +93,9 @@ async function verifyVsix(target) {
     "Add column",
     "Add property",
     "cm-aic-property-level",
+    "cm-aic-mermaid-viewport",
+    "Rotate diagram 90",
+    "--aic-mermaid-rotation",
   ]) {
     if (!packagedEditor.includes(control))
       throw new Error(`${target} packaged editor is missing ${control}`);
