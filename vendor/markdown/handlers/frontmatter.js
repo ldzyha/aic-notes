@@ -1,5 +1,5 @@
 import { StateEffect, StateField } from "@codemirror/state";
-import { Decoration, EditorView, WidgetType } from "@codemirror/view";
+import { Decoration, WidgetType } from "@codemirror/view";
 import {
   addProperty,
   createCellEditor,
@@ -12,6 +12,7 @@ import {
   updateProperty,
   validPropertyKey,
 } from "../../aic-editor-core/structured-preview.js";
+import { providePreviewRanges } from "../../aic-editor-core/preview-ranges.js";
 
 const editSource = StateEffect.define({
   map: (value, mapping) => ({ ...value, from: mapping.mapPos(value.from) }),
@@ -358,7 +359,7 @@ export function makeFrontmatterExtension(
           return value;
         return build(transaction.state);
       },
-      provide: (field) => EditorView.decorations.from(field),
+      provide: providePreviewRanges,
     }),
   ];
 }

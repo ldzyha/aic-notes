@@ -1,5 +1,22 @@
 # Changelog
 
+## 25.0.3 — 2026-09-03
+
+Release sequence 25 · 0 feature outcomes · 3 fixed-bug outcomes.
+
+- B01: expose every replaced preview range through CodeMirror's public `atomicRanges` contract.
+  Arrow-key and deletion commands now cross code, Mermaid, table, properties, Details, and link
+  previews as stable units instead of entering hidden Markdown and rebuilding the layout midway.
+- B02: give fenced-code Edit an explicit source-open state in the byte-identical shared core. The
+  opening fence, language label, body, and closing fence remain ordinary editable Markdown while
+  the selection stays in that block, including a cursor or selection at either boundary.
+- B03: release-gate the new AIC Editor Core 3.1 navigation module and code-fence core 1.1 so the VS
+  Code extension and Standard Notes component cannot drift on this interaction again.
+
+Compatibility: VS Code/Code 1.106 or newer on Windows, Linux, macOS, and code-server through one
+universal VSIX. The extension remains local-only; AIC for Standard Notes 18.0.4 consumes the same
+shared navigation and fence-edit state.
+
 ## 25.0.2 — 2026-09-03
 
 Release sequence 25 · 0 feature outcomes · 2 fixed-bug outcomes.

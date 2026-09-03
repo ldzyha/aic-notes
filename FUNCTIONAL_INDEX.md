@@ -1,6 +1,6 @@
 # Functional index
 
-This index is the release contract for AIC Notes 25.0.2. Every public command, state boundary,
+This index is the release contract for AIC Notes 25.0.3. Every public command, state boundary,
 side effect, failure rule, and platform assumption is represented here and checked by tests or the
 release archive verifier.
 
@@ -70,6 +70,8 @@ release archive verifier.
 
 - Native preview text selection remains stable for copying. CodeMirror selections disclose
   intersected source, while `Ctrl/Cmd+A` discloses the complete Markdown document.
+- Every replaced preview publishes its exact source range as an atomic CodeMirror navigation unit.
+  Edit pins one source block while its cursor or selection remains inside, including fence edges.
 - Link main-click opens; Open, Copy, and Edit icon controls remain visible.
 - Code fences expose Copy and Edit controls.
 - Mermaid exposes Copy, Edit, zoom, fit, focusable two-dimensional scroll, and 90° rotation.
@@ -83,7 +85,7 @@ release archive verifier.
 ## Paired-editor boundary
 
 - AIC Notes and AIC for Standard Notes consume byte-identical core modules for drafts, managed
-  properties, structured mutations, code-fence cards/extensions, icons, and Mermaid viewport state.
+  properties, structured mutations, atomic preview ranges, code-fence cards/extensions, icons, and Mermaid viewport state.
   The foundations remain dependency-free; the shared fence extension uses the CodeMirror public
   APIs already pinned identically by both products. Each host keeps only persistence, clipboard,
   selection, and theme wiring.

@@ -6,9 +6,9 @@ const root = new URL("../", import.meta.url);
 const read = (relativePath) => readFile(new URL(relativePath, root), "utf8");
 const packageJson = JSON.parse(await read("package.json"));
 
-test("25.0.2 is a local-only universal extension", () => {
-  assert.equal(packageJson.version, "25.0.2");
-  assert.equal(packageJson.aicEditorCore, "3.0.0");
+test("25.0.3 is a local-only universal extension", () => {
+  assert.equal(packageJson.version, "25.0.3");
+  assert.equal(packageJson.aicEditorCore, "3.1.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
   assert.doesNotMatch(packageJson.description, /Standard Notes|sync/iu);
@@ -205,6 +205,7 @@ test("preview selection stays native while Ctrl+A reveals source", async () => {
 test("structured previews keep explicit icon actions and transient editors", async () => {
   const [
     structured,
+    previewRanges,
     codeCore,
     codeExtension,
     table,
@@ -215,6 +216,7 @@ test("structured previews keep explicit icon actions and transient editors", asy
     icons,
   ] = await Promise.all([
     read("vendor/aic-editor-core/structured-preview.js"),
+    read("vendor/aic-editor-core/preview-ranges.js"),
     read("vendor/aic-editor-core/code-fence-preview.js"),
     read("vendor/aic-editor-core/code-fence-extension.js"),
     read("vendor/markdown/handlers/table.js"),
@@ -228,12 +230,18 @@ test("structured previews keep explicit icon actions and transient editors", asy
   assert.match(structured, /document\.createElement\("textarea"\)/u);
   assert.match(structured, /cm-aic-link-control/u);
   assert.match(structured, /icon: "copy"/u);
+  assert.match(previewRanges, /PREVIEW_RANGES_CORE_VERSION = "1\.0\.0"/u);
+  assert.match(previewRanges, /EditorView\.atomicRanges\.of/u);
   assert.match(codeCore, /CODE_FENCE_PREVIEW_CORE_VERSION = "1\.0\.0"/u);
   assert.match(codeCore, /Copy code/u);
   assert.match(codeCore, /Edit code source/u);
-  assert.match(codeExtension, /CODE_FENCE_EXTENSION_CORE_VERSION = "1\.0\.0"/u);
+  assert.match(codeExtension, /CODE_FENCE_EXTENSION_CORE_VERSION = "1\.1\.0"/u);
   assert.match(codeExtension, /class CodeFenceWidget extends WidgetType/u);
   assert.match(codeExtension, /selectionRevealsPreview/u);
+  assert.match(codeExtension, /effects: editCodeFenceSource\.of/u);
+  for (const adapter of [table, frontmatter, mermaid]) {
+    assert.match(adapter, /providePreviewRanges/u);
+  }
   assert.match(table, /Copy table/u);
   assert.match(table, /Add row/u);
   assert.match(table, /Add column/u);

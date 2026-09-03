@@ -13,7 +13,7 @@
 // (structured ErrorCard inline). Theme picks dark/light off the VS Code body
 // class instead of a fixed "dark".
 
-import { Decoration, EditorView, WidgetType, ViewPlugin } from "@codemirror/view";
+import { Decoration, WidgetType, ViewPlugin } from "@codemirror/view";
 import { StateField, StateEffect } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { Icon, ErrorCard } from "./components-stub.js";
@@ -22,6 +22,7 @@ import {
   selectionRevealsPreview,
   showIconFeedback,
 } from "../aic-editor-core/structured-preview.js";
+import { providePreviewRanges } from "../aic-editor-core/preview-ranges.js";
 import { createMermaidViewport } from "../aic-editor-core/mermaid-viewport.js";
 
 let mermaidPromise = null;
@@ -270,7 +271,7 @@ export function makeMermaidExtension(host) {
       }
       return value;
     },
-    provide: (f) => EditorView.decorations.from(f),
+    provide: providePreviewRanges,
   });
 
   function build(state) {

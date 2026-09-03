@@ -3,7 +3,7 @@
 ## AIC for Standard Notes contract
 
 - Source repository: `https://github.com/ldzyha/standard-notes-aic`
-- Paired editor contract: `18.0.3` / AIC Editor Core `3.0.0`
+- Paired editor contract: `18.0.4` / AIC Editor Core `3.1.0`
 - Commit: `8d1829d58dce42706d1bf105b88a26b2b1a422a1`
 - Authority files reviewed: `src/styles.css`, `src/editor.ts`, `src/language.ts`,
   `src/markdown-decorations.ts`, `src/block-views.ts`, `src/commands.ts`, `src/toolbar.ts`,

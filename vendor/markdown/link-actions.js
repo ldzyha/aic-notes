@@ -1,7 +1,8 @@
 import { syntaxTree } from "@codemirror/language";
 import { StateField } from "@codemirror/state";
-import { Decoration, EditorView, WidgetType } from "@codemirror/view";
+import { Decoration, WidgetType } from "@codemirror/view";
 import { createLinkControl } from "../aic-editor-core/structured-preview.js";
+import { providePreviewRanges } from "../aic-editor-core/preview-ranges.js";
 
 const EXTERNAL = /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i;
 
@@ -124,6 +125,6 @@ export function makeLinkActionsExtension(host) {
       if (!transaction.docChanged && !transaction.selection && transaction.startState.readOnly === transaction.state.readOnly) return value;
       return build(transaction.state);
     },
-    provide: (field) => EditorView.decorations.from(field),
+    provide: providePreviewRanges,
   });
 }

@@ -5,6 +5,7 @@ import {
   createIconButton,
   selectionRevealsPreview,
 } from "../../vendor/aic-editor-core/structured-preview.js";
+import { providePreviewRanges } from "../../vendor/aic-editor-core/preview-ranges.js";
 import { parseDetailsBlocks, toggleDetailsMarker } from "./details-model.js";
 
 const toggleVisual = StateEffect.define();
@@ -215,7 +216,7 @@ function detailsDecorations(host) {
         ? previewDecorations(transaction.state, host)
         : value;
     },
-    provide: (field) => EditorView.decorations.from(field),
+    provide: providePreviewRanges,
   });
 }
 
