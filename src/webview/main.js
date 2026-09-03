@@ -45,7 +45,8 @@ import THEME_CSS from "./theme.css";
 const api = acquireVsCodeApi();
 const remote = Annotation.define();
 const secondarySurface = Boolean(document.getElementById("secondary-controls"));
-if (secondarySurface) document.documentElement.classList.add("aic-secondary-shell");
+if (secondarySurface)
+  document.documentElement.classList.add("aic-secondary-shell");
 
 const docState = {
   relativePath: "",
@@ -60,7 +61,9 @@ function reflectSaveState() {
   if (!secondarySurface) return;
   document.body.dataset.saveState = draft.dirty
     ? "dirty"
-    : docState.placeholder ? "placeholder" : "saved";
+    : docState.placeholder
+      ? "placeholder"
+      : "saved";
 }
 
 // bundled JetBrains Mono (OFL, dist/webview/fonts): the @font-face URLs must
@@ -93,15 +96,15 @@ let view = null;
 
 function wirePaneControls() {
   if (!secondarySurface) return;
-  document.getElementById("pane-pin")?.addEventListener("click", () =>
-    api.postMessage({ type: "pane.pin" }),
-  );
-  document.getElementById("pane-target")?.addEventListener("click", () =>
-    api.postMessage({ type: "pane.target" }),
-  );
-  document.getElementById("pane-clear")?.addEventListener("click", () =>
-    api.postMessage({ type: "pane.clear" }),
-  );
+  document
+    .getElementById("pane-pin")
+    ?.addEventListener("click", () => api.postMessage({ type: "pane.pin" }));
+  document
+    .getElementById("pane-target")
+    ?.addEventListener("click", () => api.postMessage({ type: "pane.target" }));
+  document
+    .getElementById("pane-clear")
+    ?.addEventListener("click", () => api.postMessage({ type: "pane.clear" }));
 }
 
 // Nested fenced-code highlighting: the language sits in a Compartment so a
@@ -114,7 +117,8 @@ function fencedLang() {
   return makeFencedMarkdown({
     cache: fenceCache,
     onLoad: () => {
-      if (view) view.dispatch({ effects: langCompartment.reconfigure(fencedLang()) });
+      if (view)
+        view.dispatch({ effects: langCompartment.reconfigure(fencedLang()) });
     },
     onError: (structured) => host.ui.toast.error("markdown", structured),
   });
@@ -125,7 +129,8 @@ function postEdit(update) {
   update.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
     changes.push({ from: fromA, to: toA, insert: inserted.toString() });
   });
-  if (changes.length) api.postMessage({ type: "edit", changes, generation: docState.generation });
+  if (changes.length)
+    api.postMessage({ type: "edit", changes, generation: docState.generation });
 }
 
 function commitDraft(reason) {
@@ -155,14 +160,18 @@ function wirePreviewSelection(editor) {
   };
   const previewForNode = (node) => {
     const element = node?.nodeType === 1 ? node : node?.parentElement;
-    return element?.closest?.("[data-aic-source-from][data-aic-source-to]") ?? null;
+    return (
+      element?.closest?.("[data-aic-source-from][data-aic-source-to]") ?? null
+    );
   };
   const revealDomSelection = (event) => {
-    if (event.target?.closest?.("textarea,input,[contenteditable='true']")) return;
+    if (event.target?.closest?.("textarea,input,[contenteditable='true']"))
+      return;
     const selection = editor.dom.ownerDocument.getSelection();
     if (!selection || selection.isCollapsed) return;
     const preview =
-      previewForNode(selection.anchorNode) ?? previewForNode(selection.focusNode);
+      previewForNode(selection.anchorNode) ??
+      previewForNode(selection.focusNode);
     if (!preview || !editor.dom.contains(preview)) return;
     const from = Number(preview.dataset.aicSourceFrom);
     const to = Number(preview.dataset.aicSourceTo);
@@ -195,7 +204,16 @@ function makeEditor(text) {
         makeLinkActionsExtension(host),
         makeTableExtension(host),
         ...makeFrontmatterExtension(host, () => docState.relationships),
-        ...makeCodeFenceExtension(host),
+        ...makeCodeFenceExtension({
+          document,
+          onCopy: (source, language) => {
+            host.bus.publish("clipboard.write", {
+              text: source,
+              label: `${language || "code"} block`,
+            });
+            return true;
+          },
+        }),
         makeMermaidExtension(host),
         ...detailsExtension(host),
         drawSelection(),
@@ -209,9 +227,19 @@ function makeEditor(text) {
             ? historyKeymap
             : [
                 // Ordinary Markdown still delegates undo to its TextDocument.
-                { key: "Mod-z", run: () => (api.postMessage({ type: "undo" }), true) },
-                { key: "Mod-y", mac: "Mod-Shift-z", run: () => (api.postMessage({ type: "redo" }), true) },
-                { key: "Mod-Shift-z", run: () => (api.postMessage({ type: "redo" }), true) },
+                {
+                  key: "Mod-z",
+                  run: () => (api.postMessage({ type: "undo" }), true),
+                },
+                {
+                  key: "Mod-y",
+                  mac: "Mod-Shift-z",
+                  run: () => (api.postMessage({ type: "redo" }), true),
+                },
+                {
+                  key: "Mod-Shift-z",
+                  run: () => (api.postMessage({ type: "redo" }), true),
+                },
               ]),
           {
             key: "Mod-s",
@@ -247,7 +275,10 @@ function makeEditor(text) {
         ]),
         EditorView.lineWrapping, // a note wraps, never scrolls sideways
         EditorView.updateListener.of((update) => {
-          if (update.docChanged && !update.transactions.some((tr) => tr.annotation(remote))) {
+          if (
+            update.docChanged &&
+            !update.transactions.some((tr) => tr.annotation(remote))
+          ) {
             if (secondarySurface) {
               draft.edit(update.state.doc.toString());
               reflectSaveState();
@@ -257,7 +288,8 @@ function makeEditor(text) {
           if (update.selectionSet || update.docChanged) {
             const { anchor, head } = update.state.selection.main;
             api.setState({ anchor, head, path: docState.relativePath });
-            if (!secondarySurface) api.postMessage({ type: "selection", anchor, head });
+            if (!secondarySurface)
+              api.postMessage({ type: "selection", anchor, head });
           }
         }),
       ],
@@ -271,24 +303,34 @@ window.addEventListener("message", (event) => {
   const msg = event.data;
   switch (msg.type) {
     case "selection.request": {
-      const { anchor, head } = view?.state.selection.main ?? { anchor: 0, head: 0 };
-      api.postMessage({ type: "selection.snapshot", requestId: msg.requestId, anchor, head });
+      const { anchor, head } = view?.state.selection.main ?? {
+        anchor: 0,
+        head: 0,
+      };
+      api.postMessage({
+        type: "selection.snapshot",
+        requestId: msg.requestId,
+        anchor,
+        head,
+      });
       break;
     }
     case "init": {
       docState.relativePath = msg.relativePath;
       docState.generation = msg.generation;
       docState.placeholder = secondarySurface && Boolean(msg.placeholder);
-      docState.relationships = secondarySurface && Array.isArray(msg.relationships)
-        ? msg.relationships
-        : [];
+      docState.relationships =
+        secondarySurface && Array.isArray(msg.relationships)
+          ? msg.relationships
+          : [];
       draft.hydrate(msg.text, msg.generation, { discardLocal: true });
       reflectSaveState();
       view?.destroy();
       view = makeEditor(msg.text);
       const requested = msg.selection;
       const saved = api.getState();
-      const selection = requested ?? (saved?.path === msg.relativePath ? saved : null);
+      const selection =
+        requested ?? (saved?.path === msg.relativePath ? saved : null);
       if (selection) {
         const len = view.state.doc.length;
         try {
@@ -318,7 +360,8 @@ window.addEventListener("message", (event) => {
         changes: msg.changes,
         annotations: [remote.of(true)],
       });
-      if (secondarySurface) draft.hydrate(view.state.doc.toString(), msg.generation);
+      if (secondarySurface)
+        draft.hydrate(view.state.doc.toString(), msg.generation);
       reflectSaveState();
       break;
     }
@@ -329,14 +372,19 @@ window.addEventListener("message", (event) => {
         changes: { from: 0, to: view.state.doc.length, insert: msg.text },
         annotations: [remote.of(true)],
       });
-      if (secondarySurface) draft.hydrate(msg.text, msg.generation, { discardLocal: true });
+      if (secondarySurface)
+        draft.hydrate(msg.text, msg.generation, { discardLocal: true });
       reflectSaveState();
       break;
     }
     case "relationships": {
       if (!secondarySurface || !view) return;
-      docState.relationships = Array.isArray(msg.relationships) ? msg.relationships : [];
-      view.dispatch({ effects: setNoteRelationships.of(docState.relationships) });
+      docState.relationships = Array.isArray(msg.relationships)
+        ? msg.relationships
+        : [];
+      view.dispatch({
+        effects: setNoteRelationships.of(docState.relationships),
+      });
       break;
     }
     case "committed": {
@@ -385,9 +433,12 @@ window.addEventListener("message", (event) => {
 wirePaneControls();
 document.addEventListener("keydown", (event) => {
   if (
-    !secondarySurface || event.defaultPrevented ||
-    !(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "s"
-  ) return;
+    !secondarySurface ||
+    event.defaultPrevented ||
+    !(event.ctrlKey || event.metaKey) ||
+    event.key.toLowerCase() !== "s"
+  )
+    return;
   event.preventDefault();
   commitDraft("explicit");
 });

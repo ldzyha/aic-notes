@@ -1,5 +1,18 @@
 # Changelog
 
+## 24.1.0 — 2026-09-03
+
+Release sequence 24 · 1 feature outcome · 0 fixed-bug outcomes.
+
+- F01: share the complete CodeMirror code-fence extension byte-for-byte with AIC for Standard Notes
+  17.2.0. Fence discovery, Mermaid exclusion, preview replacement, source selection, read-only
+  labeling, viewport refresh, and exact-body Copy/Edit behavior now have one implementation; VS Code
+  supplies only its clipboard host callback. AIC Editor Core advances to 2.9.
+
+Compatibility: VS Code/Code 1.106 or newer on Windows, Linux, macOS, and code-server through one
+universal VSIX. The local-only boundary is unchanged; shared editor code adds no Standard Notes
+authorization, account access, synchronization, or remote state.
+
 ## 23.1.0 — 2026-09-03
 
 Release sequence 23 · 1 feature outcome · 0 fixed-bug outcomes.

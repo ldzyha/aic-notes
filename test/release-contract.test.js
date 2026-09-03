@@ -6,9 +6,9 @@ const root = new URL("../", import.meta.url);
 const read = (relativePath) => readFile(new URL(relativePath, root), "utf8");
 const packageJson = JSON.parse(await read("package.json"));
 
-test("23.1.0 is a local-only universal extension", () => {
-  assert.equal(packageJson.version, "23.1.0");
-  assert.equal(packageJson.aicEditorCore, "2.8.0");
+test("24.1.0 is a local-only universal extension", () => {
+  assert.equal(packageJson.version, "24.1.0");
+  assert.equal(packageJson.aicEditorCore, "2.9.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
   assert.doesNotMatch(packageJson.description, /Standard Notes|sync/iu);
@@ -16,7 +16,9 @@ test("23.1.0 is a local-only universal extension", () => {
   assert.equal(packageJson.scripts["package:windows"], undefined);
   assert.match(packageJson.scripts["release:gate"], /release:checksum/u);
 
-  const commands = packageJson.contributes.commands.map(({ command }) => command);
+  const commands = packageJson.contributes.commands.map(
+    ({ command }) => command,
+  );
   assert.ok(commands.includes("aicNotes.openProjectNote"));
   assert.ok(commands.includes("aicNotes.linkSelectionToNote"));
   assert.ok(!commands.includes("aicNotes.syncCurrentNote"));
@@ -60,9 +62,18 @@ test("note association, project fallback, and local footer actions are explicit"
     /activeResource\(\s*activeTabUri,\s*activeEditorUri,\s*Boolean\(activeTab\),\s*\)/u,
   );
   assert.match(provider, /preferredWorkspaceFolder/u);
-  assert.match(provider, /this\.followTarget\(folder\.uri, \{ preserveFocus: true \}\)/u);
-  assert.match(create, /secondary\.followSource\(uri, \{ force: true, preserveFocus: false \}\)/u);
-  assert.match(create, /secondary\.followTarget\(uri, \{ force: true, preserveFocus: false \}\)/u);
+  assert.match(
+    provider,
+    /this\.followTarget\(folder\.uri, \{ preserveFocus: true \}\)/u,
+  );
+  assert.match(
+    create,
+    /secondary\.followSource\(uri, \{ force: true, preserveFocus: false \}\)/u,
+  );
+  assert.match(
+    create,
+    /secondary\.followTarget\(uri, \{ force: true, preserveFocus: false \}\)/u,
+  );
   assert.doesNotMatch(create, /openGlobalNote|GLOBAL_NOTE_PATH/u);
   assert.match(target, /relNotePath === `\$\{folder\.name\}\.note\.md`/u);
   assert.match(tree, /projectPlaceholder/u);
@@ -80,31 +91,49 @@ test("Secondary save and Trash paths are deterministic and local", async () => {
   assert.match(provider, /saved = await document\.save\(\)/u);
   assert.match(provider, /Saved locally/u);
   assert.match(provider, /trashNotesLocally\(\[uri\]\)/u);
-  assert.match(provider, /Only the local sidecar moves to the operating-system Trash/u);
+  assert.match(
+    provider,
+    /Only the local sidecar moves to the operating-system Trash/u,
+  );
   assert.doesNotMatch(
     provider,
     /Standard Notes|syncService|queueSync|performSync|authenticate|authConnected|remoteUuid|bindingState/iu,
   );
-  assert.doesNotMatch(extension, /StandardNotesSync|src\/sync|initializeWorkspaceSync|remoteFirstTrash/u);
+  assert.doesNotMatch(
+    extension,
+    /StandardNotesSync|src\/sync|initializeWorkspaceSync|remoteFirstTrash/u,
+  );
   assert.doesNotMatch(webview, /commitDraft\("blur"\)|onfocusout/u);
   assert.match(webview, /commitDraft\("explicit"\)/u);
   assert.match(webview, /dataset\.saveState/u);
   assert.match(webview, /DraftSession/u);
   assert.match(webview, /type: "draft\.state"/u);
-  assert.doesNotMatch(webview, /readOnlyCompartment|docState\.readOnly|pane\.auth/u);
+  assert.doesNotMatch(
+    webview,
+    /readOnlyCompartment|docState\.readOnly|pane\.auth/u,
+  );
 });
 
 test("upgrade removes only retired local integration metadata", async () => {
   const extension = await read("src/extension.js");
   assert.match(extension, /async function removeRetiredSyncData\(context\)/u);
   assert.match(extension, /aicNotes\.migrations\.standardNotesRemoved\.v22/u);
-  assert.match(extension, /context\.globalState\.get\(RETIRED_SYNC_CLEANUP_KEY, false\)/u);
+  assert.match(
+    extension,
+    /context\.globalState\.get\(RETIRED_SYNC_CLEANUP_KEY, false\)/u,
+  );
   assert.match(extension, /aicNotes\.standardNotes\.vaultKey\.v1/u);
   assert.match(extension, /context\.workspaceState[\s\S]*\.keys\(\)/u);
   assert.match(extension, /key\.startsWith\(RETIRED_SYNC_STATE_PREFIX\)/u);
-  assert.match(extension, /Uri\.joinPath\(context\.globalStorageUri, "standard-notes"\)/u);
+  assert.match(
+    extension,
+    /Uri\.joinPath\(context\.globalStorageUri, "standard-notes"\)/u,
+  );
   assert.match(extension, /Promise\.allSettled\(removals\)/u);
-  assert.match(extension, /context\.globalState\.update\(RETIRED_SYNC_CLEANUP_KEY, true\)/u);
+  assert.match(
+    extension,
+    /context\.globalState\.update\(RETIRED_SYNC_CLEANUP_KEY, true\)/u,
+  );
   assert.doesNotMatch(extension, /fetch\(|https?:\/\/|openExternal/u);
 });
 
@@ -128,8 +157,16 @@ test("source selections cross both VS Code and custom-editor boundaries", async 
   const bindings = packageJson.contributes.keybindings.filter(
     ({ command }) => command === "aicNotes.linkSelectionToNote",
   );
-  assert.ok(bindings.some(({ key, mac }) => key === "ctrl+alt+l" && mac === "cmd+alt+l"));
-  assert.ok(bindings.some(({ key, mac }) => key === "ctrl+shift+/" && mac === "cmd+shift+/"));
+  assert.ok(
+    bindings.some(
+      ({ key, mac }) => key === "ctrl+alt+l" && mac === "cmd+alt+l",
+    ),
+  );
+  assert.ok(
+    bindings.some(
+      ({ key, mac }) => key === "ctrl+shift+/" && mac === "cmd+shift+/",
+    ),
+  );
   assert.match(provider, /async activeSourceSelection\(\)/u);
   assert.match(provider, /type: "selection\.request"/u);
   assert.match(provider, /case "selection\.snapshot"/u);
@@ -148,7 +185,10 @@ test("preview selection reveals source without a global edit mode", async () => 
     read("src/webview/details.js"),
   ]);
   assert.match(webview, /event\.key\.toLowerCase\(\) !== "a"/u);
-  assert.match(webview, /selection: \{ anchor: 0, head: editor\.state\.doc\.length \}/u);
+  assert.match(
+    webview,
+    /selection: \{ anchor: 0, head: editor\.state\.doc\.length \}/u,
+  );
   assert.match(webview, /data-aic-source-from/u);
   assert.match(webview, /selectionRevealsPreview|revealDomSelection/u);
   assert.doesNotMatch(webview, /paneMode|setPaneMode|@codemirror\/search/u);
@@ -158,9 +198,20 @@ test("preview selection reveals source without a global edit mode", async () => 
 });
 
 test("structured previews keep explicit icon actions and transient editors", async () => {
-  const [structured, codeCore, table, frontmatter, codeFence, mermaid, styles, icons] = await Promise.all([
+  const [
+    structured,
+    codeCore,
+    codeExtension,
+    table,
+    frontmatter,
+    codeFence,
+    mermaid,
+    styles,
+    icons,
+  ] = await Promise.all([
     read("vendor/aic-editor-core/structured-preview.js"),
     read("vendor/aic-editor-core/code-fence-preview.js"),
+    read("vendor/aic-editor-core/code-fence-extension.js"),
     read("vendor/markdown/handlers/table.js"),
     read("vendor/markdown/handlers/frontmatter.js"),
     read("vendor/markdown/handlers/code-fence.js"),
@@ -175,11 +226,15 @@ test("structured previews keep explicit icon actions and transient editors", asy
   assert.match(codeCore, /CODE_FENCE_PREVIEW_CORE_VERSION = "1\.0\.0"/u);
   assert.match(codeCore, /Copy code/u);
   assert.match(codeCore, /Edit code source/u);
+  assert.match(codeExtension, /CODE_FENCE_EXTENSION_CORE_VERSION = "1\.0\.0"/u);
+  assert.match(codeExtension, /class CodeFenceWidget extends WidgetType/u);
+  assert.match(codeExtension, /selectionRevealsPreview/u);
   assert.match(table, /Copy table/u);
   assert.match(table, /Add row/u);
   assert.match(table, /Add column/u);
   assert.match(frontmatter, /Add property/u);
-  assert.match(codeFence, /createCodeFencePreview/u);
+  assert.match(codeFence, /aic-editor-core\/code-fence-extension\.js/u);
+  assert.doesNotMatch(codeFence, /class CodeFenceWidget/u);
   assert.match(mermaid, /icon: "copy"/u);
   assert.match(styles, /overflow-x: auto/u);
   assert.match(styles, /word-break: normal/u);
@@ -187,7 +242,10 @@ test("structured previews keep explicit icon actions and transient editors", asy
   assert.match(styles, /cm-aic-cell-popover/u);
   assert.match(icons, /mask: var\(--aic-icon\)/u);
   assert.match(icons, /data-aic-icon="copy"/u);
-  assert.doesNotMatch(table + frontmatter + codeFence + mermaid, /createElementNS\(/u);
+  assert.doesNotMatch(
+    table + frontmatter + codeFence + mermaid,
+    /createElementNS\(/u,
+  );
 });
 
 test("Mermaid owns zoom, two-dimensional scroll, and quarter-turn rotation", async () => {
@@ -231,7 +289,10 @@ test("universal release gate rejects platform and retired integration content", 
     read(".vscodeignore"),
   ]);
   assert.match(workflow, /verify-universal/u);
-  assert.doesNotMatch(workflow, /setup-go|package:windows|linux-x64|win32-x64/u);
+  assert.doesNotMatch(
+    workflow,
+    /setup-go|package:windows|linux-x64|win32-x64/u,
+  );
   assert.match(workflow, /npm run release:checksum/u);
   assert.match(workflow, /aic-notes-\$VERSION\.vsix/u);
   assert.match(verifier, /TargetPlatform=/u);

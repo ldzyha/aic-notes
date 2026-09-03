@@ -10,24 +10,24 @@ and does not move data between the two applications.
 
 ## Install
 
-Download `aic-notes-23.1.0.vsix` and `aic-notes-23.1.0.vsix.sha256` from the
-[v23.1.0 release](https://github.com/ldzyha/aic-notes/releases/tag/v23.1.0). The VSIX is universal:
+Download `aic-notes-24.1.0.vsix` and `aic-notes-24.1.0.vsix.sha256` from the
+[v24.1.0 release](https://github.com/ldzyha/aic-notes/releases/tag/v24.1.0). The VSIX is universal:
 use the same file on Windows, Linux, macOS, and code-server.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-23.1.0.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-23.1.0.vsix.sha256
-code --install-extension .\aic-notes-23.1.0.vsix --force
+(Get-FileHash .\aic-notes-24.1.0.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-24.1.0.vsix.sha256
+code --install-extension .\aic-notes-24.1.0.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-23.1.0.vsix.sha256
-code --install-extension ./aic-notes-23.1.0.vsix --force
-# or: code-server --install-extension ./aic-notes-23.1.0.vsix --force
+sha256sum -c aic-notes-24.1.0.vsix.sha256
+code --install-extension ./aic-notes-24.1.0.vsix --force
+# or: code-server --install-extension ./aic-notes-24.1.0.vsix --force
 ```
 
 Reload the VS Code window after installation. No additional executable or library is required.
@@ -132,7 +132,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-`23.1.0` is sequence 23 with one feature outcome and no fixed-bug outcomes.
+`24.1.0` is sequence 24 with one feature outcome and no fixed-bug outcomes.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and
 [PROVENANCE.md](PROVENANCE.md) for the shared-core snapshot identity.
