@@ -17,7 +17,12 @@
 // webview edit carrying a stale generation is discarded host-side and
 // answered with a full {type:"reset"}.
 
-import { EditorView, keymap, drawSelection } from "@codemirror/view";
+import {
+  EditorView,
+  keymap,
+  drawSelection,
+  placeholder,
+} from "@codemirror/view";
 import { EditorState, Annotation, Prec, Compartment } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { syntaxHighlighting } from "@codemirror/language";
@@ -39,8 +44,13 @@ import { makeHost } from "./host-shim.js";
 import { detailsExtension } from "./details.js";
 import { DraftSession } from "../../vendor/aic-editor-core/draft-session.js";
 import { wirePreviewSelection } from "../../vendor/aic-editor-core/structured-preview.js";
+import {
+  SLASH_SNIPPET_PLACEHOLDER,
+  slashSnippetExtension,
+} from "../../vendor/aic-editor-core/slash-snippets.js";
 import ICONS_CSS from "../../vendor/aic-editor-core/icons.css";
 import MERMAID_VIEWPORT_CSS from "../../vendor/aic-editor-core/mermaid-viewport.css";
+import SLASH_SNIPPETS_CSS from "../../vendor/aic-editor-core/slash-snippets.css";
 import THEME_CSS from "./theme.css";
 
 const api = acquireVsCodeApi();
@@ -87,6 +97,7 @@ for (const css of [
   MARKDOWN_CSS,
   ICONS_CSS,
   MERMAID_VIEWPORT_CSS,
+  SLASH_SNIPPETS_CSS,
 ]) {
   const style = document.createElement("style");
   style.textContent = css;
@@ -149,6 +160,8 @@ function makeEditor(text) {
       doc: text,
       extensions: [
         langCompartment.of(fencedLang()),
+        placeholder(SLASH_SNIPPET_PLACEHOLDER),
+        slashSnippetExtension(),
         // colors nested fenced-code tokens; markdown structure styling is
         // owned by the handler classes (theme.css bumps their specificity)
         syntaxHighlighting(darkHighlight, { fallback: true }),

@@ -6,9 +6,9 @@ const root = new URL("../", import.meta.url);
 const read = (relativePath) => readFile(new URL(relativePath, root), "utf8");
 const packageJson = JSON.parse(await read("package.json"));
 
-test("25.0.3 is a local-only universal extension", () => {
-  assert.equal(packageJson.version, "25.0.3");
-  assert.equal(packageJson.aicEditorCore, "3.1.0");
+test("26.1.0 is a local-only universal extension", () => {
+  assert.equal(packageJson.version, "26.1.0");
+  assert.equal(packageJson.aicEditorCore, "3.2.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
   assert.doesNotMatch(packageJson.description, /Standard Notes|sync/iu);
@@ -259,6 +259,25 @@ test("structured previews keep explicit icon actions and transient editors", asy
     table + frontmatter + codeFence + mermaid,
     /createElementNS\(/u,
   );
+});
+
+test("shared slash templates are mounted with the common placeholder and styling", async () => {
+  const [webview, snippets, snippetCss] = await Promise.all([
+    read("src/webview/main.js"),
+    read("vendor/aic-editor-core/slash-snippets.js"),
+    read("vendor/aic-editor-core/slash-snippets.css"),
+  ]);
+  assert.match(snippets, /SLASH_SNIPPETS_CORE_VERSION = "1\.0\.0"/u);
+  assert.match(snippets, /"page-architecture"/u);
+  assert.match(snippets, /"purpose"/u);
+  assert.match(snippets, /"flowchart"/u);
+  assert.match(snippets, /snippetCompletion/u);
+  assert.match(snippets, /EditorState\.readOnly|state\.readOnly/u);
+  assert.match(webview, /slashSnippetExtension\(\)/u);
+  assert.match(webview, /SLASH_SNIPPET_PLACEHOLDER/u);
+  assert.match(webview, /slash-snippets\.css/u);
+  assert.match(snippetCss, /cm-tooltip-autocomplete/u);
+  assert.match(snippetCss, /cm-snippetField/u);
 });
 
 test("Mermaid owns zoom, two-dimensional scroll, and quarter-turn rotation", async () => {

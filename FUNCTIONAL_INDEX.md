@@ -1,6 +1,6 @@
 # Functional index
 
-This index is the release contract for AIC Notes 25.0.3. Every public command, state boundary,
+This index is the release contract for AIC Notes 26.1.0. Every public command, state boundary,
 side effect, failure rule, and platform assumption is represented here and checked by tests or the
 release archive verifier.
 
@@ -44,6 +44,7 @@ release archive verifier.
 | Notes & Documents tree     | `src/notes/tree.js`                             | none                                                               | refreshes from workspace files and lazy project placeholders         |
 | Selection-to-note command  | `src/notes/selection.js`                        | saves source, updates one local sidecar on its later explicit save | rejects unsaved/unbacked/out-of-workspace sources                    |
 | Structured previews        | `vendor/markdown`, `vendor/aic-editor-core`     | exact Markdown transactions only                                   | invalid source remains editable instead of being normalized silently |
+| Slash template completion  | `vendor/aic-editor-core/slash-snippets.js`      | inserts exact Markdown into the active editor                      | inactive in code/read-only contexts                                  |
 | AIC agent workflow         | `src/agents/bootstrap.js`                       | thin marker and explicit AIC-owned rule update                     | typed command errors; unrelated editor use remains available         |
 
 ## Commands
@@ -81,11 +82,15 @@ release archive verifier.
   popover editor. Plain Markdown has no generated property card.
 - Details accordions preserve comments, task-checkbox interaction, collapsed/open state, and links.
 - Action glyphs are CSS SVG masks; no renderer must accept inline SVG button markup.
+- Slash on an otherwise empty Markdown line opens the shared contextual template catalog. Empty
+  notes rank complete pages first, existing pages rank page sections first, and `Tab` advances
+  through inserted perspective questions. Code and read-only contexts never activate it.
 
 ## Paired-editor boundary
 
 - AIC Notes and AIC for Standard Notes consume byte-identical core modules for drafts, managed
-  properties, structured mutations, atomic preview ranges, code-fence cards/extensions, icons, and Mermaid viewport state.
+  properties, structured mutations, atomic preview ranges, code-fence cards/extensions, slash
+  templates, icons, and Mermaid viewport state.
   The foundations remain dependency-free; the shared fence extension uses the CodeMirror public
   APIs already pinned identically by both products. Each host keeps only persistence, clipboard,
   selection, and theme wiring.

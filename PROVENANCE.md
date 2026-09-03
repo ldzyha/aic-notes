@@ -3,13 +3,14 @@
 ## AIC for Standard Notes contract
 
 - Source repository: `https://github.com/ldzyha/standard-notes-aic`
-- Paired editor contract: `18.0.4` / AIC Editor Core `3.1.0`
-- Commit: `8d1829d58dce42706d1bf105b88a26b2b1a422a1`
+- Paired editor contract: `19.1.0` / AIC Editor Core `3.2.0`
+- Commit: `93edda7b0ddb738eef035043dba960b35b0f3dba`
 - Authority files reviewed: `src/styles.css`, `src/editor.ts`, `src/language.ts`,
   `src/markdown-decorations.ts`, `src/block-views.ts`, `src/commands.ts`, `src/toolbar.ts`,
   `src/link-actions.ts`, `src/core/structured-preview.js`, `src/core/code-fence-preview.js`,
   `src/core/code-fence-extension.js`, `src/core/icons.css`,
-  `src/core/file-properties.js`, `src/core/mermaid-viewport.js`,
+  `src/core/file-properties.js`, `src/core/slash-snippets.js`, `src/core/slash-snippets.css`,
+  `src/core/slash-snippets.d.ts`, `src/core/mermaid-viewport.js`,
   `src/core/mermaid-viewport.css`, and Mermaid adapter modules.
 
 AIC Notes adapts that editor's observable contract to VS Code: exact Markdown source, styled
@@ -71,6 +72,18 @@ does not modify source bytes.
 - VS Code file-properties snapshot: `vendor/aic-editor-core/file-properties.js`
 - Standard Notes file-properties snapshot: `src/core/file-properties.js`
 - File-properties snapshot SHA-256: `2692d4ed30ee5f09b30cc3275fe8b88385be26c39400bb44574e43cccc5391bd`
+- VS Code slash-snippet snapshot: `vendor/aic-editor-core/slash-snippets.js`
+- Standard Notes slash-snippet snapshot: `src/core/slash-snippets.js`
+- Slash-snippet snapshot SHA-256:
+  `a332c91042dbcc33325a6858941f872fbfcd712768dce06a137b5bd51315c9d5`
+- VS Code slash-snippet CSS: `vendor/aic-editor-core/slash-snippets.css`
+- Standard Notes slash-snippet CSS: `src/core/slash-snippets.css`
+- Slash-snippet CSS SHA-256:
+  `8a05b4c4811f3f90eb15fad5db6402ed3f8ad72c5e362b8a0a526369cbaec2c3`
+- VS Code slash-snippet declarations: `vendor/aic-editor-core/slash-snippets.d.ts`
+- Standard Notes slash-snippet declarations: `src/core/slash-snippets.d.ts`
+- Slash-snippet declaration SHA-256:
+  `bc345b538a5322f0ad61fec99bbafc71f6f466aaad8961b4e451f2fcb6c730c0`
 
 The byte-equivalent dependency-free state machine owns hydration, dirty drafts, commit boundaries,
 failed-save retention, and external-update rejection. Each product keeps only a thin host adapter:
@@ -90,6 +103,9 @@ snapshot paints embedded SVG data URIs as masks without requiring inline SVG in 
 The file-properties module owns `*.note.md` filename/creation/update stamping at the explicit save
 boundary, preserves all authored note frontmatter, removes only the exact legacy managed signature
 from ordinary Markdown, and migrates only the complete legacy seven-field sidecar signature.
+The shared slash-snippet module owns the page/section/block catalog, Markdown-line activation
+boundary, contextual ordering, question placeholders, and completion presentation. Each product
+only mounts that same extension into its host editor.
 
 ## Existing AIC Markdown sources
 

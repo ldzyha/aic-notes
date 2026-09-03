@@ -97,6 +97,9 @@ for (const control of [
   "Edit code source",
   "Rotate diagram 90",
   "--aic-mermaid-rotation",
+  "Type / for templates",
+  "page-architecture",
+  "cm-snippetField",
 ]) {
   if (!packagedEditor.includes(control))
     throw new Error(`packaged editor is missing ${control}`);
