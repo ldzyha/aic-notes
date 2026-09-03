@@ -1,6 +1,6 @@
 # Functional index
 
-This index is the release contract for AIC Notes 22.1.1. Every public command, state boundary,
+This index is the release contract for AIC Notes 23.1.0. Every public command, state boundary,
 side effect, failure rule, and platform assumption is represented here and checked by tests or the
 release archive verifier.
 
@@ -78,6 +78,17 @@ release archive verifier.
   popover editor. Plain Markdown has no generated property card.
 - Details accordions preserve comments, task-checkbox interaction, collapsed/open state, and links.
 - Action glyphs are CSS SVG masks; no renderer must accept inline SVG button markup.
+
+## Paired-editor boundary
+
+- AIC Notes and AIC for Standard Notes consume byte-identical dependency-free core modules for
+  drafts, managed properties, structured mutations, code-fence cards, icons, and Mermaid viewport
+  state. Each host keeps a thin adapter for persistence, selection, and theme integration.
+- Markdown editor interactions in this section are the shared product contract. A release cannot
+  replace a preview action with raw-source fallback in only one product.
+- Workspace navigation, sidecars, project context, Explorer trees, local Trash, and selection
+  comments are VS Code host capabilities. They are deliberately absent from Standard Notes, just
+  as Standard Notes UUID/lock/component lifecycle behavior is absent from VS Code.
 
 ## Verification ownership
 

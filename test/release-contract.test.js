@@ -6,9 +6,9 @@ const root = new URL("../", import.meta.url);
 const read = (relativePath) => readFile(new URL(relativePath, root), "utf8");
 const packageJson = JSON.parse(await read("package.json"));
 
-test("22.1.1 is a local-only universal extension", () => {
-  assert.equal(packageJson.version, "22.1.1");
-  assert.equal(packageJson.aicEditorCore, "2.7.0");
+test("23.1.0 is a local-only universal extension", () => {
+  assert.equal(packageJson.version, "23.1.0");
+  assert.equal(packageJson.aicEditorCore, "2.8.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
   assert.doesNotMatch(packageJson.description, /Standard Notes|sync/iu);
@@ -158,8 +158,9 @@ test("preview selection reveals source without a global edit mode", async () => 
 });
 
 test("structured previews keep explicit icon actions and transient editors", async () => {
-  const [structured, table, frontmatter, codeFence, mermaid, styles, icons] = await Promise.all([
+  const [structured, codeCore, table, frontmatter, codeFence, mermaid, styles, icons] = await Promise.all([
     read("vendor/aic-editor-core/structured-preview.js"),
+    read("vendor/aic-editor-core/code-fence-preview.js"),
     read("vendor/markdown/handlers/table.js"),
     read("vendor/markdown/handlers/frontmatter.js"),
     read("vendor/markdown/handlers/code-fence.js"),
@@ -171,11 +172,14 @@ test("structured previews keep explicit icon actions and transient editors", asy
   assert.match(structured, /document\.createElement\("textarea"\)/u);
   assert.match(structured, /cm-aic-link-control/u);
   assert.match(structured, /icon: "copy"/u);
+  assert.match(codeCore, /CODE_FENCE_PREVIEW_CORE_VERSION = "1\.0\.0"/u);
+  assert.match(codeCore, /Copy code/u);
+  assert.match(codeCore, /Edit code source/u);
   assert.match(table, /Copy table/u);
   assert.match(table, /Add row/u);
   assert.match(table, /Add column/u);
   assert.match(frontmatter, /Add property/u);
-  assert.match(codeFence, /icon: "copy"/u);
+  assert.match(codeFence, /createCodeFencePreview/u);
   assert.match(mermaid, /icon: "copy"/u);
   assert.match(styles, /overflow-x: auto/u);
   assert.match(styles, /word-break: normal/u);

@@ -3,11 +3,12 @@
 ## AIC for Standard Notes contract
 
 - Source repository: `https://github.com/ldzyha/standard-notes-aic`
-- Paired editor contract: `15.1.2` / AIC Editor Core `2.7.0`
-- Commit: `cdeac5fac8974276be9a183ee75d0aca3be3ed80`
+- Paired editor contract: `16.1.1` / AIC Editor Core `2.8.0`
+- Commit: `756aa8139c411208289355c26463bbc5a19b71f8`
 - Authority files reviewed: `src/styles.css`, `src/editor.ts`, `src/language.ts`,
   `src/markdown-decorations.ts`, `src/block-views.ts`, `src/commands.ts`, `src/toolbar.ts`,
-  `src/link-actions.ts`, `src/core/structured-preview.js`, `src/core/icons.css`,
+  `src/link-actions.ts`, `src/code-fence-extension.ts`, `src/core/structured-preview.js`,
+  `src/core/code-fence-preview.js`, `src/core/icons.css`,
   `src/core/file-properties.js`, `src/core/mermaid-viewport.js`,
   `src/core/mermaid-viewport.css`, and Mermaid adapter modules.
 
@@ -37,13 +38,17 @@ does not modify source bytes.
 
 ## Shared editor core
 
-- Core contract version: `2.7.0`
+- Core contract version: `2.8.0`
 - VS Code snapshot: `vendor/aic-editor-core/draft-session.js`
 - Standard Notes snapshot: `src/core/draft-session.js` in `ldzyha/standard-notes-aic`
 - Draft-session snapshot SHA-256: `2b9a02ead705469b9f85be59662ab124ca2452fa8bdd78c4e8c9615d4e1ad6e4`
 - VS Code structured snapshot: `vendor/aic-editor-core/structured-preview.js`
 - Standard Notes structured snapshot: `src/core/structured-preview.js`
 - Structured snapshot SHA-256: `f495b0d04984d31bfd25d4866002142641daee72226cbe8c4e693807354402a4`
+- VS Code code-fence preview snapshot: `vendor/aic-editor-core/code-fence-preview.js`
+- Standard Notes code-fence preview snapshot: `src/core/code-fence-preview.js`
+- Code-fence preview snapshot SHA-256:
+  `a89b54ec8092d7edbe9bdad2655c63592502ed3f6c60e6a3737640f7533d5586`
 - VS Code icon snapshot: `vendor/aic-editor-core/icons.css`
 - Standard Notes icon snapshot: `src/core/icons.css`
 - Icon snapshot SHA-256: `ac08a5c524f84edd975f44bceda7e86b2c5e2a1a6db7e383690fc11340ab862a`
@@ -70,7 +75,9 @@ Standard Notes extension API. The byte-equivalent structured module owns table/p
 nested YAML parsing and hierarchy-preserving reorder behavior, validation, serialization,
 selection-driven source disclosure, direct open/copy/edit link-control composition, icon-only
 action semantics, accessible feedback state, and restricted-client clipboard fallback. The shared
-Mermaid viewport owns zoom, focusable two-dimensional scrolling, 90° rotation, real transformed
+code-fence preview composes those controls into a text-safe, source-bound card with exact-body Copy
+and explicit Edit/source-reveal actions. The shared Mermaid viewport owns zoom, focusable
+two-dimensional scrolling, 90° rotation, real transformed
 layout bounds, and accessible icon controls without a renderer-specific dependency. The CSS
 snapshot paints embedded SVG data URIs as masks without requiring inline SVG in action-button DOM.
 The file-properties module owns `*.note.md` filename/creation/update stamping at the explicit save

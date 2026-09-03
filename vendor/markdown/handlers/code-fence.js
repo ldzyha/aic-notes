@@ -8,10 +8,9 @@ import { Decoration, EditorView, WidgetType, ViewPlugin } from "@codemirror/view
 import { StateEffect, StateField } from "@codemirror/state";
 import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
 import {
-  createIconButton,
   selectionRevealsPreview,
-  showIconFeedback,
 } from "../../aic-editor-core/structured-preview.js";
+import { createCodeFencePreview } from "../../aic-editor-core/code-fence-preview.js";
 
 const marker = Decoration.mark({ class: "cm-md-marker" });
 const markerRevealed = Decoration.mark({ class: "cm-md-marker cm-md-marker-revealed" });
@@ -61,64 +60,38 @@ export const codeFenceHandler = {
 export const plainCodeFenceHandler = { ...codeFenceHandler, decorate: decorateFence };
 
 class CodeFenceWidget extends WidgetType {
-  constructor(block, host) {
+  constructor(block, host, readOnly) {
     super();
     this.block = block;
     this.host = host;
+    this.readOnly = readOnly;
   }
 
   eq(other) {
     return other.block.from === this.block.from &&
+      other.block.to === this.block.to &&
       other.block.language === this.block.language &&
-      other.block.source === this.block.source;
+      other.block.source === this.block.source &&
+      other.readOnly === this.readOnly;
   }
 
   toDOM(view) {
-    const wrap = document.createElement("div");
-    wrap.className = "cm-md-code-preview cm-md-block-preview";
-    wrap.dataset.aicSourceFrom = String(this.block.from);
-    wrap.dataset.aicSourceTo = String(this.block.to);
-    wrap.setAttribute("role", "region");
-    wrap.setAttribute("aria-label", `${this.block.language || "Code"} preview`);
-
-    const header = document.createElement("div");
-    header.className = "cm-md-preview-header";
-    const title = document.createElement("span");
-    title.textContent = this.block.language || "Code";
-    const actions = document.createElement("span");
-    actions.className = "cm-md-preview-actions";
-
-    const copy = createIconButton(document, {
-      label: "Copy code",
-      icon: "copy",
-      className: "cm-md-edit-source",
-      onActivate: (button) => {
+    const document = view.dom.ownerDocument;
+    return createCodeFencePreview(document, {
+      ...this.block,
+      readOnly: this.readOnly,
+      onCopy: () => {
         this.host.bus.publish("clipboard.write", {
           text: this.block.source,
           label: `${this.block.language || "code"} block`,
         });
-        showIconFeedback(button, { restoreLabel: "Copy code" });
+        return true;
       },
-    });
-
-    const edit = createIconButton(document, {
-      label: view.state.readOnly ? "View code source" : "Edit code source",
-      icon: view.state.readOnly ? "source" : "edit",
-      className: "cm-md-edit-source",
-      onActivate: () => {
+      onEdit: () => {
         view.dispatch({ selection: { anchor: this.block.textFrom }, scrollIntoView: true });
         view.focus();
       },
     });
-
-    actions.append(copy, edit);
-    header.append(title, actions);
-    const pre = document.createElement("pre");
-    const code = document.createElement("code");
-    code.textContent = this.block.source;
-    pre.appendChild(code);
-    wrap.append(header, pre);
-    return wrap;
   }
 
   ignoreEvent() {
@@ -163,7 +136,7 @@ export function makeCodeFenceExtension(host) {
       if (!inside) {
         decorations.push(
           Decoration.replace({
-            widget: new CodeFenceWidget(block, host),
+            widget: new CodeFenceWidget(block, host, state.readOnly),
             block: true,
           }).range(block.from, block.to),
         );
@@ -176,6 +149,7 @@ export function makeCodeFenceExtension(host) {
     create: (state) => build(state),
     update(value, transaction) {
       if (transaction.docChanged || transaction.selection ||
+          transaction.startState.readOnly !== transaction.state.readOnly ||
           transaction.effects.some((effect) => effect.is(refreshCodeFences))) {
         return build(transaction.state);
       }

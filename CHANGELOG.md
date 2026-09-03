@@ -1,5 +1,19 @@
 # Changelog
 
+## 23.1.0 — 2026-09-03
+
+Release sequence 23 · 1 feature outcome · 0 fixed-bug outcomes.
+
+- F01: move the code-fence preview card into AIC Editor Core 2.8 and consume the same
+  byte-identical dependency-free implementation as AIC for Standard Notes 16.1.1. The existing VS
+  Code language caption, exact-body Copy action, explicit Edit/source reveal, locked-source label,
+  and text-safe scrollable rendering are now a release-gated paired-editor contract instead of a
+  VS Code-only widget implementation.
+
+Compatibility: VS Code/Code 1.106 or newer on Windows, Linux, macOS, and code-server through one
+universal VSIX. The local-only boundary is unchanged; sharing editor presentation code does not add
+Standard Notes authorization, account access, synchronization, or remote state.
+
 ## 22.1.1 — 2026-09-02
 
 Release sequence 22 · 1 feature outcome · 1 fixed-bug outcome.

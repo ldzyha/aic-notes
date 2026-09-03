@@ -93,6 +93,8 @@ for (const control of [
   "Add property",
   "cm-aic-property-level",
   "cm-aic-mermaid-viewport",
+  "Copy code",
+  "Edit code source",
   "Rotate diagram 90",
   "--aic-mermaid-rotation",
 ]) {
