@@ -1,5 +1,22 @@
 # Changelog
 
+## 27.1.1 — 2026-09-03
+
+Release sequence 27 · 1 feature outcome · 1 fixed-bug outcome.
+
+- F01: divide the shared slash catalog into seven visible, task-oriented groups: Page templates,
+  Page structure, Risks & verification, References, Tables & lists, Diagrams, and Content blocks.
+  Existing pages rank their structural sections first; empty documents still rank complete page
+  templates first. Both the full AIC Markdown editor and contextual note pane mount this same core.
+- B01: make the slash menu, group headers, detail panel, selection, and snippet fields use the
+  shared editor background/foreground/accent tokens with selectors that override CodeMirror's
+  light base theme. Dark hosts no longer receive a white completion surface, and the real
+  `completion-section` elements render as sticky labeled dividers.
+
+Compatibility: VS Code/Code 1.106 or newer on Windows, Linux, macOS, and code-server through one
+universal VSIX. The extension remains local-only; AIC for Standard Notes 20.1.1 consumes the same
+AIC Editor Core 3.3 slash catalog, grouping, theme contract, and completion behavior.
+
 ## 26.1.0 — 2026-09-03
 
 Release sequence 26 · 1 feature outcome · 0 fixed-bug outcomes.

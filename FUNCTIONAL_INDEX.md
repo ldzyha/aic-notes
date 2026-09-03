@@ -1,6 +1,6 @@
 # Functional index
 
-This index is the release contract for AIC Notes 26.1.0. Every public command, state boundary,
+This index is the release contract for AIC Notes 27.1.1. Every public command, state boundary,
 side effect, failure rule, and platform assumption is represented here and checked by tests or the
 release archive verifier.
 
@@ -84,7 +84,9 @@ release archive verifier.
 - Action glyphs are CSS SVG masks; no renderer must accept inline SVG button markup.
 - Slash on an otherwise empty Markdown line opens the shared contextual template catalog. Empty
   notes rank complete pages first, existing pages rank page sections first, and `Tab` advances
-  through inserted perspective questions. Code and read-only contexts never activate it.
+  through inserted perspective questions. Seven labeled groups organize complete pages, structure,
+  assurance, references, data, diagrams, and content. The same core is mounted in ordinary `.md`
+  documents and contextual `.note.md` notes. Code and read-only contexts never activate it.
 
 ## Paired-editor boundary
 

@@ -6,9 +6,9 @@ const root = new URL("../", import.meta.url);
 const read = (relativePath) => readFile(new URL(relativePath, root), "utf8");
 const packageJson = JSON.parse(await read("package.json"));
 
-test("26.1.0 is a local-only universal extension", () => {
-  assert.equal(packageJson.version, "26.1.0");
-  assert.equal(packageJson.aicEditorCore, "3.2.0");
+test("27.1.1 is a local-only universal extension", () => {
+  assert.equal(packageJson.version, "27.1.1");
+  assert.equal(packageJson.aicEditorCore, "3.3.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
   assert.doesNotMatch(packageJson.description, /Standard Notes|sync/iu);
@@ -267,7 +267,7 @@ test("shared slash templates are mounted with the common placeholder and styling
     read("vendor/aic-editor-core/slash-snippets.js"),
     read("vendor/aic-editor-core/slash-snippets.css"),
   ]);
-  assert.match(snippets, /SLASH_SNIPPETS_CORE_VERSION = "1\.0\.0"/u);
+  assert.match(snippets, /SLASH_SNIPPETS_CORE_VERSION = "1\.1\.0"/u);
   assert.match(snippets, /"page-architecture"/u);
   assert.match(snippets, /"purpose"/u);
   assert.match(snippets, /"flowchart"/u);
@@ -276,8 +276,27 @@ test("shared slash templates are mounted with the common placeholder and styling
   assert.match(webview, /slashSnippetExtension\(\)/u);
   assert.match(webview, /SLASH_SNIPPET_PLACEHOLDER/u);
   assert.match(webview, /slash-snippets\.css/u);
-  assert.match(snippetCss, /cm-tooltip-autocomplete/u);
+  assert.match(
+    snippetCss,
+    /\.cm-editor \.cm-tooltip\.cm-tooltip-autocomplete/u,
+  );
+  assert.match(snippetCss, /background-color: var\(--aic-bg\)/u);
+  assert.match(snippetCss, /completion-section/u);
   assert.match(snippetCss, /cm-snippetField/u);
+});
+
+test("plain Markdown and contextual notes load the same slash-enabled editor", async () => {
+  const [markdownProvider, noteProvider, webview] = await Promise.all([
+    read("src/editor/provider.js"),
+    read("src/secondary/provider.js"),
+    read("src/webview/main.js"),
+  ]);
+  assert.match(markdownProvider, /webviewHtml\(webview, distRoot, "main\.js"/u);
+  assert.match(noteProvider, /distRoot,[\s\S]*"main\.js"/u);
+  assert.match(
+    webview,
+    /function makeEditor\(text\)[\s\S]*placeholder\(SLASH_SNIPPET_PLACEHOLDER\),[\s\S]*slashSnippetExtension\(\)/u,
+  );
 });
 
 test("Mermaid owns zoom, two-dimensional scroll, and quarter-turn rotation", async () => {

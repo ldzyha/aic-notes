@@ -18,7 +18,7 @@ function state(doc, readOnly = false) {
 }
 
 test("shared slash catalog covers pages, sections, and formatting blocks", () => {
-  assert.equal(SLASH_SNIPPETS_CORE_VERSION, "1.0.0");
+  assert.equal(SLASH_SNIPPETS_CORE_VERSION, "1.1.0");
   assert.equal(
     new Set(DOCUMENTATION_SNIPPETS.map(({ command }) => command)).size,
     DOCUMENTATION_SNIPPETS.length,
@@ -26,6 +26,18 @@ test("shared slash catalog covers pages, sections, and formatting blocks", () =>
   assert.deepEqual(
     new Set(DOCUMENTATION_SNIPPETS.map(({ kind }) => kind)),
     new Set(["page", "section", "block"]),
+  );
+  assert.deepEqual(
+    new Set(DOCUMENTATION_SNIPPETS.map(({ group }) => group)),
+    new Set([
+      "pages",
+      "structure",
+      "assurance",
+      "references",
+      "data",
+      "diagrams",
+      "content",
+    ]),
   );
   for (const entry of DOCUMENTATION_SNIPPETS) {
     assert.match(entry.question, /\?$/u);
@@ -61,7 +73,20 @@ test("slash completion ranks sections first inside an existing page", () => {
     0,
   );
   assert.equal(
+    result.options.find(({ label }) => label === "/purpose").section.name,
+    "Page structure",
+  );
+  assert.equal(
+    result.options.find(({ label }) => label === "/glossary").section.name,
+    "References",
+  );
+  assert.equal(
+    result.options.find(({ label }) => label === "/flowchart").section.name,
+    "Diagrams",
+  );
+  assert.ok(result.options.every(({ info }) => info === undefined));
+  assert.equal(
     result.options.find(({ label }) => label === "/page").section.rank,
-    2,
+    6,
   );
 });

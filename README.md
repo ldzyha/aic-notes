@@ -10,24 +10,24 @@ and does not move data between the two applications.
 
 ## Install
 
-Download `aic-notes-26.1.0.vsix` and `aic-notes-26.1.0.vsix.sha256` from the
-[v26.1.0 release](https://github.com/ldzyha/aic-notes/releases/tag/v26.1.0). The VSIX is universal:
+Download `aic-notes-27.1.1.vsix` and `aic-notes-27.1.1.vsix.sha256` from the
+[v27.1.1 release](https://github.com/ldzyha/aic-notes/releases/tag/v27.1.1). The VSIX is universal:
 use the same file on Windows, Linux, macOS, and code-server.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-26.1.0.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-26.1.0.vsix.sha256
-code --install-extension .\aic-notes-26.1.0.vsix --force
+(Get-FileHash .\aic-notes-27.1.1.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-27.1.1.vsix.sha256
+code --install-extension .\aic-notes-27.1.1.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-26.1.0.vsix.sha256
-code --install-extension ./aic-notes-26.1.0.vsix --force
-# or: code-server --install-extension ./aic-notes-26.1.0.vsix --force
+sha256sum -c aic-notes-27.1.1.vsix.sha256
+code --install-extension ./aic-notes-27.1.1.vsix --force
+# or: code-server --install-extension ./aic-notes-27.1.1.vsix --force
 ```
 
 Reload the VS Code window after installation. No additional executable or library is required.
@@ -68,12 +68,13 @@ files are preserved unchanged. No remote request is made during cleanup.
 The document remains exact Markdown source. Preview structures disclose only the source being
 edited; there is no document-wide preview/edit mode switch.
 
-On an otherwise empty Markdown line, type `/` to open the shared template catalog. Empty notes put
-complete pages first; an existing page puts sections first. Choose a result, then use `Tab` to move
-through its highlighted questions and replace the example answers. The catalog covers progressive
-documentation, architecture, capability and decision pages; focused page sections; tables,
-comparisons, Mermaid diagrams, code, details, tasks and synthesis blocks. Completion stays inactive
-inside fenced/inline code and in read-only documents.
+On an otherwise empty Markdown line, type `/` to open the shared template catalog. It works in both
+ordinary `.md` documents and contextual `.note.md` notes because both surfaces mount the same editor
+core. Empty documents put complete pages first; an existing page puts structural sections first.
+Choose a result, then use `Tab` to move through its highlighted questions and replace the example
+answers. The menu separates Page templates, Page structure, Risks & verification, References,
+Tables & lists, Diagrams, and Content blocks. Completion stays inactive inside fenced/inline code
+and in read-only documents.
 
 - Text, headings, lists, tasks, quotes, emphasis, and fenced languages edit directly.
 - `Ctrl/Cmd+A` selects the full Markdown source, including from preview mode. Dragging over preview
@@ -139,7 +140,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-`26.1.0` is sequence 26 with one feature outcome and no fixed-bug outcomes.
+`27.1.1` is sequence 27 with one feature outcome and one fixed-bug outcome.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and
 [PROVENANCE.md](PROVENANCE.md) for the shared-core snapshot identity.

@@ -99,6 +99,7 @@ for (const control of [
   "--aic-mermaid-rotation",
   "Type / for templates",
   "page-architecture",
+  "Page structure",
   "cm-snippetField",
 ]) {
   if (!packagedEditor.includes(control))
