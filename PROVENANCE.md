@@ -3,8 +3,8 @@
 ## AIC for Standard Notes contract
 
 - Source repository: `https://github.com/ldzyha/standard-notes-aic`
-- Paired editor contract: `17.2.0` / AIC Editor Core `2.9.0`
-- Commit: `0f02e745bca7f1871004661ce91d9c5d568df19e`
+- Paired editor contract: `18.0.3` / AIC Editor Core `3.0.0`
+- Commit: `8d1829d58dce42706d1bf105b88a26b2b1a422a1`
 - Authority files reviewed: `src/styles.css`, `src/editor.ts`, `src/language.ts`,
   `src/markdown-decorations.ts`, `src/block-views.ts`, `src/commands.ts`, `src/toolbar.ts`,
   `src/link-actions.ts`, `src/core/structured-preview.js`, `src/core/code-fence-preview.js`,
@@ -38,13 +38,13 @@ does not modify source bytes.
 
 ## Shared editor core
 
-- Core contract version: `2.9.0`
+- Core contract version: `3.0.0`
 - VS Code snapshot: `vendor/aic-editor-core/draft-session.js`
 - Standard Notes snapshot: `src/core/draft-session.js` in `ldzyha/standard-notes-aic`
 - Draft-session snapshot SHA-256: `2b9a02ead705469b9f85be59662ab124ca2452fa8bdd78c4e8c9615d4e1ad6e4`
 - VS Code structured snapshot: `vendor/aic-editor-core/structured-preview.js`
 - Standard Notes structured snapshot: `src/core/structured-preview.js`
-- Structured snapshot SHA-256: `f495b0d04984d31bfd25d4866002142641daee72226cbe8c4e693807354402a4`
+- Structured snapshot SHA-256: `cd7b6df78f922bc8bc94a1b3a6964b9a42828eb07aef1c779287213844227605`
 - VS Code code-fence preview snapshot: `vendor/aic-editor-core/code-fence-preview.js`
 - Standard Notes code-fence preview snapshot: `src/core/code-fence-preview.js`
 - Code-fence preview snapshot SHA-256:
@@ -77,7 +77,8 @@ failed-save retention, and external-update rejection. Each product keeps only a 
 VS Code persists through `workspace.fs`/`TextDocument`, while the component persists through the
 Standard Notes extension API. The byte-equivalent structured module owns table/property mutation,
 nested YAML parsing and hierarchy-preserving reorder behavior, validation, serialization,
-selection-driven source disclosure, direct open/copy/edit link-control composition, icon-only
+stable native preview selection, explicit/keyboard source disclosure, direct open/copy/edit
+link-control composition, icon-only
 action semantics, accessible feedback state, and restricted-client clipboard fallback. The shared
 code-fence preview composes those controls into a text-safe, source-bound card with exact-body Copy
 and explicit Edit/source-reveal actions. The byte-equivalent CodeMirror extension owns fence

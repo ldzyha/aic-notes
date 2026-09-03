@@ -1,5 +1,21 @@
 # Changelog
 
+## 25.0.2 — 2026-09-03
+
+Release sequence 25 · 0 feature outcomes · 2 fixed-bug outcomes.
+
+- B01: replace the duplicated preview-selection listener with AIC Editor Core 3.0, shared
+  byte-for-byte with AIC for Standard Notes 18.0.3. Native mouse selection inside rendered code,
+  tables, properties, and other preview DOM now stays stable and copyable instead of being destroyed
+  on `pointerup`; explicit Edit and `Ctrl+A`/`Cmd+A` retain their source-reveal behavior.
+- B02: restrict Details preview recomputation to document/selection, read-only, and Details-owned
+  effects. Unrelated editor effects no longer rebuild its decoration sets during an active
+  interaction.
+
+Compatibility: VS Code/Code 1.106 or newer on Windows, Linux, macOS, and code-server through one
+universal VSIX. The extension remains local-only; the shared editor core adds no Standard Notes
+authorization, account access, synchronization, or remote state.
+
 ## 24.1.0 — 2026-09-03
 
 Release sequence 24 · 1 feature outcome · 0 fixed-bug outcomes.

@@ -6,9 +6,9 @@ const root = new URL("../", import.meta.url);
 const read = (relativePath) => readFile(new URL(relativePath, root), "utf8");
 const packageJson = JSON.parse(await read("package.json"));
 
-test("24.1.0 is a local-only universal extension", () => {
-  assert.equal(packageJson.version, "24.1.0");
-  assert.equal(packageJson.aicEditorCore, "2.9.0");
+test("25.0.2 is a local-only universal extension", () => {
+  assert.equal(packageJson.version, "25.0.2");
+  assert.equal(packageJson.aicEditorCore, "3.0.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
   assert.doesNotMatch(packageJson.description, /Standard Notes|sync/iu);
@@ -179,18 +179,23 @@ test("source selections cross both VS Code and custom-editor boundaries", async 
   assert.match(extension, /linkSelectionToNote\(secondary, markdownEditor\)/u);
 });
 
-test("preview selection reveals source without a global edit mode", async () => {
-  const [webview, details] = await Promise.all([
+test("preview selection stays native while Ctrl+A reveals source", async () => {
+  const [webview, details, structured] = await Promise.all([
     read("src/webview/main.js"),
     read("src/webview/details.js"),
+    read("vendor/aic-editor-core/structured-preview.js"),
   ]);
-  assert.match(webview, /event\.key\.toLowerCase\(\) !== "a"/u);
+  assert.match(webview, /wirePreviewSelection\(editor, document\)/u);
+  assert.match(structured, /event\.key\.toLowerCase\(\) !== "a"/u);
   assert.match(
-    webview,
+    structured,
     /selection: \{ anchor: 0, head: editor\.state\.doc\.length \}/u,
   );
-  assert.match(webview, /data-aic-source-from/u);
-  assert.match(webview, /selectionRevealsPreview|revealDomSelection/u);
+  assert.doesNotMatch(
+    structured,
+    /addEventListener\("pointerup"|userEvent: "select\.pointer"/u,
+  );
+  assert.match(details, /selectionRevealsPreview/u);
   assert.doesNotMatch(webview, /paneMode|setPaneMode|@codemirror\/search/u);
   assert.match(details, /EditorView\.decorations\.from\(field\)/u);
   assert.match(details, /dataset\.aicIcon = "chevron"/u);

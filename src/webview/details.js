@@ -194,13 +194,24 @@ function previewDecorations(state, host) {
   return Decoration.set(ranges, true);
 }
 
+function previewStateChanged(transaction) {
+  return (
+    transaction.docChanged ||
+    Boolean(transaction.selection) ||
+    transaction.startState.readOnly !== transaction.state.readOnly ||
+    transaction.effects.some(
+      (effect) => effect.is(toggleVisual) || effect.is(editSource),
+    )
+  );
+}
+
 function detailsDecorations(host) {
   return StateField.define({
     create(state) {
       return previewDecorations(state, host);
     },
     update(value, transaction) {
-      return transaction.docChanged || transaction.selection || transaction.effects.length
+      return previewStateChanged(transaction)
         ? previewDecorations(transaction.state, host)
         : value;
     },
@@ -213,7 +224,7 @@ const bodyDecorations = StateField.define({
     return buildBodyDecorations(state);
   },
   update(value, transaction) {
-    return transaction.docChanged || transaction.selection || transaction.effects.length
+    return previewStateChanged(transaction)
       ? buildBodyDecorations(transaction.state)
       : value;
   },

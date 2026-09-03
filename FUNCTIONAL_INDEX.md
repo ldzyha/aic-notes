@@ -1,6 +1,6 @@
 # Functional index
 
-This index is the release contract for AIC Notes 24.1.0. Every public command, state boundary,
+This index is the release contract for AIC Notes 25.0.2. Every public command, state boundary,
 side effect, failure rule, and platform assumption is represented here and checked by tests or the
 release archive verifier.
 
@@ -68,7 +68,8 @@ release archive verifier.
 
 ## Preview interaction contracts
 
-- Text selection and `Ctrl/Cmd+A` disclose the corresponding Markdown source from preview mode.
+- Native preview text selection remains stable for copying. CodeMirror selections disclose
+  intersected source, while `Ctrl/Cmd+A` discloses the complete Markdown document.
 - Link main-click opens; Open, Copy, and Edit icon controls remain visible.
 - Code fences expose Copy and Edit controls.
 - Mermaid exposes Copy, Edit, zoom, fit, focusable two-dimensional scroll, and 90° rotation.

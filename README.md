@@ -10,24 +10,24 @@ and does not move data between the two applications.
 
 ## Install
 
-Download `aic-notes-24.1.0.vsix` and `aic-notes-24.1.0.vsix.sha256` from the
-[v24.1.0 release](https://github.com/ldzyha/aic-notes/releases/tag/v24.1.0). The VSIX is universal:
+Download `aic-notes-25.0.2.vsix` and `aic-notes-25.0.2.vsix.sha256` from the
+[v25.0.2 release](https://github.com/ldzyha/aic-notes/releases/tag/v25.0.2). The VSIX is universal:
 use the same file on Windows, Linux, macOS, and code-server.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-24.1.0.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-24.1.0.vsix.sha256
-code --install-extension .\aic-notes-24.1.0.vsix --force
+(Get-FileHash .\aic-notes-25.0.2.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-25.0.2.vsix.sha256
+code --install-extension .\aic-notes-25.0.2.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-24.1.0.vsix.sha256
-code --install-extension ./aic-notes-24.1.0.vsix --force
-# or: code-server --install-extension ./aic-notes-24.1.0.vsix --force
+sha256sum -c aic-notes-25.0.2.vsix.sha256
+code --install-extension ./aic-notes-25.0.2.vsix --force
+# or: code-server --install-extension ./aic-notes-25.0.2.vsix --force
 ```
 
 Reload the VS Code window after installation. No additional executable or library is required.
@@ -69,8 +69,8 @@ The document remains exact Markdown source. Preview structures disclose only the
 edited; there is no document-wide preview/edit mode switch.
 
 - Text, headings, lists, tasks, quotes, emphasis, and fenced languages edit directly.
-- `Ctrl/Cmd+A` selects the full Markdown source, including from preview mode. Selecting preview
-  text reveals the corresponding source range for editing.
+- `Ctrl/Cmd+A` selects the full Markdown source, including from preview mode. Dragging over preview
+  text keeps a stable native selection for copying; Edit reveals that block's Markdown source.
 - Links open on the main click. Their Open, Copy, and Edit icon controls remain visible without a
   hover-only gap.
 - Code blocks render as preview cards with Copy and Edit controls.
@@ -132,7 +132,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-`24.1.0` is sequence 24 with one feature outcome and no fixed-bug outcomes.
+`25.0.2` is sequence 25 with no feature outcomes and two fixed-bug outcomes.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and
 [PROVENANCE.md](PROVENANCE.md) for the shared-core snapshot identity.

@@ -38,6 +38,7 @@ import { darkHighlight } from "./highlight.js";
 import { makeHost } from "./host-shim.js";
 import { detailsExtension } from "./details.js";
 import { DraftSession } from "../../vendor/aic-editor-core/draft-session.js";
+import { wirePreviewSelection } from "../../vendor/aic-editor-core/structured-preview.js";
 import ICONS_CSS from "../../vendor/aic-editor-core/icons.css";
 import MERMAID_VIEWPORT_CSS from "../../vendor/aic-editor-core/mermaid-viewport.css";
 import THEME_CSS from "./theme.css";
@@ -137,55 +138,6 @@ function commitDraft(reason) {
   if (!secondarySurface || !view) return;
   const commit = draft.begin(reason);
   if (commit) api.postMessage({ type: "commit", ...commit });
-}
-
-function wirePreviewSelection(editor) {
-  const selectAll = (event) => {
-    if (
-      event.defaultPrevented ||
-      !(event.ctrlKey || event.metaKey) ||
-      event.altKey ||
-      event.key.toLowerCase() !== "a"
-    )
-      return;
-    event.preventDefault();
-    event.stopPropagation();
-    editor.dom.ownerDocument.getSelection()?.removeAllRanges();
-    editor.dispatch({
-      selection: { anchor: 0, head: editor.state.doc.length },
-      scrollIntoView: true,
-      userEvent: "select",
-    });
-    editor.focus();
-  };
-  const previewForNode = (node) => {
-    const element = node?.nodeType === 1 ? node : node?.parentElement;
-    return (
-      element?.closest?.("[data-aic-source-from][data-aic-source-to]") ?? null
-    );
-  };
-  const revealDomSelection = (event) => {
-    if (event.target?.closest?.("textarea,input,[contenteditable='true']"))
-      return;
-    const selection = editor.dom.ownerDocument.getSelection();
-    if (!selection || selection.isCollapsed) return;
-    const preview =
-      previewForNode(selection.anchorNode) ??
-      previewForNode(selection.focusNode);
-    if (!preview || !editor.dom.contains(preview)) return;
-    const from = Number(preview.dataset.aicSourceFrom);
-    const to = Number(preview.dataset.aicSourceTo);
-    if (!Number.isInteger(from) || !Number.isInteger(to) || from >= to) return;
-    selection.removeAllRanges();
-    editor.dispatch({
-      selection: { anchor: from, head: to },
-      scrollIntoView: true,
-      userEvent: "select.pointer",
-    });
-    editor.focus();
-  };
-  editor.dom.addEventListener("keydown", selectAll, true);
-  editor.dom.addEventListener("pointerup", revealDomSelection, true);
 }
 
 function makeEditor(text) {
@@ -295,7 +247,7 @@ function makeEditor(text) {
       ],
     }),
   });
-  wirePreviewSelection(editor);
+  wirePreviewSelection(editor, document);
   return editor;
 }
 
