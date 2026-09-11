@@ -282,7 +282,7 @@ export class NotesTree {
         : new vscode.ThemeIcon("note");
     item.tooltip = element.relPath;
     item.command = {
-      command: "aicNotes.openInSecondary",
+      command: "aicNotes.openNote",
       title: "Open Note",
       arguments: [element.uri, { reveal: true }],
     };

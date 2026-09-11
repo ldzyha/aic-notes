@@ -7,6 +7,10 @@
 // glyphs (guide §1).
 
 import { Decoration, WidgetType } from "@codemirror/view";
+import {
+  parseListLine as parseLine,
+  toggleList,
+} from "../../aic-editor-core/formatting.js";
 
 const listMark = Decoration.mark({ class: "cm-md-listmark" });
 
@@ -35,7 +39,11 @@ class TaskWidget extends WidgetType {
       const m = /^\[([ xX])\]$/.exec(view.state.sliceDoc(pos, pos + 3));
       if (!m) return;
       view.dispatch({
-        changes: { from: pos + 1, to: pos + 2, insert: m[1] === " " ? "x" : " " },
+        changes: {
+          from: pos + 1,
+          to: pos + 2,
+          insert: m[1] === " " ? "x" : " ",
+        },
       });
     };
     return wrap;
@@ -44,65 +52,6 @@ class TaskWidget extends WidgetType {
 
 const taskChecked = Decoration.replace({ widget: new TaskWidget(true) });
 const taskUnchecked = Decoration.replace({ widget: new TaskWidget(false) });
-
-// one line shape: indent, list marker (bullet or "1."/"1)"), task box, content
-function parseLine(text) {
-  const m = /^(\s*)(?:([-*+]|\d+[.)])(\s+))?(\[[ xX]\]\s+)?(.*)$/.exec(text);
-  return {
-    indent: m[1],
-    marker: m[2] ?? null,
-    space: m[3] ?? " ",
-    task: m[2] ? (m[4] ?? null) : null, // a box without a marker is content
-    content: m[2] ? m[5] : (m[4] ?? "") + m[5],
-  };
-}
-
-function kindOf(p) {
-  if (!p.marker) return null;
-  if (p.task) return "task";
-  return /^\d/.test(p.marker) ? "ordered" : "bullet";
-}
-
-function toggleLines(view, kind) {
-  const { from, to } = view.state.selection.main;
-  const startLine = view.state.doc.lineAt(from);
-  const endLine = view.state.doc.lineAt(to);
-  const lines = [];
-  for (let n = startLine.number; n <= endLine.number; n++) {
-    const line = view.state.doc.line(n);
-    if (line.text.trim()) lines.push(line);
-  }
-  // an all-blank selection (the common case: a cursor on an EMPTY line): still
-  // create the marker on the cursor's line so a task/list can START on a blank
-  // line (owner 2026-06-19: "не дає створити чекбокс для пустого рядку")
-  const blankStart = !lines.length;
-  if (blankStart) lines.push(startLine);
-  const all = lines.every((l) => kindOf(parseLine(l.text)) === kind);
-  const changes = [];
-  let num = 1;
-  for (const line of lines) {
-    const p = parseLine(line.text);
-    const head = line.text.length - p.content.length;
-    let insert;
-    if (all) insert = p.indent; // strip back to plain content
-    else if (kind === "bullet") insert = `${p.indent}- `;
-    else if (kind === "ordered") insert = `${p.indent}${num++}. `;
-    else insert = `${p.indent}- ${p.task ?? "[ ] "}`; // keep an existing box
-    if (insert !== line.text.slice(0, head)) {
-      changes.push({ from: line.from, to: line.from + head, insert });
-    }
-  }
-  if (changes.length) {
-    const spec = { changes, userEvent: "input" };
-    // a marker freshly created on a blank line: drop the caret AFTER it, ready
-    // to type the item (else CM leaves it before the inserted marker)
-    if (blankStart && !all && changes.length === 1) {
-      spec.selection = { anchor: changes[0].from + changes[0].insert.length };
-    }
-    view.dispatch(spec);
-  }
-  view.focus();
-}
 
 // renumber the contiguous same-indent ordered run BELOW lineNo so it
 // continues from num — pure over a state, exported for /selftest
@@ -155,7 +104,14 @@ function continueList(view) {
   const insert = "\n" + marker;
   const changes = [{ from: sel.head, insert }];
   if (ordered) {
-    changes.push(...renumberAfter(view.state, line.number, parseInt(p.marker, 10) + 2, p.indent));
+    changes.push(
+      ...renumberAfter(
+        view.state,
+        line.number,
+        parseInt(p.marker, 10) + 2,
+        p.indent,
+      ),
+    );
   }
   view.dispatch({
     changes,
@@ -166,9 +122,7 @@ function continueList(view) {
   return true;
 }
 
-export const listKeymap = [
-  { key: "Enter", run: continueList },
-];
+export const listKeymap = [{ key: "Enter", run: continueList }];
 
 export const listHandler = {
   id: "md.list",
@@ -180,15 +134,21 @@ export const listHandler = {
         return [{ from: nodeRef.from, to: nodeRef.to, deco: listMark }];
       }
       const checked = /x/i.test(view.state.sliceDoc(nodeRef.from, nodeRef.to));
-      return [{ from: nodeRef.from, to: nodeRef.to, deco: checked ? taskChecked : taskUnchecked }];
+      return [
+        {
+          from: nodeRef.from,
+          to: nodeRef.to,
+          deco: checked ? taskChecked : taskUnchecked,
+        },
+      ];
     }
     return [{ from: nodeRef.from, to: nodeRef.to, deco: listMark }];
   },
   commands: {
-    "md.list.toggle": (view) => toggleLines(view, "bullet"), // kept: the original id
-    "md.list.bullet": (view) => toggleLines(view, "bullet"),
-    "md.list.ordered": (view) => toggleLines(view, "ordered"),
-    "md.list.task": (view) => toggleLines(view, "task"),
+    "md.list.toggle": (view) => toggleList(view, "bullet"), // kept: the original id
+    "md.list.bullet": (view) => toggleList(view, "bullet"),
+    "md.list.ordered": (view) => toggleList(view, "ordered"),
+    "md.list.task": (view) => toggleList(view, "task"),
     // loose predicate on purpose: palette/touch invocation carries intent
     "md.task.toggle": (view) => {
       const line = view.state.doc.lineAt(view.state.selection.main.head);

@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { noteDescriptorForUri } from "./create.js";
+import { folderNotePathFor } from "./paths.js";
 import { resolveTarget } from "./target.js";
 
 const EXCLUDE = "{**/node_modules/**,**/.git/**,**/dist/**}";
@@ -39,9 +40,10 @@ function relationRank(value) {
   return { project: 0, parent: 1, current: 2, component: 3, sibling: 4 }[value] ?? 5;
 }
 
-// Build a context-only view over canonical sidecars. Project/ancestor/current
-// candidates are present even before their files exist; component and sibling
-// rows are aliases of existing notes. Nothing here mutates Markdown or disk.
+// Build a context-only view over canonical sidecars. Only existing notes add
+// ancestor, component, or sibling rows. Project navigation and the actual
+// current target remain available as placeholders; neither creates a note
+// (or a sync/tag identity). Nothing here mutates Markdown or disk.
 export async function noteRelationshipsForTarget(uri) {
   if (!uri || uri.scheme !== "file" || uri.path.endsWith(".note.md")) return [];
   const current = await noteDescriptorForUri(uri);
@@ -49,20 +51,28 @@ export async function noteRelationshipsForTarget(uri) {
   const rows = new Map();
   const add = (row) => rows.set(row.path, row);
 
-  add(await descriptorForTarget(folder.uri, "project"));
-
-  const parts = current.relPath.split("/").filter(Boolean);
-  const ancestorParts = current.isDirectory ? parts.slice(0, -1) : parts.slice(0, -1);
-  for (let index = 1; index <= ancestorParts.length; index++) {
-    const ancestor = vscode.Uri.joinPath(folder.uri, ...ancestorParts.slice(0, index));
-    add(await descriptorForTarget(ancestor, "parent"));
-  }
-  add(await descriptorForTarget(uri, "current"));
+  add({
+    ...await descriptorForTarget(folder.uri, "project"),
+    isCurrent: current.isWorkspaceRoot,
+  });
 
   const noteUris = await vscode.workspace.findFiles(
     new vscode.RelativePattern(folder, "**/*.note.md"),
     new vscode.RelativePattern(folder, EXCLUDE),
   );
+  const notePaths = new Set(noteUris.map((noteUri) => normalizedRelative(folder, noteUri)));
+
+  const parts = current.relPath.split("/").filter(Boolean);
+  const ancestorParts = parts.slice(0, -1);
+  for (let index = 1; index <= ancestorParts.length; index++) {
+    const ancestorPath = ancestorParts.slice(0, index).join("/");
+    if (!notePaths.has(folderNotePathFor(ancestorPath))) continue;
+    const ancestor = vscode.Uri.joinPath(folder.uri, ancestorPath);
+    const row = await descriptorForTarget(ancestor, "parent");
+    if (row.exists) add(row);
+  }
+  if (!current.isWorkspaceRoot) add(await descriptorForTarget(uri, "current"));
+
   const currentParent = path.posix.dirname(current.relPath || ".");
   for (const noteUri of noteUris) {
     const notePath = normalizedRelative(folder, noteUri);

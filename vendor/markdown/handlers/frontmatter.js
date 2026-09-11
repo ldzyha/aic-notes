@@ -85,7 +85,7 @@ function relationshipTree(document, relationships, host) {
     row.setAttribute("role", "treeitem");
     row.setAttribute(
       "aria-current",
-      item.relation === "current" ? "true" : "false",
+      item.isCurrent || item.relation === "current" ? "true" : "false",
     );
     row.style.setProperty(
       "--aic-note-depth",
@@ -119,9 +119,10 @@ function relationshipTree(document, relationships, host) {
 }
 
 class FrontmatterWidget extends WidgetType {
-  constructor(block, readOnly, relationships, host) {
+  constructor(block, source, readOnly, relationships, host) {
     super();
     this.block = block;
+    this.source = source;
     this.readOnly = readOnly;
     this.relationships = relationships;
     this.host = host;
@@ -130,7 +131,9 @@ class FrontmatterWidget extends WidgetType {
   eq(other) {
     return (
       other.readOnly === this.readOnly &&
-      JSON.stringify(other.block.rows) === JSON.stringify(this.block.rows) &&
+      other.block.from === this.block.from &&
+      other.block.to === this.block.to &&
+      other.source === this.source &&
       JSON.stringify(other.relationships) === JSON.stringify(this.relationships)
     );
   }
@@ -143,8 +146,15 @@ class FrontmatterWidget extends WidgetType {
     wrapper.dataset.aicSourceTo = String(this.block.to);
     wrapper.setAttribute("role", "region");
     wrapper.setAttribute("aria-label", "Interactive Markdown properties");
+    const isCurrent = () =>
+      wrapper.isConnected &&
+      this.block.from >= 0 &&
+      this.block.to >= this.block.from &&
+      this.block.to <= view.state.doc.length &&
+      view.state.sliceDoc(this.block.from, this.block.to) === this.source;
     const replace = (rows) => {
-      const source = view.state.sliceDoc(this.block.from, this.block.to);
+      if (view.state.readOnly || !isCurrent()) return;
+      const source = this.source;
       const markdown = serializeFrontmatter(
         rows,
         source.includes("\r\n") ? "\r\n" : "\n",
@@ -156,6 +166,7 @@ class FrontmatterWidget extends WidgetType {
       });
     };
     const reveal = () => {
+      if (!isCurrent()) return;
       const anchor = Math.min(view.state.doc.length, this.block.from + 4);
       view.dispatch({
         selection: { anchor },
@@ -219,6 +230,7 @@ class FrontmatterWidget extends WidgetType {
             value: item.key,
             label: `Property ${index + 1} name`,
             readOnly: this.readOnly,
+            getRevision: () => view.state.doc,
             validate: (value) =>
               validPropertyKey(value.trim())
                 ? ""
@@ -247,6 +259,7 @@ class FrontmatterWidget extends WidgetType {
             label: `Property ${item.key || "list item"} value`,
             multiline: true,
             readOnly: this.readOnly,
+            getRevision: () => view.state.doc,
             onCommit: (next) =>
               replace(updateProperty(this.block.rows, index, "value", next)),
           }),
@@ -331,6 +344,7 @@ export function makeFrontmatterExtension(
         Decoration.replace({
           widget: new FrontmatterWidget(
             block,
+            state.sliceDoc(block.from, block.to),
             state.readOnly,
             state.field(relationshipState),
             host,

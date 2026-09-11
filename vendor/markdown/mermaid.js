@@ -1,7 +1,7 @@
 // ADAPTED from aic modules/markdown/web/src/mermaid.js (see PROVENANCE.md).
 // Kept: the in-place widget path — mermaidFences, MermaidWidget, renderInto,
-// makeMermaidExtension (StateField + scroll-refresh ViewPlugin), the lazy
-// mermaid chunk with the structured mermaid_bundle_missing error. Stripped:
+// makeMermaidExtension (StateField + scroll-refresh ViewPlugin). Read and edit
+// views now use the same shared, queued Mermaid runtime/configuration. Stripped:
 // the visual builder profiles/console and the AI error-explain (coupled to
 // aic's host.ui.console / host.providers). aic's caret-follow preview
 // (console slot / float) is reshaped as the ONE-PAGE inline editing preview
@@ -24,9 +24,13 @@ import {
 } from "../aic-editor-core/structured-preview.js";
 import { providePreviewRanges } from "../aic-editor-core/preview-ranges.js";
 import { createMermaidViewport } from "../aic-editor-core/mermaid-viewport.js";
-
-let mermaidPromise = null;
-let renderSeq = 0;
+import {
+  createDiagramEditButton,
+  registerDiagramEditorHost,
+  releaseDiagramEditorHost,
+  DiagramSourceActionsWidget,
+} from "../aic-editor-core/diagram-session.js";
+import { renderMermaidSvg } from "../aic-editor-core/mermaid-runtime.js";
 
 function mermaidTheme() {
   const cls = document.body?.classList;
@@ -35,37 +39,13 @@ function mermaidTheme() {
   return "dark";
 }
 
-function loadMermaid() {
-  mermaidPromise ??= import("mermaid")
-    .then((m) => {
-      const mermaid = m.default;
-      mermaid.initialize({
-        startOnLoad: false,
-        theme: mermaidTheme(),
-        securityLevel: "strict",
-        // never let mermaid inject its full-width error DOM into the page
-        suppressErrorRendering: true,
-      });
-      return mermaid;
-    })
-    .catch((e) => {
-      mermaidPromise = null;
-      throw Object.assign(new Error("mermaid_bundle_missing"), {
-        structured: {
-          error: "mermaid_bundle_missing",
-          detail: `the mermaid chunk failed to load: ${e}`,
-          fix: ["Rebuild the extension: npm run build", "then reload the window"],
-        },
-      });
-    });
-  return mermaidPromise;
-}
-
 // context "widget" = the in-editor block (one-line error marker, detail in
 // title); "float" = the preview panel (full structured error card) — the
 // upstream aic signature, restored for the preview
 export async function renderInto(el, source, context = "widget") {
-  const id = `aicn-mmd-${renderSeq++}`;
+  el.__aicRenderAbort?.abort();
+  const renderAbort = new AbortController();
+  el.__aicRenderAbort = renderAbort;
   const token = (el.__rseq = (el.__rseq || 0) + 1); // newest-render-wins guard
   // keep the current diagram visible while the next one renders, then SWAP
   // the <svg> in place; the loading chip shows only on first paint
@@ -76,8 +56,11 @@ export async function renderInto(el, source, context = "widget") {
     el.__aicMermaidViewport?.replaceContent(loading);
   }
   try {
-    const mermaid = await loadMermaid();
-    const { svg } = await mermaid.render(id, source);
+    const svg = await renderMermaidSvg(document, {
+      source,
+      theme: mermaidTheme(),
+      signal: renderAbort.signal,
+    });
     if (el.__rseq !== token) return true; // superseded by a newer render
     const holder = document.createElement("div");
     holder.innerHTML = svg;
@@ -95,10 +78,7 @@ export async function renderInto(el, source, context = "widget") {
     }
     return true;
   } catch (e) {
-    // belt to suppressErrorRendering's suspenders: drop any orphan DOM
-    // mermaid attached outside our element
-    document.getElementById(id)?.remove();
-    document.getElementById(`d${id}`)?.remove();
+    if (e?.name === "AbortError") return false;
     if (el.__rseq !== token) return false;
     const structured = e.structured ?? {
       error: "mermaid_parse_error",
@@ -133,17 +113,22 @@ function diagramShell(className) {
 }
 
 class MermaidWidget extends WidgetType {
-  constructor(source, from, to, textFrom, host) {
+  constructor(source, from, to, textFrom, host, readOnly) {
     super();
     this.source = source;
     this.from = from;
     this.to = to;
     this.textFrom = textFrom;
     this.host = host;
+    this.readOnly = readOnly;
   }
   eq(other) {
-    return other.source === this.source && other.from === this.from &&
-      other.to === this.to;
+    return (
+      other.source === this.source &&
+      other.readOnly === this.readOnly &&
+      other.from === this.from &&
+      other.to === this.to
+    );
   }
   toDOM(view) {
     const { el, body, controls } = diagramShell("cm-md-mermaid");
@@ -163,26 +148,65 @@ class MermaidWidget extends WidgetType {
       icon: "copy",
       className: "cm-md-edit-source",
       onActivate: (button) => {
-        this.host.bus.publish("clipboard.write", { text: this.source, label: "Mermaid source" });
+        this.host.bus.publish("clipboard.write", {
+          text: this.source,
+          label: "Mermaid source",
+        });
         showIconFeedback(button, { restoreLabel: "Copy Mermaid source" });
       },
     });
     const edit = createIconButton(document, {
-      label: view.state.readOnly ? "View Mermaid source" : "Edit Mermaid source",
-      icon: view.state.readOnly ? "source" : "edit",
+      label: view.state.readOnly
+        ? "View Mermaid source"
+        : "Edit Mermaid source",
+      icon: "source",
       className: "cm-md-edit-source",
       onActivate: () => {
-        view.dispatch({ selection: { anchor: this.textFrom }, scrollIntoView: true });
+        view.dispatch({
+          selection: { anchor: this.textFrom },
+          scrollIntoView: true,
+        });
         view.focus();
       },
     });
-    actions.append(copy, edit, controls);
+    actions.append(
+      copy,
+      createDiagramEditButton(
+        view,
+        {
+          from: this.textFrom,
+          to: this.textFrom + this.source.length,
+        },
+        {
+          container: el,
+          theme: mermaidTheme(),
+          onCopy: (text) => {
+            this.host.bus.publish("clipboard.write", {
+              text,
+              label: "Mermaid source",
+            });
+            return true;
+          },
+        },
+      ),
+      edit,
+      controls,
+    );
     header.append(title, actions);
     el.prepend(header);
     renderInto(body, this.source);
+    el.__aicDiagramView = view;
+    registerDiagramEditorHost(view, el, {
+      from: this.textFrom,
+      to: this.textFrom + this.source.length,
+    });
     return el;
   }
   destroy(el) {
+    releaseDiagramEditorHost(el.__aicDiagramView);
+    const body = el.querySelector(".cm-md-mermaid-body");
+    body?.__aicRenderAbort?.abort();
+    if (body) body.__rseq = (body.__rseq || 0) + 1;
     el.querySelector(".cm-md-mermaid-body")?.__aicMermaidViewport?.destroy();
   }
   ignoreEvent() {
@@ -198,20 +222,23 @@ class MermaidWidget extends WidgetType {
 // DOM persists, renderInto's newest-wins guard + in-place SVG swap keep it
 // flicker-free.
 class EditingPreviewWidget extends WidgetType {
-  constructor(source) {
+  constructor(source, textFrom) {
     super();
     this.source = source;
+    this.textFrom = textFrom;
   }
   eq(other) {
-    return other.source === this.source;
+    return other.source === this.source && other.textFrom === this.textFrom;
   }
   toDOM() {
     const { el, body } = diagramShell("cm-md-mermaid cm-md-mermaid-editing");
     el.setAttribute("aria-label", "live mermaid preview");
+    el.dataset.aicDiagramLiveFrom = String(this.textFrom);
     renderInto(body, this.source, "float");
     return el;
   }
   updateDOM(el) {
+    el.dataset.aicDiagramLiveFrom = String(this.textFrom);
     clearTimeout(el.__aicnTimer);
     el.__aicnTimer = setTimeout(() => {
       const body = el.querySelector(".cm-md-mermaid-body") ?? el;
@@ -221,6 +248,9 @@ class EditingPreviewWidget extends WidgetType {
   }
   destroy(el) {
     clearTimeout(el.__aicnTimer);
+    const body = el.querySelector(".cm-md-mermaid-body");
+    body?.__aicRenderAbort?.abort();
+    if (body) body.__rseq = (body.__rseq || 0) + 1;
     el.querySelector(".cm-md-mermaid-body")?.__aicMermaidViewport?.destroy();
   }
   ignoreEvent() {
@@ -234,11 +264,18 @@ export function mermaidFences(state) {
     enter(nodeRef) {
       if (nodeRef.name !== "FencedCode") return;
       const info = nodeRef.node.getChild("CodeInfo");
-      if (!info || state.sliceDoc(info.from, info.to).trim().toLowerCase() !== "mermaid") return;
+      if (
+        !info ||
+        state.sliceDoc(info.from, info.to).trim().toLowerCase() !== "mermaid"
+      )
+        return;
       const text = nodeRef.node.getChild("CodeText");
       // an empty fence has no CodeText — the writable point sits right
       // after the opening line
-      const afterOpen = Math.min(state.doc.lineAt(nodeRef.from).to + 1, nodeRef.to);
+      const afterOpen = Math.min(
+        state.doc.lineAt(nodeRef.from).to + 1,
+        nodeRef.to,
+      );
       fences.push({
         from: nodeRef.from,
         to: nodeRef.to,
@@ -259,6 +296,10 @@ export function mermaidFences(state) {
 const refreshMermaid = StateEffect.define();
 
 export function makeMermaidExtension(host) {
+  const copySource = (text) => {
+    host.bus.publish("clipboard.write", { text, label: "Mermaid source" });
+    return true;
+  };
   // Block widgets live in a StateField mapped through changes (pinned:
   // CM6 requires block decorations outside ViewPlugins).
   const field = StateField.define({
@@ -266,7 +307,12 @@ export function makeMermaidExtension(host) {
       return build(state);
     },
     update(value, tr) {
-      if (tr.docChanged || tr.selection || tr.effects.some((e) => e.is(refreshMermaid))) {
+      if (
+        tr.docChanged ||
+        tr.selection ||
+        tr.startState.readOnly !== tr.state.readOnly ||
+        tr.effects.some((e) => e.is(refreshMermaid))
+      ) {
         return build(tr.state);
       }
       return value;
@@ -285,10 +331,24 @@ export function makeMermaidExtension(host) {
         ) ||
         selectionRevealsPreview(state.selection.ranges, fence.from, fence.to);
       if (inside) {
+        decorations.push(
+          Decoration.widget({
+            widget: new DiagramSourceActionsWidget({
+              from: fence.textFrom,
+              to: fence.textTo,
+              source: fence.source,
+              readOnly: state.readOnly,
+              theme: mermaidTheme(),
+              onCopy: copySource,
+            }),
+            block: true,
+            side: -1,
+          }).range(fence.from),
+        );
         // editing: raw source stays visible, the live diagram renders below
         decorations.push(
           Decoration.widget({
-            widget: new EditingPreviewWidget(fence.source),
+            widget: new EditingPreviewWidget(fence.source, fence.textFrom),
             block: true,
             side: 1,
           }).range(fence.to),
@@ -302,6 +362,7 @@ export function makeMermaidExtension(host) {
               fence.to,
               fence.textFrom,
               host,
+              state.readOnly,
             ),
             block: true,
           }).range(fence.from, fence.to),

@@ -44,6 +44,12 @@ html, body {
   height: 100vh;
 }
 
+body.aic-main-note-surface { display: grid; grid-template-rows: minmax(0, 1fr) auto; }
+.aic-main-note-surface #editor { min-height: 0; height: 100%; }
+#document-actions { padding: 0.3rem 0.6rem; border-top: 1px solid var(--border); }
+#editing-status { font: 0.8rem/1.4 var(--vscode-font-family, sans-serif); color: var(--muted); }
+#editing-status:empty { display: none; }
+
 .cm-editor {
   height: 100%;
   font-family: "JetBrains Mono", var(--vscode-editor-font-family, monospace);
@@ -295,7 +301,7 @@ body.aic-secondary-surface {
   --border: var(--aic-border);
   box-sizing: border-box;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto;
   width: calc(100% - 10px);
   height: calc(100vh - 10px);
   margin: 5px;
@@ -305,57 +311,38 @@ body.aic-secondary-surface {
   overflow: hidden;
 }
 
-#secondary-controls {
-  position: relative;
-  z-index: 10;
-  display: grid;
-  gap: 0.12rem;
-  padding: 0.34rem 0.48rem 0.3rem;
-  border-bottom: 1px solid var(--aic-border);
-  background: var(--aic-contrast);
-  color: var(--aic-contrast-fg);
-}
-
-.aic-pane-context {
-  display: grid;
-  min-width: 0;
-}
-
-#pane-filename {
+.aic-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
   overflow: hidden;
-  color: var(--aic-contrast-fg);
-  font: 650 0.84rem/1.2 var(--vscode-font-family, system-ui, sans-serif);
-  text-overflow: ellipsis;
+  clip-path: inset(50%);
   white-space: nowrap;
+  border: 0;
 }
 
-.aic-pane-breadcrumb {
-  display: block;
-  max-width: 100%;
-  overflow: hidden;
-  color: var(--aic-muted);
-  font-size: 0.73rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.aic-pane-save-indicator {
+  display: inline-grid;
+  place-items: center;
+  width: 1rem;
+  height: 1rem;
+  color: var(--warn);
 }
 
-.aic-pane-breadcrumb::before {
+.aic-pane-save-indicator::before {
   content: "";
-  display: inline-block;
-  width: 0.78rem;
-  height: 0.78rem;
-  margin-right: 0.25rem;
-  vertical-align: -0.08rem;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
   background: currentColor;
-  clip-path: polygon(4% 21%, 39% 21%, 49% 34%, 96% 34%, 96% 84%, 4% 84%);
 }
-
-#pane-status { min-height: 0.9rem; color: var(--aic-muted); font-size: 0.72rem; }
 
 #secondary-footer {
   position: relative;
   z-index: 10;
-  grid-row: 3;
+  grid-row: 2;
   display: flex;
   align-items: center;
   gap: 0.18rem;
@@ -408,9 +395,9 @@ body.aic-secondary-surface {
 
 .aic-secondary-surface .cm-editor { font-size: 0.875rem; }
 .aic-secondary-surface .cm-scroller { line-height: 1.42; }
-.aic-secondary-surface[data-save-state="saved"] .cm-editor {
-  background: color-mix(in srgb, var(--aic-bg) 96%, #5aa66a 4%);
-  box-shadow: inset 2px 0 color-mix(in srgb, #5aa66a 58%, transparent);
+.aic-secondary-surface[data-save-state="dirty"] .cm-editor {
+  background: color-mix(in srgb, var(--aic-bg) 96%, var(--warn) 4%);
+  box-shadow: inset 2px 0 color-mix(in srgb, var(--warn) 45%, transparent);
 }
 .aic-secondary-surface[data-save-state="placeholder"] .cm-editor {
   background: color-mix(in srgb, var(--aic-bg) 93%, var(--aic-muted) 7%);
@@ -508,7 +495,7 @@ body.aic-secondary-surface {
 .aic-secondary-surface .cm-editor .cm-content .cm-md-props td { padding: 0.18rem 0.35rem; }
 
 .aic-pane-empty {
-  grid-row: 2;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -521,5 +508,5 @@ body.aic-secondary-surface {
 
 .aic-pane-empty strong { color: var(--aic-fg); }
 
-.aic-secondary-surface #editor { grid-row: 2; }
+.aic-secondary-surface #editor { grid-row: 1; }
 [hidden] { display: none !important; }

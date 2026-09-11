@@ -138,6 +138,15 @@ class TableWidget extends WidgetType {
     wrapper.setAttribute("aria-label", "Interactive Markdown table");
     const parsed = parseTable(this.source);
     const replace = (model) => {
+      if (
+        view.state.readOnly ||
+        !wrapper.isConnected ||
+        this.from < 0 ||
+        this.from + this.source.length > view.state.doc.length ||
+        view.state.sliceDoc(this.from, this.from + this.source.length) !==
+          this.source
+      )
+        return;
       const lineEnding = this.source.includes("\r\n") ? "\r\n" : "\n";
       const markdown = serializeTable(model, lineEnding);
       if (!markdown || markdown === this.source) return;
@@ -225,6 +234,7 @@ class TableWidget extends WidgetType {
           label: `Column ${columnIndex + 1} name`,
           multiline: true,
           readOnly: this.readOnly,
+          getRevision: () => view.state.doc,
           onCommit: (next) =>
             replace(updateTableCell(parsed, -1, columnIndex, next)),
         }),
@@ -266,6 +276,7 @@ class TableWidget extends WidgetType {
             label: `Row ${rowIndex + 1}, column ${columnIndex + 1}`,
             multiline: true,
             readOnly: this.readOnly,
+            getRevision: () => view.state.doc,
             onCommit: (next) =>
               replace(updateTableCell(parsed, rowIndex, columnIndex, next)),
           }),

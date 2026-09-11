@@ -1,5 +1,38 @@
 # Changelog
 
+## 28.4.5 — 2026-09-11
+
+Release sequence 28 · 4 feature outcomes · 5 fixed-bug outcomes.
+
+- F01: share Core-aligned page/section/context/implementation prompts, Noise-to-Wave note guidance,
+  and basic unordered, numbered, checkbox and table blocks. `/checklist` is discoverable through
+  `checkbox` and `tasklist`; no mandatory page scaffolding is added to basic blocks.
+- F02: edit flowchart, class and sequence diagrams directly in the Mermaid preview. A shared
+  semantic palette, compact context bars, connection dragging, line controls and on-demand
+  endpoint/member popovers use Mermaid layout, with exact-source fallback for unsupported syntax.
+- F03: share heading and list formatting shortcuts with Standard Notes, preserving nested list
+  ownership, source selection, one transaction and protected structured boundaries.
+- F04: expose the same slash catalog in native VS Code Markdown completion, including untitled
+  documents, alongside the AIC main editor and contextual note pane.
+- B01: remove overlapping slash-menu headers, keep narrow/dark menus readable and activate
+  suggestions immediately without duplicating commands.
+- B02: preserve Enter indentation and Tab/Shift+Tab behavior in Markdown, fenced languages and
+  Mermaid source fields while retaining snippet navigation and native source Undo.
+- B03: stabilize preview/source selection, cursor navigation, code/details boundaries and
+  source-bound diagram sessions; stale render results cannot replace the current diagram.
+- B04: open notes in the main editor and keep Open Source separate, retain legacy associations,
+  use project fallback with no active buffer, and protect main/sidebar ownership and save/navigation
+  races without discarding unsaved drafts.
+- B05: remove duplicate note headers, distinguish saved/dirty/placeholder states, acknowledge
+  explicit saves exactly, and show only note-bearing context ancestors plus navigable project/current
+  placeholders. Input and blur still do not save.
+
+Compatibility: one universal VSIX for VS Code/Code 1.106 or newer on Windows, Linux, macOS and
+code-server. AIC for Standard Notes 21.3.5 consumes the same AIC Editor Core 3.4.0. Cross-application
+synchronization is not restored. Agentic Notes scope/section utilities are tested internal
+foundations, not an enabled universal agent transport or standalone writer. The bounded visual
+diagram editor remains experimental; unsupported grammar retains a lossless source fallback.
+
 ## 27.1.1 — 2026-09-03
 
 Release sequence 27 · 1 feature outcome · 1 fixed-bug outcome.

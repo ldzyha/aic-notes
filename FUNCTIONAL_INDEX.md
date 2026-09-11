@@ -1,10 +1,38 @@
 # Functional index
 
-This index is the release contract for AIC Notes 27.1.1. Every public command, state boundary,
+This index is the release contract for AIC Notes 28.4.5. Every public command, state boundary,
 side effect, failure rule, and platform assumption is represented here and checked by tests or the
 release archive verifier.
 
+## Shared editor core 3.4.0
+
+These contracts ship with AIC Notes 28.4.5 and pair with Standard Notes AIC 21.3.5.
+The exact canonical commit and all shared hashes are recorded in CORE_SNAPSHOT.json.
+Automated tests, production builds and Windows browser checks cover the shared editor;
+Linux desktop and live authenticated Standard Notes smoke checks are not implied.
+
+| Area / owner                                                | Implemented contract                                                                                                                                          | Explicit limitation                                                                                                   |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Shared templates and native completion                      | Core questions → answers → detail; `/noise`, `/wave`, `/implementation`, `/context`, `/entity-map`; contextual heading levels in `.md` and `.note.md`         | No automatic wave/noise state, dashboards or grouping UI                                                              |
+| New-note bodies (`note-template`, `src/notes/templates.js`) | Shared Noise guidance evolves through `/wave` in the same note; custom overrides and three managed properties retain their contract                           | Existing notes are not rewritten; Standard Notes does not receive VS Code workspace templates                         |
+| Shared diagram model/builder                                | Actual Mermaid SVG provides palette insertion, connection dragging, typed relationships, property editing, draft Copy, Undo/Redo/deletion and zoom/scroll/fit | Bounded flow/class/sequence grammar; no multiselect, subgraph authoring, visual timeline or arbitrary Mermaid support |
+| Shared diagram session                                      | Inline Apply changes only the current block; outside edits preserve the draft; conflicting block edits/read-only retain a Copy-only draft; Ctrl/Cmd+S saves   | Cancel explicitly discards the draft; note identity changes retire the session; no cross-scale links                  |
+| Layout and ordering                                         | Inline editing and read preview use the same Mermaid auto-layout; direction and sequence ordering are source semantics                                        | No arbitrary stored coordinates; legacy coordinates are ignored, and removed only after an actual visual edit         |
+
+Usage: insert a diagram through `/`, choose **Edit diagram visually** on its AIC preview, edit and
+Apply, then Ctrl/Cmd+S. Ctrl/Cmd+S within the builder combines Apply with the existing explicit save.
+The native Markdown editor shares templates but remains a source editor. `/entity-map` describes
+composition; `/timeline` stays chronological. Shared preview-spacing and session-lifecycle fixes
+are implemented; completed cross-platform/live-client smoke testing is not implied.
+
 ## Product boundary
+
+The AIC Markdown editor shares heading/list formatting commands with the Standard Notes
+component: Ctrl/Cmd+Alt+1…6 (headings), Ctrl/Cmd+Alt+0 (paragraph),
+Ctrl/Cmd+Shift+7/8/9 (numbered/bullet/checkbox lists). These shortcuts apply to both
+`.md` and `.note.md` in AIC surfaces, not the native VS Code source editor. The shared
+slash catalog supplies `/checklist` there as well, searchable by checkbox/tasklist.
+Formatting is one local edit, never a save, and protects code/frontmatter/structured blocks.
 
 - The extension reads and writes only local workspace `*.md` and `*.note.md` files.
 - There is no Standard Notes authorization, API client, import, synchronization, remote identity,
@@ -12,6 +40,8 @@ release archive verifier.
 - The independent Standard Notes editor plugin may share byte-equivalent AIC Editor Core files;
   sharing presentation logic does not create an account or data connection.
 - One universal VSIX supports Windows, Linux, macOS, and code-server without platform binaries.
+- Opening a Markdown language buffer activates the extension so native-editor slash templates do
+  not depend on first opening the Notes view or an AIC custom editor.
 - Upgrade cleanup removes only retired local session material and binding metadata. It never
   deletes Markdown or contacts a remote service.
 
@@ -20,8 +50,9 @@ release archive verifier.
 - `Ctrl/Cmd+S` is the only Secondary note persistence boundary. Input and blur do not save.
 - Dirty drafts remain in the webview until local save succeeds. A failed or stale save leaves the
   draft dirty and visible.
-- Saved, unsaved, and placeholder states are visually distinct; the status text contains only
-  local state.
+- Saved notes are neutral, dirty drafts softly amber with a non-color change marker, and
+  placeholders gray. The duplicate name/folder/save-status header is absent; local state remains
+  accessible through the live status without repeating it visually.
 - The active custom-editor tab is authoritative over a stale native editor. With no active file
   buffer, the last relevant workspace project note is used, then the first workspace.
 - Pinning affects only automatic following. Explicit file/folder/project/note navigation can
@@ -29,10 +60,13 @@ release archive verifier.
 - Navigation is serialized. A slower open/stat operation cannot replace a later user selection,
   and one rejected navigation request cannot poison the queue.
 - A missing sidecar is a lazy placeholder. Unchanged scaffolding does not create a file.
+- Explorer `.note.md` clicks open only the main note editor; Open Source is a distinct action.
+  The legacy `aicNotes.noteRedirect` association is a main-editor alias, not a disposable redirect.
 - Generated sidecar frontmatter contains exactly `file`, `created`, and `updated`; `updated` is
   refreshed only at explicit save. Ordinary Markdown receives no generated properties.
 - Context relationships are derived dynamically and displayed only below existing note
-  frontmatter. They are never serialized or edited.
+  frontmatter. Only actual notes add ancestor folders; project/current navigation can show a
+  placeholder. Each row opens the exact `.note.md` target. They are never serialized or edited.
 - Trash is local, confirmed, and routed through the operating-system Trash where supported.
 
 ## Surfaces
@@ -44,7 +78,7 @@ release archive verifier.
 | Notes & Documents tree     | `src/notes/tree.js`                             | none                                                               | refreshes from workspace files and lazy project placeholders         |
 | Selection-to-note command  | `src/notes/selection.js`                        | saves source, updates one local sidecar on its later explicit save | rejects unsaved/unbacked/out-of-workspace sources                    |
 | Structured previews        | `vendor/markdown`, `vendor/aic-editor-core`     | exact Markdown transactions only                                   | invalid source remains editable instead of being normalized silently |
-| Slash template completion  | `vendor/aic-editor-core/slash-snippets.js`      | inserts exact Markdown into the active editor                      | inactive in code/read-only contexts                                  |
+| Slash template completion  | shared core plus `src/editor/slash-provider.js` | inserts exact Markdown in AIC, native, and contextual Markdown     | inactive in code/read-only contexts                                  |
 | AIC agent workflow         | `src/agents/bootstrap.js`                       | thin marker and explicit AIC-owned rule update                     | typed command errors; unrelated editor use remains available         |
 
 ## Commands
@@ -58,10 +92,10 @@ release archive verifier.
 | `aicNotes.openProjectNote`       | Show the selected/current workspace root note or its placeholder                                                                       |
 | `aicNotes.refreshTree`           | Re-index local Markdown and note files                                                                                                 |
 | `aicNotes.enableExplorerNesting` | Add workspace Explorer nesting patterns for sidecars                                                                                   |
-| `aicNotes.openTarget`            | Open the file owner or reveal the folder/project owner of a note                                                                       |
+| `aicNotes.openSource`            | Explicitly open the file owner with its sidebar note, or reveal the folder/project owner; reject ambiguous sources                     |
 | `aicNotes.copyWikiLink`          | Copy the local note's wiki-link path                                                                                                   |
-| `aicNotes.openNote`              | Open a tree note through the Secondary routing path                                                                                    |
-| `aicNotes.useNativeForMarkdown`  | Set the user association for plain `*.md` back to the native editor while preserving the note redirect                                 |
+| `aicNotes.openNote`              | Open an existing tree note in the main AIC Markdown editor                                                                             |
+| `aicNotes.useNativeForMarkdown`  | Set the user association for plain `*.md` back to the native editor while keeping notes in the AIC main editor                         |
 | `aicNotes.deleteNote`            | Confirm and move one local sidecar to Trash                                                                                            |
 | `aicNotes.deleteFolderNotes`     | Confirm and move the indexed local sidecars under one tree node to Trash                                                               |
 | `aicNotes.enableAgentWorkflow`   | Write the thin workspace marker and validate AIC-owned rule status                                                                     |
@@ -76,17 +110,22 @@ release archive verifier.
 - Link main-click opens; Open, Copy, and Edit icon controls remain visible.
 - Code fences expose Copy and Edit controls.
 - Mermaid exposes Copy, Edit, zoom, fit, focusable two-dimensional scroll, and 90° rotation.
+- The shared flowchart/class/sequence visual builder remains accessible above active Mermaid
+  source, including selected slash-snippet fields. Unsupported grammar remains exact source.
 - Tables expose Copy, insertion, drag reorder, content-sized word-wrapped columns, horizontal scroll,
   and one transient popover editor for the selected cell.
 - Note properties expose insertion, hierarchy-preserving reorder, nested YAML, and one transient
   popover editor. Plain Markdown has no generated property card.
 - Details accordions preserve comments, task-checkbox interaction, collapsed/open state, and links.
 - Action glyphs are CSS SVG masks; no renderer must accept inline SVG button markup.
-- Slash on an otherwise empty Markdown line opens the shared contextual template catalog. Empty
+- Slash on an otherwise empty Markdown line opens the shared contextual template catalog in AIC
+  Markdown, native/untitled VS Code Markdown, and contextual notes. Empty
   notes rank complete pages first, existing pages rank page sections first, and `Tab` advances
   through inserted perspective questions. Seven labeled groups organize complete pages, structure,
   assurance, references, data, diagrams, and content. The same core is mounted in ordinary `.md`
   documents and contextual `.note.md` notes. Code and read-only contexts never activate it.
+- `/list`, `/list-numbered` and `/table` are primitive blocks, without mandatory page metadata or
+  headings. Specialized tables/checklists and the existing `/class-diagram` remain distinct.
 
 ## Paired-editor boundary
 

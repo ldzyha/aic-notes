@@ -1,9 +1,9 @@
 {
   "name": "aic-notes",
   "displayName": "AIC Notes",
-  "description": "Local AIC Markdown documents plus Secondary-Side-Bar-only *.note.md notes with explicit Ctrl+S saving.",
-  "version": "27.1.1",
-  "aicEditorCore": "3.3.0",
+  "description": "Local AIC Markdown documents and *.note.md notes in the main editor, with linked sidebar notes for source files.",
+  "version": "28.4.5",
+  "aicEditorCore": "3.4.0",
   "publisher": "ldzyha",
   "icon": "media/icon.png",
   "license": "MIT",
@@ -36,6 +36,9 @@
     "Other"
   ],
   "main": "./dist/extension.cjs",
+  "activationEvents": [
+    "onLanguage:markdown"
+  ],
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": true,
@@ -53,8 +56,9 @@
     "package": "npm run build && vsce package --no-dependencies --out aic-notes-$npm_package_version.vsix",
     "install:vsix": "npm run package && code --install-extension aic-notes-$npm_package_version.vsix --force",
     "release:checksum": "node scripts/checksum.mjs",
+    "core:check": "node scripts/verify-core.mjs",
     "release:verify": "node scripts/verify-release.mjs",
-    "release:gate": "npm test && npm run package && npm run release:checksum && npm run release:verify"
+    "release:gate": "npm run core:check && npm test && npm run package && npm run release:checksum && npm run release:verify"
   },
   "contributes": {
     "viewsContainers": {
@@ -132,9 +136,10 @@
         "category": "AIC Notes"
       },
       {
-        "command": "aicNotes.openTarget",
-        "title": "Open Target",
-        "category": "AIC Notes"
+        "command": "aicNotes.openSource",
+        "title": "Open Source",
+        "category": "AIC Notes",
+        "icon": "$(go-to-file)"
       },
       {
         "command": "aicNotes.copyWikiLink",
@@ -191,12 +196,22 @@
     "menus": {
       "editor/title": [
         {
+          "command": "aicNotes.openSource",
+          "when": "resourceScheme == file && resourceFilename =~ /\\.note\\.md$/",
+          "group": "navigation"
+        },
+        {
           "command": "aicNotes.noteForCurrentFile",
           "when": "resourceScheme == file && resourceFilename not =~ /\\.note\\.md$/",
           "group": "navigation"
         }
       ],
       "explorer/context": [
+        {
+          "command": "aicNotes.openSource",
+          "when": "resourceScheme == file && resourceFilename =~ /\\.note\\.md$/",
+          "group": "navigation@1"
+        },
         {
           "command": "aicNotes.noteForExplorerItem",
           "group": "2_workspace"
@@ -233,7 +248,7 @@
       ],
       "view/item/context": [
         {
-          "command": "aicNotes.openTarget",
+          "command": "aicNotes.openSource",
           "when": "view == aicNotes.tree && viewItem == note",
           "group": "navigation@1"
         },
@@ -257,13 +272,13 @@
     "customEditors": [
       {
         "viewType": "aicNotes.noteRedirect",
-        "displayName": "AIC Note (Secondary Side Bar)",
+        "displayName": "AIC Markdown (Legacy Note Association)",
         "selector": [
           {
             "filenamePattern": "*.note.md"
           }
         ],
-        "priority": "default"
+        "priority": "option"
       },
       {
         "viewType": "aicNotes.markdown",
@@ -278,7 +293,7 @@
     ],
     "configurationDefaults": {
       "workbench.editorAssociations": {
-        "*.note.md": "aicNotes.noteRedirect",
+        "*.note.md": "aicNotes.markdown",
         "*.md": "aicNotes.markdown"
       },
       "explorer.fileNesting.patterns": {
@@ -350,6 +365,7 @@
     "@vscode/vsce": "^3.3.0",
     "adm-zip": "0.5.16",
     "esbuild": "^0.28.0",
-    "mermaid": "11.16.1"
+    "mermaid": "11.16.1",
+    "yaml": "2.9.0"
   }
 }

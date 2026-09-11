@@ -6,9 +6,9 @@ const root = new URL("../", import.meta.url);
 const read = (relativePath) => readFile(new URL(relativePath, root), "utf8");
 const packageJson = JSON.parse(await read("package.json"));
 
-test("27.1.1 is a local-only universal extension", () => {
-  assert.equal(packageJson.version, "27.1.1");
-  assert.equal(packageJson.aicEditorCore, "3.3.0");
+test("28.4.5 is a local-only universal extension", () => {
+  assert.equal(packageJson.version, "28.4.5");
+  assert.equal(packageJson.aicEditorCore, "3.4.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
   assert.doesNotMatch(packageJson.description, /Standard Notes|sync/iu);
@@ -35,7 +35,7 @@ test("note association, project fallback, and local footer actions are explicit"
     packageJson.contributes.configurationDefaults[
       "workbench.editorAssociations"
     ]["*.note.md"],
-    "aicNotes.noteRedirect",
+    "aicNotes.markdown",
   );
   const binding = packageJson.contributes.keybindings.find(
     ({ command }) => command === "aicNotes.noteForCurrentFile",
@@ -64,7 +64,7 @@ test("note association, project fallback, and local footer actions are explicit"
   assert.match(provider, /preferredWorkspaceFolder/u);
   assert.match(
     provider,
-    /this\.followTarget\(folder\.uri, \{ preserveFocus: true \}\)/u,
+    /this\.followTargetNow\(folder\.uri, \{ preserveFocus: true \}\)/u,
   );
   assert.match(
     create,
@@ -81,15 +81,25 @@ test("note association, project fallback, and local footer actions are explicit"
 });
 
 test("Secondary save and Trash paths are deterministic and local", async () => {
-  const [provider, webview, extension] = await Promise.all([
-    read("src/secondary/provider.js"),
-    read("src/webview/main.js"),
-    read("src/extension.js"),
-  ]);
+  const [provider, webview, extension, secondaryDraft, theme] =
+    await Promise.all([
+      read("src/secondary/provider.js"),
+      read("src/webview/main.js"),
+      read("src/extension.js"),
+      read("src/webview/secondary-draft.js"),
+      read("src/webview/theme.css"),
+    ]);
   assert.match(provider, /case "commit"[\s\S]*commitDraft/u);
   assert.match(provider, /workspace\.fs\.writeFile/u);
   assert.match(provider, /saved = await document\.save\(\)/u);
-  assert.match(provider, /Saved locally/u);
+  assert.doesNotMatch(
+    provider,
+    /Saved locally|pane-filename|pane-breadcrumb|secondary-controls/u,
+  );
+  assert.match(provider, /id="pane-save-indicator"[^>]*role="img"/u);
+  assert.match(provider, /id="pane-status"[^>]*aria-live="polite"/u);
+  assert.match(theme, /data-save-state="dirty"[\s\S]*var\(--warn\) 4%/u);
+  assert.doesNotMatch(theme, /data-save-state="saved"|#5aa66a/u);
   assert.match(provider, /trashNotesLocally\(\[uri\]\)/u);
   assert.match(
     provider,
@@ -106,12 +116,10 @@ test("Secondary save and Trash paths are deterministic and local", async () => {
   assert.doesNotMatch(webview, /commitDraft\("blur"\)|onfocusout/u);
   assert.match(webview, /commitDraft\("explicit"\)/u);
   assert.match(webview, /dataset\.saveState/u);
-  assert.match(webview, /DraftSession/u);
+  assert.match(secondaryDraft, /DraftSession/u);
+  assert.match(webview, /SecondaryDraft/u);
   assert.match(webview, /type: "draft\.state"/u);
-  assert.doesNotMatch(
-    webview,
-    /readOnlyCompartment|docState\.readOnly|pane\.auth/u,
-  );
+  assert.doesNotMatch(webview, /pane\.auth/u);
 });
 
 test("upgrade removes only retired local integration metadata", async () => {
@@ -261,15 +269,32 @@ test("structured previews keep explicit icon actions and transient editors", asy
   );
 });
 
+test("pin uses a recognizable shared thumbtack with outlined and filled states", async () => {
+  const [icons, provider, webview] = await Promise.all([
+    read("vendor/aic-editor-core/icons.css"),
+    read("src/secondary/provider.js"),
+    read("src/webview/main.js"),
+  ]);
+  assert.match(icons, /data-aic-icon="pin"\]\[aria-pressed="true"/u);
+  assert.match(icons, /M5 2h6v2l-1 1v4l2 2H4l2-2V5L5 4Z/u);
+  assert.match(
+    provider,
+    /data-aic-icon="pin" aria-label="Pin note" aria-pressed="false"/u,
+  );
+  assert.match(webview, /msg.pinned \? "Unpin note" : "Pin note"/u);
+});
+
 test("shared slash templates are mounted with the common placeholder and styling", async () => {
   const [webview, snippets, snippetCss] = await Promise.all([
     read("src/webview/main.js"),
     read("vendor/aic-editor-core/slash-snippets.js"),
     read("vendor/aic-editor-core/slash-snippets.css"),
   ]);
-  assert.match(snippets, /SLASH_SNIPPETS_CORE_VERSION = "1\.1\.0"/u);
+  assert.match(snippets, /SLASH_SNIPPETS_CORE_VERSION = "1\.2\.0"/u);
   assert.match(snippets, /"page-architecture"/u);
-  assert.match(snippets, /"purpose"/u);
+  assert.match(snippets, /"section"/u);
+  assert.match(snippets, /"noise"/u);
+  assert.match(snippets, /"wave"/u);
   assert.match(snippets, /"flowchart"/u);
   assert.match(snippets, /snippetCompletion/u);
   assert.match(snippets, /EditorState\.readOnly|state\.readOnly/u);
@@ -282,21 +307,34 @@ test("shared slash templates are mounted with the common placeholder and styling
   );
   assert.match(snippetCss, /background-color: var\(--aic-bg\)/u);
   assert.match(snippetCss, /completion-section/u);
+  assert.match(snippetCss, /position: static/u);
+  assert.doesNotMatch(snippetCss, /position: sticky/u);
   assert.match(snippetCss, /cm-snippetField/u);
 });
 
 test("plain Markdown and contextual notes load the same slash-enabled editor", async () => {
-  const [markdownProvider, noteProvider, webview] = await Promise.all([
-    read("src/editor/provider.js"),
-    read("src/secondary/provider.js"),
-    read("src/webview/main.js"),
-  ]);
-  assert.match(markdownProvider, /webviewHtml\(webview, distRoot, "main\.js"/u);
+  const [markdownProvider, noteProvider, nativeProvider, extension, webview] =
+    await Promise.all([
+      read("src/editor/provider.js"),
+      read("src/secondary/provider.js"),
+      read("src/editor/slash-provider.js"),
+      read("src/extension.js"),
+      read("src/webview/main.js"),
+    ]);
+  assert.match(
+    markdownProvider,
+    /webviewHtml\(\s*webview,\s*distRoot,\s*"main\.js"/u,
+  );
   assert.match(noteProvider, /distRoot,[\s\S]*"main\.js"/u);
   assert.match(
     webview,
     /function makeEditor\(text\)[\s\S]*placeholder\(SLASH_SNIPPET_PLACEHOLDER\),[\s\S]*slashSnippetExtension\(\)/u,
   );
+  assert.match(nativeProvider, /DOCUMENTATION_SNIPPETS/u);
+  assert.match(nativeProvider, /registerCompletionItemProvider/u);
+  assert.match(nativeProvider, /language: "markdown"/u);
+  assert.match(extension, /registerMarkdownSlashCompletionProvider\(vscode\)/u);
+  assert.ok(packageJson.activationEvents.includes("onLanguage:markdown"));
 });
 
 test("Mermaid owns zoom, two-dimensional scroll, and quarter-turn rotation", async () => {
@@ -315,17 +353,18 @@ test("Mermaid owns zoom, two-dimensional scroll, and quarter-turn rotation", asy
 });
 
 test("properties are note-only and update on explicit save", async () => {
-  const [extension, secondary, properties] = await Promise.all([
+  const [extension, secondary, properties, noteProperties] = await Promise.all([
     read("src/extension.js"),
     read("src/secondary/provider.js"),
     read("vendor/aic-editor-core/file-properties.js"),
+    read("src/notes/properties.js"),
   ]);
   assert.match(extension, /onWillSaveTextDocument/u);
   assert.match(extension, /lowerPath\.endsWith\("\.note\.md"\)/u);
   assert.match(extension, /legacyPropertyCleanupEdits/u);
   assert.match(secondary, /stampNoteProperties/u);
-  assert.match(secondary, /createdAt/u);
-  assert.match(secondary, /updatedAt/u);
+  assert.match(noteProperties, /createdAt/u);
+  assert.match(noteProperties, /updatedAt/u);
   assert.match(properties, /name\.endsWith\("\.note\.md"\)/u);
   assert.match(properties, /fileName/u);
   assert.match(properties, /created/u);

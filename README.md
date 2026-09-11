@@ -1,33 +1,97 @@
 # AIC Notes
 
 AIC Notes is a local Markdown editor for VS Code/Code. It edits every `*.md` document with the AIC
-preview-first surface and keeps contextual `*.note.md` sidecars in the Secondary Side Bar. There is
+preview-first surface, including `*.note.md`, and shows linked notes in the Secondary Side Bar. There is
 no account, cloud transport, background synchronization, polling, or remote conflict state.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
 the editor-core contract, but it is a separate product. AIC Notes does not connect to Standard Notes
 and does not move data between the two applications.
 
+## Release 28.4.5 — shared editor core 3.4.0
+
+This release pairs with AIC for Standard Notes 21.3.5. Both products use the same
+byte-verified core. Automated tests, production builds and Windows browser checks cover the
+shared controls; Linux desktop and live authenticated Standard Notes smoke checks are not implied.
+
+- `/page`, `/section`, `/context` and `/implementation` follow Core's question → answer → detail
+  structure, with dependency-ordered steps and verification where needed. There are no compulsory
+  Purpose/Proposal sections. The same catalog works in AIC and native Markdown, including `.note.md`.
+- `/list`, `/list-numbered`, `/checklist` and `/table` insert an unordered list, ordered list,
+  bare checkbox list and simple table. `/checkbox` and `/tasklist` also find `/checklist`;
+  `/tasks` remains the separate verification section.
+- Explorer note clicks open just the note in the main editor. **Open Source** is a separate
+  action that opens the source with its linked sidebar note; folder/project sources are revealed.
+  Persisted legacy note associations resolve to the main editor without changing user settings.
+- The note pane starts directly at its content/properties, without a duplicate name, folder or
+  save-status header. Saved notes are neutral; unsaved notes have a soft amber tint and a small
+  change marker; placeholders are gray. Save remains explicit Ctrl/Cmd+S.
+- Context ancestors require existing `.note.md` notes. Project navigation always remains,
+  opening its note or placeholder; the actual current target can also be a placeholder.
+- In the AIC editor, Mermaid source now retains its visual-editor button above the fence while
+  the caret or a snippet field is inside it. Raw Markdown remains editable. `/class` finds
+  `/class-diagram`; native VS Code text editors offer snippets but not the embedded canvas.
+- `/noise` captures uncertainty; `/wave` develops a result and executable path in the same note.
+  New default file/folder/project notes start with compact Noise guidance. Existing notes and
+  accepted `.aic/templates/*.md` overrides are preserved; generated note properties remain exactly
+  `file`, `created` and `updated`. There is no automatic noise/wave classification or grouping UI.
+- Insert `/flowchart`, `/class-diagram`, `/sequence` or `/entity-map` in AIC Markdown, then choose
+  **Edit diagram visually** on its Mermaid preview. Controls open inside that same block, not in
+  a dialog. Drag an element from the semantic palette onto the preview (or click its button),
+  select a node to rename/change/delete it in the compact
+  context bar, and drag a connection handle onto another node to create a solid arrow. Click a
+  line to edit its label/type/direction. Mermaid computes the actual layout from the source and
+  direction; palette drop positions are not saved as coordinates. Sequence order remains semantic.
+  Undo/Redo, deletion, zoom, scroll and fit are available. The native source editor still edits Markdown;
+  the visual builder belongs to the AIC preview surface.
+- Diagram controls remain compact independently of the document's font size. The selected
+  element has one short bar; endpoints, entity members and related connections open on demand.
+  Palette and selectors share semantic labels: State/Event/Condition, Entity, Participant/Actor.
+  The entity-map profile uses Entity and Association/Dependency; geometry names stay internal.
+- **Apply diagram changes** updates the block; **Ctrl/Cmd+S** saves the document. Ctrl/Cmd+S inside
+  the builder applies and requests the same explicit save. Cancel discards the builder draft.
+  Changes outside the block preserve it; conflicting block edits disable Apply and retain a
+  copyable draft. Switching notes retires the old session. No input/blur autosave is added.
+- The shared builder supports a bounded flow/class/sequence grammar. Unsupported Mermaid remains
+  in source mode with the original intact. Read preview and inline editing use the same renderer
+  and layout configuration. Legacy `%% aic-builder-layout` coordinates do not control layout and
+  are removed only when a supported visual edit rewrites the block; opening or unchanged Apply
+  does not rewrite source.
+- Enter preserves indentation and list continuation; Tab/Shift+Tab indent/outdent unless a
+  snippet field is active. The Mermaid source textarea shares indentation behavior; Escape then
+  Tab leaves that field, while Escape twice closes inline editing.
+- In AIC Markdown (documents and notes), Ctrl/Cmd+Alt+1…6 toggles heading levels;
+  Ctrl/Cmd+Shift+7/8/9 toggles numbered, bullet and checkbox lists. Formatting does not save.
+- Agentic Notes has a tested shared scope/section core, not an active universal agent adapter.
+  It selects existing current/ancestor notes, excludes sibling memory and private notes, and
+  proposes edits confined to a marked Agentic Notes section. A live-document write bridge and
+  cross-client integration are still required; no standalone disk writer is enabled.
+
+Entity-map composition is separate from the chronological, source-edited `/timeline`. Automatic
+drill-down/cross-scale links, multiselect, subgraph authoring and full arbitrary Mermaid support are
+**not implemented**. Shared popup/session and preview-navigation stability changes are included;
+this section does not assert that all clients or operating systems have completed final smoke tests.
+
 ## Install
 
-Download `aic-notes-27.1.1.vsix` and `aic-notes-27.1.1.vsix.sha256` from the
-[v27.1.1 release](https://github.com/ldzyha/aic-notes/releases/tag/v27.1.1). The VSIX is universal:
+Download `aic-notes-28.4.5.vsix` and `aic-notes-28.4.5.vsix.sha256` from the
+[v28.4.5 release](https://github.com/ldzyha/aic-notes/releases/tag/v28.4.5). The VSIX is universal:
 use the same file on Windows, Linux, macOS, and code-server.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-27.1.1.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-27.1.1.vsix.sha256
-code --install-extension .\aic-notes-27.1.1.vsix --force
+(Get-FileHash .\aic-notes-28.4.5.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-28.4.5.vsix.sha256
+code --install-extension .\aic-notes-28.4.5.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-27.1.1.vsix.sha256
-code --install-extension ./aic-notes-27.1.1.vsix --force
-# or: code-server --install-extension ./aic-notes-27.1.1.vsix --force
+sha256sum -c aic-notes-28.4.5.vsix.sha256
+code --install-extension ./aic-notes-28.4.5.vsix --force
+# or: code-server --install-extension ./aic-notes-28.4.5.vsix --force
 ```
 
 Reload the VS Code window after installation. No additional executable or library is required.
@@ -35,9 +99,9 @@ Reload the VS Code window after installation. No additional executable or librar
 ## Local note model
 
 - `*.md` is a normal local Markdown document shown in the full AIC Markdown editor.
-- `*.note.md` is a local contextual note shown only in the Secondary Side Bar.
+- `*.note.md` is a local contextual note that can open in the main editor or linked sidebar.
 - A file note sits beside its source: `src/cart.js` → `src/cart.note.md`.
-- A folder note sits inside its folder: `src/` → `src/src.note.md`.
+- A folder note sits beside its folder: `src/components/` → `src/components.note.md`.
 - A project note sits at the workspace root: `demo/` → `demo.note.md`.
 - Closing every file buffer follows the current workspace project note. If it does not exist, an
   editable gray placeholder appears; the file is created only after content changes and
@@ -52,7 +116,7 @@ tab event cannot silently discard its draft.
 ## Saving and deleting
 
 `Ctrl/Cmd+S` is the only persistence boundary for Secondary notes. Typing and blur never save.
-The pane is neutral while editing, lightly green after a successful local save, and gray for an
+The pane is softly amber while unsaved, neutral after a successful local save, and gray for an
 unmaterialized placeholder. Ordinary Markdown documents use the same explicit VS Code save action.
 
 Trash is local and recoverable. The footer Trash action and tree delete commands ask for
@@ -68,12 +132,13 @@ files are preserved unchanged. No remote request is made during cleanup.
 The document remains exact Markdown source. Preview structures disclose only the source being
 edited; there is no document-wide preview/edit mode switch.
 
-On an otherwise empty Markdown line, type `/` to open the shared template catalog. It works in both
-ordinary `.md` documents and contextual `.note.md` notes because both surfaces mount the same editor
-core. Empty documents put complete pages first; an existing page puts structural sections first.
+On an otherwise empty Markdown line, type `/` to open the shared template catalog. It works in the
+AIC Markdown editor, VS Code's native Markdown editor, unsaved Markdown documents, and contextual
+`.note.md` notes; every adapter consumes the same catalog. Empty documents put complete pages first;
+an existing page puts structural sections first.
 Choose a result, then use `Tab` to move through its highlighted questions and replace the example
-answers. The menu separates Page templates, Page structure, Risks & verification, References,
-Tables & lists, Diagrams, and Content blocks. Completion stays inactive inside fenced/inline code
+answers. The compact menu separates Pages, Structure, Review, References, Tables & lists, Diagrams,
+and Blocks. Completion stays inactive inside fenced/inline code
 and in read-only documents.
 
 - Text, headings, lists, tasks, quotes, emphasis, and fenced languages edit directly.
@@ -92,8 +157,9 @@ and in read-only documents.
   transient popover editing, insertion, and drag reordering. Ordinary `*.md` documents do not
   receive generated properties.
 - A read-only context tree appears directly under note properties only when frontmatter exists. It
-  is derived from the workspace and shows project, parents, current target, children, and nearby
-  notes; it is not stored in the Markdown and cannot be edited.
+  is derived from actual workspace notes and shows project, note-bearing parents, current target,
+  children, and nearby notes; it is not stored in the Markdown and cannot be edited. Project and
+  current-target placeholders remain navigable; absent ancestor folders are omitted.
 - AIC details blocks preserve accordion state, task-checkbox interaction, source comments, and
   linked targets.
 
@@ -140,7 +206,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-`27.1.1` is sequence 27 with one feature outcome and one fixed-bug outcome.
+`28.4.5` is sequence 28 with four feature outcomes and five fixed-bug outcomes.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and
 [PROVENANCE.md](PROVENANCE.md) for the shared-core snapshot identity.

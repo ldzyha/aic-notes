@@ -1,8 +1,8 @@
-// Note body templates — adapted from aic modules/notes/web/src/lazy/sync.js.
-// Same default templates and the same `.aic/templates/*.md` per-project
-// override; the AI seeding is gone, so every unfilled {{token}} line is
-// DELETED (leaving literal tokens in a fresh note would be silent junk) —
-// except {{name}}, which we can always fill.
+import { DEFAULT_NOTE_BODY_TEMPLATE } from "../../vendor/aic-editor-core/note-template.js";
+
+// Core-guided new notes start with noise research and evolve in place into
+// wave instructions. Existing note bodies and project template overrides
+// remain owned by the user; this module supplies defaults only.
 
 export const TEMPLATE_PATHS = {
   "file-note": ".aic/templates/file-note.md",
@@ -21,47 +21,13 @@ export function stripTemplateFrontmatter(template) {
   return String(template ?? "").replace(TEMPLATE_FRONTMATTER, "");
 }
 
-const DEFAULT_TEMPLATES = {
-  "file-note": `## Todo
-
-- [ ]
-
-## Open questions
-
-- [ ]
-`,
-  "folder-note": `# notes: {{name}}/
-
-## Purpose
-{{purpose}}
-
-## Decisions
-{{decisions}}
-
-## Gotchas
-
-## Open questions
-`,
-  "project-note": `# {{name}}
-
-## Purpose
-{{purpose}}
-
-## Standards
-
-## Decisions
-
-## Links
-
-## Open questions
-`,
-};
-
 // Fill {{name}}, then drop every line that still carries an unfilled token.
 // Collapses the runs of blank lines the dropped lines leave behind.
 export function fillTemplate(template, name) {
   const filled = template.replaceAll("{{name}}", name);
-  const lines = filled.split("\n").filter((l) => !/\{\{[a-zA-Z0-9_]+\}\}/.test(l));
+  const lines = filled
+    .split("\n")
+    .filter((l) => !/\{\{[a-zA-Z0-9_]+\}\}/.test(l));
   return lines.join("\n").replace(/\n{3,}/g, "\n\n");
 }
 
@@ -71,7 +37,7 @@ export function fillTemplate(template, name) {
 // (relPath) => string|null supplied by the caller (workspace.fs there,
 // node fs in unit tests).
 export async function loadTemplate(level, readFile) {
-  const fallback = DEFAULT_TEMPLATES[level] ?? DEFAULT_TEMPLATES["file-note"];
+  const fallback = DEFAULT_NOTE_BODY_TEMPLATE;
   const path = TEMPLATE_PATHS[level];
   if (!path) return fallback;
   try {

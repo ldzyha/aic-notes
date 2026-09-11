@@ -4,6 +4,7 @@ import { openLink } from "../../vendor/markdown/link-actions.js";
 import {
   createIconButton,
   selectionRevealsPreview,
+  selectionStaysInSource,
 } from "../../vendor/aic-editor-core/structured-preview.js";
 import { providePreviewRanges } from "../../vendor/aic-editor-core/preview-ranges.js";
 import { parseDetailsBlocks, toggleDetailsMarker } from "./details-model.js";
@@ -31,7 +32,9 @@ const sourceOverrides = StateField.define({
   create: () => new Set(),
   update(value, transaction) {
     let next = transaction.docChanged
-      ? new Set([...value].map((position) => transaction.changes.mapPos(position)))
+      ? new Set(
+          [...value].map((position) => transaction.changes.mapPos(position)),
+        )
       : value;
     for (const effect of transaction.effects) {
       if (!effect.is(editSource)) continue;
@@ -43,14 +46,11 @@ const sourceOverrides = StateField.define({
       const selected = transaction.state.selection.ranges;
       next = new Set(
         [...next].filter((position) => {
-          const block = blocks.find(({ headerFrom }) => headerFrom === position);
+          const block = blocks.find(
+            ({ headerFrom }) => headerFrom === position,
+          );
           return Boolean(
-            block &&
-              selected.some((range) =>
-                range.empty
-                  ? range.from > block.from && range.from < block.end
-                  : range.from < block.end && range.to > block.from,
-              ),
+            block && selectionStaysInSource(selected, block.from, block.end),
           );
         }),
       );
@@ -60,19 +60,22 @@ const sourceOverrides = StateField.define({
 });
 
 class DetailsSummaryWidget extends WidgetType {
-  constructor(block, open, host, readOnly) {
+  constructor(block, headerSource, open, host, readOnly) {
     super();
     this.block = block;
+    this.headerSource = headerSource;
     this.open = open;
     this.host = host;
     this.readOnly = readOnly;
   }
 
   eq(other) {
-    return other.block.headerFrom === this.block.headerFrom &&
-      other.block.title === this.block.title &&
+    return (
+      other.headerSource === this.headerSource &&
+      JSON.stringify(other.block) === JSON.stringify(this.block) &&
       other.open === this.open &&
-      other.readOnly === this.readOnly;
+      other.readOnly === this.readOnly
+    );
   }
 
   ignoreEvent() {
@@ -83,21 +86,33 @@ class DetailsSummaryWidget extends WidgetType {
   }
 
   toDOM(view) {
+    const document = view.dom.ownerDocument;
     const row = document.createElement("div");
     row.className = "cm-aic-details-summary";
     row.dataset.aicSourceFrom = String(this.block.from);
     row.dataset.aicSourceTo = String(this.block.end);
     row.dataset.open = String(this.open);
     row.dataset.body = String(this.block.contentFrom < this.block.closeFrom);
+    const isCurrent = () =>
+      row.isConnected &&
+      this.block.headerFrom >= 0 &&
+      this.block.headerTo >= this.block.headerFrom &&
+      this.block.headerTo <= view.state.doc.length &&
+      view.state.sliceDoc(this.block.headerFrom, this.block.headerTo) ===
+        this.headerSource;
 
     const disclosure = document.createElement("button");
     disclosure.type = "button";
     disclosure.className = "cm-aic-details-disclosure cm-aic-icon-button";
     disclosure.dataset.aicIcon = "chevron";
-    disclosure.setAttribute("aria-label", this.open ? "Collapse details" : "Expand details");
+    disclosure.setAttribute(
+      "aria-label",
+      this.open ? "Collapse details" : "Expand details",
+    );
     disclosure.setAttribute("aria-expanded", String(this.open));
     disclosure.onmousedown = (event) => event.preventDefault();
     const toggle = () => {
+      if (!isCurrent()) return;
       if (view.state.readOnly) {
         view.dispatch({ effects: toggleVisual.of(this.block.headerFrom) });
         return;
@@ -120,12 +135,19 @@ class DetailsSummaryWidget extends WidgetType {
       checkbox.className = `cm-aic-details-check${data.checked ? " checked" : ""}`;
       checkbox.setAttribute("role", "checkbox");
       checkbox.setAttribute("aria-checked", String(data.checked));
-      checkbox.setAttribute("aria-label", data.checked ? "Mark linked item incomplete" : "Mark linked item complete");
+      checkbox.setAttribute(
+        "aria-label",
+        data.checked
+          ? "Mark linked item incomplete"
+          : "Mark linked item complete",
+      );
       checkbox.disabled = view.state.readOnly;
       checkbox.onmousedown = (event) => event.preventDefault();
       checkbox.onclick = () => {
-        if (view.state.readOnly || data.taskOffset < 0) return;
+        if (view.state.readOnly || !isCurrent() || data.taskOffset < 0) return;
         const from = this.block.titleFrom + data.taskOffset;
+        if (from < this.block.headerFrom || from + 1 > this.block.headerTo)
+          return;
         view.dispatch({
           changes: { from, to: from + 1, insert: data.checked ? " " : "x" },
           userEvent: "input",
@@ -138,7 +160,10 @@ class DetailsSummaryWidget extends WidgetType {
     title.type = "button";
     title.className = "cm-aic-details-title";
     title.textContent = data.label;
-    title.setAttribute("aria-label", `${this.open ? "Collapse" : "Expand"} ${data.label}`);
+    title.setAttribute(
+      "aria-label",
+      `${this.open ? "Collapse" : "Expand"} ${data.label}`,
+    );
     title.onmousedown = (event) => event.preventDefault();
     title.onclick = toggle;
     row.appendChild(title);
@@ -155,10 +180,13 @@ class DetailsSummaryWidget extends WidgetType {
     }
 
     const edit = createIconButton(document, {
-      label: view.state.readOnly ? "View details source" : "Edit details source",
+      label: view.state.readOnly
+        ? "View details source"
+        : "Edit details source",
       icon: view.state.readOnly ? "source" : "edit",
       className: "cm-md-edit-source cm-aic-details-edit",
       onActivate: () => {
+        if (!isCurrent()) return;
         const anchor = Math.min(this.block.headerTo, this.block.headerFrom + 4);
         view.dispatch({
           selection: { anchor },
@@ -184,13 +212,31 @@ function previewDecorations(state, host) {
     )
       continue;
     const open = overrides.has(block.headerFrom) ? !block.open : block.open;
-    const widget = new DetailsSummaryWidget(block, open, host, state.readOnly);
+    const widget = new DetailsSummaryWidget(
+      block,
+      state.sliceDoc(block.headerFrom, block.headerTo),
+      open,
+      host,
+      state.readOnly,
+    );
     if (!open) {
-      ranges.push(Decoration.replace({ block: true, widget }).range(block.from, block.end));
+      ranges.push(
+        Decoration.replace({ block: true, widget }).range(
+          block.from,
+          block.end,
+        ),
+      );
       continue;
     }
-    ranges.push(Decoration.replace({ block: true, widget }).range(block.headerFrom, block.headerTo));
-    ranges.push(Decoration.replace({ block: true }).range(block.closeFrom, block.closeTo));
+    ranges.push(
+      Decoration.replace({ block: true, widget }).range(
+        block.headerFrom,
+        block.headerTo,
+      ),
+    );
+    ranges.push(
+      Decoration.replace({ block: true }).range(block.closeFrom, block.closeTo),
+    );
   }
   return Decoration.set(ranges, true);
 }
@@ -254,8 +300,13 @@ function buildBodyDecorations(state) {
     bodyLines.forEach((line, index) => {
       const classes = ["cm-aic-details-body"];
       if (index === 0) classes.push("cm-aic-details-body-first");
-      if (index === bodyLines.length - 1) classes.push("cm-aic-details-body-last");
-      ranges.push(Decoration.line({ attributes: { class: classes.join(" ") } }).range(line.from));
+      if (index === bodyLines.length - 1)
+        classes.push("cm-aic-details-body-last");
+      ranges.push(
+        Decoration.line({ attributes: { class: classes.join(" ") } }).range(
+          line.from,
+        ),
+      );
     });
   }
   return Decoration.set(ranges, true);

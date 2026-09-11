@@ -1,0 +1,3 @@
+# Shared core hashes must stay identical on Windows and Linux checkouts.
+vendor/aic-editor-core/* text eol=lf
+CORE_SNAPSHOT.json text eol=lf

@@ -12,10 +12,11 @@ import {
   commandHandler,
 } from "./notes/create.js";
 import { enableExplorerNesting, hintIfShadowed } from "./notes/nesting.js";
-import { resolveTarget } from "./notes/target.js";
 import { MarkdownEditorProvider } from "./editor/provider.js";
-import { structuredError } from "./errors.js";
+import { registerMarkdownSlashCompletionProvider } from "./editor/slash-provider.js";
 import { SecondaryNotePane } from "./secondary/provider.js";
+import { activeResource } from "./secondary/model.js";
+import { NoteEditOwnership } from "./notes/edit-ownership.js";
 import { linkSelectionToNote } from "./notes/selection.js";
 import { deleteNotes } from "./notes/delete.js";
 import { AgentWorkflowBootstrap } from "./agents/bootstrap.js";
@@ -59,7 +60,10 @@ function legacyPropertyCleanupEdits(document) {
   if (cleaned === source) return [];
   return [
     vscode.TextEdit.replace(
-      new vscode.Range(document.positionAt(0), document.positionAt(source.length)),
+      new vscode.Range(
+        document.positionAt(0),
+        document.positionAt(source.length),
+      ),
       cleaned,
     ),
   ];
@@ -69,8 +73,9 @@ export async function activate(context) {
   await removeRetiredSyncData(context);
   AgentWorkflowBootstrap.register(context);
   const tree = new NotesTree();
-  const secondary = SecondaryNotePane.register(context);
-  const markdownEditor = MarkdownEditorProvider.register(context);
+  const ownership = new NoteEditOwnership();
+  const secondary = SecondaryNotePane.register(context, ownership);
+  const markdownEditor = MarkdownEditorProvider.register(context, ownership);
   const documentWillSave = vscode.workspace.onWillSaveTextDocument((event) => {
     const lowerPath = event.document.uri.path.toLowerCase();
     if (
@@ -88,6 +93,7 @@ export async function activate(context) {
     documentWillSave,
     vscode.window.registerTreeDataProvider("aicNotes.tree", tree),
     markdownEditor,
+    registerMarkdownSlashCompletionProvider(vscode),
 
     vscode.commands.registerCommand(
       "aicNotes.openInSecondary",
@@ -119,21 +125,23 @@ export async function activate(context) {
     ),
 
     vscode.commands.registerCommand(
-      "aicNotes.openTarget",
-      commandHandler(async (item) => {
-        if (!item?.relPath || !item?.folder) return;
-        const target = await resolveTarget(item.folder, item.relPath);
-        if (!target) {
-          throw structuredError(
-            "notes_orphan",
-            `${item.relPath} has no existing target`,
-            [
-              "The annotated file/folder was moved or deleted — restore it or delete the note",
-            ],
+      "aicNotes.openSource",
+      commandHandler((item) => {
+        const tab = vscode.window.tabGroups.activeTabGroup.activeTab;
+        const uri =
+          item?.uri ??
+          item ??
+          activeResource(
+            tab?.input?.uri ?? tab?.input?.modified,
+            vscode.window.activeTextEditor?.document.uri,
+            Boolean(tab),
           );
-        }
-        await vscode.window.showTextDocument(target);
+        return secondary.openSourceForNote(uri);
       }),
+    ),
+    vscode.commands.registerCommand(
+      "aicNotes.openTarget",
+      commandHandler((item) => secondary.openSourceForNote(item?.uri)),
     ),
     vscode.commands.registerCommand(
       "aicNotes.copyWikiLink",
@@ -167,7 +175,11 @@ export async function activate(context) {
           .map((child) => child.uri)
           .filter(Boolean);
         if (uris.length) {
-          await deleteNotes(uris, `${uris.length} note(s) under "${item.label}"`, tree);
+          await deleteNotes(
+            uris,
+            `${uris.length} note(s) under "${item.label}"`,
+            tree,
+          );
         }
       }),
     ),
@@ -185,12 +197,12 @@ export async function activate(context) {
           {
             ...current,
             "*.md": "default",
-            "*.note.md": "aicNotes.noteRedirect",
+            "*.note.md": "aicNotes.markdown",
           },
           vscode.ConfigurationTarget.Global,
         );
         vscode.window.showInformationMessage(
-          "AIC Notes: plain *.md now opens in the native editor; *.note.md still routes only to the Secondary Side Bar. Undo via workbench.editorAssociations in user settings.",
+          "AIC Notes: plain *.md now opens in the native editor; *.note.md opens in the main AIC editor. Undo via workbench.editorAssociations in user settings.",
         );
       }),
     ),

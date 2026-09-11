@@ -2,8 +2,10 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import AdmZip from "adm-zip";
+import { verifyCoreSnapshot } from "./verify-core.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
+await verifyCoreSnapshot(root);
 const manifest = JSON.parse(
   await readFile(path.join(root, "package.json"), "utf8"),
 );
@@ -15,8 +17,9 @@ const changelog = await readFile(path.join(root, "CHANGELOG.md"), "utf8");
 if (!changelog.includes(`## ${version} —`))
   throw new Error(`CHANGELOG.md has no release entry for ${version}`);
 
-const fileName = `aic-notes-${version}.vsix`;
-const vsix = path.join(root, fileName);
+// A local test build can use a distinct filename without overwriting a release.
+const vsix = path.resolve(root, process.argv[2] || `aic-notes-${version}.vsix`);
+const fileName = path.basename(vsix);
 const bytes = await readFile(vsix);
 const sha256 = createHash("sha256").update(bytes).digest("hex");
 const checksum = await readFile(`${vsix}.sha256`, "utf8");
@@ -26,6 +29,8 @@ if (checksum.trim() !== `${sha256}  ${fileName}`)
 const archive = new AdmZip(vsix);
 const zipEntries = archive.getEntries();
 const entries = zipEntries.map((entry) => entry.entryName);
+if (entries.some((entry) => /\.(?:exe|dll|node|wasm)$/iu.test(entry)))
+  throw new Error("Universal VSIX must not contain native or WASM helpers");
 for (const entry of [
   "extension/package.json",
   "extension/dist/extension.cjs",
@@ -34,11 +39,19 @@ for (const entry of [
   "extension/changelog.md",
   "extension/LICENSE.txt",
   "extension/PROVENANCE.md",
+  "extension/CORE_SNAPSHOT.json",
   "extension/THIRD_PARTY_NOTICES.md",
   "extension/FUNCTIONAL_INDEX.md",
 ]) {
   if (!entries.includes(entry)) throw new Error(`VSIX is missing ${entry}`);
 }
+if (
+  !archive
+    .getEntry("extension/CORE_SNAPSHOT.json")
+    .getData()
+    .equals(await readFile(path.join(root, "CORE_SNAPSHOT.json")))
+)
+  throw new Error("Packaged shared core snapshot differs from verified source");
 for (const pattern of [
   "extension/bin/",
   "extension/bridge/",
@@ -99,7 +112,7 @@ for (const control of [
   "--aic-mermaid-rotation",
   "Type / for templates",
   "page-architecture",
-  "Page structure",
+  "Structure",
   "cm-snippetField",
 ]) {
   if (!packagedEditor.includes(control))

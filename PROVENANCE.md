@@ -1,10 +1,33 @@
 # Release provenance
 
+## Release 28.4.5 — canonical shared core
+
+The canonical editor sources are `../standard-notes-aic/src/core`; all JavaScript,
+CSS and declaration files are mirrored mechanically into `vendor/aic-editor-core`.
+From that repository, `npm run core:sync` updates the mirror and `npm run core:check`
+checks every file and rejects extra vendor modules. Do not implement a second copy.
+The source commit below contains this release's canonical core. `CORE_SNAPSHOT.json`
+records every shared file and its SHA-256; `npm run core:check` validates the complete
+vendored inventory on any checkout without requiring a sibling repository.
+
+New shared modules are `diagram-model.{js,d.ts}`, `diagram-builder.{js,css,d.ts}`,
+`diagram-session.{js,css,d.ts}`, `diagram-palette.{js,css,d.ts}`,
+`mermaid-runtime.{js,d.ts}`, `diagram-renderer.{js,d.ts}`,
+`indentation.{js,d.ts}`, `formatting.{js,d.ts}`, `agentic-notes.{js,d.ts}`,
+`note-template.{js,d.ts}` and `preview-layout.css`.
+They own the bounded Mermaid model, visual UI, source-bound inline lifecycle, new-note
+prompts and CodeMirror-compatible widget spacing. Both Mermaid adapters invoke the
+same inline session and Mermaid runtime. The former custom-coordinate canvas/router is retired.
+The builder is experimental; source fallback and supported-grammar limitations
+are documented in README. No Standard Notes synchronization runtime is added to VS Code.
+Agentic Notes primitives are not connected to a standalone writer. Their policy reader uses
+the pinned ISC-licensed `yaml` 2.9.0 parser in both source workspaces; no platform helper is added.
+
 ## AIC for Standard Notes contract
 
 - Source repository: `https://github.com/ldzyha/standard-notes-aic`
-- Paired editor contract: `20.1.1` / AIC Editor Core `3.3.0`
-- Commit: `809493d41e5d8bc1735dee34c0990e9cc71a1e69`
+- Paired editor contract: AIC for Standard Notes `21.3.5` / AIC Editor Core `3.4.0`
+- Authority source commit: `cde15f590d1c85ed4b770799aa455fee7d6b9480`
 - Authority files reviewed: `src/styles.css`, `src/editor.ts`, `src/language.ts`,
   `src/markdown-decorations.ts`, `src/block-views.ts`, `src/commands.ts`, `src/toolbar.ts`,
   `src/link-actions.ts`, `src/core/structured-preview.js`, `src/core/code-fence-preview.js`,
@@ -39,51 +62,12 @@ does not modify source bytes.
 
 ## Shared editor core
 
-- Core contract version: `3.3.0`
-- VS Code snapshot: `vendor/aic-editor-core/draft-session.js`
-- Standard Notes snapshot: `src/core/draft-session.js` in `ldzyha/standard-notes-aic`
-- Draft-session snapshot SHA-256: `2b9a02ead705469b9f85be59662ab124ca2452fa8bdd78c4e8c9615d4e1ad6e4`
-- VS Code structured snapshot: `vendor/aic-editor-core/structured-preview.js`
-- Standard Notes structured snapshot: `src/core/structured-preview.js`
-- Structured snapshot SHA-256: `cd7b6df78f922bc8bc94a1b3a6964b9a42828eb07aef1c779287213844227605`
-- VS Code code-fence preview snapshot: `vendor/aic-editor-core/code-fence-preview.js`
-- Standard Notes code-fence preview snapshot: `src/core/code-fence-preview.js`
-- Code-fence preview snapshot SHA-256:
-  `a89b54ec8092d7edbe9bdad2655c63592502ed3f6c60e6a3737640f7533d5586`
-- VS Code code-fence extension snapshot: `vendor/aic-editor-core/code-fence-extension.js`
-- Standard Notes code-fence extension snapshot: `src/core/code-fence-extension.js`
-- Code-fence extension snapshot SHA-256:
-  `6d17060a43fdc71e74fa8c458abd8a80eacce9d32c6d81619ca215e4580def00`
-- VS Code icon snapshot: `vendor/aic-editor-core/icons.css`
-- Standard Notes icon snapshot: `src/core/icons.css`
-- Icon snapshot SHA-256: `ac08a5c524f84edd975f44bceda7e86b2c5e2a1a6db7e383690fc11340ab862a`
-- VS Code Mermaid viewport snapshot: `vendor/aic-editor-core/mermaid-viewport.js`
-- Standard Notes Mermaid viewport snapshot: `src/core/mermaid-viewport.js`
-- Mermaid viewport snapshot SHA-256:
-  `05e4c7e6e0fcef298aba490fe6f49ed9c6bdc774f5423ecf4d3182455b5ad006`
-- VS Code Mermaid viewport CSS: `vendor/aic-editor-core/mermaid-viewport.css`
-- Standard Notes Mermaid viewport CSS: `src/core/mermaid-viewport.css`
-- Mermaid viewport CSS SHA-256:
-  `460442d21f918f6b9ff82ea40fd5ecf28dcde36f5dd5f36dd60dc811d6487e20`
-- VS Code Mermaid viewport declarations: `vendor/aic-editor-core/mermaid-viewport.d.ts`
-- Standard Notes Mermaid viewport declarations: `src/core/mermaid-viewport.d.ts`
-- Mermaid viewport declaration SHA-256:
-  `bd886ed5204363312c176275429b746da05e31d1106869acf9565ac412b25ebe`
-- VS Code file-properties snapshot: `vendor/aic-editor-core/file-properties.js`
-- Standard Notes file-properties snapshot: `src/core/file-properties.js`
-- File-properties snapshot SHA-256: `2692d4ed30ee5f09b30cc3275fe8b88385be26c39400bb44574e43cccc5391bd`
-- VS Code slash-snippet snapshot: `vendor/aic-editor-core/slash-snippets.js`
-- Standard Notes slash-snippet snapshot: `src/core/slash-snippets.js`
-- Slash-snippet snapshot SHA-256:
-  `6ab248efa0ef47d902affbfae827373640dff114a48c3c69b3bcec2fab82f7df`
-- VS Code slash-snippet CSS: `vendor/aic-editor-core/slash-snippets.css`
-- Standard Notes slash-snippet CSS: `src/core/slash-snippets.css`
-- Slash-snippet CSS SHA-256:
-  `c091f1ec73f9e508ba104efe6d3c3fc3dde239e072e479ccdb7d06389b505058`
-- VS Code slash-snippet declarations: `vendor/aic-editor-core/slash-snippets.d.ts`
-- Standard Notes slash-snippet declarations: `src/core/slash-snippets.d.ts`
-- Slash-snippet declaration SHA-256:
-  `c45aba10060a341b1561b59a1a8141b7af4d10c84d1fe342227386d09dd37603`
+- Core contract version: `3.4.0`
+- Complete immutable source/file manifest: [CORE_SNAPSHOT.json](CORE_SNAPSHOT.json)
+- Canonical source: `src/core` at commit `cde15f590d1c85ed4b770799aa455fee7d6b9480`
+- Distributed copy: `vendor/aic-editor-core` (43 byte-identical files)
+- Release gate: `npm run core:check` checks source identity, version, exact inventory and every hash.
+- Git attributes preserve LF for shared files on Windows and Linux; no hand-maintained partial hash list.
 
 The byte-equivalent dependency-free state machine owns hydration, dirty drafts, commit boundaries,
 failed-save retention, and external-update rejection. Each product keeps only a thin host adapter:
@@ -104,9 +88,10 @@ The file-properties module owns `*.note.md` filename/creation/update stamping at
 boundary, preserves all authored note frontmatter, removes only the exact legacy managed signature
 from ordinary Markdown, and migrates only the complete legacy seven-field sidecar signature.
 The shared slash-snippet module owns the seven-group page/section/block catalog, Markdown-line
-activation boundary, contextual ordering, question placeholders, and host-token completion
-presentation. Each product only mounts that same extension into its host editor; AIC Notes mounts
-it from the one webview entry used by both plain Markdown and contextual notes.
+activation boundary, contextual ordering, question placeholders, immediate CodeMirror activation,
+and compact host-token completion presentation. Both products mount its CodeMirror adapter; AIC
+Notes additionally exposes the same catalog through a thin VS Code completion adapter when a plain
+or untitled Markdown document uses the native editor.
 
 ## Existing AIC Markdown sources
 
@@ -116,6 +101,9 @@ adaptations. The bundled JetBrains Mono files retain their OFL notice under
 
 ## Release artifact identity
 
-The GitHub release must contain one exact locally tested universal VSIX plus its SHA-256 sidecar.
-The release gate rejects platform-targeted manifests, native/WASM helpers, development sources,
-retired synchronization commands/settings, missing core artifacts, or a mismatched checksum.
+The tag pipeline builds one universal VSIX plus its SHA-256 sidecar from the committed source.
+The downloaded CI artifact is verified separately against its checksum and local production
+output; archive bytes may differ from local packaging because ZIP metadata differs. Do not call
+those archives byte-identical without checking them. The release gate rejects platform-targeted
+manifests, native/WASM helpers, development sources, retired synchronization commands/settings,
+missing core artifacts, a stale core snapshot or a mismatched checksum.
