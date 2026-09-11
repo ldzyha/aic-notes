@@ -6,12 +6,13 @@ const root = new URL("../", import.meta.url);
 const read = (relativePath) => readFile(new URL(relativePath, root), "utf8");
 const packageJson = JSON.parse(await read("package.json"));
 
-test("28.4.5 is a local-only universal extension", () => {
-  assert.equal(packageJson.version, "28.4.5");
+test("29.1.0 is a universal local editor with optional auth-only connection", () => {
+  assert.equal(packageJson.version, "29.1.0");
   assert.equal(packageJson.aicEditorCore, "3.4.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
-  assert.doesNotMatch(packageJson.description, /Standard Notes|sync/iu);
+  assert.match(packageJson.description, /Standard Notes sign-in/u);
+  assert.match(packageJson.description, /synchronization is not enabled/u);
   assert.doesNotMatch(packageJson.scripts.package, /--target|linux|win32/iu);
   assert.equal(packageJson.scripts["package:windows"], undefined);
   assert.match(packageJson.scripts["release:gate"], /release:checksum/u);

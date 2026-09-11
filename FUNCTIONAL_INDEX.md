@@ -1,12 +1,12 @@
 # Functional index
 
-This index is the release contract for AIC Notes 28.4.5. Every public command, state boundary,
+This index is the release contract for AIC Notes 29.1.0. Every public command, state boundary,
 side effect, failure rule, and platform assumption is represented here and checked by tests or the
 release archive verifier.
 
 ## Shared editor core 3.4.0
 
-These contracts ship with AIC Notes 28.4.5 and pair with Standard Notes AIC 21.3.5.
+These contracts ship with AIC Notes 29.1.0 and pair with Standard Notes AIC 21.3.5.
 The exact canonical commit and all shared hashes are recorded in CORE_SNAPSHOT.json.
 Automated tests, production builds and Windows browser checks cover the shared editor;
 Linux desktop and live authenticated Standard Notes smoke checks are not implied.
@@ -35,8 +35,11 @@ slash catalog supplies `/checklist` there as well, searchable by checkbox/taskli
 Formatting is one local edit, never a save, and protects code/frontmatter/structured blocks.
 
 - The extension reads and writes only local workspace `*.md` and `*.note.md` files.
-- There is no Standard Notes authorization, API client, import, synchronization, remote identity,
-  tag graph, conflict resolver, remote Trash action, native helper, or WebAssembly helper.
+- Standard Notes authorization is optional and auth-only. The host has a fixed-origin auth
+  endpoint allowlist, native password/TOTP prompts, protocol-004 derivation and SecretStorage.
+  Connected requires authenticated verification and persisted secrets; Offline is distinct.
+  No import, note synchronization, tag graph, conflict resolver, remote note Trash action,
+  native helper or WebAssembly helper exists. Saved notes remain local.
 - The independent Standard Notes editor plugin may share byte-equivalent AIC Editor Core files;
   sharing presentation logic does not create an account or data connection.
 - One universal VSIX supports Windows, Linux, macOS, and code-server without platform binaries.
@@ -85,6 +88,10 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 
 | Command                          | Contract                                                                                                                               |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `aicNotes.standardNotesAccount` | Visible account menu; never exposes tokens to editor webviews |
+| `aicNotes.signInStandardNotes` | Trusted-workspace password/TOTP login; derived server password only; verified session must persist securely |
+| `aicNotes.checkStandardNotesConnection` | Verify/refresh saved authentication only; preserve secrets offline; never access note items |
+| `aicNotes.signOutStandardNotes` | Delete local secret and revoke only this session; warn if remote revocation is unconfirmed |
 | `aicNotes.noteForCurrentFile`    | Follow or create a lazy linked note for the active local file; global keybinding works with no active file by showing the project note |
 | `aicNotes.linkSelectionToNote`   | Copy selected source into one deduplicated linked-comment block and focus its comment caret                                            |
 | `aicNotes.openInSecondary`       | Route an existing sidecar or placeholder to the Secondary pane                                                                         |

@@ -1,5 +1,21 @@
 # Changelog
 
+## 29.1.0 — 2026-09-11
+
+Release sequence 29 · 1 feature outcome · 0 prior-release bug outcomes.
+
+- F01: optional Standard Notes authentication in the VS Code host: visible account action,
+  native email/password/TOTP prompts, local protocol-004 derivation, verified session,
+  SecretStorage persistence, connection checks and explicit sign-out. No synchronization,
+  note import, note upload, tag management or remote note deletion is present.
+- The universal JavaScript-only build uses pinned @noble/hashes 2.4.0; Windows and Linux
+  tests/builds must pass before the release job publishes a VSIX and SHA-256 sidecar.
+- Supports the hosted api.standardnotes.com service and protocol 004. Security-key and
+  human-verification challenges are reported explicitly, not bypassed. Real-account sign-in
+  requires a user smoke test; mocked protocol checks are not a live authentication result.
+- Shared editor core remains 3.4.0, matching Standard Notes plugin 21.3.5. The unfinished
+  context sphere is not enabled or bundled; the Standard Notes plugin does not need an update.
+
 ## 28.4.5 — 2026-09-11
 
 Release sequence 28 · 4 feature outcomes · 5 fixed-bug outcomes.

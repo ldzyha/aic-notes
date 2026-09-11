@@ -1,14 +1,46 @@
 # AIC Notes
 
 AIC Notes is a local Markdown editor for VS Code/Code. It edits every `*.md` document with the AIC
-preview-first surface, including `*.note.md`, and shows linked notes in the Secondary Side Bar. There is
-no account, cloud transport, background synchronization, polling, or remote conflict state.
+preview-first surface, including `*.note.md`, and shows linked notes in the Secondary Side Bar.
+Optional Standard Notes sign-in is available. There is no note synchronization, import, polling,
+upload, remote deletion or remote conflict state.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-the editor-core contract, but it is a separate product. AIC Notes does not connect to Standard Notes
-and does not move data between the two applications.
+the editor-core contract, but it is a separate product. Signing in does not move notes between
+the two applications. The plugin remains 21.3.5; this host-only release needs no plugin update.
 
-## Release 28.4.5 — shared editor core 3.4.0
+## Release 29.1.0 — Standard Notes authentication only
+
+After installation, save drafts and run **Developer: Reload Window**. Open an AIC Notes view,
+a Markdown file, or the command below to activate the extension.
+
+1. Click **SN: Sign in** in the status bar, the account icon on the Notes panel, or run
+   **AIC Notes: Sign In to Standard Notes** from the Command Palette.
+2. In a trusted workspace, enter your email and password in native VS Code prompts, then a
+   six-digit authenticator code if requested. Never paste a password into a note or settings.
+3. **SN: Connected** appears only after the session passes an authenticated server check and
+   is written to VS Code SecretStorage. The account menu offers **Check connection** and **Sign out**.
+4. On restart, the saved session is checked again. Offline is distinct from Connected; an absent
+   account is quiet. Sign-out removes the local secret and attempts to revoke that session only.
+   If server revocation cannot be confirmed, the action explicitly warns you.
+
+The host supports `https://api.standardnotes.com`, protocol 004, password and TOTP sign-in.
+Security-key and human-verification challenges fail with an explicit unsupported message;
+self-hosted servers and older encryption protocols are not supported in this release.
+Working SecretStorage is required; there is no plaintext, file or settings fallback.
+The password is derived locally with Argon2id; only its derived server-password half is submitted.
+Tokens and the local master key stay in SecretStorage, never in editor webviews or note files.
+VS Code windows sharing extension storage observe secret changes. Auth mutations take a
+JavaScript-only inter-window lease; a busy window reports the conflict without deleting or
+overwriting the session. Its empty heartbeat directory in extension storage contains no secrets.
+This is not a distributed editing lock or note-sync system.
+
+Tests include the official production-cost key-derivation vector and mocked login, MFA, refresh,
+storage, cancellation and logout paths. These do not replace a real-account smoke test: enter
+your credentials directly in VS Code and verify Connected after reloading. No user account or
+note content was accessed to build this release. The unfinished context sphere is not bundled.
+
+## Retained editor features — shared editor core 3.4.0
 
 This release pairs with AIC for Standard Notes 21.3.5. Both products use the same
 byte-verified core. Automated tests, production builds and Windows browser checks cover the
@@ -74,24 +106,24 @@ this section does not assert that all clients or operating systems have complete
 
 ## Install
 
-Download `aic-notes-28.4.5.vsix` and `aic-notes-28.4.5.vsix.sha256` from the
-[v28.4.5 release](https://github.com/ldzyha/aic-notes/releases/tag/v28.4.5). The VSIX is universal:
+Download `aic-notes-29.1.0.vsix` and `aic-notes-29.1.0.vsix.sha256` from the
+[v29.1.0 release](https://github.com/ldzyha/aic-notes/releases/tag/v29.1.0). The VSIX is universal:
 use the same file on Windows, Linux, macOS, and code-server.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-28.4.5.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-28.4.5.vsix.sha256
-code --install-extension .\aic-notes-28.4.5.vsix --force
+(Get-FileHash .\aic-notes-29.1.0.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-29.1.0.vsix.sha256
+code --install-extension .\aic-notes-29.1.0.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-28.4.5.vsix.sha256
-code --install-extension ./aic-notes-28.4.5.vsix --force
-# or: code-server --install-extension ./aic-notes-28.4.5.vsix --force
+sha256sum -c aic-notes-29.1.0.vsix.sha256
+code --install-extension ./aic-notes-29.1.0.vsix --force
+# or: code-server --install-extension ./aic-notes-29.1.0.vsix --force
 ```
 
 Reload the VS Code window after installation. No additional executable or library is required.
@@ -206,7 +238,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-`28.4.5` is sequence 28 with four feature outcomes and five fixed-bug outcomes.
+`29.1.0` is sequence 29 with one feature outcome and zero prior-release fixed-bug outcomes.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and
 [PROVENANCE.md](PROVENANCE.md) for the shared-core snapshot identity.

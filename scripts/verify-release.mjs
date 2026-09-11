@@ -78,7 +78,6 @@ const packagedManifest = JSON.parse(
 if (packagedManifest.version !== version)
   throw new Error("packaged manifest version mismatch");
 if (
-  packagedManifest.description.includes("Standard Notes") ||
   Object.keys(packagedManifest.contributes.configuration.properties).some(
     (key) => key.startsWith("aicNotes.standardNotes."),
   )
@@ -125,14 +124,20 @@ const packagedHostEntry = archive.getEntry("extension/dist/extension.cjs");
 if (!packagedHostEntry) throw new Error("packaged extension host is missing");
 const packagedHost = packagedHostEntry.getData().toString("utf8");
 for (const retired of [
-  "api.standardnotes.com",
+  "/v1/items",
   "aic-notes-sn-bridge",
   "sn_remote_ambiguous",
   "syncCurrentNote",
   "pullProjectNotes",
+  "context-sphere",
 ]) {
   if (packagedHost.includes(retired))
     throw new Error(`retired synchronization runtime remains: ${retired}`);
+}
+
+for (const required of ["api.standardnotes.com", "aicNotes.snAuth.session.v1", "aicNotes.signInStandardNotes", "Authentication only", "secure_storage_unavailable"]) {
+  if (!packagedHost.includes(required)) throw new Error(`packaged authentication is missing: ${required}`);
+  if (packagedEditor.includes(required)) throw new Error(`authentication leaked into the editor webview: ${required}`);
 }
 
 for (const command of [
@@ -140,6 +145,10 @@ for (const command of [
   "aicNotes.openProjectNote",
   "aicNotes.enableAgentWorkflow",
   "aicNotes.syncAgentInstructions",
+  "aicNotes.standardNotesAccount",
+  "aicNotes.signInStandardNotes",
+  "aicNotes.signOutStandardNotes",
+  "aicNotes.checkStandardNotesConnection",
 ]) {
   if (
     !packagedManifest.contributes.commands.some(

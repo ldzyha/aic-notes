@@ -10,6 +10,7 @@ const index = await readFile(new URL("FUNCTIONAL_INDEX.md", root), "utf8");
 const registrations = [
   await readFile(new URL("src/extension.js", root), "utf8"),
   await readFile(new URL("src/agents/bootstrap.js", root), "utf8"),
+  await readFile(new URL("src/auth/provider.js", root), "utf8"),
 ].join("\n");
 
 test("every public command is registered and indexed", () => {
@@ -30,7 +31,7 @@ test("functional index records the release-critical state contracts", () => {
     "active custom-editor tab is authoritative",
     "Pinning affects only automatic following",
     "file`, `created`, and `updated",
-    "There is no Standard Notes authorization",
+    "Standard Notes authorization is optional and auth-only",
     "One universal VSIX",
     "Trash is local",
     "Slash on an otherwise empty Markdown line",

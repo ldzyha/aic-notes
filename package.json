@@ -1,8 +1,8 @@
 {
   "name": "aic-notes",
   "displayName": "AIC Notes",
-  "description": "Local AIC Markdown documents and *.note.md notes in the main editor, with linked sidebar notes for source files.",
-  "version": "28.4.5",
+  "description": "Local AIC Markdown documents and linked notes, with optional Standard Notes sign-in. Note synchronization is not enabled.",
+  "version": "29.1.0",
   "aicEditorCore": "3.4.0",
   "publisher": "ldzyha",
   "icon": "media/icon.png",
@@ -52,9 +52,9 @@
   "scripts": {
     "build": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
-    "test": "node --test --test-concurrency=1 test/*.test.js",
-    "package": "npm run build && vsce package --no-dependencies --out aic-notes-$npm_package_version.vsix",
-    "install:vsix": "npm run package && code --install-extension aic-notes-$npm_package_version.vsix --force",
+    "test": "node scripts/test.mjs",
+    "package": "npm run build && node scripts/package.mjs",
+    "install:vsix": "npm run package && node scripts/package.mjs --install",
     "release:checksum": "node scripts/checksum.mjs",
     "core:check": "node scripts/verify-core.mjs",
     "release:verify": "node scripts/verify-release.mjs",
@@ -96,6 +96,27 @@
       ]
     },
     "commands": [
+      {
+        "command": "aicNotes.standardNotesAccount",
+        "title": "Standard Notes Account",
+        "category": "AIC Notes",
+        "icon": "$(account)"
+      },
+      {
+        "command": "aicNotes.signInStandardNotes",
+        "title": "Sign In to Standard Notes",
+        "category": "AIC Notes"
+      },
+      {
+        "command": "aicNotes.signOutStandardNotes",
+        "title": "Sign Out of Standard Notes",
+        "category": "AIC Notes"
+      },
+      {
+        "command": "aicNotes.checkStandardNotesConnection",
+        "title": "Check Standard Notes Connection",
+        "category": "AIC Notes"
+      },
       {
         "command": "aicNotes.noteForCurrentFile",
         "title": "Open Linked Note",
@@ -225,6 +246,11 @@
         }
       ],
       "view/title": [
+        {
+          "command": "aicNotes.standardNotesAccount",
+          "when": "view == aicNotes.tree || view == aicNotes.secondary",
+          "group": "navigation@9"
+        },
         {
           "command": "aicNotes.openProjectNote",
           "when": "view == aicNotes.tree && workspaceFolderCount > 0",
@@ -361,11 +387,13 @@
     "@lezer/common": "^1.5.2",
     "@lezer/highlight": "^1.2.3",
     "@lezer/markdown": "^1.6.4",
+    "@noble/hashes": "2.4.0",
     "@types/vscode": "^1.106.0",
     "@vscode/vsce": "^3.3.0",
     "adm-zip": "0.5.16",
     "esbuild": "^0.28.0",
     "mermaid": "11.16.1",
+    "proper-lockfile": "4.1.2",
     "yaml": "2.9.0"
   }
 }

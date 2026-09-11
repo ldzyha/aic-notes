@@ -1,5 +1,32 @@
 # Release provenance
 
+## Release 29.1.0 — host-only authentication
+
+Editor core remains the exact 3.4.0 snapshot below. No sphere module or sync runtime is enabled.
+`src/auth` owns host UI, bounded auth transport and SecretStorage lifecycle; the Standard Notes
+editor plugin does not duplicate this host adapter. Account sign-in never enters the editor bus.
+
+The protocol implementation was checked against primary upstream sources, not an unofficial SDK:
+
+- Standard Notes app commit `6fcb991e626b0388a2220fa0d94815bf6c0c9f8d`:
+  `packages/snjs/specification.md`, `lib/Services/Api/ApiService.ts`,
+  `lib/Services/Session/SessionManager.ts` (the latter paths under `packages/snjs`),
+  and `packages/snjs/mocha/004.test.js` for the production-cost root-key vector.
+- Standard Notes server commit `6a43c34eff09780cb556f8fea06bb97ddcb42002`:
+  auth `SessionService`, `GetSessionFromToken`, `CookieFactory`, `BaseAuthController`
+  and `BaseSessionController`. API 20200115 requests legacy bearer sessions; cookie-v2
+  selectors are accepted only with a validated access/refresh cookie pair.
+- The JavaScript Argon2id implementation is pinned to MIT-licensed `@noble/hashes` 2.4.0
+  in package-lock.json. Its complete license is in THIRD_PARTY_NOTICES.md.
+- Cooperative auth-operation exclusion uses `proper-lockfile` 4.1.2 with a 60-second stale
+  threshold and 10-second heartbeat, on VS Code extension global storage. It stores no keys
+  or tokens on disk. All auth mutations re-read SecretStorage under this lease; busy windows
+  fail explicitly. This does not implement cross-device editing locks.
+
+Network requests are limited to login parameters, login, session listing/check, refresh and logout.
+Tests mock these routes except the local official-vector KDF. A real account smoke test has not
+been substituted by these mocks. No credentials or user note contents are release fixtures.
+
 ## Release 28.4.5 — canonical shared core
 
 The canonical editor sources are `../standard-notes-aic/src/core`; all JavaScript,
