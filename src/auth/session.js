@@ -1,5 +1,6 @@
 import {
   StandardNotesAuthError,
+  authDiagnostic,
   parseStoredAccount,
 } from "./standard-notes-transport.js";
 
@@ -24,12 +25,14 @@ export class StandardNotesAccount {
     this.state = { status: "signed-out", syncEnabled: false };
   }
 
-  publish(status, issue) {
+  publish(status, issue, error) {
+    const diagnostic = authDiagnostic(error);
     this.state = {
       status,
       syncEnabled: false,
       ...(this.account ? { email: this.account.user.email } : {}),
       ...(issue ? { issue } : {}),
+      ...(diagnostic ? { diagnostic } : {}),
     };
     this.onChange(this.state);
   }
@@ -201,11 +204,12 @@ export class StandardNotesAccount {
             ? "canceled"
             : "authentication_failed";
       if (code === "secure_storage_unavailable")
-        this.publish("storage-unavailable", code);
+        this.publish("storage-unavailable", code, error);
       else
         this.publish(
           this.account ? "reauth-required" : "signed-out",
           code === "canceled" ? undefined : code,
+          code === "canceled" ? undefined : error,
         );
     } finally {
       await release?.();
@@ -261,10 +265,11 @@ export class StandardNotesAccount {
           "account_busy",
         ].includes(error.code)
       )
-        this.publish("offline", error.code);
+        this.publish("offline", error.code, error);
       else if (error.code === "secure_storage_unavailable")
-        this.publish("storage-unavailable", error.code);
-      else this.publish("reauth-required", error.code ?? "session_expired");
+        this.publish("storage-unavailable", error.code, error);
+      else
+        this.publish("reauth-required", error.code ?? "session_expired", error);
     } finally {
       await release?.();
     }

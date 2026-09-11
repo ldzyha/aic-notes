@@ -1,5 +1,24 @@
 # Release provenance
 
+## Release 30.0.1 — authentication response compatibility
+
+This hotfix is based on release 29.1.0 commit `3364aade127a286cc82814873632f2841bb50f3c`.
+Only the host authentication transport, account diagnostic projection and account message
+formatter change at runtime. Shared editor core remains the exact 3.4.0 snapshot below;
+Standard Notes plugin 21.3.5 requires no update. Unfinished parent routing and sphere work
+is not part of this release.
+
+An isolated VS Code 1.137.0 host (Node 24.18.1 / Electron 42.10.0) reproduced the old
+leading-BOM and folded-cookie rejection against a loopback synthetic server. The patched
+transport passed both cases and a combined case with VS Code's Electron fetch enabled.
+No real account, credentials, notes or remote sync endpoints were used in those probes.
+Unit tests cover bounded parsing, cookie-pair validation, HTTP/challenge precedence,
+account-state propagation and allowlisted diagnostics with secret canaries.
+
+This is verification of specific compatibility fixes, not a claim that a user's observed
+login failure has been reproduced with their account. A user-entered native sign-in remains
+the acceptance check; if it fails, the UI reports a fixed stage/reason without response data.
+
 ## Release 29.1.0 — host-only authentication
 
 Editor core remains the exact 3.4.0 snapshot below. No sphere module or sync runtime is enabled.

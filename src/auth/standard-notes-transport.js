@@ -11,16 +11,82 @@ const ENDPOINTS = new Set([
   "POST /v1/logout",
 ]);
 const MAX_RESPONSE = 512 * 1024;
+const STAGES = {
+  "/v2/login-params": "login-params",
+  "/v2/login": "login",
+  "/v1/sessions": "session-check",
+  "/v1/sessions/refresh": "session-refresh",
+  "/v1/logout": "logout",
+};
+const REASONS = new Set([
+  "invalid-json",
+  "response-too-large",
+  "key-params",
+  "user",
+  "session-tokens",
+  "session-expiration",
+  "session-cookies",
+  "session-list",
+  "http-status",
+  "network",
+  "canceled",
+]);
 const hash = (text) => createHash("sha256").update(text, "utf8").digest("hex");
 let derivationQueue = Promise.resolve();
 
+// Only fixed protocol labels may leave the transport. Never expose response
+// bodies, header values, account identifiers or arbitrary Error.message text.
+export function authDiagnostic(error) {
+  const stage = error?.diagnostic?.stage;
+  if (!Object.values(STAGES).includes(stage)) return undefined;
+  const reason = error.diagnostic.reason;
+  const status = error.status;
+  return Object.freeze({
+    stage,
+    ...(REASONS.has(reason) ? { reason } : {}),
+    ...(Number.isInteger(status) && status >= 100 && status <= 599
+      ? { status }
+      : {}),
+  });
+}
+
 export class StandardNotesAuthError extends Error {
-  constructor(code, status = 0) {
+  constructor(code, status = 0, diagnostic) {
     super(code);
     this.name = "StandardNotesAuthError";
     this.code = code;
     this.status = status;
+    const safe = authDiagnostic({ status, diagnostic });
+    if (safe) this.diagnostic = safe;
   }
+}
+
+function invalidResponse(stage, reason, status = 0) {
+  return new StandardNotesAuthError("invalid_response", status, {
+    stage,
+    reason,
+  });
+}
+
+function checkedKeyParams(params) {
+  if (
+    !params ||
+    typeof params !== "object" ||
+    Array.isArray(params) ||
+    typeof params.version !== "string"
+  )
+    throw invalidResponse("login-params", "key-params");
+  if (params.version !== "004")
+    throw new StandardNotesAuthError("unsupported_protocol", 0, {
+      stage: "login-params",
+      reason: "key-params",
+    });
+  if (
+    typeof params.pw_nonce !== "string" ||
+    !/^[a-f0-9]{64}$/iu.test(params.pw_nonce)
+  )
+    throw invalidResponse("login-params", "key-params");
+  return params;
 }
 
 // Standard Notes PKCE encodes the UTF-8 HEX digest, not the raw SHA-256 bytes.
@@ -41,13 +107,7 @@ export function deriveAuthKeys(email, password, params, signal) {
 }
 
 async function deriveKeys(email, password, params, signal) {
-  if (params?.version !== "004")
-    throw new StandardNotesAuthError("unsupported_protocol");
-  if (
-    typeof params.pw_nonce !== "string" ||
-    !/^[a-f0-9]{64}$/iu.test(params.pw_nonce)
-  )
-    throw new StandardNotesAuthError("invalid_response");
+  checkedKeyParams(params);
   signal?.throwIfAborted();
   const salt = Buffer.from(
     hash(`${email}:${params.pw_nonce}`).slice(0, 32),
@@ -80,20 +140,26 @@ async function deriveKeys(email, password, params, signal) {
 
 function responseCookies(headers) {
   const result = [];
-  for (const header of headers?.getSetCookie?.() ?? []) {
-    const pair = header.split(";", 1)[0];
-    if (
-      /^(?:access|refresh)_token(?:_[A-Za-z0-9-]+)?=[^\s;,\r\n]+$/u.test(
-        pair,
-      ) &&
-      pair.length < 8192
-    )
-      result.push(pair);
+  const separate = headers?.getSetCookie?.() ?? [];
+  const combined = separate.length ? undefined : headers?.get?.("set-cookie");
+  for (const header of separate.length
+    ? separate
+    : combined
+      ? [combined]
+      : []) {
+    // Electron can fold multiple Set-Cookie values into one header. A comma
+    // inside Expires is not a boundary unless followed by an auth cookie name.
+    if (typeof header !== "string" || /[\r\n]/u.test(header)) continue;
+    for (const match of header.matchAll(
+      /(?:^|,\s*)((?:access|refresh)_token(?:_[A-Za-z0-9-]+)?=[^\s;,\r\n]+)/gu,
+    )) {
+      if (match[1].length < 8192) result.push(match[1]);
+    }
   }
   return result;
 }
 
-function checkedSession(raw, cookies = []) {
+function checkedSession(raw, cookies = [], stage = "login") {
   if (
     !raw ||
     ![raw.access_token, raw.refresh_token].every(
@@ -102,16 +168,19 @@ function checkedSession(raw, cookies = []) {
         value.length > 5 &&
         value.length < 8192 &&
         !/[\r\n]/u.test(value),
-    ) ||
+    )
+  )
+    throw invalidResponse(stage, "session-tokens");
+  if (
     ![raw.access_expiration, raw.refresh_expiration].every(
       (value) =>
         Number.isFinite(value) && value > 0 && value < 8640000000000000,
     )
   )
-    throw new StandardNotesAuthError("invalid_response");
+    throw invalidResponse(stage, "session-expiration");
   if (raw.access_token.startsWith("2:") || raw.refresh_token.startsWith("2:")) {
     if (raw.access_token !== raw.refresh_token)
-      throw new StandardNotesAuthError("invalid_response");
+      throw invalidResponse(stage, "session-cookies");
     const access = cookies.find((cookie) => cookie.startsWith("access_token_"));
     const refresh = cookies.find((cookie) =>
       cookie.startsWith("refresh_token_"),
@@ -122,7 +191,7 @@ function checkedSession(raw, cookies = []) {
       !refresh ||
       access.slice(13).split("=")[0] !== refresh.slice(14).split("=")[0]
     )
-      throw new StandardNotesAuthError("invalid_response");
+      throw invalidResponse(stage, "session-cookies");
   } else cookies = [];
   return {
     access_token: raw.access_token,
@@ -144,6 +213,7 @@ export class StandardNotesAuthTransport {
   async request(method, endpoint, { body, session, signal } = {}) {
     if (!ENDPOINTS.has(`${method} ${endpoint}`))
       throw new StandardNotesAuthError("forbidden_endpoint");
+    const stage = STAGES[endpoint];
     const headers = {
       "Content-Type": "application/json",
       Accept: "application/json",
@@ -173,9 +243,32 @@ export class StandardNotesAuthTransport {
           : { body: JSON.stringify({ api: API, ...body }) }),
       });
     } catch {
-      if (signal?.aborted) throw new StandardNotesAuthError("canceled");
-      throw new StandardNotesAuthError("network_error");
+      if (signal?.aborted)
+        throw new StandardNotesAuthError("canceled", 0, { stage });
+      throw new StandardNotesAuthError("network_error", 0, { stage });
     }
+    const httpError = (error) => {
+      const tags = {
+        "mfa-required": "mfa_required",
+        "mfa-invalid": "mfa_required",
+        "u2f-required": "security_key_required",
+        "hvm-required": "verification_required",
+        "human-verification-required": "verification_required",
+      };
+      return new StandardNotesAuthError(
+        response.headers?.has?.("x-captcha-required")
+          ? "verification_required"
+          : Object.hasOwn(tags, error?.tag ?? "")
+            ? tags[error.tag]
+            : response.status === 429
+              ? "rate_limited"
+              : [401, 403, 498, 499].includes(response.status)
+                ? "credentials_rejected"
+                : "server_error",
+        response.status,
+        { stage, reason: "http-status" },
+      );
+    };
     let data;
     try {
       const reader = response.body?.getReader();
@@ -189,44 +282,37 @@ export class StandardNotesAuthTransport {
             size += value.length;
             if (size > MAX_RESPONSE) {
               await reader.cancel();
-              throw new Error("bounded response");
+              throw invalidResponse(
+                stage,
+                "response-too-large",
+                response.status,
+              );
             }
             chunks.push(value);
           }
-          const raw = Buffer.concat(chunks).toString("utf8");
+          // Match Fetch's UTF-8 decoding, including stripping a leading BOM.
+          const raw = new TextDecoder().decode(Buffer.concat(chunks));
           data = raw ? JSON.parse(raw) : {};
         } finally {
           reader.releaseLock();
         }
       } else data = response.status === 204 ? {} : await response.json();
-    } catch {
-      if (signal?.aborted) throw new StandardNotesAuthError("canceled");
+    } catch (error) {
+      if (signal?.aborted)
+        throw new StandardNotesAuthError("canceled", 0, { stage });
       if (requestSignal.aborted)
-        throw new StandardNotesAuthError("network_error");
-      throw new StandardNotesAuthError("invalid_response", response.status);
+        throw new StandardNotesAuthError("network_error", 0, { stage });
+      // A proxy/rate limiter may return HTML. Keep the actionable HTTP status
+      // instead of incorrectly labelling it an unsupported auth protocol.
+      if (!response.ok || response.headers?.has?.("x-captcha-required"))
+        throw httpError();
+      if (error instanceof StandardNotesAuthError) throw error;
+      throw invalidResponse(stage, "invalid-json", response.status);
     }
     const payload = data?.data ?? data;
     const error = payload?.error ?? data?.error;
-    if (!response.ok || error) {
-      const tags = {
-        "mfa-required": "mfa_required",
-        "mfa-invalid": "mfa_required",
-        "u2f-required": "security_key_required",
-        "hvm-required": "verification_required",
-        "human-verification-required": "verification_required",
-      };
-      throw new StandardNotesAuthError(
-        response.headers?.has?.("x-captcha-required")
-          ? "verification_required"
-          : (tags[error?.tag] ??
-              (response.status === 429
-                ? "rate_limited"
-                : [401, 403, 498, 499].includes(response.status)
-                  ? "credentials_rejected"
-                  : "server_error")),
-        response.status,
-      );
-    }
+    if (!response.ok || error || response.headers?.has?.("x-captcha-required"))
+      throw httpError(error);
     return { data: payload, cookies: responseCookies(response.headers) };
   }
 
@@ -269,7 +355,7 @@ export class StandardNotesAuthTransport {
           },
           signal,
         });
-        params = response.data;
+        params = checkedKeyParams(response.data);
         break;
       } catch (error) {
         if (error.code !== "mfa_required" || attempt === 3 || !requestMfa)
@@ -297,7 +383,7 @@ export class StandardNotesAuthTransport {
         typeof user?.email !== "string" ||
         !user.email
       )
-        throw new StandardNotesAuthError("invalid_response");
+        throw invalidResponse("login", "user");
       return {
         schema: 1,
         server: STANDARD_NOTES_SERVER,
@@ -322,7 +408,7 @@ export class StandardNotesAuthTransport {
       signal,
     });
     if (!Array.isArray(response.data))
-      throw new StandardNotesAuthError("invalid_response");
+      throw invalidResponse("session-check", "session-list");
   }
 
   async refresh(account, signal) {
@@ -336,7 +422,11 @@ export class StandardNotesAuthTransport {
     });
     return {
       ...account,
-      session: checkedSession(response.data?.session, response.cookies),
+      session: checkedSession(
+        response.data?.session,
+        response.cookies,
+        "session-refresh",
+      ),
     };
   }
 

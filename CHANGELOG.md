@@ -1,5 +1,20 @@
 # Changelog
 
+## 30.0.1 — 2026-09-11
+
+Release sequence 30 · 0 feature outcomes · 1 fixed-bug outcome.
+
+- B01: correct authentication response handling: accept UTF-8 JSON with a leading BOM,
+  preserve both auth cookies when Electron folds Set-Cookie headers, and report HTTP
+  rate limits and verification challenges even when their response body is not JSON.
+  Rejected responses now identify the fixed protocol stage and validation category;
+  credentials, tokens and raw server responses never enter these diagnostics.
+- Regression checks reproduce the old failures and the fixed behavior in an isolated
+  VS Code extension host, including both Node and Electron fetch implementations.
+  Synthetic protocol checks do not establish a successful real-account sign-in.
+- Authentication only. No synchronization, shared-core changes, context sphere,
+  parent-note routing changes or general refactoring are included in this hotfix.
+
 ## 29.1.0 — 2026-09-11
 
 Release sequence 29 · 1 feature outcome · 0 prior-release bug outcomes.

@@ -1,6 +1,9 @@
 import * as vscode from "vscode";
 import { StandardNotesAccount, AUTH_SECRET_KEY } from "./session.js";
-import { StandardNotesAuthTransport } from "./standard-notes-transport.js";
+import {
+  StandardNotesAuthTransport,
+  authDiagnostic,
+} from "./standard-notes-transport.js";
 import { createAuthOperationLock } from "./operation-lock.js";
 
 const messages = {
@@ -19,7 +22,7 @@ const messages = {
   unsupported_protocol:
     "This version supports Standard Notes encryption protocol 004 only. No password was sent using an older protocol.",
   invalid_response:
-    "Standard Notes returned an unsupported authentication response. No notes were accessed.",
+    "The authentication response could not be validated. No notes were accessed.",
   network_error:
     "Cannot reach Standard Notes. Your saved session is kept; use Check Connection when online.",
   rate_limited: "Standard Notes asked to wait. Retry sign-in later.",
@@ -35,6 +38,19 @@ const messages = {
   authentication_failed:
     "Sign-in could not be completed. Retry; no notes were accessed.",
 };
+
+export function standardNotesAccountMessage(state) {
+  const message = Object.hasOwn(messages, state?.issue ?? "")
+    ? messages[state.issue]
+    : messages.authentication_failed;
+  const diagnostic = authDiagnostic({
+    diagnostic: state?.diagnostic,
+    status: state?.diagnostic?.status,
+  });
+  if (!diagnostic) return message;
+  const code = [diagnostic.stage, diagnostic.reason].filter(Boolean).join("/");
+  return `${message} [${code}${diagnostic.status ? `; HTTP ${diagnostic.status}` : ""}]`;
+}
 
 function prompt(options, signal) {
   const cancellation = new vscode.CancellationTokenSource();
@@ -76,7 +92,7 @@ export function registerStandardNotesAuth(context) {
       item.tooltip = [
         state.email,
         "Standard Notes · Authentication only. Note synchronization is not enabled.",
-        messages[state.issue],
+        state.issue ? standardNotesAccountMessage(state) : undefined,
       ]
         .filter(Boolean)
         .join("\n");
@@ -86,7 +102,7 @@ export function registerStandardNotesAuth(context) {
   const announce = async () => {
     if (account.state.issue)
       await vscode.window.showWarningMessage(
-        messages[account.state.issue] ?? messages.authentication_failed,
+        standardNotesAccountMessage(account.state),
       );
   };
   const signIn = async () => {

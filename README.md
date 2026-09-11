@@ -9,7 +9,13 @@ The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-note
 the editor-core contract, but it is a separate product. Signing in does not move notes between
 the two applications. The plugin remains 21.3.5; this host-only release needs no plugin update.
 
-## Release 29.1.0 — Standard Notes authentication only
+## Release 30.0.1 — Standard Notes authentication response fix
+
+This auth-only hotfix accepts leading-BOM JSON and correctly reads auth cookies when VS Code's
+Electron networking combines headers. Rate limits and verification challenges remain actionable
+even if an intermediary returns HTML. A rejected response now includes a fixed stage/reason code
+in the account tooltip and warning; this code never contains credentials or raw server data.
+Unfinished refactoring, parent routing, context-sphere work and note synchronization are excluded.
 
 After installation, save drafts and run **Developer: Reload Window**. Open an AIC Notes view,
 a Markdown file, or the command below to activate the extension.
@@ -106,24 +112,24 @@ this section does not assert that all clients or operating systems have complete
 
 ## Install
 
-Download `aic-notes-29.1.0.vsix` and `aic-notes-29.1.0.vsix.sha256` from the
-[v29.1.0 release](https://github.com/ldzyha/aic-notes/releases/tag/v29.1.0). The VSIX is universal:
+Download `aic-notes-30.0.1.vsix` and `aic-notes-30.0.1.vsix.sha256` from the
+[v30.0.1 release](https://github.com/ldzyha/aic-notes/releases/tag/v30.0.1). The VSIX is universal:
 use the same file on Windows, Linux, macOS, and code-server.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-29.1.0.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-29.1.0.vsix.sha256
-code --install-extension .\aic-notes-29.1.0.vsix --force
+(Get-FileHash .\aic-notes-30.0.1.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-30.0.1.vsix.sha256
+code --install-extension .\aic-notes-30.0.1.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-29.1.0.vsix.sha256
-code --install-extension ./aic-notes-29.1.0.vsix --force
-# or: code-server --install-extension ./aic-notes-29.1.0.vsix --force
+sha256sum -c aic-notes-30.0.1.vsix.sha256
+code --install-extension ./aic-notes-30.0.1.vsix --force
+# or: code-server --install-extension ./aic-notes-30.0.1.vsix --force
 ```
 
 Reload the VS Code window after installation. No additional executable or library is required.
@@ -238,7 +244,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-`29.1.0` is sequence 29 with one feature outcome and zero prior-release fixed-bug outcomes.
+`30.0.1` is sequence 30 with zero feature outcomes and one prior-release fixed-bug outcome.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and
 [PROVENANCE.md](PROVENANCE.md) for the shared-core snapshot identity.

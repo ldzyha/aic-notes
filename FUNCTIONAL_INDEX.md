@@ -1,12 +1,12 @@
 # Functional index
 
-This index is the release contract for AIC Notes 29.1.0. Every public command, state boundary,
+This index is the release contract for AIC Notes 30.0.1. Every public command, state boundary,
 side effect, failure rule, and platform assumption is represented here and checked by tests or the
 release archive verifier.
 
 ## Shared editor core 3.4.0
 
-These contracts ship with AIC Notes 29.1.0 and pair with Standard Notes AIC 21.3.5.
+These contracts ship with AIC Notes 30.0.1 and pair with Standard Notes AIC 21.3.5.
 The exact canonical commit and all shared hashes are recorded in CORE_SNAPSHOT.json.
 Automated tests, production builds and Windows browser checks cover the shared editor;
 Linux desktop and live authenticated Standard Notes smoke checks are not implied.
@@ -26,6 +26,11 @@ composition; `/timeline` stays chronological. Shared preview-spacing and session
 are implemented; completed cross-platform/live-client smoke testing is not implied.
 
 ## Product boundary
+
+Authentication responses use bounded UTF-8 decoding and validated cookie pairs, including
+Electron-folded headers. Error messages expose only allowlisted stage/reason labels and HTTP
+status. Synthetic regressions cover BOM, cookies, challenges and secret-free account diagnostics;
+they are not a real-account sign-in result. This host-only hotfix does not change the shared core.
 
 The AIC Markdown editor shares heading/list formatting commands with the Standard Notes
 component: Ctrl/Cmd+Alt+1…6 (headings), Ctrl/Cmd+Alt+0 (paragraph),

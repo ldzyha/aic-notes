@@ -2,7 +2,7 @@
   "name": "aic-notes",
   "displayName": "AIC Notes",
   "description": "Local AIC Markdown documents and linked notes, with optional Standard Notes sign-in. Note synchronization is not enabled.",
-  "version": "29.1.0",
+  "version": "30.0.1",
   "aicEditorCore": "3.4.0",
   "publisher": "ldzyha",
   "icon": "media/icon.png",
