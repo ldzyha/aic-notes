@@ -1,5 +1,15 @@
 # Changelog
 
+## 34.1.0 — 2026-09-12
+
+Release sequence 34 · 1 feature outcome · 0 fixed-bug outcomes.
+
+### Feature
+
+1. Mount the shared Authenticator JSON converter in both main Markdown and linked-note editors. Conversion produces one masked security block per record in one undoable draft edit. Strict all-or-nothing validation preserves credential strings and rejects duplicate keys, unrepresentable fields and unsafe nested Markdown contexts. Clipboard access, account scanning, automatic saving and native note-type migration are not involved.
+
+Compatibility: universal VSIX, AIC Editor Core 3.7.0, Standard Notes AIC 25.1.0. Authentication, synchronization, clipboard actions and the file-context sphere are unchanged.
+
 ## 33.0.1 — 2026-09-12
 
 Release sequence 33 · 0 feature outcomes · 1 fixed-bug outcome.

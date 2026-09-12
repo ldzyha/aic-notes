@@ -1,5 +1,20 @@
 # Release provenance
 
+## Release 34.1.0 — shared Authenticator JSON converter
+
+Core 3.7.0, paired with Standard Notes AIC 25.1.0, adds five explicitly inventoried
+files for bounded JSON conversion and its shared contextual CodeMirror UI. All 70 core
+files are byte-verified against the canonical source. Main and sidebar mount the same
+extension; they do not implement separate conversion logic.
+
+The converter makes only an explicit current-document draft edit and preserves exact
+credential strings. No dependency, platform helper, clipboard read, account scan, native
+note-type migration or synchronization mechanism was added. Source and UI checks cover
+invalid input, stale controls, read-only state and Markdown nesting boundaries.
+
+The committed canonical revision and complete SHA-256 inventory are recorded in
+CORE_SNAPSHOT.json. Previous release records below remain unchanged.
+
 ## Release 33.0.1 — direct empty-field Paste
 
 Core 3.6.1, paired with Standard Notes AIC 24.0.1, retains the explicit 65-file

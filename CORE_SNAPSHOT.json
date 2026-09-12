@@ -1,7 +1,7 @@
 {
-  "coreVersion": "3.6.1",
+  "coreVersion": "3.7.0",
   "sourceRepository": "https://github.com/ldzyha/standard-notes-aic",
-  "sourceCommit": "42ed6498789cd6a7190ce631fb121be151068b00",
+  "sourceCommit": "fec6da26107c10a40e02dff6894353481b70aec9",
   "files": {
     "agentic-notes.d.ts": "edceb932ecb1e9f54096fd817d48a3d0b557ae4cffc07f787f761012c7d92d4e",
     "agentic-notes.js": "b5369e37724bcabe9673aac12d25a5f9dc7eab1c83d5c0bae3364e80487f2a81",
@@ -53,6 +53,11 @@
     "security-block.css": "fcece9208f6e65d423ebcf965d0f0df92a1d8fbbe1cd92f2dd5e4264a3c430e5",
     "security-block.d.ts": "ee763ab8746515ae6b3d8ea1991d8476a5b558a6f2dd0465efd93f2cab75e140",
     "security-block.js": "8c7536eec3cb63dc734a2aaa6403df380fb1c73c992fb03be77387fab698a642",
+    "security-import-extension.css": "8356fae71ce0ed582ed6e9cd8a9e63008bf3131157e4a71eaa415b4be2a08c74",
+    "security-import-extension.d.ts": "c5745b986970fbce2efaa3d58648e11a73212994e918fc793cd667eff39951f5",
+    "security-import-extension.js": "b4251759b9c4cf5923a405d086a6c36e5186d8b43ad44f3a09cb6625c15888b8",
+    "security-import.d.ts": "8d6c772cd740254bae8f56dd55fdacd0a86da525fa5552f6ac5b795d5eb3e7ce",
+    "security-import.js": "3ba54e683789266106b3d77bd0085dc0e9ded2c0d40163ae9ffdf534b6a3082e",
     "security-model.d.ts": "41eab7d1c78f2b47b8e5e2fc64e5d3d9606b31d62ad98f51e823b847b1da3c8b",
     "security-model.js": "affa29c0ba447d0f99583c924919a0920ce58042821bda1a33ba21305d579197",
     "security-otp.d.ts": "f9988dd1397c049f4c76d9d50c86744096917bbe005d6378ad59fce7a1f3196d",

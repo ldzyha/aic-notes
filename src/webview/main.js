@@ -53,6 +53,7 @@ import { wirePreviewSelection } from "../../vendor/aic-editor-core/structured-pr
 import { editorIndentation } from "../../vendor/aic-editor-core/indentation.js";
 import { markdownFormatting } from "../../vendor/aic-editor-core/formatting.js";
 import { makeSecurityBlockExtension } from "../../vendor/aic-editor-core/security-block.js";
+import { makeSecurityImportExtension } from "../../vendor/aic-editor-core/security-import-extension.js";
 import {
   SLASH_SNIPPET_PLACEHOLDER,
   slashSnippetExtension,
@@ -65,6 +66,7 @@ import DIAGRAM_BUILDER_CSS from "../../vendor/aic-editor-core/diagram-builder.cs
 import DIAGRAM_PALETTE_CSS from "../../vendor/aic-editor-core/diagram-palette.css";
 import DIAGRAM_SESSION_CSS from "../../vendor/aic-editor-core/diagram-session.css";
 import SECURITY_BLOCK_CSS from "../../vendor/aic-editor-core/security-block.css";
+import SECURITY_IMPORT_CSS from "../../vendor/aic-editor-core/security-import-extension.css";
 import THEME_CSS from "./theme.css";
 
 const api = acquireVsCodeApi();
@@ -159,6 +161,7 @@ for (const css of [
   DIAGRAM_PALETTE_CSS,
   DIAGRAM_SESSION_CSS,
   SECURITY_BLOCK_CSS,
+  SECURITY_IMPORT_CSS,
 ]) {
   const style = document.createElement("style");
   style.textContent = css;
@@ -316,6 +319,7 @@ function makeEditor(text) {
             host.bus.publish("link.external", { url });
           },
         }),
+        makeSecurityImportExtension(),
         makeMermaidExtension(host),
         ...detailsExtension(host),
         drawSelection(),

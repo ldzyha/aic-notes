@@ -1,9 +1,19 @@
 # Functional index
 
-This index records the coordinated AIC Notes 33.0.1 / Standard Notes AIC 24.0.1 /
-shared editor core 3.6.1 release target. Public commands, state boundaries, side effects and
+This index records the coordinated AIC Notes 34.1.0 / Standard Notes AIC 25.1.0 /
+shared editor core 3.7.0 release target. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
+
+## Authenticator JSON conversion
+
+Shared `security-import` owns the bounded, lossless, all-or-nothing JSON-to-security mapping;
+`security-import-extension` owns the contextual panel and atomic editor transaction in both
+main and sidebar. Each record becomes a separate block. Secret/password and extra string
+fields are masked; duplicate keys and unrepresentable values never silently disappear.
+Conversion acts only on the current document/selection, never the account or clipboard, and
+does not save automatically. Tests: `security-import`, canonical import model/UI suites and
+production webview browser checks. Artifact publication is verified separately from source tests.
 
 ## Current release contracts
 
@@ -50,9 +60,9 @@ exhaustive runtime coverage or that publication has already completed.
 Standard Notes authentication is implemented but auth-only; no note synchronization exists.
 The contracts below describe this coordinated release target, not future sync behavior.
 
-## Shared editor core 3.6.1
+## Shared editor core 3.7.0
 
-These contracts target AIC Notes 33.0.1 and pair with Standard Notes AIC 24.0.1.
+These contracts target AIC Notes 34.1.0 and pair with Standard Notes AIC 25.1.0.
 The exact canonical commit and all shared hashes are recorded in CORE_SNAPSHOT.json.
 Automated tests, production builds and Windows browser checks cover the shared editor;
 Linux desktop and live authenticated Standard Notes smoke checks are not implied.

@@ -226,6 +226,49 @@ try {
     assert.equal(await page.evaluate(() => window.nativeClipboardCalls), 0,
       `${surface}: only host ACK bridge may access clipboard`);
     passed.push(`${surface}: Copy ACK, filled Paste disabled, silent empty-field read, failure fallback, explicit Save, stale-note cancellation`);
+
+    const authenticatorSource = JSON.stringify([
+      { service: "https://example.invalid/login", account: "synthetic", secret: "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", password: "DUMMY-IMPORT-PASSWORD" },
+      { service: "Example two", account: "synthetic-two", secret: "MZXW6YTB", notes: "Synthetic only" },
+    ]);
+    await post(page, {
+      type: "init", text: authenticatorSource, relativePath: "authenticator.note.md", generation: 0,
+      selection: { anchor: authenticatorSource.length, head: authenticatorSource.length },
+      ...(secondary ? { placeholder: false, relationships: [] } : {}),
+    });
+    const convert = page.getByRole("button", { name: "Convert to security blocks", exact: true });
+    await convert.waitFor();
+    const importBar = page.getByRole("group", { name: "Authenticator import", exact: true });
+    assert.doesNotMatch(await importBar.innerHTML(), /DUMMY-|GEZDGNBV|synthetic/u);
+    const editCount = await count(page, "edit");
+    const clipboardCount = await count(page, "clipboard.request");
+    const commitCount = await count(page, "commit");
+    const saveCount = await count(page, "save");
+    await convert.click();
+    await page.getByRole("button", { name: "Copy Password", exact: true }).waitFor();
+    const imported = await sourceSnapshot(page, "authenticator.note.md");
+    assert.equal((imported.match(/```aic-security/gu) || []).length, 2);
+    assert.match(imported, /Password\*: DUMMY-IMPORT-PASSWORD/u);
+    assert.match(imported, /TOTP\*: GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ/u);
+    assert.doesNotMatch(await page.locator(".cm-editor").innerHTML(), /DUMMY-IMPORT-PASSWORD|GEZDGNBVGY3TQOJQ/u);
+    if (!secondary) assert.equal(await count(page, "edit"), editCount + 1, "main conversion posts one atomic document edit");
+    assert.equal(await count(page, "clipboard.request"), clipboardCount);
+    assert.equal(await count(page, "commit"), commitCount);
+    assert.equal(await count(page, "save"), saveCount);
+    await page.waitForFunction(() => document.body.dataset.readOnly === "false");
+    await page.locator(".cm-content").focus();
+    if (secondary) {
+      await page.keyboard.press("Control+z");
+      await convert.waitFor();
+      assert.equal(await sourceSnapshot(page, "authenticator.note.md"), authenticatorSource);
+      await page.waitForFunction(() => document.body.dataset.readOnly === "false");
+      await convert.click();
+    }
+    await page.locator(".cm-content").focus();
+    await page.keyboard.press("Control+s");
+    await page.waitForFunction(({kind, before}) => window.messages.filter(message => message.type === kind).length > before,
+      {kind: secondary ? "commit" : "save", before: secondary ? commitCount : saveCount});
+    passed.push(`${surface}: Authenticator array uses shared masked conversion, one edit, no clipboard access and explicit Save`);
     await page.close();
   }
   assert.deepEqual(errors, []);

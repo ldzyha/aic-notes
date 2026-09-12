@@ -6,9 +6,9 @@ const root = new URL("../", import.meta.url);
 const read = (relativePath) => readFile(new URL(relativePath, root), "utf8");
 const packageJson = JSON.parse(await read("package.json"));
 
-test("33.0.1 is a universal local editor with optional auth-only connection", () => {
-  assert.equal(packageJson.version, "33.0.1");
-  assert.equal(packageJson.aicEditorCore, "3.6.1");
+test("34.1.0 is a universal local editor with optional auth-only connection", () => {
+  assert.equal(packageJson.version, "34.1.0");
+  assert.equal(packageJson.aicEditorCore, "3.7.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
   assert.match(packageJson.description, /Standard Notes sign-in/u);
