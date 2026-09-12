@@ -54,6 +54,8 @@ import { editorIndentation } from "../../vendor/aic-editor-core/indentation.js";
 import { markdownFormatting } from "../../vendor/aic-editor-core/formatting.js";
 import { makeSecurityBlockExtension } from "../../vendor/aic-editor-core/security-block.js";
 import { makeSecurityImportExtension } from "../../vendor/aic-editor-core/security-import-extension.js";
+import { isSaveAction, wireSaveBoundary } from "../../vendor/aic-editor-core/save-boundary.js";
+import { PrimarySave } from "./primary-save.js";
 import {
   SLASH_SNIPPET_PLACEHOLDER,
   slashSnippetExtension,
@@ -90,15 +92,36 @@ const docState = {
   actionPending: false,
 };
 const draft = new SecondaryDraft();
+const primarySave = new PrimarySave();
 const host = makeHost(api, docState);
 const clipboard = makeClipboardClient(api, docState);
 let paneNotice = "";
+const saveWaiters = new Set();
+
+function finishSaveRequests(saved) {
+  const active = secondarySurface ? draft : primarySave;
+  if (saved && (active.pending || (active.queued && active.dirty))) return;
+  for (const waiter of saveWaiters) {
+    saveWaiters.delete(waiter);
+    waiter.resolve(Boolean(saved && waiter.path === docState.relativePath && !active.dirty));
+  }
+}
+
+function saveCurrentDraft() {
+  const active = secondarySurface ? draft : primarySave;
+  if (!view || docState.readOnly || !docState.hasSurface) return Promise.resolve(false);
+  if (!active.dirty && !active.pending) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    saveWaiters.add({ path: docState.relativePath, resolve });
+    commitDraft("explicit");
+  });
+}
 
 function reflectSaveState() {
-  if (!secondarySurface) return;
+  const active = secondarySurface ? draft : primarySave;
   const state = secondarySaveState({
-    dirty: draft.dirty,
-    pending: draft.pending,
+    dirty: active.dirty,
+    pending: active.pending,
     placeholder: docState.placeholder,
     hasSurface: docState.hasSurface,
   });
@@ -109,9 +132,9 @@ function reflectSaveState() {
       ? "Read-only here · finish saving the note in its other editor"
       : "") ||
     (state === "dirty"
-      ? draft.pending
+      ? active.pending
         ? "Saving note"
-        : "Unsaved changes. Press Ctrl+S to save."
+        : "Unsaved changes. Save or leave the editor to save."
       : state === "placeholder"
         ? "Note placeholder. Edit and press Ctrl+S to create."
         : state === "saved"
@@ -124,6 +147,12 @@ function reflectSaveState() {
   }
   const status = document.getElementById("pane-status");
   if (status && status.textContent !== label) status.textContent = label;
+  const save = document.getElementById("aic-save");
+  if (save) {
+    save.hidden = state !== "dirty";
+    save.disabled = docState.readOnly || Boolean(active.pending);
+    save.title = label;
+  }
 }
 
 function postDraftState() {
@@ -204,19 +233,54 @@ function setEditingState(readOnly, lease = docState.lease) {
       effects: accessCompartment.reconfigure(accessExtension()),
     });
   reflectEditingState();
+  reflectSaveState();
+  if (!docState.readOnly) drainRequestedSave();
 }
 
 function wirePaneControls() {
+  let footer = document.getElementById(secondarySurface ? "secondary-footer" : "document-actions");
+  if (!footer) {
+    footer = document.createElement("footer");
+    footer.id = "document-actions";
+    document.body.append(footer);
+  }
+  if (!secondarySurface) {
+    document.body.classList.add("aic-main-note-surface");
+    const status = document.createElement("span");
+    status.id = "pane-status";
+    status.className = "aic-visually-hidden";
+    status.setAttribute("role", "status");
+    footer.append(status);
+  }
+  const save = document.createElement("button");
+  save.id = "aic-save";
+  save.type = "button";
+  save.className = "cm-aic-icon-button aic-pane-icon";
+  save.dataset.aicIcon = "save";
+  save.setAttribute("aria-label", "Save note");
+  save.hidden = true;
+  save.addEventListener("click", () => commitDraft("explicit"));
+  footer.prepend(save);
   document
     .getElementById("document-source")
-    ?.addEventListener("click", () => api.postMessage({ type: "source.open" }));
+    ?.addEventListener("click", () => {
+      const path = docState.relativePath;
+      void saveCurrentDraft().then((saved) => {
+        if (saved && path === docState.relativePath) api.postMessage({ type: "source.open" });
+      });
+    });
   if (!secondarySurface) return;
   document
     .getElementById("pane-pin")
     ?.addEventListener("click", () => api.postMessage({ type: "pane.pin" }));
   document
     .getElementById("pane-target")
-    ?.addEventListener("click", () => api.postMessage({ type: "pane.target" }));
+    ?.addEventListener("click", () => {
+      const path = docState.relativePath;
+      void saveCurrentDraft().then((saved) => {
+        if (saved && path === docState.relativePath) api.postMessage({ type: "pane.target" });
+      });
+    });
   document
     .getElementById("pane-clear")
     ?.addEventListener("click", () =>
@@ -256,13 +320,28 @@ function postEdit(update) {
 }
 
 function commitDraft(reason) {
-  if (!secondarySurface || !view || docState.readOnly) return;
-  const commit = draft.begin(reason);
+  if (!view || !docState.hasSurface) return;
+  const active = secondarySurface ? draft : primarySave;
+  // A host save can briefly pause input for a metadata barrier. Retain a
+  // newer already-requested draft while that save is still acknowledged.
+  if (docState.readOnly && !active.pending) return;
+  const commit = active.request(reason);
   if (!commit) return;
   paneNotice = "";
   reflectSaveState();
-  postDraftState();
-  api.postMessage({ type: "commit", ...commit, lease: docState.lease });
+  if (secondarySurface) postDraftState();
+  api.postMessage({
+    type: secondarySurface ? "commit" : "save",
+    ...commit,
+    generation: docState.generation,
+    lease: docState.lease,
+  });
+}
+
+function drainRequestedSave() {
+  if (docState.readOnly) return;
+  const active = secondarySurface ? draft : primarySave;
+  if (active.takeQueued()) commitDraft("explicit");
 }
 
 function makeEditor(text) {
@@ -319,7 +398,7 @@ function makeEditor(text) {
             host.bus.publish("link.external", { url });
           },
         }),
-        makeSecurityImportExtension(),
+        makeSecurityImportExtension({ onSave: saveCurrentDraft }),
         makeMermaidExtension(host),
         ...detailsExtension(host),
         drawSelection(),
@@ -358,9 +437,7 @@ function makeEditor(text) {
           {
             key: "Mod-s",
             run: () => {
-              if (secondarySurface) commitDraft("explicit");
-              else if (!docState.readOnly)
-                api.postMessage({ type: "save", lease: docState.lease });
+              commitDraft("explicit");
               return true;
             },
           },
@@ -399,7 +476,20 @@ function makeEditor(text) {
               paneNotice = "";
               reflectSaveState();
               postDraftState();
-            } else postEdit(update);
+            } else {
+              primarySave.edit(update.state.doc.toString());
+              paneNotice = "";
+              reflectSaveState();
+              postEdit(update);
+            }
+            if (isSaveAction(update)) {
+              const currentView = update.view;
+              const path = docState.relativePath;
+              queueMicrotask(() => {
+                if (view === currentView && docState.relativePath === path)
+                  commitDraft("explicit");
+              });
+            }
           }
           if (update.selectionSet || update.docChanged) {
             const { anchor, head } = update.state.selection.main;
@@ -418,6 +508,14 @@ window.addEventListener("message", (event) => {
   const msg = event.data;
   if (clipboard.handleMessage(msg)) return;
   switch (msg.type) {
+    case "draft.saveRequest": {
+      if (!secondarySurface || msg.relativePath !== docState.relativePath) break;
+      void saveCurrentDraft().then((saved) => api.postMessage({
+        type: "draft.saveResult", requestId: msg.requestId,
+        relativePath: msg.relativePath, saved,
+      }));
+      break;
+    }
     case "linkedCode.insert": {
       let result;
       if (
@@ -487,6 +585,7 @@ window.addEventListener("message", (event) => {
       break;
     }
     case "init": {
+      finishSaveRequests(false);
       clipboard.cancel();
       docState.relativePath = msg.relativePath;
       docState.hasSurface = true;
@@ -503,6 +602,7 @@ window.addEventListener("message", (event) => {
         discardLocal: true,
         relativePath: msg.relativePath,
       });
+      primarySave.reset(msg.relativePath, msg.text, msg.dirty);
       paneNotice = "";
       reflectSaveState();
       view?.destroy();
@@ -545,6 +645,7 @@ window.addEventListener("message", (event) => {
       });
       if (secondarySurface)
         draft.hydrate(view.state.doc.toString(), msg.generation);
+      else primarySave.edit(view.state.doc.toString());
       reflectSaveState();
       break;
     }
@@ -559,6 +660,7 @@ window.addEventListener("message", (event) => {
       });
       if (secondarySurface)
         draft.hydrate(msg.text, msg.generation, { discardLocal: true });
+      else primarySave.edit(msg.text);
       reflectSaveState();
       break;
     }
@@ -586,6 +688,22 @@ window.addEventListener("message", (event) => {
         : "Save failed. Your changes are kept. Press Ctrl+S to retry.";
       reflectSaveState();
       postDraftState();
+      drainRequestedSave();
+      finishSaveRequests(msg.saved === true);
+      break;
+    }
+    case "primary.saved": {
+      if (secondarySurface || !view || !primarySave.acknowledge(msg)) break;
+      paneNotice = msg.saved ? "" : "Save failed. Your changes are kept. Use Save to retry.";
+      reflectSaveState();
+      drainRequestedSave();
+      finishSaveRequests(msg.saved === true);
+      break;
+    }
+    case "primary.saveState": {
+      if (secondarySurface || msg.relativePath !== docState.relativePath) break;
+      primarySave.externallySaved(msg.text);
+      reflectSaveState();
       break;
     }
     case "paneState": {
@@ -627,7 +745,6 @@ window.addEventListener("message", (event) => {
 wirePaneControls();
 document.addEventListener("keydown", (event) => {
   if (
-    !secondarySurface ||
     event.defaultPrevented ||
     !(event.ctrlKey || event.metaKey) ||
     event.key.toLowerCase() !== "s"
@@ -636,4 +753,6 @@ document.addEventListener("keydown", (event) => {
   event.preventDefault();
   commitDraft("explicit");
 });
+const unwireSaveBoundary = wireSaveBoundary(document.body, () => commitDraft("explicit"));
+window.addEventListener("unload", unwireSaveBoundary, { once: true });
 api.postMessage({ type: "ready" });

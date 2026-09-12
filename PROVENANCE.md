@@ -1,5 +1,14 @@
 # Release provenance
 
+## Release 36.4.4 — shared security lifecycle, recovery and save boundaries
+
+Core 4.0.0 pairs with Standard Notes AIC 27.4.4. The explicit inventory adds the
+recovery-code codec and shared save-boundary module, each with declarations. One renderer
+owns masking, empty-field controls, optional headers and recovery-code interaction.
+Host adapters retain persistence ownership: shared annotations and focus-leave intent do
+not perform direct storage writes. The committed canonical revision and SHA-256 inventory
+are recorded in CORE_SNAPSHOT.json; previous release records remain unchanged.
+
 ## Release 34.1.0 — shared Authenticator JSON converter
 
 Core 3.7.0, paired with Standard Notes AIC 25.1.0, adds five explicitly inventoried

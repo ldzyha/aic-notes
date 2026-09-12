@@ -6,9 +6,20 @@ const root = new URL("../", import.meta.url);
 const read = (relativePath) => readFile(new URL(relativePath, root), "utf8");
 const packageJson = JSON.parse(await read("package.json"));
 
-test("35.0.1 is a universal local editor with optional auth-only connection", () => {
-  assert.equal(packageJson.version, "35.0.1");
-  assert.equal(packageJson.aicEditorCore, "3.7.1");
+test("retired File Context sphere has no contribution, activation or build entry", async () => {
+  const manifest = JSON.stringify(packageJson.contributes);
+  assert.doesNotMatch(manifest, /contextSphere|File Context/u);
+  assert.ok(packageJson.contributes.views.aicNotesSecondary.some((view) => view.id === "aicNotes.secondary"));
+  assert.ok(packageJson.contributes.views.aicNotes.some((view) => view.id === "aicNotes.tree"));
+  assert.doesNotMatch(await read("src/extension.js"), /ContextSphere|sphere-provider/u);
+  assert.doesNotMatch(await read("esbuild.mjs"), /sphere\.js/u);
+  for (const file of ["src/context/sphere-provider.js", "src/context/sphere-graph.js", "src/webview/sphere.js"])
+    await assert.rejects(access(new URL(file, root)));
+});
+
+test("36.4.4 is a universal local editor with optional auth-only connection", () => {
+  assert.equal(packageJson.version, "36.4.4");
+  assert.equal(packageJson.aicEditorCore, "4.0.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
   assert.match(packageJson.description, /Standard Notes sign-in/u);

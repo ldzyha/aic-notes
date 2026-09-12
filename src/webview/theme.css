@@ -46,7 +46,11 @@ html, body {
 
 body.aic-main-note-surface { display: grid; grid-template-rows: minmax(0, 1fr) auto; }
 .aic-main-note-surface #editor { min-height: 0; height: 100%; }
-#document-actions { padding: 0.3rem 0.6rem; border-top: 1px solid var(--border); }
+#document-actions { display: flex; align-items: center; gap: 0.3rem; padding: 0.3rem 0.6rem; border-top: 1px solid var(--border); }
+#aic-save { color: var(--warn); }
+body[data-save-state="dirty"] .cm-editor .cm-content { color: var(--warn); }
+body[data-save-state="dirty"] #document-actions,
+body[data-save-state="dirty"] #secondary-footer { border-top-color: var(--warn); }
 #editing-status { font: 0.8rem/1.4 var(--vscode-font-family, sans-serif); color: var(--muted); }
 #editing-status:empty { display: none; }
 

@@ -2,8 +2,8 @@
   "name": "aic-notes",
   "displayName": "AIC Notes",
   "description": "Local AIC Markdown documents and linked notes, with optional Standard Notes sign-in. Note synchronization is not enabled.",
-  "version": "35.0.1",
-  "aicEditorCore": "3.7.1",
+  "version": "36.4.4",
+  "aicEditorCore": "4.0.0",
   "publisher": "ldzyha",
   "icon": "media/icon.png",
   "license": "MIT",
@@ -42,7 +42,7 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": true,
-      "description": "Markdown documents and *.note.md sidecars are rendered and edited locally with explicit Ctrl+S/Cmd+S saving."
+      "description": "Local Markdown editing with Save, Ctrl+S/Cmd+S, focus-leave saving and acknowledged security actions."
     },
     "virtualWorkspaces": {
       "supported": "limited",
@@ -87,14 +87,6 @@
       ],
       "aicNotesSecondary": [
         {
-          "id": "aicNotes.contextSphere",
-          "name": "File Context",
-          "type": "webview",
-          "icon": "media/notes.svg",
-          "visibility": "visible",
-          "when": "config.aicNotes.contextSphere.enabled"
-        },
-        {
           "id": "aicNotes.secondary",
           "name": "Linked Note",
           "type": "webview",
@@ -104,11 +96,6 @@
       ]
     },
     "commands": [
-      {
-        "command": "aicNotes.toggleContextSphere",
-        "title": "Toggle File Context Sphere",
-        "category": "AIC Notes"
-      },
       {
         "command": "aicNotes.standardNotesAccount",
         "title": "Standard Notes Account",
@@ -374,11 +361,6 @@
     "configuration": {
       "title": "AIC Notes",
       "properties": {
-        "aicNotes.contextSphere.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show the movable file context sphere above the linked note. Reads open/changed files, relative JS/TS imports and existing note relationships."
-        },
         "aicNotes.agentWorkflow.aicPath": {
           "type": "string",
           "default": "aic",

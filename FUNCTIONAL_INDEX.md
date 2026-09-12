@@ -1,7 +1,7 @@
 # Functional index
 
-This index records the coordinated AIC Notes 35.0.1 / Standard Notes AIC 26.0.1 /
-shared editor core 3.7.1 release target. Public commands, state boundaries, side effects and
+This index records the coordinated AIC Notes 36.4.4 / Standard Notes AIC 27.4.4 /
+shared editor core 4.0.0 release target. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
 
@@ -12,26 +12,35 @@ Shared `security-import` owns the bounded, lossless, all-or-nothing JSON-to-secu
 main and sidebar. Each record becomes a separate block. Secret/password and extra string
 fields are masked; duplicate keys and unrepresentable values never silently disappear.
 Conversion acts only on the current document/selection, never the account or clipboard, and
-does not save automatically. Tests: `security-import`, canonical import model/UI suites and
+requests a parent-managed save after conversion. Tests: `security-import`, canonical import model/UI suites and
 production webview browser checks. Artifact publication is verified separately from source tests.
 
 ## Current release contracts
+
+- Shared `security-recovery` and widget rendering provide bounded hidden code batches, exact
+  per-code Copy and reversible Used flags in Markdown. Whole-block Copy preserves used flags.
+  Optional titles replace the first card heading; empty field Delete never clears a value.
+- Shared `save-boundary` reports focus-leave and security mutation intents to the host managers.
+  Main and sidebar queues keep target identity, generation and ownership checks; saved colour
+  requires acknowledgement. CodeMirror viewport remounts create fresh live widget sessions while
+  detached controls, clipboard completions and TOTP timers remain retired.
 
 - Shared `security-password` provides bounded WebCrypto-only unbiased generation (default24,
   length8–128, every enabled group represented). Only empty recognized hidden password fields
   can generate; existing values/TOTP/API keys are excluded.
 - Field label/value tap copies only its value with per-field acknowledged feedback; Tab
-  navigates. Paste directly reads current text and is disabled on all populated fields;
+  navigates. Paste directly reads current text and is absent on all populated fields;
   no Replace, history picker or visible panel on success. Empty reads cannot erase.
   Source Edit is the sole manual value editor. Main/sidebar use an identity-bound native
-  clipboard manager with no polling, history storage, secret diagnostics or automatic save.
+  clipboard manager with no polling, history storage or secret diagnostics. Preview mutations
+  request an immediate parent-managed save; Delete only removes empty fields.
   Both hosts offer inline masked paste-only capture only after clipboard access fails.
 
 - Shared `aic-security` blocks have one canonical model. `##` headings define
   independent sections; `Label*: value` masks a field, `Label: value` keeps it
   visible. Edit opens raw Markdown. Explicit Copy block and field actions,
   safe HTTP(S) Open, Add section, quick fields and New block work without an
-  inline form or implicit save. TOTP derives a current code from a key. Ordinary
+  inline form. Mutating buttons save through the host manager. TOTP derives a current code from a key. Ordinary
   code preview skips these fences. Raw Markdown and copied blocks still expose
   plaintext; VS Code has no note synchronization or QR import UI.
 
@@ -51,18 +60,15 @@ production webview browser checks. Artifact publication is verified separately f
   the Markdown surface. Browser regressions cover typing into an inline diagram label afterward.
 - Core distribution is an explicit inventory. Unconnected experiments do not enter the mirror
   automatically, and a working-tree snapshot cannot pass the publication verifier.
-- The dedicated File Context sphere is connected to the extension. It remains a visible region
-  above Linked Note when enabled (default), including an empty state; its toggle hides/shows it
-  independently of note navigation. A bounded read-only graph uses open, changed, dirty and pinned
-  workspace files; existing note sidecars; and statically resolved relative JS/TS imports. It is
-  not a function/attribute/LSP dependency graph, workspace crawler or note writer.
+- The retired File Context sphere has no view, command, setting, background indexer or
+  shared runtime. Parent-note relationships and the Notes & Documents tree are independent.
 
 Standard Notes authentication is implemented but auth-only; no note synchronization exists.
 The contracts below describe this coordinated release target, not future sync behavior.
 
-## Shared editor core 3.7.1
+## Shared editor core 4.0.0
 
-These contracts target AIC Notes 35.0.1 and pair with Standard Notes AIC 26.0.1.
+These contracts target AIC Notes 36.4.4 and pair with Standard Notes AIC 27.4.4.
 The exact canonical commit and all shared hashes are recorded in CORE_SNAPSHOT.json.
 Automated tests, production builds and Windows browser checks cover the shared editor;
 Linux desktop and live authenticated Standard Notes smoke checks are not implied.
@@ -95,8 +101,7 @@ Ctrl/Cmd+Shift+7/8/9 (numbered/bullet/checkbox lists). These shortcuts apply to 
 slash catalog supplies `/checklist` there as well, searchable by checkbox/tasklist.
 Formatting is one local edit, never a save, and protects code/frontmatter/structured blocks.
 
-- The note editor persists only local workspace `*.md` and `*.note.md` files. The read-only
-  File Context sphere may inspect bounded JS/TS source and workspace/Git metadata. The optional
+- The note editor persists only local workspace `*.md` and `*.note.md` files. The optional
   trusted agent workflow may write its thin workspace marker and run AIC-owned global rule sync;
   neither path is note synchronization.
 - Standard Notes authorization is optional and auth-only. The host has a fixed-origin auth
@@ -114,7 +119,8 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 
 ## State contracts
 
-- `Ctrl/Cmd+S` is the only Secondary note persistence boundary. Input and blur do not save.
+- Save, Ctrl/Cmd+S, leaving the editing surface and security preview mutation actions are
+  shared persistence boundaries. Ordinary input does not save. An ACK is required for saved state.
 - Dirty drafts remain in the webview until local save succeeds. A failed or stale save leaves the
   draft dirty and visible.
 - Saved notes are neutral, dirty drafts softly amber with a non-color change marker, and
@@ -141,11 +147,6 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
   frontmatter. Only actual notes add ancestor folders; project/current navigation can show a
   placeholder. Each row opens the exact `.note.md` target. They are never serialized or edited.
 - Trash is local, confirmed, and routed through the operating-system Trash where supported.
-- The File Context sphere is an always-present region while enabled; pinning a node changes only
-  its graph membership, not note-pane pin/follow state. Status or text edits do not rotate the
-  layout. Import analysis is static, bounded to 80 nodes/256 KiB source files and relative JS/TS
-  imports; unresolved/dynamic/non-relative edges are reported as partial or unavailable. The
-  graph never runs project code, LSP, note creation or filesystem writes.
 
 ## Surfaces
 
@@ -153,7 +154,6 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 | -------------------------- | ----------------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------- |
 | AIC Markdown custom editor | `src/editor/provider.js`, `src/webview/main.js` | explicit VS Code document save                                     | stale generations reset or retain the visible draft                  |
 | Linked Note Secondary pane | `src/secondary/provider.js`                     | explicit local sidecar write/save or local Trash                   | never replaces an unsaved draft; reports a compact local error       |
-| File Context sphere        | `src/context/sphere-provider.js`, `src/context/sphere-graph.js`, `src/webview/sphere.js`, shared `context-sphere` | pinned node IDs in workspace state only | bounded read-only graph; unknown/stale IDs cannot open files |
 | Notes & Documents tree     | `src/notes/tree.js`                             | none                                                               | refreshes from workspace files and lazy project placeholders         |
 | Selection-to-note command  | `src/notes/selection.js`                        | inserts into the live local sidebar draft; no implicit save       | rejects unsaved/unbacked/out-of-workspace sources                    |
 | Structured previews        | `vendor/markdown`, `vendor/aic-editor-core`     | exact Markdown transactions only                                   | invalid source remains editable instead of being normalized silently |
@@ -164,7 +164,6 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 
 | Command                          | Contract                                                                                                                               |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `aicNotes.toggleContextSphere` | Independently hide/show the File Context sphere; default enabled, without changing the Linked Note pane |
 | `aicNotes.standardNotesAccount` | Visible account menu; never exposes tokens to editor webviews |
 | `aicNotes.signInStandardNotes` | Trusted-workspace password/TOTP login; derived server password only; verified session must persist securely |
 | `aicNotes.checkStandardNotesConnection` | Verify/refresh saved authentication only; preserve secrets offline; never access note items |
@@ -228,12 +227,10 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 
 ## Verification ownership
 
-- Pure behavior: `test/*.test.js`; static graph bounds/import analysis in
-  `test/context-sphere-graph.test.js` and shared sphere layout tests.
+- Pure behavior: `test/*.test.js`; retired sphere modules are excluded from the release.
 - Host navigation, parent selection, draft/save races and edit leases:
   `test/note-routing.test.js`, `test/note-transition-races.test.js`,
-  `test/edit-ownership.test.js`; sphere capability/lifecycle checks in
-  `test/context-sphere-provider.test.js`.
+  `test/edit-ownership.test.js`.
 - Auth transport, SecretStorage, cross-window lock and trusted agent bootstrap:
   `test/standard-notes-*.test.js`, `test/agent-bootstrap.test.js`.
 - Manifest, UI wiring, local-only boundary, upgrade cleanup, and packaging contract:

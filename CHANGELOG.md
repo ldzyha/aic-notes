@@ -1,5 +1,25 @@
 # Changelog
 
+## 36.4.4 — 2026-09-12
+
+Release sequence 36 · 4 feature outcomes · 4 fixed-bug outcomes.
+
+### Features
+
+1. Mirror hidden recovery-code batches: paste one code per line, copy codes independently and retain reversible Used flags without deleting values.
+2. Delete empty security fields directly from preview; populated fields remain protected.
+3. Optional section titles replace the security card name in its header without a duplicate row.
+4. Use the shared Save/Ctrl+S/leave-editor policy in main and linked-note editors. Security preview mutations request immediate saves; parent managers serialize requests and report acknowledgements, queued newer drafts and failures without per-keystroke autosave.
+
+### Fixes
+
+1. Repair security controls after CodeMirror viewport remounts, including immediately after conversion and scrolling. Old DOM callbacks and timers remain retired.
+2. Hide Paste completely on filled fields; clipboard actions never replace a populated value.
+3. Improve shared security/control contrast and the paired Standard Notes editor's light/dark theme handling and save-state feedback.
+4. Remove the unreadable File Context sphere completely: view, toggle, setting, background graph analysis and bundled runtime. Linked Note, the Notes & Documents tree and parent-note relationships remain intact.
+
+Compatibility: universal VSIX, Standard Notes AIC 27.4.4, shared core 4.0.0. The core major removes the experimental sphere exports. No new runtime dependency, authentication or synchronization changes. Raw Markdown and clipboard values remain plaintext.
+
 ## 35.0.1 — 2026-09-12
 
 Release sequence 35 · 0 feature outcomes · 1 fixed-bug outcome.

@@ -7,6 +7,7 @@ export class SecondaryDraft {
   #path = "";
   #requestId = 0;
   #commit = null;
+  #requested = false;
 
   get current() {
     return this.#session.current;
@@ -17,6 +18,9 @@ export class SecondaryDraft {
   get pending() {
     return this.#commit !== null;
   }
+  get queued() {
+    return this.#requested;
+  }
 
   hydrate(text, generation, options = {}) {
     const accepted = this.#session.hydrate(text, generation, options);
@@ -24,6 +28,7 @@ export class SecondaryDraft {
       if (typeof options.relativePath === "string")
         this.#path = options.relativePath;
       this.#commit = null;
+      this.#requested = false;
     }
     return accepted;
   }
@@ -42,6 +47,20 @@ export class SecondaryDraft {
       relativePath: this.#path,
     });
     return this.#commit;
+  }
+
+  request(reason = "explicit") {
+    if (this.#commit) {
+      if (this.current !== this.#commit.text) this.#requested = true;
+      return null;
+    }
+    return this.begin(reason);
+  }
+
+  takeQueued() {
+    const requested = this.#requested && this.dirty && !this.pending;
+    this.#requested = false;
+    return requested;
   }
 
   acknowledge(message) {
@@ -63,6 +82,7 @@ export class SecondaryDraft {
       this.#session.edit(message.text);
     this.#session.acknowledge(message);
     this.#commit = null;
+    if (!message.saved) this.#requested = false;
     return true;
   }
 }

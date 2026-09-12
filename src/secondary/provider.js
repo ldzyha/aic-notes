@@ -86,6 +86,7 @@ export class SecondaryNotePane {
     this.ownership = ownership;
     this.snapshotRequest = 0;
     this.snapshotWaiters = new Map();
+    this.saveWaiters = new Map();
     this.insertionWaiters = new Map();
     this.readyWaiters = new Set();
     this.savingLease = 0;
@@ -112,6 +113,8 @@ export class SecondaryNotePane {
     if (this.editSurface) this.ownership.dispose(this.editSurface);
     for (const resolve of this.snapshotWaiters.values()) resolve(null);
     this.snapshotWaiters.clear();
+    for (const resolve of this.saveWaiters.values()) resolve(false);
+    this.saveWaiters.clear();
     for (const resolve of this.insertionWaiters.values()) resolve(null);
     this.insertionWaiters.clear();
     for (const resolve of this.readyWaiters) resolve(false);
@@ -162,6 +165,29 @@ export class SecondaryNotePane {
     });
   }
 
+  async flushDraftBeforeNavigation() {
+    if (!this.view || !this.ready) return !this.draftDirty;
+    const path = this.editingPath();
+    const requestId = `save-${++this.snapshotRequest}`;
+    const saved = await new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        this.saveWaiters.delete(requestId);
+        resolve(false);
+      }, 5000);
+      this.saveWaiters.set(requestId, (result) => {
+        this.saveWaiters.delete(requestId);
+        clearTimeout(timeout);
+        resolve(result);
+      });
+      void this.view.webview.postMessage({ type: "draft.saveRequest", requestId, relativePath: path }).then(
+        (sent) => { if (!sent) this.saveWaiters.get(requestId)?.(false); },
+        () => this.saveWaiters.get(requestId)?.(false),
+      );
+    });
+    await this.editQueue.catch(() => undefined);
+    return Boolean(saved && this.editingPath() === path && !this.draftDirty);
+  }
+
   async resolveWebviewView(view) {
     if (this.scope.disposed) return;
     this.viewScope?.dispose();
@@ -208,6 +234,8 @@ export class SecondaryNotePane {
       this.ready = false;
       for (const resolve of this.snapshotWaiters.values()) resolve(null);
       this.snapshotWaiters.clear();
+      for (const resolve of this.saveWaiters.values()) resolve(false);
+      this.saveWaiters.clear();
       for (const resolve of this.insertionWaiters.values()) resolve(null);
       this.insertionWaiters.clear();
       for (const resolve of this.readyWaiters) resolve(false);
@@ -324,8 +352,12 @@ export class SecondaryNotePane {
     });
   }
 
-  async beginNavigation() {
+  async beginNavigation(retried = false) {
     if (this.scope.disposed || this.actionPending) return null;
+    if (this.draftDirty && !(await this.flushDraftBeforeNavigation())) {
+      await this.sendPaneState("Save failed · keep this note open and use Save to retry");
+      return null;
+    }
     const previousPath = this.editingPath();
     const revision = this.draftRevision;
     const expectedText = this.document?.getText() ?? this.placeholderText ?? "";
@@ -366,6 +398,8 @@ export class SecondaryNotePane {
       !isCurrent()
     ) {
       release();
+      if (!retried && snapshot?.dirty && await this.flushDraftBeforeNavigation())
+        return this.beginNavigation(true);
       await this.sendPaneState("Unsaved · press Ctrl+S before switching notes");
       return null;
     }
@@ -425,11 +459,6 @@ export class SecondaryNotePane {
       await this.sendPaneState();
       await this.finishNoteRouting(uri, reveal);
       return true;
-    }
-    if (this.draftDirty) {
-      await this.sendPaneState("Unsaved · press Ctrl+S before switching notes");
-      if (reveal) await this.focus(false);
-      return false;
     }
     const transition = await this.beginNavigation();
     if (!transition) return false;
@@ -550,12 +579,6 @@ export class SecondaryNotePane {
     if (this.draftDirty && currentUri?.toString() === noteUri.toString()) {
       await this.focus(preserveFocus);
       return true;
-    }
-    if (this.draftDirty) {
-      await this.sendPaneState(
-        "Unsaved · press Ctrl+S before following another file",
-      );
-      return false;
     }
     const transition = await this.beginNavigation();
     if (!transition) return false;
@@ -1239,6 +1262,14 @@ export class SecondaryNotePane {
             "File changed externally · current draft was not replaced",
           );
           break;
+        case "draft.saveResult": {
+          const resolve = this.saveWaiters.get(message.requestId);
+          if (!resolve) break;
+          this.saveWaiters.delete(message.requestId);
+          const saved = message.relativePath === this.editingPath() && message.saved === true;
+          resolve?.(saved);
+          break;
+        }
         case "draft.state": {
           const uri = this.documentUri ?? this.placeholderUri;
           if (

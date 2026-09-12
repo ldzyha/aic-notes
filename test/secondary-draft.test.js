@@ -118,3 +118,24 @@ test("switching notes clears pending identity and rejects late acknowledgements"
   draft.acknowledge({ ...current, saved: true });
   assert.equal(state(draft), "saved");
 });
+
+test("secondary drains a requested newer save once but never saves each intervening input", () => {
+  const draft = setup();
+  draft.edit("first");
+  const first = draft.request();
+  draft.edit("second");
+  assert.equal(draft.request(), null);
+  draft.acknowledge({ ...first, saved: true });
+  assert.equal(draft.takeQueued(), true);
+  const second = draft.request();
+  draft.edit("third raw input");
+  draft.acknowledge({ ...second, saved: true });
+  assert.equal(draft.takeQueued(), false);
+  assert.equal(draft.dirty, true);
+  const retry = draft.request();
+  draft.edit("fourth");
+  draft.request();
+  draft.acknowledge({ ...retry, saved: false });
+  assert.equal(draft.takeQueued(), false);
+  assert.equal(draft.dirty, true);
+});

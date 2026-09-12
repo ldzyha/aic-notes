@@ -23,7 +23,7 @@ test("vendored Authenticator conversion preserves independent masked records", (
 test("both webview surfaces mount the shared contextual importer and CSS", async () => {
   const main = await readFile(new URL("../src/webview/main.js", import.meta.url), "utf8");
   assert.match(main, /import \{ makeSecurityImportExtension \} from "\.\.\/\.\.\/vendor\/aic-editor-core\/security-import-extension\.js"/u);
-  assert.match(main, /makeSecurityImportExtension\(\)/u);
+  assert.match(main, /makeSecurityImportExtension\(\{ onSave: saveCurrentDraft \}\)/u);
   assert.match(main, /security-import-extension\.css/u);
   assert.match(main, /SECURITY_IMPORT_CSS,/u);
 });

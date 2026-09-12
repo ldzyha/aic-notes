@@ -247,6 +247,51 @@ async function auditSidebar(h) {
   };
 }
 
+for (const saved of [true, false]) {
+  test(`sidebar navigation ${saved ? "saves the old draft before switching" : "keeps the old note after save failure"}`, async () => {
+    const h = harness();
+    const { pane, document, uri, lease } = await auditSidebar(h);
+    pane.ready = true;
+    pane.draftDirty = true;
+    pane.sendInit = async () => {};
+    const next = h.addFile("next.note.md", "next");
+    const originalSave = document.save;
+    document.save = async () => saved ? originalSave() : false;
+    pane.view.onPost = (message) => {
+      if (message.type === "draft.saveRequest") {
+        void pane.commitDraft("base LOCAL", pane.generation, 71, "file.note.md", lease).then((result) => pane.onMessage({
+          type: "draft.saveResult", requestId: message.requestId,
+          relativePath: "file.note.md", saved: Boolean(result.saved),
+        }));
+      } else if (message.type === "editing.probe") {
+        void pane.onMessage({ type: "editing.snapshot", requestId: message.requestId, text: document.getText(), dirty: false });
+      }
+      return true;
+    };
+    assert.equal(await pane.openNow(next, { reveal: false }), saved);
+    assert.equal(pane.documentUri.toString(), (saved ? next : uri).toString());
+    assert.match(document.getText(), /base LOCAL/u);
+    assert.equal(pane.saveWaiters.size, 0);
+    pane.dispose();
+  });
+}
+
+test("a late successful sidebar save result cannot clear a newer dirty draft state", async () => {
+  const h = harness();
+  const { pane } = await auditSidebar(h);
+  pane.ready = true;
+  pane.draftDirty = true;
+  let request;
+  pane.view.onPost = (message) => { request = message; return true; };
+  const flush = pane.flushDraftBeforeNavigation();
+  pane.draftDirty = false;
+  await pane.onMessage({ type: "draft.state", relativePath: "file.note.md", dirty: true, pending: false });
+  await pane.onMessage({ type: "draft.saveResult", requestId: request.requestId, relativePath: "file.note.md", saved: true });
+  assert.equal(await flush, false);
+  assert.equal(pane.draftDirty, true);
+  pane.dispose();
+});
+
 test("sidebar refuses a save if external text changes during metadata IO", async () => {
   const h = harness();
   const { pane, document, lease } = await auditSidebar(h);

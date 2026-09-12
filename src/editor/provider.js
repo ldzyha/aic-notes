@@ -202,6 +202,7 @@ export class MarkdownEditorProvider {
         text: document.getText(),
         generation: state.generation,
         relativePath,
+        dirty: Boolean(document.isDirty),
         ...(session.editSurface
           ? this.ownership.state(session.editSurface)
           : {}),
@@ -317,6 +318,23 @@ export class MarkdownEditorProvider {
               await vscode.commands.executeCommand(msg.type);
               break;
             case "save": {
+              let saved = false;
+              const acknowledge = () => {
+                if (!session.scope.disposed && msg.requestId != null)
+                  webview.postMessage({
+                    type: "primary.saved",
+                    relativePath,
+                    requestId: msg.requestId,
+                    generation: state.generation,
+                    text: document.getText(),
+                    saved,
+                  });
+              };
+              if ((msg.relativePath && msg.relativePath !== relativePath) ||
+                  (msg.generation != null && msg.generation !== state.generation)) {
+                acknowledge();
+                break;
+              }
               if (
                 session.editSurface &&
                 !this.ownership.accepts(session.editSurface, msg.lease)
@@ -327,9 +345,13 @@ export class MarkdownEditorProvider {
                   message:
                     "Read-only here. Save the note in its active editor first.",
                 });
+                acknowledge();
                 break;
               }
-              if (session.saving) break;
+              if (session.saving) {
+                acknowledge();
+                break;
+              }
               session.saving = true;
               try {
                 if (isNotePath(document.uri.path)) {
@@ -371,9 +393,19 @@ export class MarkdownEditorProvider {
                     }
                   }
                 }
-                if (!session.scope.disposed) await document.save();
+                if (!session.scope.disposed) {
+                  const beforeSave = { text: document.getText(), version: document.version };
+                  session.savedSnapshot = null;
+                  const accepted = await document.save();
+                  // onDidSave captures formatter/save-participant output. A
+                  // subsequent edit must never inherit that older save ACK.
+                  const written = session.savedSnapshot ?? beforeSave;
+                  saved = accepted === true && !document.isDirty &&
+                    document.getText() === written.text && document.version === written.version;
+                }
               } finally {
                 session.saving = false;
+                acknowledge();
                 if (!session.scope.disposed && session.editSurface)
                   void this.ownership.changed(session.editSurface);
                 else if (
@@ -520,11 +552,12 @@ export class MarkdownEditorProvider {
       );
     });
     const savedSub = vscode.workspace.onDidSaveTextDocument?.((saved) => {
-      if (
-        saved.uri.toString() === document.uri.toString() &&
-        session.editSurface
-      )
-        void this.ownership.changed(session.editSurface);
+      if (saved.uri.toString() !== document.uri.toString()) return;
+      if (session.saving)
+        session.savedSnapshot = { text: document.getText(), version: document.version };
+      if (session.editSurface) void this.ownership.changed(session.editSurface);
+      if (!session.scope.disposed)
+        webview.postMessage({ type: "primary.saveState", relativePath, text: document.getText() });
     });
 
     for (const disposable of [

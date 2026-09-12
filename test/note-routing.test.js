@@ -317,7 +317,7 @@ test("Explorer note selection leaves both main tab and an unrelated dirty sideba
   assert.equal(h.pane.draftDirty, true);
   assert.ok(
     h.sent.some(
-      (value) => typeof value === "string" && value.startsWith("Unsaved"),
+      (value) => typeof value === "string" && /^(?:Unsaved|Save failed)/u.test(value),
     ),
   );
   assert.deepEqual(h.events.closed, []);
@@ -735,6 +735,61 @@ test("main-note edits stay in TextDocument until Ctrl+S; source action never sav
     1,
   );
   assert.deepEqual(h.events.errors, []);
+});
+
+test("primary save sends a correlated success only after saving FIFO edits and reports failures", async () => {
+  const h = harness();
+  const resource = h.addFile("ordinary.md", "base");
+  const document = h.getDocument(resource);
+  const provider = new h.MarkdownEditorProvider(h.context);
+  const panel = h.panel();
+  await provider.resolveCustomTextEditor(document, panel);
+  const edit = panel.send({ type: "edit", generation: 0, changes: [{ from: 4, to: 4, insert: " edited" }] });
+  const save = panel.send({ type: "save", generation: 0, relativePath: "ordinary.md", requestId: 1 });
+  await Promise.all([edit, save]);
+  const first = panel.messages.find((message) => message.type === "primary.saved");
+  assert.equal(first.requestId, 1);
+  assert.equal(first.relativePath, "ordinary.md");
+  assert.equal(first.saved, true);
+  assert.equal(first.text, "base edited");
+  assert.equal(h.files.get(resource.path).text, first.text);
+  document.save = async () => false;
+  await panel.send({ type: "save", generation: 0, relativePath: "ordinary.md", requestId: 2 });
+  assert.equal(panel.messages.find((message) => message.requestId === 2).saved, false);
+  await panel.send({ type: "save", generation: 99, relativePath: "ordinary.md", requestId: 3 });
+  assert.equal(panel.messages.find((message) => message.requestId === 3).saved, false);
+  assert.deepEqual(h.events.saved, [resource.path]);
+  provider.dispose();
+});
+
+test("primary does not acknowledge newer external text as saved while an older save completes", async () => {
+  const h = harness();
+  const resource = h.addFile("ordinary.md", "base");
+  const document = h.getDocument(resource);
+  const provider = new h.MarkdownEditorProvider(h.context);
+  const panel = h.panel();
+  await provider.resolveCustomTextEditor(document, panel);
+  let entered, release;
+  const saving = new Promise((resolve) => { entered = resolve; });
+  const delayed = new Promise((resolve) => { release = resolve; });
+  const originalSave = document.save;
+  document.save = async () => {
+    const saved = await originalSave();
+    entered();
+    await delayed;
+    return saved;
+  };
+  const request = panel.send({ type: "save", generation: 0, relativePath: "ordinary.md", requestId: 42 });
+  await saving;
+  document.replace(4, 4, " external later");
+  release();
+  await request;
+  const reply = panel.messages.find((message) => message.type === "primary.saved");
+  assert.equal(reply.requestId, 42);
+  assert.equal(reply.saved, false);
+  assert.equal(document.isDirty, true);
+  assert.equal(h.files.get(resource.path).text, "base");
+  provider.dispose();
 });
 
 test("a main edit notifies the sidebar without replacing its dirty draft; stale sidebar save is rejected", async () => {

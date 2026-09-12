@@ -10,13 +10,13 @@ upload, remote deletion or remote conflict state.
 ### Authenticator JSON conversion
 
 Open an original Authenticator JSON array in AIC Markdown, or select the complete array
-inside a document. **Convert to security blocks** appears for recognized records with
+inside a document. **Convert and save security blocks** appears for recognized records with
 `service`, `account` and `secret` strings. The shared converter creates one `aic-security`
 block per record: Service/Account/Notes are visible; TOTP, Password and extra string fields
 are hidden. Safe service URLs also gain a separate Open-capable URL field.
 
-Conversion is one explicit draft edit, undoable with Ctrl/Cmd+Z and saved only with
-Ctrl/Cmd+S. It works in the main editor and linked-note sidebar. It does not scan the account,
+Conversion is one explicit edit, undoable with Ctrl/Cmd+Z, saved through the same parent
+manager as other security actions. It works in the main editor and linked-note sidebar. It does not scan the account,
 read the clipboard, migrate native note types or synchronize notes. Invalid records,
 duplicate keys or unsupported values reject the whole array without partial edits.
 The maximum is 256 records / 1 MiB UTF-8 source. Credential strings are never guessed,
@@ -26,10 +26,12 @@ trimmed or repaired; use valid original JSON rather than Markdown-escaped creden
 
 Tap/click a security field label or value to copy **only its value**; “Copied” appears
 beside it after success. Tab navigates; Enter/Space activates. The field icon is **Paste**,
-enabled only for empty fields and disabled for populated ones. There is no Replace action.
+present only for empty fields, alongside Delete empty field. Filled fields have neither button.
+There is no Replace action.
 Whole-block Copy remains in the header; filled fields can be copied, but changing their
-values requires source Edit. URL Open and TOTP controls are unchanged. These actions never
-save automatically; use Ctrl/Cmd+S.
+values requires source Edit. URL Open and TOTP controls are unchanged. Security preview
+mutations save immediately through the parent manager. Ordinary typing saves on Ctrl/Cmd+S,
+Save or leaving the editing surface, not on each input. The saved state requires acknowledgement.
 
 Paste directly reads the latest text using VS Code's
 [native clipboard API](https://code.visualstudio.com/api/references/vscode-api#Clipboard),
@@ -51,21 +53,31 @@ Both products use the same local [Web Crypto](https://developer.mozilla.org/en-U
 generator and UI. Options are inspired by [1Password](https://1password.com/blog/how-to-generate-random-password),
 not the same implementation. Markdown, exports and clipboard values remain plaintext.
 
+### Recovery codes and titles
+
+**Add Recovery codes** adds a hidden batch field. Paste one code per line; empty lines are
+ignored, exact spaces and duplicate codes retained. Codes remain masked and copy individually.
+The reversible **Used** checkbox does not delete a code; copying is not proof that a service
+accepted it. Whole-block Copy preserves codes and their used flags in another document.
+
+The first section title replaces the card name, without a duplicate heading row. Use
+`## Account name` for a custom name or bare `##` for the default Security header.
+
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-editor-core 3.7.1 but is a separate product. The coordinated versions are AIC Notes
-35.0.1 and AIC for Standard Notes 26.0.1. This page describes the release contract;
+editor-core 4.0.0 but is a separate product. The coordinated versions are AIC Notes
+36.4.4 and AIC for Standard Notes 27.4.4. This page describes the release contract;
 published artifacts are verified separately by the release workflow. Signing in does not move notes
 between the two applications.
 
-## Coordinated release — 35.0.1
+## Coordinated release — 36.4.4
 
 The shared `/security` template inserts the same `aic-security` Markdown block
 as the Standard Notes plugin. `## Main` starts a section, `Label*: value`
 masks a field in preview, and `Label: value` keeps it visible. Edit opens raw
 Markdown; there is no inline manual value editor. Add section, quick field actions and New
-block insert independent content without saving. Preview can copy individual
+block insert independent content and request a save. Preview can copy individual
 values, current one-time codes and the complete fenced block, or open a safe
-HTTP(S) URL. Save remains Ctrl/Cmd+S. This is
+HTTP(S) URL. Save, Ctrl/Cmd+S and leaving the surface share the same persistence manager. This is
 visual masking only: raw Markdown, other editors, local files, exports and
 copied blocks still contain plaintext secrets. There is no QR import UI. It
 does not enable Standard Notes synchronization or convert native Authenticator
@@ -76,17 +88,12 @@ Mermaid render queue. Nested inputs own their selection; Ctrl/Cmd+A inside a dia
 does not select the surrounding Markdown document.
 
 Linked-code comments are inserted into the live sidebar draft, not written through a separate
-filesystem path. Ctrl/Cmd+S remains the save boundary. Save and Trash revalidate document identity,
+filesystem path. Save and Trash revalidate document identity,
 revision, editing ownership and the originating view after asynchronous work. Provider-owned
 scopes retire subscriptions and pending requests when a surface closes.
 
-The File Context sphere is connected as its own visible region above Linked Note. It remains
-present when empty and can be hidden or shown independently with **Toggle File Context Sphere**;
-the setting defaults to enabled. It combines open, changed and pinned workspace files, existing
-note sidecars and statically resolved relative JavaScript/TypeScript imports. The graph is
-read-only and bounded (80 nodes; 256 KiB per analyzed source). It does not inspect functions or
-attributes, run an LSP, execute project code, crawl the workspace or create notes. Unsupported,
-dynamic and unresolved imports are explicitly partial or unavailable.
+The File Context sphere, its toggle/setting and its background graph analysis have been
+removed. Linked Note, the Notes & Documents tree and parent-note relationships remain.
 
 ## Standard Notes sign-in (authentication only)
 
@@ -122,9 +129,9 @@ Tests include the official production-cost key-derivation vector and mocked logi
 storage, cancellation and logout paths. They do not replace a real-account sign-in and reload
 smoke test; no live authenticated Standard Notes result is claimed here.
 
-## Editor features — shared editor core 3.7.1
+## Editor features — shared editor core 4.0.0
 
-This release target pairs with AIC for Standard Notes 26.0.1. Both products use the same
+This release target pairs with AIC for Standard Notes 27.4.4. Both products use the same
 byte-verified core. Automated tests, production builds and Windows browser checks cover the
 shared controls; Linux desktop and live authenticated Standard Notes smoke checks are not implied.
 
@@ -142,7 +149,7 @@ shared controls; Linux desktop and live authenticated Standard Notes smoke check
   Unsaved sidebar drafts are preserved; repeated events for the same parent do not reset its editor.
 - The note pane starts directly at its content/properties, without a duplicate name, folder or
   save-status header. Saved notes are neutral; unsaved notes have a soft amber tint and a small
-  change marker; placeholders are gray. Save remains explicit Ctrl/Cmd+S.
+  change marker; placeholders are gray. Save, Ctrl/Cmd+S and leaving the surface commit the draft.
 - Context ancestors require existing `.note.md` notes. Project navigation always remains,
   opening its note or placeholder; the actual current target can also be a placeholder.
 - In the AIC editor, Mermaid source now retains its visual-editor button above the fence while
@@ -168,7 +175,7 @@ shared controls; Linux desktop and live authenticated Standard Notes smoke check
 - **Apply diagram changes** updates the block; **Ctrl/Cmd+S** saves the document. Ctrl/Cmd+S inside
   the builder applies and requests the same explicit save. Cancel discards the builder draft.
   Changes outside the block preserve it; conflicting block edits disable Apply and retain a
-  copyable draft. Switching notes retires the old session. No input/blur autosave is added.
+  copyable draft. Switching notes retires the old session. No per-keystroke autosave is added.
 - The shared builder supports a bounded flow/class/sequence grammar. Unsupported Mermaid remains
   in source mode with the original intact. Read preview and inline editing use the same renderer
   and layout configuration. Legacy `%% aic-builder-layout` coordinates do not control layout and
@@ -191,25 +198,25 @@ this section does not assert that all clients or operating systems have complete
 
 ## Install
 
-Download `aic-notes-35.0.1.vsix` and its
-`aic-notes-35.0.1.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+Download `aic-notes-36.4.4.vsix` and its
+`aic-notes-36.4.4.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-35.0.1.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-35.0.1.vsix.sha256
-code --install-extension .\aic-notes-35.0.1.vsix --force
+(Get-FileHash .\aic-notes-36.4.4.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-36.4.4.vsix.sha256
+code --install-extension .\aic-notes-36.4.4.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-35.0.1.vsix.sha256
-code --install-extension ./aic-notes-35.0.1.vsix --force
-# or: code-server --install-extension ./aic-notes-35.0.1.vsix --force
+sha256sum -c aic-notes-36.4.4.vsix.sha256
+code --install-extension ./aic-notes-36.4.4.vsix --force
+# or: code-server --install-extension ./aic-notes-36.4.4.vsix --force
 ```
 
 Reload the VS Code window after installation. Editing and Standard Notes sign-in require no
@@ -234,7 +241,9 @@ tab event cannot silently discard its draft.
 
 ## Saving and deleting
 
-`Ctrl/Cmd+S` is the only persistence boundary for Secondary notes. Typing and blur never save.
+Ctrl/Cmd+S, Save and leaving the editing surface persist Secondary notes. Security preview
+mutations save immediately; ordinary typing does not save on each input. Wait for the acknowledged
+saved state before terminating the app; an interrupted process cannot guarantee completion.
 The pane is softly amber while unsaved, neutral after a successful local save, and gray for an
 unmaterialized placeholder. Ordinary Markdown documents use the same explicit VS Code save action.
 
@@ -292,7 +301,6 @@ renderer.
 - **AIC Notes: Link Selection to Note** (`Ctrl+Alt+L` / `Cmd+Alt+L`, with
   `Ctrl/Cmd+Shift+/` as an alias)
 - **AIC Notes: Open Project Note**
-- **AIC Notes: Toggle File Context Sphere** (shown by default, independent of Linked Note)
 - **AIC Notes: Open Note in Secondary Side Bar**
 - **AIC Notes: Open Target**
 - **AIC Notes: Copy Wiki Link**
@@ -329,7 +337,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-The coordinated version `35.0.1` records sequence 35, zero feature outcomes and one fixed-bug
+The coordinated version `36.4.4` records sequence 36, four feature outcomes and four fixed-bug
 outcomes; it is not a publication marker by itself.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and

@@ -104,6 +104,14 @@ async function ack(page, request, ok, text) {
   });
 }
 
+async function ackSave(page, secondary, after) {
+  const kind = secondary ? "commit" : "save";
+  await page.waitForFunction(({kind, after}) => window.messages.filter(message => message.type === kind).length > after, {kind, after});
+  const request = await page.evaluate(kind => window.messages.filter(message => message.type === kind).at(-1), kind);
+  await post(page, {...request, type: secondary ? "committed" : "primary.saved", saved: true});
+  await page.waitForFunction(() => document.body.dataset.saveState === "saved");
+}
+
 try {
   for (const secondary of [false, true]) {
     const surface = secondary ? "sidebar" : "main";
@@ -142,9 +150,8 @@ try {
 
     for (const field of ["Password", "Email"]) {
       const filledPaste = page.getByRole("button", { name: `Paste ${field}`, exact: true });
-      assert.equal(await filledPaste.isDisabled(), true, `${surface}: filled ${field} Paste disabled`);
-      // A synthetic click must not bypass the domain guard behind disabled UI.
-      await filledPaste.dispatchEvent("click");
+      assert.equal(await filledPaste.count(), 0, `${surface}: filled ${field} Paste absent`);
+      assert.equal(await page.getByRole("button", { name: `Delete empty ${field} field`, exact: true }).count(), 0);
       assert.equal(await page.locator(".cm-aic-security-panel").count(), 0);
       assert.equal(await count(page, "clipboard.request"), 2);
       assert.equal(await count(page, "edit"), 0);
@@ -177,11 +184,10 @@ try {
       "••••••••", `${surface}: latest paste remains masked`);
     assert.equal(await page.locator(".cm-aic-security-panel:visible").count(), 0,
       `${surface}: successful read has no visible panel`);
-    assert.equal(await count(page, "commit"), 0, `${surface}: Paste edit does not commit`);
-    assert.equal(await count(page, "save"), 0, `${surface}: Paste edit does not save`);
+    await ackSave(page, secondary, 0);
+    assert.equal(await count(page, secondary ? "commit" : "save"), 1, `${surface}: Paste saves through parent ACK`);
     await page.locator("#pane-pin, .cm-content").first().click();
-    assert.equal(await count(page, "commit"), 0, `${surface}: blur does not commit`);
-    assert.equal(await count(page, "save"), 0, `${surface}: blur does not save`);
+    assert.equal(await count(page, secondary ? "commit" : "save"), 1, `${surface}: clean blur does not duplicate save`);
     await page.waitForFunction(() => document.body.dataset.readOnly === "false");
     await page.locator(".cm-content").focus();
     await page.keyboard.press("Control+s");
@@ -225,7 +231,7 @@ try {
     assert.doesNotMatch(await page.locator(".cm-aic-security").innerText(), /late-secret/u);
     assert.equal(await page.evaluate(() => window.nativeClipboardCalls), 0,
       `${surface}: only host ACK bridge may access clipboard`);
-    passed.push(`${surface}: Copy ACK, filled Paste disabled, silent empty-field read, failure fallback, explicit Save, stale-note cancellation`);
+    passed.push(`${surface}: Copy ACK, filled Paste absent, silent empty-field read, failure fallback, explicit Save, stale-note cancellation`);
 
     const authenticatorSource = JSON.stringify([
       { service: "https://example.invalid/login", account: "synthetic", secret: "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", password: "DUMMY-IMPORT-PASSWORD" },
@@ -236,7 +242,7 @@ try {
       selection: { anchor: authenticatorSource.length, head: authenticatorSource.length },
       ...(secondary ? { placeholder: false, relationships: [] } : {}),
     });
-    const convert = page.getByRole("button", { name: "Convert to security blocks", exact: true });
+    const convert = page.getByRole("button", { name: "Convert and save security blocks", exact: true });
     await convert.waitFor();
     const importBar = page.getByRole("group", { name: "Authenticator import", exact: true });
     assert.doesNotMatch(await importBar.innerHTML(), /DUMMY-|GEZDGNBV|synthetic/u);
@@ -253,8 +259,7 @@ try {
     assert.doesNotMatch(await page.locator(".cm-editor").innerHTML(), /DUMMY-IMPORT-PASSWORD|GEZDGNBVGY3TQOJQ/u);
     if (!secondary) assert.equal(await count(page, "edit"), editCount + 1, "main conversion posts one atomic document edit");
     assert.equal(await count(page, "clipboard.request"), clipboardCount);
-    assert.equal(await count(page, "commit"), commitCount);
-    assert.equal(await count(page, "save"), saveCount);
+    await ackSave(page, secondary, secondary ? commitCount : saveCount);
     await page.waitForFunction(() => document.body.dataset.readOnly === "false");
     await page.locator(".cm-content").focus();
     if (secondary) {
@@ -262,13 +267,17 @@ try {
       await convert.waitFor();
       assert.equal(await sourceSnapshot(page, "authenticator.note.md"), authenticatorSource);
       await page.waitForFunction(() => document.body.dataset.readOnly === "false");
+      const beforeReconverting = await count(page, "commit");
       await convert.click();
+      await page.waitForFunction(() => document.body.dataset.saveState === "saved");
+      assert.equal(await count(page, "commit"), beforeReconverting,
+        "reconverting to the exact acknowledged text does not duplicate a save");
     }
     await page.locator(".cm-content").focus();
     await page.keyboard.press("Control+s");
     await page.waitForFunction(({kind, before}) => window.messages.filter(message => message.type === kind).length > before,
       {kind: secondary ? "commit" : "save", before: secondary ? commitCount : saveCount});
-    passed.push(`${surface}: Authenticator array uses shared masked conversion, one edit, no clipboard access and explicit Save`);
+    passed.push(`${surface}: Authenticator array uses shared masked conversion, one edit, no clipboard access and acknowledged Save`);
     await page.close();
   }
   assert.deepEqual(errors, []);

@@ -210,7 +210,10 @@ try {
       baseColor,
     );
     await page.locator("#pane-pin").click();
-    assert.equal((await commits(page)).length, 0, "input and blur never save");
+    assert.equal((await commits(page)).length, 0, "input and focus changes within the editor surface do not save");
+    await page.evaluate(() => document.activeElement?.blur());
+    await page.waitForFunction(() => window.messages.some((message) => message.type === "commit"));
+    assert.equal((await commits(page)).length, 1, "leaving the editor surface requests one save");
     await page.keyboard.press("Control+s");
     await page.waitForFunction(() =>
       window.messages.some((m) => m.type === "commit"),

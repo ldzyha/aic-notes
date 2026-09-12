@@ -21,7 +21,6 @@ import { linkSelectionToNote } from "./notes/selection.js";
 import { deleteNotes } from "./notes/delete.js";
 import { AgentWorkflowBootstrap } from "./agents/bootstrap.js";
 import { registerStandardNotesAuth } from "./auth/provider.js";
-import { ContextSphereProvider } from "./context/sphere-provider.js";
 
 const RETIRED_SYNC_STATE_PREFIX = "aicNotes.standardNotes.";
 const RETIRED_SYNC_SECRET = "aicNotes.standardNotes.vaultKey.v1";
@@ -59,22 +58,11 @@ export async function activate(context) {
   const ownership = new NoteEditOwnership();
   const secondary = SecondaryNotePane.register(context, ownership);
   const markdownEditor = MarkdownEditorProvider.register(context, ownership);
-  ContextSphereProvider.register(context);
   context.subscriptions.push(
     tree,
     vscode.window.registerTreeDataProvider("aicNotes.tree", tree),
     markdownEditor,
     registerMarkdownSlashCompletionProvider(vscode),
-
-    vscode.commands.registerCommand("aicNotes.toggleContextSphere", commandHandler(async () => {
-      const config = vscode.workspace.getConfiguration("aicNotes.contextSphere");
-      const enabled = !config.get("enabled", true);
-      await config.update("enabled", enabled,
-        vscode.workspace.workspaceFolders?.length
-          ? vscode.ConfigurationTarget.Workspace
-          : vscode.ConfigurationTarget.Global);
-      if (enabled) await vscode.commands.executeCommand("aicNotes.contextSphere.focus");
-    })),
 
     vscode.commands.registerCommand(
       "aicNotes.openInSecondary",
