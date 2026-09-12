@@ -1,7 +1,7 @@
 # Functional index
 
-This index records the coordinated AIC Notes 34.1.0 / Standard Notes AIC 25.1.0 /
-shared editor core 3.7.0 release target. Public commands, state boundaries, side effects and
+This index records the coordinated AIC Notes 35.0.1 / Standard Notes AIC 26.0.1 /
+shared editor core 3.7.1 release target. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
 
@@ -60,9 +60,9 @@ production webview browser checks. Artifact publication is verified separately f
 Standard Notes authentication is implemented but auth-only; no note synchronization exists.
 The contracts below describe this coordinated release target, not future sync behavior.
 
-## Shared editor core 3.7.0
+## Shared editor core 3.7.1
 
-These contracts target AIC Notes 34.1.0 and pair with Standard Notes AIC 25.1.0.
+These contracts target AIC Notes 35.0.1 and pair with Standard Notes AIC 26.0.1.
 The exact canonical commit and all shared hashes are recorded in CORE_SNAPSHOT.json.
 Automated tests, production builds and Windows browser checks cover the shared editor;
 Linux desktop and live authenticated Standard Notes smoke checks are not implied.

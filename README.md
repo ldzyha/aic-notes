@@ -52,12 +52,12 @@ generator and UI. Options are inspired by [1Password](https://1password.com/blog
 not the same implementation. Markdown, exports and clipboard values remain plaintext.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-editor-core 3.7.0 but is a separate product. The coordinated versions are AIC Notes
-34.1.0 and AIC for Standard Notes 25.1.0. This page describes the release contract;
+editor-core 3.7.1 but is a separate product. The coordinated versions are AIC Notes
+35.0.1 and AIC for Standard Notes 26.0.1. This page describes the release contract;
 published artifacts are verified separately by the release workflow. Signing in does not move notes
 between the two applications.
 
-## Coordinated release — 34.1.0
+## Coordinated release — 35.0.1
 
 The shared `/security` template inserts the same `aic-security` Markdown block
 as the Standard Notes plugin. `## Main` starts a section, `Label*: value`
@@ -122,9 +122,9 @@ Tests include the official production-cost key-derivation vector and mocked logi
 storage, cancellation and logout paths. They do not replace a real-account sign-in and reload
 smoke test; no live authenticated Standard Notes result is claimed here.
 
-## Editor features — shared editor core 3.7.0
+## Editor features — shared editor core 3.7.1
 
-This release target pairs with AIC for Standard Notes 25.1.0. Both products use the same
+This release target pairs with AIC for Standard Notes 26.0.1. Both products use the same
 byte-verified core. Automated tests, production builds and Windows browser checks cover the
 shared controls; Linux desktop and live authenticated Standard Notes smoke checks are not implied.
 
@@ -191,25 +191,25 @@ this section does not assert that all clients or operating systems have complete
 
 ## Install
 
-Download `aic-notes-34.1.0.vsix` and its
-`aic-notes-34.1.0.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+Download `aic-notes-35.0.1.vsix` and its
+`aic-notes-35.0.1.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-34.1.0.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-34.1.0.vsix.sha256
-code --install-extension .\aic-notes-34.1.0.vsix --force
+(Get-FileHash .\aic-notes-35.0.1.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-35.0.1.vsix.sha256
+code --install-extension .\aic-notes-35.0.1.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-34.1.0.vsix.sha256
-code --install-extension ./aic-notes-34.1.0.vsix --force
-# or: code-server --install-extension ./aic-notes-34.1.0.vsix --force
+sha256sum -c aic-notes-35.0.1.vsix.sha256
+code --install-extension ./aic-notes-35.0.1.vsix --force
+# or: code-server --install-extension ./aic-notes-35.0.1.vsix --force
 ```
 
 Reload the VS Code window after installation. Editing and Standard Notes sign-in require no
@@ -329,7 +329,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-The coordinated version `34.1.0` records sequence 34, one feature outcome and zero fixed-bug
+The coordinated version `35.0.1` records sequence 35, zero feature outcomes and one fixed-bug
 outcomes; it is not a publication marker by itself.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and

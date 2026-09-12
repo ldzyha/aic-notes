@@ -1,5 +1,15 @@
 # Changelog
 
+## 35.0.1 — 2026-09-12
+
+Release sequence 35 · 0 feature outcomes · 1 fixed-bug outcome.
+
+### Fix
+
+1. Mirror the canonical security-import persistence fix in AIC Editor Core 3.7.1: save-capable hosts can explicitly convert and save through their own manager, with acknowledged success, safe retry and stale-session guards. Standard Notes 26.0.1 uses this to retain mobile conversions after reopening. VS Code keeps its existing Convert to security blocks action followed by Ctrl/Cmd+S; no input or blur autosave is introduced.
+
+Compatibility: universal VSIX, Standard Notes AIC 26.0.1, shared core 3.7.1. Authentication, synchronization, clipboard actions and the file-context sphere are unchanged.
+
 ## 34.1.0 — 2026-09-12
 
 Release sequence 34 · 1 feature outcome · 0 fixed-bug outcomes.
