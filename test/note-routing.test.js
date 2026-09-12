@@ -10,7 +10,7 @@ const require = createRequire(import.meta.url);
 const bundle = await build({
   stdin: {
     contents:
-      'export {SecondaryNotePane} from "./src/secondary/provider.js"; export {MarkdownEditorProvider} from "./src/editor/provider.js"; export {openNoteDocument} from "./src/notes/create.js"; export {NoteEditOwnership} from "./src/notes/edit-ownership.js";',
+      'export {SecondaryNotePane} from "./src/secondary/provider.js"; export {MarkdownEditorProvider} from "./src/editor/provider.js"; export {openNoteDocument} from "./src/notes/create.js"; export {NoteEditOwnership} from "./src/notes/edit-ownership.js"; export {parentNoteCandidates} from "./src/notes/parent-context.js"; export {workspaceLinkUri} from "./src/notes/navigation.js";',
     resolveDir: fileURLToPath(new URL("..", import.meta.url)),
   },
   bundle: true,
@@ -85,6 +85,9 @@ function harness(withOwnership = false) {
     return document;
   }
   const vscode = {
+    RelativePattern: class {
+      constructor(base, pattern) { this.base = base; this.pattern = pattern; }
+    },
     Uri: {
       joinPath: (base, ...parts) =>
         uri(
@@ -257,6 +260,51 @@ function harness(withOwnership = false) {
   };
 }
 
+test("workspace link boundaries reject escaping and scheme paths but preserve internal relative links", () => {
+  const h = harness();
+  const folder = h.vscode.workspace.workspaceFolders[0];
+  for (const candidate of ["../outside.md", "nested/../../outside.md", "/outside.md", "C:/outside.md", "nested\\..\\outside.md", "https://example.com", "\u0000bad.md"]) {
+    assert.equal(h.workspaceLinkUri(folder, candidate), null, candidate);
+  }
+  assert.equal(h.workspaceLinkUri(folder, "nested/../inside.md")?.path, "/workspace/inside.md");
+  assert.equal(h.workspaceLinkUri(folder, "nested/child.md")?.path, "/workspace/nested/child.md");
+});
+
+test("main and sidebar file-open messages cannot open a path outside their workspace", async () => {
+  const h = harness();
+  const folder = h.vscode.workspace.workspaceFolders[0];
+  const source = h.addFile("source.md", "source");
+  const note = h.addFile("source.note.md", "note");
+  const provider = new h.MarkdownEditorProvider(h.context);
+  let statCalls = 0;
+  const stat = h.vscode.workspace.fs.stat;
+  h.vscode.workspace.fs.stat = async (...args) => {
+    statCalls++;
+    return stat(...args);
+  };
+  await provider._routeBus({ topic: "file.open", payload: { path: "../outside.note.md" } }, h.getDocument(source), folder, "source.md");
+  h.pane.placeholderUri = note;
+  await h.pane.routeBus({ topic: "file.open", payload: { path: "../outside.note.md" } });
+  assert.equal(statCalls, 0);
+  assert.deepEqual(h.commands, []);
+  assert.deepEqual(h.events.opened, []);
+  provider.dispose();
+  h.pane.dispose();
+});
+
+test("main wiki links may traverse to a sibling within the workspace, never outside it", async () => {
+  const h = harness();
+  const folder = h.vscode.workspace.workspaceFolders[0];
+  const source = h.addFile("nested/source.note.md", "source");
+  const target = h.addFile("target.note.md", "target");
+  const provider = new h.MarkdownEditorProvider(h.context);
+  await provider._routeBus({ topic: "wiki.open", payload: { target: "../../outside" } }, h.getDocument(source), folder, "nested/source.note.md");
+  assert.deepEqual(h.commands, []);
+  await provider._routeBus({ topic: "wiki.open", payload: { target: "../target" } }, h.getDocument(source), folder, "nested/source.note.md");
+  assert.equal(h.commands.at(-1)?.[1]?.path, target.path);
+  provider.dispose();
+});
+
 test("Explorer note selection leaves both main tab and an unrelated dirty sidebar draft intact", async () => {
   const h = harness();
   const old = h.addFile("old.note.md");
@@ -267,7 +315,11 @@ test("Explorer note selection leaves both main tab and an unrelated dirty sideba
   assert.equal(await h.pane.followActive(), false);
   assert.equal(h.pane.documentUri, old);
   assert.equal(h.pane.draftDirty, true);
-  assert.deepEqual(h.sent, []);
+  assert.ok(
+    h.sent.some(
+      (value) => typeof value === "string" && value.startsWith("Unsaved"),
+    ),
+  );
   assert.deepEqual(h.events.closed, []);
   assert.deepEqual(h.events.opened, []);
 });
@@ -281,8 +333,266 @@ test("queued follow reads the latest tab instead of reviving an old source selec
   };
   const pending = h.pane.followActive();
   h.vscode.window.tabGroups.activeTabGroup.activeTab = { input: { uri: note } };
-  assert.equal(await pending, false);
+  assert.equal(await pending, true);
+  assert.equal(h.pane.placeholderUri.path, "/workspace/workspace.note.md");
+  assert.equal(h.pane.sourceUri.path, "/workspace");
   assert.deepEqual(h.events.opened, []);
+});
+
+test("main note follows its nearest existing parent without opening or saving its source", async () => {
+  const h = harness(true);
+  h.addFile("src", undefined, 2);
+  h.addFile("src/component", undefined, 2);
+  const parent = h.addFile("src/component.note.md");
+  h.addFile("src.note.md");
+  h.addFile("workspace.note.md");
+  const note = h.addFile("src/component/file.note.md");
+  h.vscode.window.tabGroups.activeTabGroup.activeTab = { input: { uri: note } };
+  // A dirty main document is independent of its parent note, and remains dirty.
+  const document = h.getDocument(note);
+  document.replace(0, 0, "main draft ");
+  assert.equal(await h.pane.followActive(), true);
+  assert.equal(h.pane.documentUri.path, parent.path);
+  assert.equal(h.pane.sourceUri.path, "/workspace/src/component");
+  assert.equal(document.isDirty, true);
+  assert.deepEqual(h.commands, []);
+  assert.deepEqual(h.events.closed, []);
+  assert.deepEqual(h.events.writes, []);
+  assert.deepEqual(h.events.saved, []);
+  assert.deepEqual(h.events.opened, [parent.path]);
+});
+
+test("folder sidecars skip themselves and folders without notes", async () => {
+  const h = harness();
+  h.addFile("src", undefined, 2);
+  h.addFile("src/gap", undefined, 2);
+  h.addFile("src/gap/component", undefined, 2);
+  const parent = h.addFile("src.note.md");
+  const note = h.addFile("src/gap/component.note.md");
+  h.vscode.window.tabGroups.activeTabGroup.activeTab = { input: { uri: note } };
+  await h.pane.followActive();
+  assert.equal(h.pane.documentUri.path, parent.path);
+  assert.deepEqual(h.events.writes, []);
+});
+
+test("orphan notes and ambiguous sources use containing context, not reverse source resolution", async () => {
+  const h = harness();
+  h.addFile("docs.v2", undefined, 2);
+  const parent = h.addFile("docs.v2.note.md");
+  h.addFile("docs.v2/same.js");
+  h.addFile("docs.v2/same.ts");
+  for (const name of ["docs.v2/same.note.md", "docs.v2/orphan.note.md"]) {
+    const note = h.addFile(name);
+    h.vscode.window.tabGroups.activeTabGroup.activeTab = {
+      input: { modified: note },
+    };
+    await h.pane.followActive();
+    assert.equal(h.pane.documentUri.path, parent.path);
+  }
+  assert.deepEqual(h.events.errors, []);
+  assert.deepEqual(h.commands, []);
+});
+
+test("native note editor follows the project and project fallback remains stable when already open", async () => {
+  const h = harness(true);
+  const project = h.addFile("workspace.note.md");
+  const note = h.addFile("root.note.md");
+  h.vscode.window.activeTextEditor = { document: h.getDocument(note) };
+  await h.pane.followActive();
+  assert.equal(h.pane.documentUri.path, project.path);
+  const generation = h.pane.generation;
+  h.sent.length = 0;
+  h.vscode.window.activeTextEditor.document = h.getDocument(project);
+  await h.pane.followActive();
+  assert.equal(h.pane.documentUri.path, project.path);
+  assert.equal(h.pane.generation, generation);
+  assert.equal(h.sent.includes("init"), false);
+  assert.deepEqual(h.events.saved, []);
+});
+
+test("pinned notes do not follow a main note", async () => {
+  const h = harness();
+  const old = h.addFile("pinned.note.md");
+  h.pane.documentUri = old;
+  h.pane.pinned = true;
+  h.vscode.window.tabGroups.activeTabGroup.activeTab = {
+    input: { uri: h.addFile("other.note.md") },
+  };
+  assert.equal(await h.pane.followActive(), false);
+  assert.equal(h.pane.documentUri, old);
+  assert.deepEqual(h.events.opened, []);
+});
+
+test("created and deleted parent notes dynamically update main-note context without writes", async () => {
+  const h = harness();
+  h.addFile("src", undefined, 2);
+  h.vscode.window.tabGroups.activeTabGroup.activeTab = {
+    input: { uri: h.addFile("src/file.note.md") },
+  };
+  await h.pane.followActive();
+  assert.equal(h.pane.placeholderUri.path, "/workspace/workspace.note.md");
+  const parent = h.addFile("src.note.md");
+  await h.pane.onNotesChanged();
+  assert.equal(h.pane.documentUri.path, parent.path);
+  const generation = h.pane.generation;
+  h.sent.length = 0;
+  await h.pane.onNotesChanged();
+  assert.equal(h.pane.generation, generation);
+  assert.equal(h.sent.includes("init"), false);
+  h.files.delete(parent.path);
+  await h.pane.onNotesChanged();
+  assert.equal(h.pane.placeholderUri.path, "/workspace/workspace.note.md");
+  assert.deepEqual(h.events.writes, []);
+});
+
+test("active tab and pin changes during ancestor lookup cancel obsolete navigation", async () => {
+  for (const change of ["tab", "pin"]) {
+    const h = harness();
+    h.addFile("src", undefined, 2);
+    h.addFile("src.note.md");
+    const note = h.addFile("src/file.note.md");
+    const other = h.addFile("other.js");
+    h.vscode.window.tabGroups.activeTabGroup.activeTab = {
+      input: { uri: note },
+    };
+    const originalStat = h.vscode.workspace.fs.stat;
+    let release;
+    h.vscode.workspace.fs.stat = (resource) =>
+      resource.path === "/workspace/src.note.md"
+        ? new Promise((resolve) => {
+            release = async () => resolve(await originalStat(resource));
+          })
+        : originalStat(resource);
+    const pending = h.pane.followActive();
+    await new Promise((resolve) => setImmediate(resolve));
+    if (change === "pin") h.pane.pinned = true;
+    else
+      h.vscode.window.tabGroups.activeTabGroup.activeTab = {
+        input: { uri: other },
+      };
+    await release();
+    assert.equal(await pending, false);
+    assert.equal(h.pane.documentUri, undefined);
+    assert.deepEqual(h.events.opened, []);
+    assert.equal(h.sent.includes("init"), false);
+  }
+});
+
+test("an ancestor removed while staging falls through to the project, never its placeholder", async () => {
+  const h = harness();
+  h.addFile("src", undefined, 2);
+  h.addFile("src.note.md");
+  const project = h.addFile("workspace.note.md");
+  h.vscode.window.tabGroups.activeTabGroup.activeTab = {
+    input: { uri: h.addFile("src/file.note.md") },
+  };
+  const stage = h.pane.stageNote.bind(h.pane);
+  h.pane.stageNote = async (...args) => {
+    if (args[0].path === "/workspace/src.note.md") h.files.delete(args[0].path);
+    return stage(...args);
+  };
+  await h.pane.followActive();
+  assert.equal(h.pane.documentUri.path, project.path);
+  assert.equal(h.pane.placeholderUri, undefined);
+  assert.deepEqual(h.events.writes, []);
+});
+
+test("an ancestor removed after stat but before document open falls through safely", async () => {
+  const h = harness();
+  h.addFile("src", undefined, 2);
+  h.addFile("src.note.md");
+  const project = h.addFile("workspace.note.md");
+  h.vscode.window.tabGroups.activeTabGroup.activeTab = {
+    input: { uri: h.addFile("src/file.note.md") },
+  };
+  const open = h.vscode.workspace.openTextDocument;
+  h.vscode.workspace.openTextDocument = (resource) => {
+    if (resource.path === "/workspace/src.note.md")
+      h.files.delete(resource.path);
+    return open(resource);
+  };
+  assert.equal(await h.pane.followActive(), true);
+  assert.equal(h.pane.documentUri.path, project.path);
+  assert.equal(h.pane.navigationPaused, false);
+  assert.deepEqual(h.events.writes, []);
+});
+
+test("the project placeholder is stable across repeated main-note events", async () => {
+  const h = harness();
+  h.vscode.window.tabGroups.activeTabGroup.activeTab = {
+    input: { uri: h.addFile("file.note.md") },
+  };
+  await h.pane.followActive();
+  const generation = h.pane.generation,
+    text = h.pane.placeholderText;
+  h.sent.length = 0;
+  await h.pane.followActive();
+  assert.equal(h.pane.generation, generation);
+  assert.equal(h.pane.placeholderText, text);
+  assert.equal(h.sent.includes("init"), false);
+});
+
+test("nearest-note scope stops at the owning nested workspace, uses its name, and normalizes Windows paths", async () => {
+  const h = harness();
+  const nested = { name: "Nested Alias", uri: h.uri("/workspace/inner") };
+  h.addFile("inner", undefined, 2);
+  h.addFile("inner/src", undefined, 2);
+  h.addFile("inner.note.md");
+  h.addFile("workspace.note.md");
+  const note = h.addFile("inner/src/file.note.md");
+  h.vscode.workspace.getWorkspaceFolder = (resource) =>
+    resource.path.startsWith("/workspace/inner/") ||
+    resource.path === nested.uri.path
+      ? nested
+      : undefined;
+  h.vscode.workspace.asRelativePath = (resource) =>
+    resource.path.slice(nested.uri.path.length + 1).replaceAll("/", "\\");
+  const candidates = [];
+  for await (const value of h.parentNoteCandidates(note))
+    candidates.push(value.noteUri.path);
+  assert.deepEqual(candidates, ["/workspace/inner/Nested Alias.note.md"]);
+  const outside = [];
+  for await (const value of h.parentNoteCandidates(h.uri("/outside/a.note.md")))
+    outside.push(value);
+  assert.deepEqual(outside, []);
+});
+
+test("project identity wins over a same-named folder; note-suffixed folders are skipped", async () => {
+  const h = harness();
+  h.addFile("workspace", undefined, 2);
+  h.addFile("odd.note.md", undefined, 2);
+  const project = h.addFile("workspace.note.md");
+  for (const name of ["workspace/file.note.md", "odd.note.md/file.note.md"]) {
+    const note = h.addFile(name);
+    const candidates = [];
+    for await (const value of h.parentNoteCandidates(note))
+      candidates.push(value);
+    assert.equal(candidates.length, 1);
+    assert.equal(candidates[0].noteUri.path, project.path);
+    assert.equal(candidates[0].targetUri.path, "/workspace");
+    assert.equal(candidates[0].isProject, true);
+  }
+});
+
+test("late relationship results cannot overwrite the next note context", async () => {
+  const h = harness();
+  h.pane.documentUri = h.addFile("workspace.note.md");
+  h.pane.sourceUri = h.uri("/workspace");
+  h.pane.ready = true;
+  let finish;
+  h.vscode.workspace.findFiles = () =>
+    new Promise((resolve) => {
+      finish = () => resolve([]);
+    });
+  const pending = h.pane.refreshRelationships();
+  await new Promise((resolve) => setImmediate(resolve));
+  h.pane.generation++;
+  finish();
+  await pending;
+  assert.equal(
+    h.sent.some((value) => value?.type === "relationships"),
+    false,
+  );
 });
 
 test("a normal file still follows its sidecar without closing a main note tab", async () => {

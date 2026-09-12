@@ -102,10 +102,12 @@ function dropTarget(element, kind, index, onMove, readOnly) {
     event.dataTransfer.dropEffect = "move";
   });
   element.addEventListener("drop", (event) => {
-    const value =
-      event.dataTransfer?.getData(`application/x-aic-${kind}`) ?? "";
+    const mime = `application/x-aic-${kind}`;
+    if (!event.dataTransfer?.types.includes(mime)) return;
+    const value = event.dataTransfer.getData(mime);
+    if (!/^(?:0|[1-9][0-9]*)$/u.test(value)) return;
     const from = Number(value);
-    if (!Number.isInteger(from)) return;
+    if (!Number.isSafeInteger(from)) return;
     event.preventDefault();
     onMove(from, index);
   });

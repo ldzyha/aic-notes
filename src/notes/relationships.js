@@ -7,12 +7,16 @@ import { resolveTarget } from "./target.js";
 const EXCLUDE = "{**/node_modules/**,**/.git/**,**/dist/**}";
 
 function normalizedRelative(folder, uri) {
-  const value = vscode.workspace.asRelativePath(uri, false).replaceAll("\\", "/");
+  const value = vscode.workspace
+    .asRelativePath(uri, false)
+    .replaceAll("\\", "/");
   return value === "." ? "" : value;
 }
 
 function depthOf(value) {
-  return String(value ?? "").split("/").filter(Boolean).length;
+  return String(value ?? "")
+    .split("/")
+    .filter(Boolean).length;
 }
 
 async function exists(uri) {
@@ -28,7 +32,9 @@ async function descriptorForTarget(uri, relation) {
   const descriptor = await noteDescriptorForUri(uri);
   return {
     relation,
-    label: descriptor.isWorkspaceRoot ? descriptor.folder.name : path.posix.basename(descriptor.relPath),
+    label: descriptor.isWorkspaceRoot
+      ? descriptor.folder.name
+      : path.posix.basename(descriptor.relPath),
     path: descriptor.notePath,
     targetPath: descriptor.relPath,
     depth: descriptor.isWorkspaceRoot ? 0 : depthOf(descriptor.relPath),
@@ -37,7 +43,9 @@ async function descriptorForTarget(uri, relation) {
 }
 
 function relationRank(value) {
-  return { project: 0, parent: 1, current: 2, component: 3, sibling: 4 }[value] ?? 5;
+  return (
+    { project: 0, parent: 1, current: 2, component: 3, sibling: 4 }[value] ?? 5
+  );
 }
 
 // Build a context-only view over canonical sidecars. Only existing notes add
@@ -49,10 +57,14 @@ export async function noteRelationshipsForTarget(uri) {
   const current = await noteDescriptorForUri(uri);
   const folder = current.folder;
   const rows = new Map();
-  const add = (row) => rows.set(row.path, row);
+  const add = (row) => {
+    // The root's identity is reserved, as in parentNoteCandidates. A child
+    // named like the workspace must not relabel the project as that child.
+    if (rows.get(row.path)?.relation !== "project") rows.set(row.path, row);
+  };
 
   add({
-    ...await descriptorForTarget(folder.uri, "project"),
+    ...(await descriptorForTarget(folder.uri, "project")),
     isCurrent: current.isWorkspaceRoot,
   });
 
@@ -60,7 +72,9 @@ export async function noteRelationshipsForTarget(uri) {
     new vscode.RelativePattern(folder, "**/*.note.md"),
     new vscode.RelativePattern(folder, EXCLUDE),
   );
-  const notePaths = new Set(noteUris.map((noteUri) => normalizedRelative(folder, noteUri)));
+  const notePaths = new Set(
+    noteUris.map((noteUri) => normalizedRelative(folder, noteUri)),
+  );
 
   const parts = current.relPath.split("/").filter(Boolean);
   const ancestorParts = parts.slice(0, -1);
@@ -82,7 +96,8 @@ export async function noteRelationshipsForTarget(uri) {
     const targetPath = normalizedRelative(folder, target);
     let relation = "";
     if (
-      current.isDirectory && current.relPath &&
+      current.isDirectory &&
+      current.relPath &&
       targetPath.startsWith(`${current.relPath}/`)
     ) {
       relation = "component";
@@ -100,9 +115,10 @@ export async function noteRelationshipsForTarget(uri) {
     });
   }
 
-  return [...rows.values()].sort((left, right) =>
-    relationRank(left.relation) - relationRank(right.relation) ||
-    left.depth - right.depth ||
-    left.label.localeCompare(right.label),
+  return [...rows.values()].sort(
+    (left, right) =>
+      relationRank(left.relation) - relationRank(right.relation) ||
+      left.depth - right.depth ||
+      left.label.localeCompare(right.label),
   );
 }

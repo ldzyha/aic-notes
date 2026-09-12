@@ -6,9 +6,9 @@ const root = new URL("../", import.meta.url);
 const read = (relativePath) => readFile(new URL(relativePath, root), "utf8");
 const packageJson = JSON.parse(await read("package.json"));
 
-test("30.0.1 is a universal local editor with optional auth-only connection", () => {
-  assert.equal(packageJson.version, "30.0.1");
-  assert.equal(packageJson.aicEditorCore, "3.4.0");
+test("31.3.8 is a universal local editor with optional auth-only connection", () => {
+  assert.equal(packageJson.version, "31.3.8");
+  assert.equal(packageJson.aicEditorCore, "3.5.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
   assert.match(packageJson.description, /Standard Notes sign-in/u);
@@ -58,14 +58,11 @@ test("note association, project fallback, and local footer actions are explicit"
   assert.match(provider, /id="pane-pin"/u);
   assert.doesNotMatch(provider, /pane-auth|pane-sync|pane-delete/u);
   assert.match(provider, /new NavigationQueue\(\)/u);
-  assert.match(
-    provider,
-    /activeResource\(\s*activeTabUri,\s*activeEditorUri,\s*Boolean\(activeTab\),\s*\)/u,
-  );
+  assert.match(provider, /activeWindowResource\(vscode\.window\)/u);
   assert.match(provider, /preferredWorkspaceFolder/u);
   assert.match(
     provider,
-    /this\.followTargetNow\(folder\.uri, \{ preserveFocus: true \}\)/u,
+    /this\.followTargetNow\(folder\.uri, \{ preserveFocus: true, isCurrent \}\)/u,
   );
   assert.match(
     create,
@@ -91,7 +88,8 @@ test("Secondary save and Trash paths are deterministic and local", async () => {
       read("src/webview/theme.css"),
     ]);
   assert.match(provider, /case "commit"[\s\S]*commitDraft/u);
-  assert.match(provider, /workspace\.fs\.writeFile/u);
+  assert.match(provider, /createNoteDocument/u);
+  assert.doesNotMatch(provider, /workspace\.fs\.writeFile/u);
   assert.match(provider, /saved = await document\.save\(\)/u);
   assert.doesNotMatch(
     provider,
@@ -101,7 +99,10 @@ test("Secondary save and Trash paths are deterministic and local", async () => {
   assert.match(provider, /id="pane-status"[^>]*aria-live="polite"/u);
   assert.match(theme, /data-save-state="dirty"[\s\S]*var\(--warn\) 4%/u);
   assert.doesNotMatch(theme, /data-save-state="saved"|#5aa66a/u);
-  assert.match(provider, /trashNotesLocally\(\[uri\]\)/u);
+  assert.match(
+    provider,
+    /trashNotesLocally\(\[uri\], \{ beforeDelete: current \}\)/u,
+  );
   assert.match(
     provider,
     /Only the local sidecar moves to the operating-system Trash/u,
@@ -182,9 +183,14 @@ test("source selections cross both VS Code and custom-editor boundaries", async 
   assert.match(webview, /type: "selection\.snapshot"/u);
   assert.match(webview, /type: "selection\.link", anchor, head/u);
   assert.match(selection, /document\.isDirty/u);
-  assert.match(selection, /await document\.save\(\)/u);
+  assert.doesNotMatch(
+    selection,
+    /await document\.save\(\)|workspace\.applyEdit|ensureNoteFile/u,
+  );
+  assert.match(selection, /selection_source_unsaved/u);
   assert.match(selection, /document\.getText\(editor\.selection\)/u);
-  assert.match(selection, /secondary\.open[\s\S]*selection:/u);
+  assert.match(selection, /secondary\.insertLinkedCode/u);
+  assert.match(webview, /case "linkedCode\.insert"/u);
   assert.match(extension, /linkSelectionToNote\(secondary, markdownEditor\)/u);
 });
 
@@ -360,9 +366,7 @@ test("properties are note-only and update on explicit save", async () => {
     read("vendor/aic-editor-core/file-properties.js"),
     read("src/notes/properties.js"),
   ]);
-  assert.match(extension, /onWillSaveTextDocument/u);
-  assert.match(extension, /lowerPath\.endsWith\("\.note\.md"\)/u);
-  assert.match(extension, /legacyPropertyCleanupEdits/u);
+  assert.doesNotMatch(extension, /legacyPropertyCleanupEdits/u);
   assert.match(secondary, /stampNoteProperties/u);
   assert.match(noteProperties, /createdAt/u);
   assert.match(noteProperties, /updatedAt/u);

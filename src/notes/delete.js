@@ -4,8 +4,8 @@ export async function trashNotesLocally(
   uris,
   { beforeDelete, afterDelete, detail = "" } = {},
 ) {
-  if ((await beforeDelete?.()) === false) return false;
   for (const uri of uris) {
+    if ((await beforeDelete?.(uri)) === false) return false;
     try {
       await vscode.workspace.fs.delete(uri, { useTrash: true });
     } catch {
@@ -15,6 +15,7 @@ export async function trashNotesLocally(
         "Delete Permanently",
       );
       if (hard !== "Delete Permanently") return false;
+      if ((await beforeDelete?.(uri)) === false) return false;
       await vscode.workspace.fs.delete(uri);
     }
     await afterDelete?.(uri);

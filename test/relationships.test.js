@@ -21,7 +21,9 @@ function uri(value) {
 }
 globalThis[apiKey] = {
   FileType,
-  Uri: { joinPath: (base, ...parts) => uri(path.posix.join(base.path, ...parts)) },
+  Uri: {
+    joinPath: (base, ...parts) => uri(path.posix.join(base.path, ...parts)),
+  },
   RelativePattern: class {
     constructor(base, pattern) {
       this.base = base;
@@ -29,7 +31,8 @@ globalThis[apiKey] = {
     }
   },
   workspace: {
-    getWorkspaceFolder: (...args) => activeWorkspace.getWorkspaceFolder(...args),
+    getWorkspaceFolder: (...args) =>
+      activeWorkspace.getWorkspaceFolder(...args),
     asRelativePath: (...args) => activeWorkspace.asRelativePath(...args),
     findFiles: (...args) => activeWorkspace.findFiles(...args),
     fs: {
@@ -39,22 +42,29 @@ globalThis[apiKey] = {
   },
 };
 const bundled = await build({
-  entryPoints: [fileURLToPath(new URL("../src/notes/relationships.js", import.meta.url))],
+  entryPoints: [
+    fileURLToPath(new URL("../src/notes/relationships.js", import.meta.url)),
+  ],
   bundle: true,
   platform: "node",
   format: "esm",
   write: false,
   logLevel: "silent",
-  plugins: [{
-    name: "mock-vscode",
-    setup(builder) {
-      builder.onResolve({ filter: /^vscode$/ }, () => ({ path: "vscode", namespace: "test" }));
-      builder.onLoad({ filter: /.*/, namespace: "test" }, () => ({
-        contents: `const api = globalThis[Symbol.for("aic-notes.relationships-test-vscode")];
+  plugins: [
+    {
+      name: "mock-vscode",
+      setup(builder) {
+        builder.onResolve({ filter: /^vscode$/ }, () => ({
+          path: "vscode",
+          namespace: "test",
+        }));
+        builder.onLoad({ filter: /.*/, namespace: "test" }, () => ({
+          contents: `const api = globalThis[Symbol.for("aic-notes.relationships-test-vscode")];
           export const { FileType, Uri, RelativePattern, workspace } = api;`,
-      }));
+        }));
+      },
     },
-  }],
+  ],
 });
 const { noteRelationshipsForTarget } = await import(
   `data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].contents).toString("base64")}`
@@ -80,7 +90,8 @@ function fixture({ files = [], directories = [], backslashes = false } = {}) {
   files.forEach((name) => add(name, FileType.File));
   activeWorkspace = {
     getWorkspaceFolder: (value) =>
-      value.path === folder.uri.path || value.path.startsWith(`${folder.uri.path}/`)
+      value.path === folder.uri.path ||
+      value.path.startsWith(`${folder.uri.path}/`)
         ? folder
         : undefined,
     asRelativePath(value) {
@@ -94,45 +105,71 @@ function fixture({ files = [], directories = [], backslashes = false } = {}) {
     },
     async readDirectory(value) {
       return [...entries]
-        .filter(([name]) => name !== value.path && path.posix.dirname(name) === value.path)
+        .filter(
+          ([name]) =>
+            name !== value.path && path.posix.dirname(name) === value.path,
+        )
         .map(([name, type]) => [path.posix.basename(name), type]);
     },
     async findFiles(include, exclude) {
       findCalls.push({ include, exclude });
       return [...entries]
-        .filter(([name, type]) => type === FileType.File && name.endsWith(".note.md"))
+        .filter(
+          ([name, type]) => type === FileType.File && name.endsWith(".note.md"),
+        )
         .map(([name]) => uri(name));
     },
   };
   return { at, statCalls, findCalls };
 }
 
+test("same-named child folder cannot replace the reserved project context", async () => {
+  const { at } = fixture({
+    files: ["Project.note.md", "Project/file.js", "Project/file.note.md"],
+  });
+  const rows = await noteRelationshipsForTarget(at("Project/file.js"));
+  assert.equal(rows.filter((row) => row.relation === "project").length, 1);
+  assert.equal(
+    rows.find((row) => row.path === "Project.note.md").targetPath,
+    "",
+  );
+});
+
 test("project root is always clickable note navigation, including its placeholder", async () => {
   for (const exists of [false, true]) {
     const { at } = fixture({ files: exists ? ["Project.note.md"] : [] });
     const rows = await noteRelationshipsForTarget(at());
-    assert.deepEqual(rows, [{
-      relation: "project",
-      label: "Project",
-      path: "Project.note.md",
-      targetPath: "",
-      depth: 0,
-      exists,
-      isCurrent: true,
-    }]);
+    assert.deepEqual(rows, [
+      {
+        relation: "project",
+        label: "Project",
+        path: "Project.note.md",
+        targetPath: "",
+        depth: 0,
+        exists,
+        isCurrent: true,
+      },
+    ]);
   }
 });
 
 test("ancestor rows come only from actual notes, not intermediate directories", async () => {
   const { at, statCalls, findCalls } = fixture({
-    files: ["src/feature/app.ts", "src/feature.note.md", "src/feature/app.note.md"],
+    files: [
+      "src/feature/app.ts",
+      "src/feature.note.md",
+      "src/feature/app.note.md",
+    ],
   });
   const rows = await noteRelationshipsForTarget(at("src/feature/app.ts"));
-  assert.deepEqual(rows.map(({ relation, path, exists }) => ({ relation, path, exists })), [
-    { relation: "project", path: "Project.note.md", exists: false },
-    { relation: "parent", path: "src/feature.note.md", exists: true },
-    { relation: "current", path: "src/feature/app.note.md", exists: true },
-  ]);
+  assert.deepEqual(
+    rows.map(({ relation, path, exists }) => ({ relation, path, exists })),
+    [
+      { relation: "project", path: "Project.note.md", exists: false },
+      { relation: "parent", path: "src/feature.note.md", exists: true },
+      { relation: "current", path: "src/feature/app.note.md", exists: true },
+    ],
+  );
   assert.equal(rows[0].isCurrent, false);
   assert.equal(statCalls.includes(at("src").path), false);
   assert.equal(findCalls.length, 1);
@@ -142,20 +179,29 @@ test("ancestor rows come only from actual notes, not intermediate directories", 
 test("a missing current file note remains context without adding absent ancestors", async () => {
   const { at } = fixture({ files: ["src/feature/app.ts"], backslashes: true });
   const rows = await noteRelationshipsForTarget(at("src/feature/app.ts"));
-  assert.deepEqual(rows.map(({ relation, path, exists }) => ({ relation, path, exists })), [
-    { relation: "project", path: "Project.note.md", exists: false },
-    { relation: "current", path: "src/feature/app.note.md", exists: false },
-  ]);
+  assert.deepEqual(
+    rows.map(({ relation, path, exists }) => ({ relation, path, exists })),
+    [
+      { relation: "project", path: "Project.note.md", exists: false },
+      { relation: "current", path: "src/feature/app.note.md", exists: false },
+    ],
+  );
 });
 
 test("the actual current folder can be a placeholder while its note-bearing parent stays clickable", async () => {
-  const { at } = fixture({ files: ["src.note.md"], directories: ["src/feature"] });
+  const { at } = fixture({
+    files: ["src.note.md"],
+    directories: ["src/feature"],
+  });
   const rows = await noteRelationshipsForTarget(at("src/feature"));
-  assert.deepEqual(rows.map(({ relation, path, exists }) => ({ relation, path, exists })), [
-    { relation: "project", path: "Project.note.md", exists: false },
-    { relation: "parent", path: "src.note.md", exists: true },
-    { relation: "current", path: "src/feature.note.md", exists: false },
-  ]);
+  assert.deepEqual(
+    rows.map(({ relation, path, exists }) => ({ relation, path, exists })),
+    [
+      { relation: "project", path: "Project.note.md", exists: false },
+      { relation: "parent", path: "src.note.md", exists: true },
+      { relation: "current", path: "src/feature.note.md", exists: false },
+    ],
+  );
 });
 
 test("existing sibling and component notes retain their direct note destinations", async () => {
@@ -171,23 +217,34 @@ test("existing sibling and component notes retain their direct note destinations
     directories: ["src/other"],
   });
   const rows = await noteRelationshipsForTarget(at("src/feature"));
-  assert.deepEqual(rows.map(({ relation, path }) => ({ relation, path })), [
-    { relation: "project", path: "Project.note.md" },
-    { relation: "current", path: "src/feature.note.md" },
-    { relation: "component", path: "src/feature/app.note.md" },
-    { relation: "sibling", path: "src/other.note.md" },
-  ]);
+  assert.deepEqual(
+    rows.map(({ relation, path }) => ({ relation, path })),
+    [
+      { relation: "project", path: "Project.note.md" },
+      { relation: "current", path: "src/feature.note.md" },
+      { relation: "component", path: "src/feature/app.note.md" },
+      { relation: "sibling", path: "src/other.note.md" },
+    ],
+  );
   assert.ok(rows.every(({ exists }) => exists));
 });
 
 test("file context retains existing sibling notes without turning them into parents", async () => {
   const { at } = fixture({
-    files: ["src/app.ts", "src/app.note.md", "src/other.ts", "src/other.note.md"],
+    files: [
+      "src/app.ts",
+      "src/app.note.md",
+      "src/other.ts",
+      "src/other.note.md",
+    ],
   });
   const rows = await noteRelationshipsForTarget(at("src/app.ts"));
-  assert.deepEqual(rows.map(({ relation, path }) => ({ relation, path })), [
-    { relation: "project", path: "Project.note.md" },
-    { relation: "current", path: "src/app.note.md" },
-    { relation: "sibling", path: "src/other.note.md" },
-  ]);
+  assert.deepEqual(
+    rows.map(({ relation, path }) => ({ relation, path })),
+    [
+      { relation: "project", path: "Project.note.md" },
+      { relation: "current", path: "src/app.note.md" },
+      { relation: "sibling", path: "src/other.note.md" },
+    ],
+  );
 });

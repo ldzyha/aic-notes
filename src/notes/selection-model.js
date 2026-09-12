@@ -1,9 +1,13 @@
 import { parseDetailsBlocks } from "../webview/details-model.js";
+import { notePathFor } from "./paths.js";
 
 const LINKED_CODE_HEADING = "## Linked code";
 
 function clampPosition(value, length) {
-  return Math.max(0, Math.min(Number.isFinite(value) ? Math.trunc(value) : 0, length));
+  return Math.max(
+    0,
+    Math.min(Number.isFinite(value) ? Math.trunc(value) : 0, length),
+  );
 }
 
 function lineAt(source, position) {
@@ -41,7 +45,9 @@ export function linkedCodeReference(sourcePath, line, endLine = line) {
     !Number.isInteger(endLine) ||
     endLine < line
   ) {
-    throw new TypeError("linkedCodeReference needs a path and a valid inclusive line range");
+    throw new TypeError(
+      "linkedCodeReference needs a path and a valid inclusive line range",
+    );
   }
   const name = sourcePath.slice(sourcePath.lastIndexOf("/") + 1);
   const range = endLine > line ? `${line}-${endLine}` : `${line}`;
@@ -60,45 +66,75 @@ export function linkedCodeReference(sourcePath, line, endLine = line) {
 }
 
 const LANGUAGE_BY_EXTENSION = new Map([
-  ["c", "c"], ["cc", "cpp"], ["cpp", "cpp"], ["cs", "csharp"], ["css", "css"],
-  ["go", "go"], ["html", "html"], ["java", "java"], ["js", "javascript"],
-  ["json", "json"], ["jsx", "jsx"], ["md", "markdown"], ["mjs", "javascript"],
-  ["py", "python"], ["rb", "ruby"], ["rs", "rust"], ["scss", "scss"], ["sh", "bash"],
-  ["sql", "sql"], ["ts", "typescript"], ["tsx", "tsx"], ["xml", "xml"],
-  ["yaml", "yaml"], ["yml", "yaml"],
+  ["c", "c"],
+  ["cc", "cpp"],
+  ["cpp", "cpp"],
+  ["cs", "csharp"],
+  ["css", "css"],
+  ["go", "go"],
+  ["html", "html"],
+  ["java", "java"],
+  ["js", "javascript"],
+  ["json", "json"],
+  ["jsx", "jsx"],
+  ["md", "markdown"],
+  ["mjs", "javascript"],
+  ["py", "python"],
+  ["rb", "ruby"],
+  ["rs", "rust"],
+  ["scss", "scss"],
+  ["sh", "bash"],
+  ["sql", "sql"],
+  ["ts", "typescript"],
+  ["tsx", "tsx"],
+  ["xml", "xml"],
+  ["yaml", "yaml"],
+  ["yml", "yaml"],
 ]);
 
 export function languageForSourcePath(sourcePath) {
-  const name = String(sourcePath ?? "").replaceAll("\\", "/").split("/").at(-1) ?? "";
-  const extension = name.includes(".") ? name.slice(name.lastIndexOf(".") + 1).toLowerCase() : "";
+  const name =
+    String(sourcePath ?? "")
+      .replaceAll("\\", "/")
+      .split("/")
+      .at(-1) ?? "";
+  const extension = name.includes(".")
+    ? name.slice(name.lastIndexOf(".") + 1).toLowerCase()
+    : "";
   return LANGUAGE_BY_EXTENSION.get(extension) ?? "";
 }
 
 export function fencedSelection(value, language = "") {
-  const text = String(value ?? "").replaceAll("\r\n", "\n").replaceAll("\r", "\n");
+  const text = String(value ?? "")
+    .replaceAll("\r\n", "\n")
+    .replaceAll("\r", "\n");
   let longest = 0;
-  for (const match of text.matchAll(/`+/gu)) longest = Math.max(longest, match[0].length);
+  for (const match of text.matchAll(/`+/gu))
+    longest = Math.max(longest, match[0].length);
   const fence = "`".repeat(Math.max(3, longest + 1));
   return `${fence}${language}\n${text}${text.endsWith("\n") ? "" : "\n"}${fence}`;
 }
 
 /** Canonical owner/note route for an ordinary source or an AIC *.ai.md artifact. */
 export function noteTargetForSource(value) {
-  const sourcePath = typeof value === "string"
-    ? value.replaceAll("\\", "/").replace(/^\.\/+/, "").replace(/^\/+|\/+$/g, "")
-    : "";
-  if (!sourcePath || sourcePath.startsWith("untitled:") || sourcePath.endsWith(".note.md")) {
+  const sourcePath =
+    typeof value === "string"
+      ? value
+          .replaceAll("\\", "/")
+          .replace(/^\.\/+/, "")
+          .replace(/^\/+|\/+$/g, "")
+      : "";
+  if (
+    !sourcePath ||
+    sourcePath.startsWith("untitled:") ||
+    sourcePath.endsWith(".note.md")
+  ) {
     return null;
   }
   const ai = sourcePath.endsWith(".ai.md");
   const ownerPath = ai ? sourcePath.slice(0, -".ai.md".length) : sourcePath;
   if (!ownerPath) return null;
-  const slash = ownerPath.lastIndexOf("/");
-  const name = slash >= 0 ? ownerPath.slice(slash + 1) : ownerPath;
-  const dot = name.lastIndexOf(".");
-  const notePath = dot <= 0
-    ? `${ownerPath}.note.md`
-    : `${ownerPath.slice(0, ownerPath.length - (name.length - dot))}.note.md`;
+  const notePath = notePathFor(ownerPath);
   return { sourcePath, ownerPath, notePath, ai };
 }
 
@@ -119,20 +155,34 @@ function commentCursor(source, from, to) {
 function linkedCodeSectionEnd(source, headingEnd, details) {
   const headings = /^#{1,2}[ \t]+/gmu;
   headings.lastIndex = headingEnd;
-  for (let match = headings.exec(source); match; match = headings.exec(source)) {
-    const insideDetail = details.some((detail) => match.index >= detail.from && match.index < detail.end);
+  for (
+    let match = headings.exec(source);
+    match;
+    match = headings.exec(source)
+  ) {
+    const insideDetail = details.some(
+      (detail) => match.index >= detail.from && match.index < detail.end,
+    );
     if (!insideDetail) return match.index;
   }
   return source.length;
 }
 
 /** Insert one deduplicated linked-code details block and return its comment caret offset. */
-export function upsertLinkedCodeReference(noteText, reference, selectedText = "") {
-  const source = String(noteText ?? "").replaceAll("\r\n", "\n").replaceAll("\r", "\n");
+export function upsertLinkedCodeReference(
+  noteText,
+  reference,
+  selectedText = "",
+) {
+  const source = String(noteText ?? "")
+    .replaceAll("\r\n", "\n")
+    .replaceAll("\r", "\n");
   const markdown = reference?.markdown;
   const compactMarkdown = reference?.compactMarkdown;
   if (!markdown || !compactMarkdown || !reference?.href) {
-    throw new TypeError("upsertLinkedCodeReference needs a linked-code reference");
+    throw new TypeError(
+      "upsertLinkedCodeReference needs a linked-code reference",
+    );
   }
 
   const heading = /^##[ \t]+Linked code[ \t]*$/im.exec(source);
@@ -141,7 +191,11 @@ export function upsertLinkedCodeReference(noteText, reference, selectedText = ""
     const separator = prefix ? "\n\n" : "";
     const block = linkedDetailsBlock(reference, selectedText);
     const lead = `${prefix}${separator}${LINKED_CODE_HEADING}\n\n${block.prefix}`;
-    return { text: `${lead}${block.suffix}\n`, cursor: lead.length, created: true };
+    return {
+      text: `${lead}${block.suffix}\n`,
+      cursor: lead.length,
+      created: true,
+    };
   }
 
   const headingEnd = heading.index + heading[0].length;
@@ -150,8 +204,12 @@ export function upsertLinkedCodeReference(noteText, reference, selectedText = ""
   const existing = source.indexOf(hrefNeedle(reference), headingEnd);
   if (existing >= 0 && existing < sectionEnd) {
     const detail = details.find(
-      (candidate) => candidate.from >= headingEnd && candidate.to <= sectionEnd &&
-        source.slice(candidate.headerFrom, candidate.headerTo).includes(hrefNeedle(reference)),
+      (candidate) =>
+        candidate.from >= headingEnd &&
+        candidate.to <= sectionEnd &&
+        source
+          .slice(candidate.headerFrom, candidate.headerTo)
+          .includes(hrefNeedle(reference)),
     );
     if (detail) {
       let text = source;
@@ -159,7 +217,10 @@ export function upsertLinkedCodeReference(noteText, reference, selectedText = ""
       if (!detail.open) {
         const header = source.slice(detail.headerFrom, detail.headerTo);
         const opened = header.replace(/^>>>[ \t]+/u, ">>>|open| ");
-        text = source.slice(0, detail.headerFrom) + opened + source.slice(detail.headerTo);
+        text =
+          source.slice(0, detail.headerFrom) +
+          opened +
+          source.slice(detail.headerTo);
         const delta = opened.length - header.length;
         cursor += delta;
       }
@@ -173,7 +234,8 @@ export function upsertLinkedCodeReference(noteText, reference, selectedText = ""
     };
   }
   const prefix = source.slice(0, sectionEnd).trimEnd();
-  const hasSectionContent = source.slice(headingEnd, sectionEnd).trim().length > 0;
+  const hasSectionContent =
+    source.slice(headingEnd, sectionEnd).trim().length > 0;
   const gap = hasSectionContent ? "\n" : "\n\n";
   const block = linkedDetailsBlock(reference, selectedText);
   const lead = `${prefix}${gap}${block.prefix}`;
@@ -208,7 +270,11 @@ export function sourceLocationFromHref(value) {
   if (!match) return { path, line: null, endLine: null };
   const line = Number(match[1]);
   const endLine = match[2] ? Number(match[2]) : line;
-  if (!Number.isSafeInteger(line) || !Number.isSafeInteger(endLine) || endLine < line) {
+  if (
+    !Number.isSafeInteger(line) ||
+    !Number.isSafeInteger(endLine) ||
+    endLine < line
+  ) {
     return { path, line: null, endLine: null };
   }
   return { path, line, endLine };

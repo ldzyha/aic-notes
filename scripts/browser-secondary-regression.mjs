@@ -45,7 +45,7 @@ async function openPage({
       value: { writeText: async (text) => window.clipboardWrites.push(text) },
     });
   });
-  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("pageerror", (error) => { errors.push(error.message); process.stderr.write(`${error.stack}\n`); });
   await page.route("**/*", async (route) => {
     const url = new URL(route.request().url());
     if (url.origin !== origin) {
@@ -154,8 +154,33 @@ async function init(
     canOpenTarget: true,
   });
   await page.locator(".cm-content").waitFor();
+  // init restores focus on the next animation frame. Typing before that frame
+  // tests scheduler timing rather than the production editor input contract.
+  await page.waitForFunction(() =>
+    document.activeElement?.classList.contains("cm-content"),
+  );
 }
 try {
+  const insertionPage = await openPage();
+  await init(insertionPage, source, true);
+  const reference = {
+    label: "file.js:1", href: "file.js#L1", markdown: "[file.js:1](file.js#L1)",
+    compactMarkdown: "[file.js · L1](file.js#L1)",
+  };
+  await post(insertionPage, { type: "linkedCode.insert", requestId: "test-insert", expiresAt: Date.now() + 5000,
+    relativePath: "Project.note.md", generation: 0, reference, selectedText: "const example = 1;" });
+  await state(insertionPage, "dirty");
+  assert.equal((await commits(insertionPage)).length, 0);
+  const inserted = await sourceSnapshot(insertionPage, "Project.note.md");
+  assert.ok(inserted.startsWith(source));
+  assert.ok(inserted.includes("const example = 1;"));
+  assert.ok(inserted.includes("**Comment**"));
+  assert.equal(await insertionPage.evaluate(() => window.messages.find((message) => message.requestId === "test-insert" && message.type === "linkedCode.result").accepted), true);
+  await post(insertionPage, { type: "linkedCode.insert", requestId: "expired", expiresAt: 1,
+    relativePath: "Project.note.md", generation: 0, reference, selectedText: "MUST NOT INSERT" });
+  assert.equal(await sourceSnapshot(insertionPage, "Project.note.md"), inserted);
+  await insertionPage.close();
+  passed.push("linked-code insertion edits the live placeholder without saving; expired intents are rejected");
   for (const theme of ["dark", "light"]) {
     const page = await openPage({ theme });
     await init(page);
@@ -367,9 +392,11 @@ try {
     return a && b && b.y > a.y + a.height;
   });
   await nodeA.click();
-  await narrow
-    .getByRole("textbox", { name: "Label", exact: true })
-    .fill("Initial question");
+  const labelField = narrow.getByRole("textbox", { name: "Label", exact: true });
+  await labelField.click();
+  await narrow.keyboard.press("Control+a");
+  await narrow.keyboard.insertText("Initial question");
+  assert.equal(await labelField.inputValue(), "Initial question", "nested Select All belongs to the inspector, not the outer note");
   await narrow
     .getByRole("combobox", { name: "Element type", exact: true })
     .selectOption("diamond");

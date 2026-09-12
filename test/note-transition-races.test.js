@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url);
 const bundle = await build({
   stdin: {
     contents:
-      'export {SecondaryNotePane} from "./src/secondary/provider.js"; export {MarkdownEditorProvider} from "./src/editor/provider.js"; export {NoteEditOwnership} from "./src/notes/edit-ownership.js";',
+      'export {SecondaryNotePane} from "./src/secondary/provider.js"; export {MarkdownEditorProvider} from "./src/editor/provider.js"; export {NoteEditOwnership} from "./src/notes/edit-ownership.js"; export {linkSelectionToNote} from "./src/notes/selection.js"; export {createNoteDocument} from "./src/notes/operation.js"; export {trashNotesLocally} from "./src/notes/delete.js";',
     resolveDir: fileURLToPath(new URL("..", import.meta.url)),
   },
   bundle: true,
@@ -52,9 +52,11 @@ function harness() {
     const document = {
       uri: resource,
       isClosed: false,
+      version: 1,
       isDirty: false,
       getText: () => text,
       positionAt: (offset) => offset,
+      offsetAt: (offset) => offset,
       save: async () => {
         saved.push(text);
         files.get(resource.path).text = text;
@@ -62,6 +64,7 @@ function harness() {
         return true;
       },
       replace: (from, to, insert) => {
+        document.version++;
         text = text.slice(0, from) + insert + text.slice(to);
         document.isDirty = true;
         for (const listener of changeListeners)
@@ -82,6 +85,11 @@ function harness() {
         uri([base.path, ...parts].join("/").replace(/\/+/gu, "/")),
     },
     FileType: { File: 1, Directory: 2 },
+    Position: class {
+      constructor(line, character) {
+        Object.assign(this, { line, character });
+      }
+    },
     TextDocumentSaveReason: { Manual: 1 },
     TextEdit: { replace: (range, newText) => ({ range, newText }) },
     Range: class {
@@ -91,6 +99,12 @@ function harness() {
     },
     WorkspaceEdit: class {
       edits = [];
+      createFile(resource, options) {
+        this.create = { resource, options };
+      }
+      insert(resource, _position, text) {
+        this.replace(resource, { from: 0, to: 0 }, text);
+      }
       replace(resource, range, text) {
         this.edits.push({ resource, range, text });
       }
@@ -109,6 +123,12 @@ function harness() {
       },
       openTextDocument: async (resource) => documentFor(resource),
       applyEdit: async (edit) => {
+        if (edit.create) {
+          const { resource, options } = edit.create;
+          assert.equal(options.overwrite, false);
+          if (files.has(resource.path)) return false;
+          files.set(resource.path, { type: 1, text: "" });
+        }
         for (const { resource, range, text } of edit.edits)
           documentFor(resource).replace(range.from, range.to, text);
         return true;
@@ -154,6 +174,7 @@ function harness() {
     saved,
     errors,
     willSaveListeners,
+    changeListeners,
     panel() {
       const messages = [];
       const panel = {
@@ -205,6 +226,315 @@ function nativeSaveEdits(h, document) {
     });
   return Promise.all(promises);
 }
+
+async function auditSidebar(h) {
+  const uri = h.addFile("file.note.md", "base");
+  const document = h.documentFor(uri);
+  const pane = new h.SecondaryNotePane(h.context, h.ownership);
+  pane.document = document;
+  pane.documentUri = uri;
+  pane.view = h.panel();
+  pane.sendPaneState = async () => {};
+  h.vscode.workspace.onDidChangeTextDocument((event) =>
+    pane.onDocumentChanged(event),
+  );
+  await h.ownership.activate(pane.editSurface);
+  return {
+    pane,
+    document,
+    uri,
+    lease: h.ownership.state(pane.editSurface).lease,
+  };
+}
+
+test("sidebar refuses a save if external text changes during metadata IO", async () => {
+  const h = harness();
+  const { pane, document, lease } = await auditSidebar(h);
+  pane.draftDirty = true;
+  const entered = deferred(),
+    release = deferred();
+  const stat = h.vscode.workspace.fs.stat;
+  let first = true;
+  h.vscode.workspace.fs.stat = async (uri) => {
+    if (first) {
+      first = false;
+      entered.resolve();
+      await release.promise;
+    }
+    return stat(uri);
+  };
+  const commit = pane.commitDraft("base LOCAL", 0, 1, "file.note.md", lease);
+  await entered.promise;
+  document.replace(4, 4, " EXTERNAL");
+  release.resolve();
+  assert.equal((await commit).saved, undefined);
+  assert.equal(document.getText(), "base EXTERNAL");
+  assert.equal(h.saved.length, 0);
+  assert.equal(pane.draftDirty, true);
+  assert.equal(
+    pane.view.messages.filter((message) => message.type === "committed").at(-1)
+      .saved,
+    false,
+  );
+  pane.dispose();
+});
+
+test("Trash revalidates ownership after confirmation without implicitly saving", async () => {
+  const h = harness();
+  const { pane, document, uri, lease } = await auditSidebar(h);
+  const prompted = deferred(),
+    answer = deferred();
+  h.vscode.window.showWarningMessage = async () => {
+    prompted.resolve();
+    return answer.promise;
+  };
+  h.vscode.workspace.fs.delete = async (target) => h.files.delete(target.path);
+  const deletion = pane.trashCurrentNote(lease);
+  await prompted.promise;
+  const other = h.ownership.register({
+    uri: () => uri,
+    dirty: () => false,
+    text: () => document.getText(),
+    probe: async () => ({ text: document.getText(), dirty: false }),
+    notify() {},
+  });
+  assert.equal(await h.ownership.activate(other), true);
+  answer.resolve("Move to Trash");
+  await deletion;
+  assert.equal(h.files.has(uri.path), true);
+  assert.equal(h.saved.length, 0);
+  pane.dispose();
+});
+
+test("a save from a retired sidebar cannot acknowledge or modify its replacement", async () => {
+  const h = harness();
+  const { pane, document, lease } = await auditSidebar(h);
+  const entered = deferred(),
+    release = deferred();
+  const stat = h.vscode.workspace.fs.stat;
+  h.vscode.workspace.fs.stat = async (uri) => {
+    entered.resolve();
+    await release.promise;
+    return stat(uri);
+  };
+  const commit = pane.commitDraft("obsolete", 0, 1, "file.note.md", lease);
+  await entered.promise;
+  pane.view = h.panel();
+  release.resolve();
+  await commit;
+  assert.equal(document.getText(), "base");
+  assert.equal(
+    pane.view.messages.filter((message) => message.type === "committed").length,
+    0,
+  );
+  assert.equal(h.saved.length, 0);
+  pane.dispose();
+});
+
+test("a queued sidebar save retains its originating view", async () => {
+  const h = harness();
+  const { pane, document, lease } = await auditSidebar(h);
+  const release = deferred();
+  pane.editQueue = release.promise;
+  const pending = pane.onMessage({
+    type: "commit",
+    text: "obsolete",
+    generation: 0,
+    requestId: 1,
+    relativePath: "file.note.md",
+    lease,
+  });
+  const origin = pane.view;
+  pane.view = h.panel();
+  release.resolve();
+  await pending;
+  assert.equal(document.getText(), "base");
+  assert.equal(h.saved.length, 0);
+  assert.equal(
+    pane.view.messages.some((message) => message.type === "committed"),
+    false,
+  );
+  assert.equal(
+    origin.messages.find((message) => message.type === "committed")?.saved,
+    false,
+  );
+  pane.dispose();
+});
+
+test("Trash confirmation cannot outlive its sidebar view", async () => {
+  const h = harness();
+  const { pane, uri, lease } = await auditSidebar(h);
+  const prompted = deferred(),
+    answer = deferred();
+  h.vscode.window.showWarningMessage = async () => {
+    prompted.resolve();
+    return answer.promise;
+  };
+  h.vscode.workspace.fs.delete = async (target) => h.files.delete(target.path);
+  const deletion = pane.trashCurrentNote(lease);
+  await prompted.promise;
+  pane.view = h.panel();
+  answer.resolve("Move to Trash");
+  await deletion;
+  assert.equal(h.files.has(uri.path), true);
+  pane.dispose();
+});
+
+test("provider disposal retires all live panels and queued messages", async () => {
+  const h = harness();
+  const { document, provider, panel, lease } = await mainEditor(h);
+  provider.dispose();
+  const count = panel.messages.length;
+  assert.equal(h.willSaveListeners.size, 0);
+  assert.equal(h.changeListeners.size, 0);
+  document.replace(4, 4, " external");
+  await panel.send({
+    type: "edit",
+    generation: 0,
+    lease,
+    changes: [{ from: 0, to: 4, insert: "BAD" }],
+  });
+  assert.equal(panel.messages.length, count);
+  assert.equal(document.getText(), "body external");
+});
+
+test("selection uses the active Markdown document instead of a stale native selection and never saves", async () => {
+  const h = harness();
+  const old = h.documentFor(h.addFile("old.js", "old"));
+  const active = h.documentFor(h.addFile("active.md", "current"));
+  const selection = { isEmpty: false, anchor: 0, active: 3 };
+  h.vscode.window.activeTextEditor = { document: old, selection };
+  h.vscode.window.tabGroups = {
+    activeTabGroup: { activeTab: { input: { uri: active.uri } } },
+  };
+  let submitted;
+  const secondary = {
+    insertLinkedCode: async (uri, options) => {
+      submitted = { uri, options };
+      return null;
+    },
+  };
+  const result = await h.linkSelectionToNote(secondary, {
+    activeSourceSelection: async () => ({ document: active, selection }),
+  });
+  assert.equal(result, false);
+  assert.equal(submitted.uri.path, "/workspace/active.note.md");
+  assert.equal(submitted.options.selectedText, "current");
+  assert.equal(h.saved.length, 0);
+  assert.equal(h.files.has(submitted.uri.path), false);
+});
+
+test("AI artifact for a dotted folder resolves its append-only folder note", async () => {
+  const h = harness();
+  const owner = h.addFile("docs.v2");
+  h.files.set(owner.path, { type: 2 });
+  const document = h.documentFor(h.addFile("docs.v2.ai.md", "selected"));
+  h.vscode.window.activeTextEditor = {
+    document,
+    selection: { isEmpty: false, anchor: 0, active: 3 },
+  };
+  let target;
+  await h.linkSelectionToNote({
+    insertLinkedCode: async (uri, options) => {
+      target = { uri, options };
+      return { created: true };
+    },
+  });
+  assert.equal(target.uri.path, "/workspace/docs.v2.note.md");
+  assert.equal(target.options.sourceUri.path, owner.path);
+  assert.equal(h.saved.length, 0);
+});
+
+test("sidebar selection inserts through the current client without any host writer", async () => {
+  const h = harness();
+  const { pane, uri } = await auditSidebar(h);
+  pane.ready = true;
+  pane.openNow = async () => false;
+  assert.equal(await pane.insertLinkedCode(uri, {}), null);
+  assert.equal(
+    pane.view.messages.some((message) => message.type === "linkedCode.insert"),
+    false,
+  );
+  pane.openNow = async () => true;
+  pane.view.onPost = (message) => {
+    if (message.type === "linkedCode.insert")
+      return pane
+        .onMessage({
+          type: "linkedCode.result",
+          requestId: message.requestId,
+          accepted: true,
+          created: true,
+        })
+        .then(() => true);
+  };
+  assert.equal(
+    (
+      await pane.insertLinkedCode(uri, {
+        reference: {},
+        selectedText: "source",
+      })
+    ).created,
+    true,
+  );
+  assert.equal(pane.insertionWaiters.size, 0);
+  assert.equal(h.files.get(uri.path).text, "base");
+  assert.equal(h.saved.length, 0);
+  pane.dispose();
+});
+
+test("exclusive note creation refuses an intervening file without overwriting it", async () => {
+  const h = harness();
+  const uri = h.addFile("raced.note.md", "other writer");
+  assert.equal(
+    await h.createNoteDocument(uri, "my draft", () => true),
+    undefined,
+  );
+  assert.equal(h.files.get(uri.path).text, "other writer");
+  h.files.delete(uri.path);
+  const document = await h.createNoteDocument(uri, "my draft", () => true);
+  assert.equal(document.getText(), "my draft");
+  assert.equal(document.isDirty, true);
+  assert.equal(h.saved.length, 0);
+});
+
+test("closing and resolving sidebar views does not retain retired registrations", async () => {
+  const h = harness();
+  const pane = new h.SecondaryNotePane(h.context, h.ownership);
+  for (let index = 0; index < 200; index++) {
+    const panel = h.panel();
+    let close;
+    panel.onDidDispose = (callback) => {
+      close = callback;
+      return { dispose() {} };
+    };
+    await pane.resolveWebviewView(panel);
+    close();
+    assert.equal(pane.scope.resources.size, 0);
+    assert.equal(pane.view, undefined);
+  }
+  pane.dispose();
+});
+
+test("permanent-delete fallback rechecks permission after its own confirmation", async () => {
+  const h = harness();
+  const uri = h.addFile("file.note.md", "base");
+  let allowed = true,
+    calls = 0;
+  h.vscode.workspace.fs.delete = async () => {
+    calls++;
+    throw Error("Trash unavailable");
+  };
+  h.vscode.window.showWarningMessage = async () => {
+    allowed = false;
+    return "Delete Permanently";
+  };
+  assert.equal(
+    await h.trashNotesLocally([uri], { beforeDelete: () => allowed }),
+    false,
+  );
+  assert.equal(calls, 1);
+  assert.equal(h.files.get(uri.path).text, "base");
+});
 
 test("typing queued immediately after main Ctrl+S survives the save barrier and remains dirty", async () => {
   const h = harness();

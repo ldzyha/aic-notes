@@ -6,7 +6,7 @@
 // source chars and its advance width is exactly 3ch, so reveal cannot shift
 // glyphs (guide §1).
 
-import { Decoration, WidgetType } from "@codemirror/view";
+import { Decoration } from "@codemirror/view";
 import {
   parseListLine as parseLine,
   toggleList,
@@ -14,44 +14,10 @@ import {
 
 const listMark = Decoration.mark({ class: "cm-md-listmark" });
 
-class TaskWidget extends WidgetType {
-  constructor(checked) {
-    super();
-    this.checked = checked;
-  }
-  eq(other) {
-    return other.checked === this.checked;
-  }
-  ignoreEvent() {
-    return true; // the widget owns its pointer events (no cursor placement)
-  }
-  toDOM(view) {
-    const wrap = document.createElement("span");
-    wrap.className = "cm-md-task" + (this.checked ? " checked" : "");
-    wrap.setAttribute("role", "checkbox");
-    wrap.setAttribute("aria-checked", String(this.checked));
-    const box = document.createElement("span");
-    box.className = "cm-md-task-box";
-    wrap.appendChild(box);
-    wrap.onmousedown = (e) => e.preventDefault(); // never steal editor focus
-    wrap.onclick = () => {
-      const pos = view.posAtDOM(wrap);
-      const m = /^\[([ xX])\]$/.exec(view.state.sliceDoc(pos, pos + 3));
-      if (!m) return;
-      view.dispatch({
-        changes: {
-          from: pos + 1,
-          to: pos + 2,
-          insert: m[1] === " " ? "x" : " ",
-        },
-      });
-    };
-    return wrap;
-  }
-}
-
-const taskChecked = Decoration.replace({ widget: new TaskWidget(true) });
-const taskUnchecked = Decoration.replace({ widget: new TaskWidget(false) });
+import {
+  TaskMarkerWidget,
+  toggleTaskMarker,
+} from "../../aic-editor-core/task-marker.js";
 
 // renumber the contiguous same-indent ordered run BELOW lineNo so it
 // continues from num — pure over a state, exported for /selftest
@@ -77,6 +43,7 @@ export function renumberAfter(state, lineNo, num, indent) {
 // strips the marker (the standard exit). Composed into the session keymap
 // with Prec.high (the session compartment sits after the base keymap).
 function continueList(view) {
+  if (view.state.readOnly) return false;
   const sel = view.state.selection.main;
   if (!sel.empty) return false;
   const line = view.state.doc.lineAt(sel.head);
@@ -138,7 +105,13 @@ export const listHandler = {
         {
           from: nodeRef.from,
           to: nodeRef.to,
-          deco: checked ? taskChecked : taskUnchecked,
+          deco: Decoration.replace({
+            widget: new TaskMarkerWidget(
+              nodeRef.from,
+              checked,
+              view.state.readOnly,
+            ),
+          }),
         },
       ];
     }
@@ -154,12 +127,7 @@ export const listHandler = {
       const line = view.state.doc.lineAt(view.state.selection.main.head);
       const m = /^(\s*(?:[-*+]|\d+[.)])\s+)\[([ xX])\]/.exec(line.text);
       if (!m) return;
-      const from = line.from + m[1].length + 1;
-      view.dispatch({
-        changes: { from, to: from + 1, insert: m[2] === " " ? "x" : " " },
-        userEvent: "input",
-      });
-      view.focus();
+      if (toggleTaskMarker(view, line.from + m[1].length)) view.focus();
     },
   },
 };

@@ -1,5 +1,39 @@
 # Changelog
 
+## 31.3.8 — 2026-09-12
+
+Release sequence 31 · 3 feature outcomes · 8 fixed-bug outcomes.
+
+- F01: shared `/security` blocks provide explicit masking, independent sections, Copy field/
+  block, safe URL Open, source Edit, insertion actions and locally derived TOTP codes.
+  Markdown and copied blocks remain plaintext; this is not an encrypted secret store.
+- F02: opening a note in the main editor follows its nearest existing parent note in the
+  sidebar, with project-note/placeholder fallback and an independent Open Source action.
+- F03: enable the movable File Context sphere above linked notes, including an empty state,
+  open/changed/pinned files, bounded relative JS/TS imports and existing note relationships.
+  Active-file focus rotates the sphere; a command toggles its independent view. This is not
+  a function-call, attribute or language-server graph.
+- B01: serialize native sign-in startup/prompt ownership, make email submission stable and
+  retire obsolete prompt callbacks. Real-account sign-in remains a user acceptance check.
+- B02: confine relative file/wiki/note actions to the originating workspace and reject unknown
+  sphere identifiers instead of accepting arbitrary paths from a webview.
+- B03: revalidate origin, revision and ownership around save/create/trash/navigation; retain
+  drafts across races, never implicitly save selection sources, and dispose child surfaces.
+- B04: share task controls, details parsing and language aliases; preserve nested-control
+  selection and retire detached actions and identity-bound preview sessions.
+- B05: reject foreign drag payloads and duplicate property keys; preserve trailing authored
+  cells in ragged tables and guard stale property/table actions.
+- B06: require workspace trust and an existing explicit agent-workflow opt-in before automatic
+  instruction refresh; activation alone no longer rewrites global agent instructions.
+- B07: preserve authored ordinary Markdown metadata, and retry retired-storage cleanup after
+  genuine removal failures instead of recording incomplete cleanup as complete.
+- B08: bound Mermaid queues/model size, prevent resource-sensitive source configuration
+  overrides, and dispose sphere observers/listeners and security-widget timers.
+
+Compatibility: universal JavaScript VSIX, AIC Editor Core 3.5.0, Standard Notes AIC 22.1.8.
+Standard Notes account support remains authentication-only; no note synchronization is enabled.
+See FUNCTIONAL_INDEX.md for owners, contracts, controls and explicit limitations.
+
 ## 30.0.1 — 2026-09-11
 
 Release sequence 30 · 0 feature outcomes · 1 fixed-bug outcome.

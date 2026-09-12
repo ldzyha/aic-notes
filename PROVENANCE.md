@@ -1,5 +1,24 @@
 # Release provenance
 
+## Release 31.3.8 — lifecycle, shared security and context review
+
+The current snapshot includes 63 explicitly distributed core files, selected by canonical
+`standard-notes-aic/CORE_FILES.json`. New shared owners are `task-marker`, `details-model`,
+`code-languages` and `render-queue` (JavaScript and declarations). Task/language/parser adapters
+consume these modules; Mermaid preview and builder use the same queue. Security model, preview,
+TOTP and local QR-decoder foundations are shared; QR import UI is not enabled. The shared sphere
+renderer is connected to the VS Code-only workspace graph adapter. Its static import parser uses
+the explicitly pinned pure-JavaScript `@lezer/javascript` dependency. No native helper was added.
+
+Run `node scripts/sync-editor-core.mjs --snapshot` in the canonical repository to mirror bytes and
+record their SHA-256 hashes. Uncommitted canonical inputs produce `sourceState: working-tree`;
+the recorded HEAD is then only the base commit, not a claim that it contains the new bytes.
+`--check` is read-only. The extension release verifier rejects working-tree provenance.
+Publication requires the canonical commit, regenerated snapshot and both products' checks.
+Core 3.5.0 is paired with Standard Notes AIC 22.1.8. The canonical source commit and exact
+distributed bytes are recorded in CORE_SNAPSHOT.json rather than a manually copied revision.
+This section does not change historical release provenance below.
+
 ## Release 30.0.1 — authentication response compatibility
 
 This hotfix is based on release 29.1.0 commit `3364aade127a286cc82814873632f2841bb50f3c`.

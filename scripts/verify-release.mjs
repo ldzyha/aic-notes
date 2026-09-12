@@ -5,7 +5,11 @@ import AdmZip from "adm-zip";
 import { verifyCoreSnapshot } from "./verify-core.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
-await verifyCoreSnapshot(root);
+const core = await verifyCoreSnapshot(root);
+if (core.sourceState === "working-tree")
+  throw new Error(
+    "Commit canonical core and regenerate its snapshot before publishing a release",
+  );
 const manifest = JSON.parse(
   await readFile(path.join(root, "package.json"), "utf8"),
 );
@@ -35,6 +39,7 @@ for (const entry of [
   "extension/package.json",
   "extension/dist/extension.cjs",
   "extension/dist/webview/main.js",
+  "extension/dist/webview/sphere.js",
   "extension/readme.md",
   "extension/changelog.md",
   "extension/LICENSE.txt",
@@ -113,12 +118,26 @@ for (const control of [
   "page-architecture",
   "Structure",
   "cm-snippetField",
+  "aic-security",
 ]) {
   if (!packagedEditor.includes(control))
     throw new Error(`packaged editor is missing ${control}`);
 }
 if (packagedEditor.includes("cm-md-link-tooltip"))
   throw new Error("packaged editor still contains the retired link tooltip");
+
+const sphereBundle = archive
+  .getEntry("extension/dist/webview/sphere.js")
+  .getData()
+  .toString("utf8");
+if (!sphereBundle.includes("aic-context-sphere"))
+  throw new Error("packaged sphere renderer is missing");
+if (
+  !packagedManifest.contributes.views.aicNotesSecondary.some(
+    (view) => view.id === "aicNotes.contextSphere",
+  )
+)
+  throw new Error("packaged sphere view is missing");
 
 const packagedHostEntry = archive.getEntry("extension/dist/extension.cjs");
 if (!packagedHostEntry) throw new Error("packaged extension host is missing");
@@ -129,18 +148,28 @@ for (const retired of [
   "sn_remote_ambiguous",
   "syncCurrentNote",
   "pullProjectNotes",
-  "context-sphere",
 ]) {
   if (packagedHost.includes(retired))
     throw new Error(`retired synchronization runtime remains: ${retired}`);
 }
 
-for (const required of ["api.standardnotes.com", "aicNotes.snAuth.session.v1", "aicNotes.signInStandardNotes", "Authentication only", "secure_storage_unavailable"]) {
-  if (!packagedHost.includes(required)) throw new Error(`packaged authentication is missing: ${required}`);
-  if (packagedEditor.includes(required)) throw new Error(`authentication leaked into the editor webview: ${required}`);
+for (const required of [
+  "api.standardnotes.com",
+  "aicNotes.snAuth.session.v1",
+  "aicNotes.signInStandardNotes",
+  "Authentication only",
+  "secure_storage_unavailable",
+]) {
+  if (!packagedHost.includes(required))
+    throw new Error(`packaged authentication is missing: ${required}`);
+  if (packagedEditor.includes(required))
+    throw new Error(
+      `authentication leaked into the editor webview: ${required}`,
+    );
 }
 
 for (const command of [
+  "aicNotes.toggleContextSphere",
   "aicNotes.linkSelectionToNote",
   "aicNotes.openProjectNote",
   "aicNotes.enableAgentWorkflow",

@@ -19,6 +19,7 @@
 
 import {
   EditorView,
+  ViewPlugin,
   keymap,
   drawSelection,
   placeholder,
@@ -42,6 +43,7 @@ import { makeFencedMarkdown } from "./fenced-local.js";
 import { darkHighlight } from "./highlight.js";
 import { makeHost } from "./host-shim.js";
 import { detailsExtension } from "./details.js";
+import { upsertLinkedCodeReference } from "../notes/selection-model.js";
 import {
   SecondaryDraft,
   secondarySaveState,
@@ -50,6 +52,7 @@ import {
 import { wirePreviewSelection } from "../../vendor/aic-editor-core/structured-preview.js";
 import { editorIndentation } from "../../vendor/aic-editor-core/indentation.js";
 import { markdownFormatting } from "../../vendor/aic-editor-core/formatting.js";
+import { makeSecurityBlockExtension } from "../../vendor/aic-editor-core/security-block.js";
 import {
   SLASH_SNIPPET_PLACEHOLDER,
   slashSnippetExtension,
@@ -61,6 +64,7 @@ import PREVIEW_LAYOUT_CSS from "../../vendor/aic-editor-core/preview-layout.css"
 import DIAGRAM_BUILDER_CSS from "../../vendor/aic-editor-core/diagram-builder.css";
 import DIAGRAM_PALETTE_CSS from "../../vendor/aic-editor-core/diagram-palette.css";
 import DIAGRAM_SESSION_CSS from "../../vendor/aic-editor-core/diagram-session.css";
+import SECURITY_BLOCK_CSS from "../../vendor/aic-editor-core/security-block.css";
 import THEME_CSS from "./theme.css";
 
 const api = acquireVsCodeApi();
@@ -153,6 +157,7 @@ for (const css of [
   DIAGRAM_BUILDER_CSS,
   DIAGRAM_PALETTE_CSS,
   DIAGRAM_SESSION_CSS,
+  SECURITY_BLOCK_CSS,
 ]) {
   const style = document.createElement("style");
   style.textContent = css;
@@ -263,6 +268,7 @@ function makeEditor(text) {
     state: EditorState.create({
       doc: text,
       extensions: [
+        ViewPlugin.define((editor) => ({ destroy: wirePreviewSelection(editor, document) })),
         accessCompartment.of(accessExtension()),
         EditorView.domEventHandlers({
           focus() {
@@ -298,6 +304,16 @@ function makeEditor(text) {
               label: `${language || "code"} block`,
             });
             return true;
+          },
+        }),
+        makeSecurityBlockExtension({
+          document,
+          onCopy: (source, label) => {
+            host.bus.publish("clipboard.write", { text: source, label });
+            return true;
+          },
+          onOpen: (url) => {
+            host.bus.publish("link.external", { url });
           },
         }),
         makeMermaidExtension(host),
@@ -391,13 +407,46 @@ function makeEditor(text) {
       ],
     }),
   });
-  wirePreviewSelection(editor, document);
   return editor;
 }
 
 window.addEventListener("message", (event) => {
   const msg = event.data;
   switch (msg.type) {
+    case "linkedCode.insert": {
+      let result;
+      if (
+        secondarySurface &&
+        view &&
+        !docState.readOnly &&
+        msg.relativePath === docState.relativePath &&
+        msg.generation === docState.generation &&
+        msg.lease === docState.lease &&
+        Number.isFinite(msg.expiresAt) &&
+        Date.now() <= msg.expiresAt
+      ) {
+        result = upsertLinkedCodeReference(
+          view.state.doc.toString(),
+          msg.reference,
+          msg.selectedText,
+        );
+        view.dispatch({
+          changes:
+            minimalTextChange(view.state.doc.toString(), result.text) ?? [],
+          selection: { anchor: result.cursor },
+          scrollIntoView: true,
+          userEvent: "input",
+        });
+        view.focus();
+      }
+      api.postMessage({
+        type: "linkedCode.result",
+        requestId: msg.requestId,
+        accepted: Boolean(result),
+        created: result?.created,
+      });
+      break;
+    }
     case "editing.probe":
       if (msg.relativePath !== docState.relativePath || !view) break;
       setEditingState(true);

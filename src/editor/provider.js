@@ -18,10 +18,12 @@
 import * as vscode from "vscode";
 import { formatError } from "../errors.js";
 import { webviewHtml } from "./webview-html.js";
-import { openSourceAtHref } from "../notes/navigation.js";
+import { openSourceAtHref, openExternalLink, workspaceLinkUri } from "../notes/navigation.js";
 import { openNoteDocument } from "../notes/create.js";
 import { isNotePath } from "../secondary/model.js";
 import { stampNoteProperties } from "../notes/properties.js";
+import { DisposableScope } from "../lifecycle.js";
+import { documentSnapshot } from "../notes/operation.js";
 
 // [[target]] → note path candidates, aic LINK_RE semantics (sync.js:913):
 // a *.md target is used as-is, anything else gets `.note.md`; tried both
@@ -39,7 +41,8 @@ async function resolveWikiTarget(folder, fromRelPath, target) {
   const bases = fromDir ? [t, `${fromDir}/${t}`] : [t];
   for (const b of bases) {
     const candidate = b.endsWith(".md") ? b : `${b}.note.md`;
-    const uri = vscode.Uri.joinPath(folder.uri, candidate);
+    const uri = workspaceLinkUri(folder, candidate);
+    if (!uri) continue;
     try {
       await vscode.workspace.fs.stat(uri);
       return uri;
@@ -62,6 +65,8 @@ export class MarkdownEditorProvider {
           supportsMultipleEditorsPerDocument: false,
         }),
     );
+    for (const registration of provider.registrations)
+      provider.scope.add(registration);
     return provider;
   }
 
@@ -70,20 +75,15 @@ export class MarkdownEditorProvider {
     this.sessions = new Set();
     this.selectionRequest = 0;
     this.ownership = ownership;
+    this.scope = new DisposableScope();
   }
 
   dispose() {
-    for (const registration of this.registrations ?? []) registration.dispose();
-    for (const session of this.sessions) {
-      if (session.editSurface) this.ownership.dispose(session.editSurface);
-      for (const resolve of session.editingWaiters.values()) resolve(null);
-      for (const resolve of session.selectionWaiters.values()) resolve(null);
-      session.selectionWaiters.clear();
-    }
-    this.sessions.clear();
+    this.scope.dispose();
   }
 
   async activeSourceSelection() {
+    if (this.scope.disposed) return null;
     const session = [...this.sessions].find(({ panel }) => panel.active);
     if (!session || session.document.isClosed) return null;
     if (session.commandSelection) {
@@ -112,6 +112,7 @@ export class MarkdownEditorProvider {
       session.selectionWaiters.delete(requestId);
     }
     const selection = await requested;
+    if (session.scope.disposed) return null;
     return this._sourceSelection(session, selection);
   }
 
@@ -137,6 +138,7 @@ export class MarkdownEditorProvider {
   }
 
   async resolveCustomTextEditor(document, webviewPanel) {
+    if (this.scope.disposed) return;
     const webview = webviewPanel.webview;
     const distRoot = vscode.Uri.joinPath(
       this.context.extensionUri,
@@ -155,6 +157,7 @@ export class MarkdownEditorProvider {
       editingWaiters: new Map(),
       ready: false,
       saving: false,
+      scope: this.scope.child(),
     };
     this.sessions.add(session);
     const relativePath = vscode.workspace
@@ -178,6 +181,7 @@ export class MarkdownEditorProvider {
     }
 
     const sendInit = () =>
+      !session.scope.disposed &&
       webview.postMessage({
         type: "init",
         text: document.getText(),
@@ -188,6 +192,7 @@ export class MarkdownEditorProvider {
           : {}),
       });
     const sendReset = () => {
+      if (session.scope.disposed) return;
       state.generation++;
       webview.postMessage({
         type: "reset",
@@ -214,6 +219,7 @@ export class MarkdownEditorProvider {
 
     let messageQueue = Promise.resolve();
     const messageSub = webview.onDidReceiveMessage((msg) => {
+      if (session.scope.disposed) return;
       // The snapshot is an edit barrier, not a mutation. Resolve it outside the
       // FIFO so a source-open action can safely probe its own paused webview.
       if (msg.type === "editing.snapshot") {
@@ -223,6 +229,7 @@ export class MarkdownEditorProvider {
         return;
       }
       messageQueue = messageQueue.then(async () => {
+        if (session.scope.disposed) return;
         try {
           switch (msg.type) {
             case "ready":
@@ -307,6 +314,7 @@ export class MarkdownEditorProvider {
               try {
                 if (isNotePath(document.uri.path)) {
                   const original = document.getText();
+                  const unchanged = documentSnapshot(document);
                   // Pause the client before metadata IO. Edits made between
                   // Ctrl+S and this probe are queued behind this save; stamping
                   // their older host buffer would reset that still-local text.
@@ -326,7 +334,8 @@ export class MarkdownEditorProvider {
                     // If the host changed meanwhile, skip metadata rather than
                     // resetting the source. Save keeps its normal buffer scope.
                     if (
-                      document.getText() === original &&
+                      !session.scope.disposed &&
+                      unchanged() &&
                       stamped !== original
                     ) {
                       const edit = new vscode.WorkspaceEdit();
@@ -342,12 +351,15 @@ export class MarkdownEditorProvider {
                     }
                   }
                 }
-                await document.save();
+                if (!session.scope.disposed) await document.save();
               } finally {
                 session.saving = false;
-                if (session.editSurface)
+                if (!session.scope.disposed && session.editSurface)
                   void this.ownership.changed(session.editSurface);
-                else if (isNotePath(document.uri.path))
+                else if (
+                  !session.scope.disposed &&
+                  isNotePath(document.uri.path)
+                )
                   webview.postMessage({
                     type: "editingState",
                     relativePath,
@@ -417,6 +429,7 @@ export class MarkdownEditorProvider {
     });
     const willSaveSub = vscode.workspace.onWillSaveTextDocument?.((event) => {
       if (
+        session.scope.disposed ||
         event.document.uri.toString() !== document.uri.toString() ||
         event.reason !== vscode.TextDocumentSaveReason.Manual ||
         !isNotePath(document.uri.path) ||
@@ -426,6 +439,7 @@ export class MarkdownEditorProvider {
       )
         return;
       const original = document.getText();
+      const unchanged = documentSnapshot(document);
       session.saving = true;
       event.waitUntil(
         (async () => {
@@ -447,6 +461,8 @@ export class MarkdownEditorProvider {
             }),
           ]).finally(() => clearTimeout(timeout));
           if (
+            session.scope.disposed ||
+            !unchanged() ||
             stamped === null ||
             document.getText() !== original ||
             stamped === original ||
@@ -472,8 +488,9 @@ export class MarkdownEditorProvider {
           .catch(() => [])
           .finally(() => {
             session.saving = false;
-            if (session.editSurface) this.ownership.notify();
-            else
+            if (!session.scope.disposed && session.editSurface)
+              this.ownership.notify();
+            else if (!session.scope.disposed)
               webview.postMessage({
                 type: "editingState",
                 relativePath,
@@ -490,12 +507,15 @@ export class MarkdownEditorProvider {
         void this.ownership.changed(session.editSurface);
     });
 
-    webviewPanel.onDidDispose(() => {
-      changeSub.dispose();
-      messageSub.dispose();
-      visibilitySub?.dispose();
-      willSaveSub?.dispose();
-      savedSub?.dispose();
+    for (const disposable of [
+      changeSub,
+      messageSub,
+      visibilitySub,
+      willSaveSub,
+      savedSub,
+    ])
+      session.scope.add(disposable);
+    session.scope.defer(() => {
       if (session.editSurface) this.ownership.dispose(session.editSurface);
       for (const resolve of session.editingWaiters.values()) resolve(null);
       session.editingWaiters.clear();
@@ -503,9 +523,11 @@ export class MarkdownEditorProvider {
       for (const resolve of session.selectionWaiters.values()) resolve(null);
       session.selectionWaiters.clear();
     });
+    session.scope.add(webviewPanel.onDidDispose(() => session.scope.dispose()));
   }
 
   editingSnapshot(session, relativePath, timeoutMs = 1500) {
+    if (session.scope.disposed) return Promise.resolve(null);
     if (!session.ready)
       return Promise.resolve({
         text: session.document.getText(),
@@ -556,19 +578,13 @@ export class MarkdownEditorProvider {
       return;
     }
     if (topic === "link.external") {
-      const url = String(payload?.url ?? "");
-      if (!/^(?:https?:|mailto:|tel:|vscode:)/i.test(url)) {
-        vscode.window.showWarningMessage(
-          `AIC Notes — refusing to open non-http(s) link: ${url}`,
-        );
-        return;
-      }
-      await vscode.env.openExternal(vscode.Uri.parse(url));
+      await openExternalLink(payload?.url);
       return;
     }
     if (topic === "file.open") {
       if (!folder || !payload?.path) return;
-      const uri = vscode.Uri.joinPath(folder.uri, payload.path);
+      const uri = workspaceLinkUri(folder, payload.path);
+      if (!uri) return;
       try {
         await vscode.workspace.fs.stat(uri);
       } catch {

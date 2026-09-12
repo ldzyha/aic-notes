@@ -23,6 +23,8 @@ export async function verifyCoreSnapshot(root) {
     snapshot.sourceRepository !== sourceRepository ||
     typeof snapshot.sourceCommit !== "string" ||
     !/^[a-f0-9]{40}$/u.test(snapshot.sourceCommit) ||
+    (snapshot.sourceState !== undefined &&
+      snapshot.sourceState !== "working-tree") ||
     !object(snapshot.files)
   )
     throw new Error("Invalid shared core snapshot metadata");
@@ -64,6 +66,7 @@ export async function verifyCoreSnapshot(root) {
     coreVersion: snapshot.coreVersion,
     sourceRepository: snapshot.sourceRepository,
     sourceCommit: snapshot.sourceCommit,
+    ...(snapshot.sourceState ? { sourceState: snapshot.sourceState } : {}),
     files: files.length,
   };
 }

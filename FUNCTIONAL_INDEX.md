@@ -1,12 +1,48 @@
 # Functional index
 
-This index is the release contract for AIC Notes 30.0.1. Every public command, state boundary,
-side effect, failure rule, and platform assumption is represented here and checked by tests or the
-release archive verifier.
+This index records the coordinated AIC Notes 31.3.8 / Standard Notes AIC 22.1.8 /
+shared editor core 3.5.0 release target. Public commands, state boundaries, side effects and
+failure rules are checked by tests and the release archive verifier; this is not a claim of
+exhaustive runtime coverage or that publication has already completed.
 
-## Shared editor core 3.4.0
+## Current release contracts
 
-These contracts ship with AIC Notes 30.0.1 and pair with Standard Notes AIC 21.3.5.
+- Shared `aic-security` blocks have one canonical model. `##` headings define
+  independent sections; `Label*: value` masks a field, `Label: value` keeps it
+  visible. Edit opens raw Markdown. Explicit Copy block and field actions,
+  safe HTTP(S) Open, Add section, quick fields and New block work without an
+  inline form or implicit save. TOTP derives a current code from a key. Ordinary
+  code preview skips these fences. Raw Markdown and copied blocks still expose
+  plaintext; VS Code has no note synchronization or QR import UI.
+
+- `DisposableScope` owns provider subscriptions and child surfaces. Closing a surface retires its
+  subscriptions and request waiters; provider disposal also retires still-open children.
+- Queued and in-flight sidebar saves retain the originating view. Document version/text, note
+  identity, generation and ownership are revalidated before mutation. An exclusive create edit
+  refuses an intervening file; these guards do not claim arbitrary filesystem compare-and-swap.
+- Trash does not save dirty notes. It rechecks view, revision and lease after confirmation,
+  including a separately confirmed permanent-delete fallback.
+- Link Selection to Note uses the active native/custom document, refuses unsaved source revisions,
+  and delegates insertion to the live sidebar draft. No helper saves the source or target implicitly.
+- Shared task markers enforce read-only state and keyboard/ARIA behavior in both products.
+  Canonical details parsing is linear and cached per immutable document; language aliases and the
+  cancelable bounded Mermaid queue have one shared implementation.
+- Nested text controls retain native Ctrl/Cmd+A; whole-document Select All remains available in
+  the Markdown surface. Browser regressions cover typing into an inline diagram label afterward.
+- Core distribution is an explicit inventory. Unconnected experiments do not enter the mirror
+  automatically, and a working-tree snapshot cannot pass the publication verifier.
+- The dedicated File Context sphere is connected to the extension. It remains a visible region
+  above Linked Note when enabled (default), including an empty state; its toggle hides/shows it
+  independently of note navigation. A bounded read-only graph uses open, changed, dirty and pinned
+  workspace files; existing note sidecars; and statically resolved relative JS/TS imports. It is
+  not a function/attribute/LSP dependency graph, workspace crawler or note writer.
+
+Standard Notes authentication is implemented but auth-only; no note synchronization exists.
+The contracts below describe this coordinated release target, not future sync behavior.
+
+## Shared editor core 3.5.0
+
+These contracts target AIC Notes 31.3.8 and pair with Standard Notes AIC 22.1.8.
 The exact canonical commit and all shared hashes are recorded in CORE_SNAPSHOT.json.
 Automated tests, production builds and Windows browser checks cover the shared editor;
 Linux desktop and live authenticated Standard Notes smoke checks are not implied.
@@ -30,7 +66,7 @@ are implemented; completed cross-platform/live-client smoke testing is not impli
 Authentication responses use bounded UTF-8 decoding and validated cookie pairs, including
 Electron-folded headers. Error messages expose only allowlisted stage/reason labels and HTTP
 status. Synthetic regressions cover BOM, cookies, challenges and secret-free account diagnostics;
-they are not a real-account sign-in result. This host-only hotfix does not change the shared core.
+they are not a real-account sign-in result.
 
 The AIC Markdown editor shares heading/list formatting commands with the Standard Notes
 component: Ctrl/Cmd+Alt+1…6 (headings), Ctrl/Cmd+Alt+0 (paragraph),
@@ -39,7 +75,10 @@ Ctrl/Cmd+Shift+7/8/9 (numbered/bullet/checkbox lists). These shortcuts apply to 
 slash catalog supplies `/checklist` there as well, searchable by checkbox/tasklist.
 Formatting is one local edit, never a save, and protects code/frontmatter/structured blocks.
 
-- The extension reads and writes only local workspace `*.md` and `*.note.md` files.
+- The note editor persists only local workspace `*.md` and `*.note.md` files. The read-only
+  File Context sphere may inspect bounded JS/TS source and workspace/Git metadata. The optional
+  trusted agent workflow may write its thin workspace marker and run AIC-owned global rule sync;
+  neither path is note synchronization.
 - Standard Notes authorization is optional and auth-only. The host has a fixed-origin auth
   endpoint allowlist, native password/TOTP prompts, protocol-004 derivation and SecretStorage.
   Connected requires authenticated verification and persisted secrets; Offline is distinct.
@@ -70,12 +109,23 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 - A missing sidecar is a lazy placeholder. Unchanged scaffolding does not create a file.
 - Explorer `.note.md` clicks open only the main note editor; Open Source is a distinct action.
   The legacy `aicNotes.noteRedirect` association is a main-editor alias, not a disposable redirect.
+- An active main `.note.md` follows its nearest existing parent folder note in the unpinned sidebar,
+  falling back to the owning workspace project note/placeholder. The source need not exist. Pin,
+  unsaved drafts and current-tab identity remain authoritative across IO; unchanged parents are
+  not reinitialized. Note creation/deletion recomputes context without writing any notes.
 - Generated sidecar frontmatter contains exactly `file`, `created`, and `updated`; `updated` is
-  refreshed only at explicit save. Ordinary Markdown receives no generated properties.
+  refreshed only at explicit save. Ordinary Markdown receives no generated properties; existing
+  authored frontmatter is preserved. There is no reliable origin marker for historical keys, so
+  the extension does not automatically remove or rewrite ordinary `.md` frontmatter.
 - Context relationships are derived dynamically and displayed only below existing note
   frontmatter. Only actual notes add ancestor folders; project/current navigation can show a
   placeholder. Each row opens the exact `.note.md` target. They are never serialized or edited.
 - Trash is local, confirmed, and routed through the operating-system Trash where supported.
+- The File Context sphere is an always-present region while enabled; pinning a node changes only
+  its graph membership, not note-pane pin/follow state. Status or text edits do not rotate the
+  layout. Import analysis is static, bounded to 80 nodes/256 KiB source files and relative JS/TS
+  imports; unresolved/dynamic/non-relative edges are reported as partial or unavailable. The
+  graph never runs project code, LSP, note creation or filesystem writes.
 
 ## Surfaces
 
@@ -83,21 +133,23 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 | -------------------------- | ----------------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------- |
 | AIC Markdown custom editor | `src/editor/provider.js`, `src/webview/main.js` | explicit VS Code document save                                     | stale generations reset or retain the visible draft                  |
 | Linked Note Secondary pane | `src/secondary/provider.js`                     | explicit local sidecar write/save or local Trash                   | never replaces an unsaved draft; reports a compact local error       |
+| File Context sphere        | `src/context/sphere-provider.js`, `src/context/sphere-graph.js`, `src/webview/sphere.js`, shared `context-sphere` | pinned node IDs in workspace state only | bounded read-only graph; unknown/stale IDs cannot open files |
 | Notes & Documents tree     | `src/notes/tree.js`                             | none                                                               | refreshes from workspace files and lazy project placeholders         |
-| Selection-to-note command  | `src/notes/selection.js`                        | saves source, updates one local sidecar on its later explicit save | rejects unsaved/unbacked/out-of-workspace sources                    |
+| Selection-to-note command  | `src/notes/selection.js`                        | inserts into the live local sidebar draft; no implicit save       | rejects unsaved/unbacked/out-of-workspace sources                    |
 | Structured previews        | `vendor/markdown`, `vendor/aic-editor-core`     | exact Markdown transactions only                                   | invalid source remains editable instead of being normalized silently |
 | Slash template completion  | shared core plus `src/editor/slash-provider.js` | inserts exact Markdown in AIC, native, and contextual Markdown     | inactive in code/read-only contexts                                  |
-| AIC agent workflow         | `src/agents/bootstrap.js`                       | thin marker and explicit AIC-owned rule update                     | typed command errors; unrelated editor use remains available         |
+| AIC agent workflow         | `src/agents/bootstrap.js`                       | explicit thin marker, then trusted AIC-owned rule status/sync       | no CLI on untrusted or unmarked automatic activation                  |
 
 ## Commands
 
 | Command                          | Contract                                                                                                                               |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `aicNotes.toggleContextSphere` | Independently hide/show the File Context sphere; default enabled, without changing the Linked Note pane |
 | `aicNotes.standardNotesAccount` | Visible account menu; never exposes tokens to editor webviews |
 | `aicNotes.signInStandardNotes` | Trusted-workspace password/TOTP login; derived server password only; verified session must persist securely |
 | `aicNotes.checkStandardNotesConnection` | Verify/refresh saved authentication only; preserve secrets offline; never access note items |
 | `aicNotes.signOutStandardNotes` | Delete local secret and revoke only this session; warn if remote revocation is unconfirmed |
-| `aicNotes.noteForCurrentFile`    | Follow or create a lazy linked note for the active local file; global keybinding works with no active file by showing the project note |
+| `aicNotes.noteForCurrentFile`    | Follow a lazy sidecar for the active local source, or open a note's source; without an active file, report what to focus |
 | `aicNotes.linkSelectionToNote`   | Copy selected source into one deduplicated linked-comment block and focus its comment caret                                            |
 | `aicNotes.openInSecondary`       | Route an existing sidecar or placeholder to the Secondary pane                                                                         |
 | `aicNotes.noteForExplorerItem`   | Follow a file or folder selected in Explorer, using the same lazy placeholder rule                                                     |
@@ -105,6 +157,7 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 | `aicNotes.refreshTree`           | Re-index local Markdown and note files                                                                                                 |
 | `aicNotes.enableExplorerNesting` | Add workspace Explorer nesting patterns for sidecars                                                                                   |
 | `aicNotes.openSource`            | Explicitly open the file owner with its sidebar note, or reveal the folder/project owner; reject ambiguous sources                     |
+| `aicNotes.openTarget`            | Open the selected tree note's verified source target through the same explicit source route                                            |
 | `aicNotes.copyWikiLink`          | Copy the local note's wiki-link path                                                                                                   |
 | `aicNotes.openNote`              | Open an existing tree note in the main AIC Markdown editor                                                                             |
 | `aicNotes.useNativeForMarkdown`  | Set the user association for plain `*.md` back to the native editor while keeping notes in the AIC main editor                         |
@@ -155,10 +208,19 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 
 ## Verification ownership
 
-- Pure behavior: `test/*.test.js`.
+- Pure behavior: `test/*.test.js`; static graph bounds/import analysis in
+  `test/context-sphere-graph.test.js` and shared sphere layout tests.
+- Host navigation, parent selection, draft/save races and edit leases:
+  `test/note-routing.test.js`, `test/note-transition-races.test.js`,
+  `test/edit-ownership.test.js`; sphere capability/lifecycle checks in
+  `test/context-sphere-provider.test.js`.
+- Auth transport, SecretStorage, cross-window lock and trusted agent bootstrap:
+  `test/standard-notes-*.test.js`, `test/agent-bootstrap.test.js`.
 - Manifest, UI wiring, local-only boundary, upgrade cleanup, and packaging contract:
   `test/release-contract.test.js`.
 - Command registration/index completeness: `test/function-index.test.js`.
 - Bundle construction: `esbuild.mjs`.
 - Universal archive/checksum/secret scan: `scripts/verify-release.mjs`.
 - Tag build and GitHub asset publication: `.github/workflows/release.yml`.
+- These are automated and bounded checks, not proof of exhaustive memory/context recall,
+  live Standard Notes account access, all remote providers, or all desktop platforms.

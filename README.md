@@ -6,19 +6,50 @@ Optional Standard Notes sign-in is available. There is no note synchronization, 
 upload, remote deletion or remote conflict state.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-the editor-core contract, but it is a separate product. Signing in does not move notes between
-the two applications. The plugin remains 21.3.5; this host-only release needs no plugin update.
+editor-core 3.5.0 but is a separate product. The coordinated release targets are AIC Notes
+31.3.8 and AIC for Standard Notes 22.1.8; this page describes their intended release contract,
+not a claim that either package has already been published. Signing in does not move notes
+between the two applications.
 
-## Release 30.0.1 — Standard Notes authentication response fix
+## Coordinated release target — 31.3.8
 
-This auth-only hotfix accepts leading-BOM JSON and correctly reads auth cookies when VS Code's
-Electron networking combines headers. Rate limits and verification challenges remain actionable
-even if an intermediary returns HTML. A rejected response now includes a fixed stage/reason code
-in the account tooltip and warning; this code never contains credentials or raw server data.
-Unfinished refactoring, parent routing, context-sphere work and note synchronization are excluded.
+The shared `/security` template inserts the same `aic-security` Markdown block
+as the Standard Notes plugin. `## Main` starts a section, `Label*: value`
+masks a field in preview, and `Label: value` keeps it visible. Edit opens raw
+Markdown; there is no inline form. Add section, quick field actions and New
+block insert independent content without saving. Preview can copy individual
+values, current one-time codes and the complete fenced block, or open a safe
+HTTP(S) URL. Save remains Ctrl/Cmd+S. This is
+visual masking only: raw Markdown, other editors, local files, exports and
+copied blocks still contain plaintext secrets. There is no QR import UI. It
+does not enable Standard Notes synchronization or convert native Authenticator
+notes. Not yet released.
 
-After installation, save drafts and run **Developer: Reload Window**. Open an AIC Notes view,
-a Markdown file, or the command below to activate the extension.
+Both editors share task controls, details parsing, code-language aliases and the bounded
+Mermaid render queue. Nested inputs own their selection; Ctrl/Cmd+A inside a diagram field
+does not select the surrounding Markdown document.
+
+Linked-code comments are inserted into the live sidebar draft, not written through a separate
+filesystem path. Ctrl/Cmd+S remains the save boundary. Save and Trash revalidate document identity,
+revision, editing ownership and the originating view after asynchronous work. Provider-owned
+scopes retire subscriptions and pending requests when a surface closes.
+
+The File Context sphere is connected as its own visible region above Linked Note. It remains
+present when empty and can be hidden or shown independently with **Toggle File Context Sphere**;
+the setting defaults to enabled. It combines open, changed and pinned workspace files, existing
+note sidecars and statically resolved relative JavaScript/TypeScript imports. The graph is
+read-only and bounded (80 nodes; 256 KiB per analyzed source). It does not inspect functions or
+attributes, run an LSP, execute project code, crawl the workspace or create notes. Unsupported,
+dynamic and unresolved imports are explicitly partial or unavailable.
+
+## Standard Notes sign-in (authentication only)
+
+Authentication accepts leading-BOM JSON and validated cookies, including Electron-folded
+headers. Rate limits and verification challenges retain actionable fixed stage/reason codes
+without exposing credentials or raw server data. No note items, tags or sync endpoints are used.
+
+After installing the release artifact, save drafts and run **Developer: Reload Window**. Open an
+AIC Notes view, a Markdown file, or the command below to activate the extension.
 
 1. Click **SN: Sign in** in the status bar, the account icon on the Notes panel, or run
    **AIC Notes: Sign In to Standard Notes** from the Command Palette.
@@ -42,13 +73,12 @@ overwriting the session. Its empty heartbeat directory in extension storage cont
 This is not a distributed editing lock or note-sync system.
 
 Tests include the official production-cost key-derivation vector and mocked login, MFA, refresh,
-storage, cancellation and logout paths. These do not replace a real-account smoke test: enter
-your credentials directly in VS Code and verify Connected after reloading. No user account or
-note content was accessed to build this release. The unfinished context sphere is not bundled.
+storage, cancellation and logout paths. They do not replace a real-account sign-in and reload
+smoke test; no live authenticated Standard Notes result is claimed here.
 
-## Retained editor features — shared editor core 3.4.0
+## Editor features — shared editor core 3.5.0
 
-This release pairs with AIC for Standard Notes 21.3.5. Both products use the same
+This release target pairs with AIC for Standard Notes 22.1.8. Both products use the same
 byte-verified core. Automated tests, production builds and Windows browser checks cover the
 shared controls; Linux desktop and live authenticated Standard Notes smoke checks are not implied.
 
@@ -61,6 +91,9 @@ shared controls; Linux desktop and live authenticated Standard Notes smoke check
 - Explorer note clicks open just the note in the main editor. **Open Source** is a separate
   action that opens the source with its linked sidebar note; folder/project sources are revealed.
   Persisted legacy note associations resolve to the main editor without changing user settings.
+  An unpinned sidebar follows the main note's nearest existing ancestor folder note, otherwise
+  its workspace project note or lazy project placeholder. Folders without their own note are skipped.
+  Unsaved sidebar drafts are preserved; repeated events for the same parent do not reset its editor.
 - The note pane starts directly at its content/properties, without a duplicate name, folder or
   save-status header. Saved notes are neutral; unsaved notes have a soft amber tint and a small
   change marker; placeholders are gray. Save remains explicit Ctrl/Cmd+S.
@@ -112,27 +145,29 @@ this section does not assert that all clients or operating systems have complete
 
 ## Install
 
-Download `aic-notes-30.0.1.vsix` and `aic-notes-30.0.1.vsix.sha256` from the
-[v30.0.1 release](https://github.com/ldzyha/aic-notes/releases/tag/v30.0.1). The VSIX is universal:
-use the same file on Windows, Linux, macOS, and code-server.
+When the coordinated release is published, download `aic-notes-31.3.8.vsix` and its
+`aic-notes-31.3.8.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
+substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-30.0.1.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-30.0.1.vsix.sha256
-code --install-extension .\aic-notes-30.0.1.vsix --force
+(Get-FileHash .\aic-notes-31.3.8.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-31.3.8.vsix.sha256
+code --install-extension .\aic-notes-31.3.8.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-30.0.1.vsix.sha256
-code --install-extension ./aic-notes-30.0.1.vsix --force
-# or: code-server --install-extension ./aic-notes-30.0.1.vsix --force
+sha256sum -c aic-notes-31.3.8.vsix.sha256
+code --install-extension ./aic-notes-31.3.8.vsix --force
+# or: code-server --install-extension ./aic-notes-31.3.8.vsix --force
 ```
 
-Reload the VS Code window after installation. No additional executable or library is required.
+Reload the VS Code window after installation. Editing and Standard Notes sign-in require no
+additional executable; the optional agent workflow uses AIC only when explicitly enabled.
 
 ## Local note model
 
@@ -144,8 +179,8 @@ Reload the VS Code window after installation. No additional executable or librar
 - Closing every file buffer follows the current workspace project note. If it does not exist, an
   editable gray placeholder appears; the file is created only after content changes and
   `Ctrl/Cmd+S`.
-- The Notes & Documents tree indexes existing workspace Markdown files and lazy project-note
-  placeholders. There is no global note and no separate search surface.
+- The Notes & Documents tree indexes existing workspace Markdown files, project-global notes
+  under `.aic/notes/`, and lazy project-note placeholders. There is no separate search surface.
 
 Pin affects only automatic following. Explicitly opening a file, folder, project, tree item, or
 note always routes to the requested context. An unsaved note stays visible until it is saved, so a
@@ -193,7 +228,8 @@ and in read-only documents.
 - Frontmatter properties render only for `*.note.md`. New sidecars receive exactly `file`,
   `created`, and `updated`; `updated` changes on explicit save. Values support nested YAML,
   transient popover editing, insertion, and drag reordering. Ordinary `*.md` documents do not
-  receive generated properties.
+  receive generated properties. Their existing authored frontmatter is preserved: the extension
+  cannot prove the origin of historical keys and does not automatically clean or rewrite them.
 - A read-only context tree appears directly under note properties only when frontmatter exists. It
   is derived from actual workspace notes and shows project, note-bearing parents, current target,
   children, and nearby notes; it is not stored in the Markdown and cannot be edited. Project and
@@ -210,6 +246,7 @@ renderer.
 - **AIC Notes: Link Selection to Note** (`Ctrl+Alt+L` / `Cmd+Alt+L`, with
   `Ctrl/Cmd+Shift+/` as an alias)
 - **AIC Notes: Open Project Note**
+- **AIC Notes: Toggle File Context Sphere** (shown by default, independent of Linked Note)
 - **AIC Notes: Open Note in Secondary Side Bar**
 - **AIC Notes: Open Target**
 - **AIC Notes: Copy Wiki Link**
@@ -219,15 +256,17 @@ renderer.
 - **AIC Notes: Delete Note** / **Delete All Notes in Folder**
 - **AIC Notes: Enable AIC Agent Workflow** / **Sync Agent Instructions**
 
-Link Selection saves the source file first, copies its selected lines into one deduplicated AIC
-details block, opens the linked sidecar at the comment caret, and never modifies source bytes.
+Link Selection requires an already saved source revision. It copies selected lines into one
+deduplicated linked-code details block in the live sidebar draft and opens the comment caret.
+It does not save the source or target implicitly; press Ctrl/Cmd+S in the note to persist it.
 
 ## Optional AIC agent workflow
 
-The agent workflow is independent of note persistence. Enabling it writes only a thin
-`.vscode/aic-agent.json` marker and uses the configured `aic` executable for typed rule status and
-rule synchronization. Configure `aicNotes.agentWorkflow.aicPath` only when `aic` is not on the
-extension host's `PATH`.
+The agent workflow is independent of note persistence. In a trusted workspace, enabling it writes
+a thin `.vscode/aic-agent.json` marker; only an explicitly marked trusted workspace activates
+automatic AIC rule verification/synchronization. The explicit **Sync Agent Instructions** command
+also requires trust. An extension update by itself does not run AIC or change global instructions.
+Configure `aicNotes.agentWorkflow.aicPath` only when `aic` is not on the extension host's `PATH`.
 
 ## Development and release
 
@@ -244,7 +283,8 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-`30.0.1` is sequence 30 with zero feature outcomes and one prior-release fixed-bug outcome.
+The coordinated target `31.3.8` records sequence 31, three feature outcomes and eight fixed-bug
+outcomes; it is not a publication marker by itself.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and
 [PROVENANCE.md](PROVENANCE.md) for the shared-core snapshot identity.

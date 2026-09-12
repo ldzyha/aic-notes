@@ -9,7 +9,7 @@ import * as path from "node:path";
 import { notePathFor, folderNotePathFor } from "./paths.js";
 import { loadTemplate, fillTemplate } from "./templates.js";
 import { structuredError, formatError } from "../errors.js";
-import { activeResource } from "../secondary/model.js";
+import { activeWindowResource } from "../secondary/model.js";
 import { stampFileProperties } from "../../vendor/aic-editor-core/file-properties.js";
 
 async function exists(uri) {
@@ -173,12 +173,7 @@ export async function notePlaceholderForUri(uri) {
 }
 
 export async function noteForCurrentFile(secondary) {
-  const editor = vscode.window.activeTextEditor;
-  const tabInput = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
-  const uri = activeResource(
-    tabInput?.uri ?? tabInput?.modified,
-    editor?.document.uri,
-  );
+  const uri = activeWindowResource(vscode.window);
   if (!uri || uri.scheme !== "file") {
     throw structuredError(
       "notes_no_active_file",

@@ -20,8 +20,8 @@ import { NoteEditOwnership } from "./notes/edit-ownership.js";
 import { linkSelectionToNote } from "./notes/selection.js";
 import { deleteNotes } from "./notes/delete.js";
 import { AgentWorkflowBootstrap } from "./agents/bootstrap.js";
-import { stampFileProperties } from "../vendor/aic-editor-core/file-properties.js";
 import { registerStandardNotesAuth } from "./auth/provider.js";
+import { ContextSphereProvider } from "./context/sphere-provider.js";
 
 const RETIRED_SYNC_STATE_PREFIX = "aicNotes.standardNotes.";
 const RETIRED_SYNC_SECRET = "aicNotes.standardNotes.vaultKey.v1";
@@ -41,33 +41,14 @@ async function removeRetiredSyncData(context) {
       vscode.workspace.fs.delete(
         vscode.Uri.joinPath(context.globalStorageUri, "standard-notes"),
         { recursive: true, useTrash: false },
-      ),
+      ).then(undefined, (error) => {
+        if (error?.code !== "FileNotFound" && error?.code !== "ENOENT") throw error;
+      }),
     );
   }
-  await Promise.allSettled(removals);
-  await context.globalState.update(RETIRED_SYNC_CLEANUP_KEY, true);
-}
-
-function legacyPropertyCleanupEdits(document) {
-  const relativePath = vscode.workspace
-    .asRelativePath(document.uri, false)
-    .replaceAll("\\", "/");
-  const fileName = relativePath.split("/").pop() ?? "";
-  const source = document.getText();
-  const cleaned = stampFileProperties(source, {
-    fileName,
-    updatedAt: new Date().toISOString(),
-  });
-  if (cleaned === source) return [];
-  return [
-    vscode.TextEdit.replace(
-      new vscode.Range(
-        document.positionAt(0),
-        document.positionAt(source.length),
-      ),
-      cleaned,
-    ),
-  ];
+  const results = await Promise.allSettled(removals);
+  if (results.every((result) => result.status === "fulfilled"))
+    await context.globalState.update(RETIRED_SYNC_CLEANUP_KEY, true);
 }
 
 export async function activate(context) {
@@ -78,24 +59,22 @@ export async function activate(context) {
   const ownership = new NoteEditOwnership();
   const secondary = SecondaryNotePane.register(context, ownership);
   const markdownEditor = MarkdownEditorProvider.register(context, ownership);
-  const documentWillSave = vscode.workspace.onWillSaveTextDocument((event) => {
-    const lowerPath = event.document.uri.path.toLowerCase();
-    if (
-      !lowerPath.endsWith(".md") ||
-      lowerPath.endsWith(".note.md") ||
-      !vscode.workspace.getWorkspaceFolder(event.document.uri)
-    )
-      return;
-    if (event.reason === vscode.TextDocumentSaveReason.Manual) {
-      event.waitUntil(legacyPropertyCleanupEdits(event.document));
-    }
-  });
+  ContextSphereProvider.register(context);
   context.subscriptions.push(
     tree,
-    documentWillSave,
     vscode.window.registerTreeDataProvider("aicNotes.tree", tree),
     markdownEditor,
     registerMarkdownSlashCompletionProvider(vscode),
+
+    vscode.commands.registerCommand("aicNotes.toggleContextSphere", commandHandler(async () => {
+      const config = vscode.workspace.getConfiguration("aicNotes.contextSphere");
+      const enabled = !config.get("enabled", true);
+      await config.update("enabled", enabled,
+        vscode.workspace.workspaceFolders?.length
+          ? vscode.ConfigurationTarget.Workspace
+          : vscode.ConfigurationTarget.Global);
+      if (enabled) await vscode.commands.executeCommand("aicNotes.contextSphere.focus");
+    })),
 
     vscode.commands.registerCommand(
       "aicNotes.openInSecondary",

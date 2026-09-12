@@ -11,6 +11,7 @@ import {
   serializeFrontmatter,
   updateProperty,
   validPropertyKey,
+  validPropertyRename,
 } from "../../aic-editor-core/structured-preview.js";
 import { providePreviewRanges } from "../../aic-editor-core/preview-ranges.js";
 
@@ -232,11 +233,15 @@ class FrontmatterWidget extends WidgetType {
             readOnly: this.readOnly,
             getRevision: () => view.state.doc,
             validate: (value) =>
-              validPropertyKey(value.trim())
-                ? ""
-                : "Use letters, numbers, dot, underscore, or dash",
-            onCommit: (value) =>
-              replace(updateProperty(this.block.rows, index, "key", value)),
+              !validPropertyKey(value.trim())
+                ? "Use letters, numbers, dot, underscore, or dash"
+                : validPropertyRename(this.block.rows, index, value)
+                  ? ""
+                  : "A sibling property already uses this name",
+            onCommit: (value) => {
+              if (validPropertyRename(this.block.rows, index, value))
+                replace(updateProperty(this.block.rows, index, "key", value));
+            },
           }),
         );
       }
@@ -273,10 +278,12 @@ class FrontmatterWidget extends WidgetType {
           event.dataTransfer.dropEffect = "move";
         });
         row.addEventListener("drop", (event) => {
-          const from = Number(
-            event.dataTransfer?.getData("application/x-aic-property"),
-          );
-          if (!Number.isInteger(from)) return;
+          const mime = "application/x-aic-property";
+          if (!event.dataTransfer?.types.includes(mime)) return;
+          const value = event.dataTransfer.getData(mime);
+          if (!/^(?:0|[1-9][0-9]*)$/u.test(value)) return;
+          const from = Number(value);
+          if (!Number.isSafeInteger(from)) return;
           event.preventDefault();
           replace(moveProperty(this.block.rows, from, index));
         });

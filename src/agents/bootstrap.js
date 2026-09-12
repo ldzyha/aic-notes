@@ -10,7 +10,6 @@ import {
   validateAgentMarker,
 } from "./contract.js";
 
-const ACTIVATED_VERSION_KEY = "aicNotes.agentWorkflow.activatedVersion";
 const PROMPTED_VERSION_KEY = "aicNotes.agentWorkflow.promptedVersion";
 const MAX_OUTPUT_BYTES = 1024 * 1024;
 
@@ -140,6 +139,9 @@ export class AgentWorkflowBootstrap {
       vscode.commands.registerCommand("aicNotes.syncAgentInstructions", () =>
         bootstrap.sync(true).catch((error) => bootstrap.report(error)),
       ),
+      vscode.workspace.onDidGrantWorkspaceTrust(() =>
+        bootstrap.activate().catch((error) => bootstrap.report(error)),
+      ),
     );
     queueMicrotask(() => bootstrap.activate().catch((error) => bootstrap.report(error)));
     return bootstrap;
@@ -161,6 +163,11 @@ export class AgentWorkflowBootstrap {
   }
 
   async sync(notify = false) {
+    if (!vscode.workspace.isTrusted) {
+      throw structuredError("agent_workspace_untrusted", "Agent instruction synchronization is disabled here", [
+        "Trust the workspace before running Sync Agent Instructions",
+      ]);
+    }
     const statusPayload = await runAic(["rules", "status", "--json"]);
     const status = classifyRulesStatus(statusPayload);
     if (status.state === "versionSkew") {
@@ -206,16 +213,17 @@ export class AgentWorkflowBootstrap {
   }
 
   async activate() {
+    if (!vscode.workspace.isTrusted) return;
     const version = String(this.context.extension?.packageJSON?.version ?? "unknown");
-    const previous = this.context.globalState.get(ACTIVATED_VERSION_KEY, "");
     const hasMarker = await this.workspaceHasMarker();
-    if (previous !== version || hasMarker) {
+    // A new extension version alone is not consent to run an executable or
+    // update global agent instructions. Only an explicit workspace marker is.
+    if (hasMarker) {
       try {
         await this.sync(false);
       } catch (error) {
         this.report(error);
       }
-      await this.context.globalState.update(ACTIVATED_VERSION_KEY, version);
     }
     if (
       vscode.workspace.isTrusted &&

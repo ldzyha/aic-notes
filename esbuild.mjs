@@ -27,7 +27,7 @@ const host = {
 };
 
 const webview = {
-  entryPoints: ["src/webview/main.js"],
+  entryPoints: ["src/webview/main.js", "src/webview/sphere.js"],
   outdir: "dist/webview",
   bundle: true,
   format: "esm",

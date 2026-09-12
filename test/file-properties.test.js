@@ -97,7 +97,7 @@ test("ordinary Markdown documents remain byte-identical", () => {
   );
 });
 
-test("legacy managed properties are removed from ordinary Markdown", () => {
+test("ambiguous legacy properties are preserved in ordinary Markdown", () => {
   const source =
     "---\nfile: map.md\ncreated: 2026-08-20\nupdated: 2026-09-01\nstatus: draft\n---\n\n# Map\n";
   assert.equal(
@@ -105,6 +105,6 @@ test("legacy managed properties are removed from ordinary Markdown", () => {
       fileName: "map.md",
       updatedAt: "2026-09-02T08:00:00.000Z",
     }),
-    "---\nstatus: draft\n---\n\n# Map\n",
+    source,
   );
 });

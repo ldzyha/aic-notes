@@ -55,7 +55,7 @@ export const codeFenceHandler = {
   nodes: ["FencedCode"],
   priority: 50,
   decorate(nodeRef, view, revealed) {
-    if (fenceInfo(view.state, nodeRef) === "mermaid") return [];
+    if (["mermaid", "aic-security"].includes(fenceInfo(view.state, nodeRef).split(/\s+/u)[0])) return [];
     return decorateFence(nodeRef, view, revealed);
   },
 };

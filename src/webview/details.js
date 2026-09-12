@@ -7,7 +7,7 @@ import {
   selectionStaysInSource,
 } from "../../vendor/aic-editor-core/structured-preview.js";
 import { providePreviewRanges } from "../../vendor/aic-editor-core/preview-ranges.js";
-import { parseDetailsBlocks, toggleDetailsMarker } from "./details-model.js";
+import { detailsForDocument, toggleDetailsMarker } from "./details-model.js";
 
 const toggleVisual = StateEffect.define();
 const editSource = StateEffect.define({
@@ -42,7 +42,7 @@ const sourceOverrides = StateField.define({
       next.add(effect.value);
     }
     if (transaction.selection && next.size) {
-      const blocks = parseDetailsBlocks(transaction.state.doc.toString());
+      const blocks = detailsForDocument(transaction.state.doc);
       const selected = transaction.state.selection.ranges;
       next = new Set(
         [...next].filter((position) => {
@@ -205,7 +205,7 @@ function previewDecorations(state, host) {
   const overrides = state.field(visualOverrides);
   const source = state.field(sourceOverrides);
   const ranges = [];
-  for (const block of parseDetailsBlocks(state.doc.toString())) {
+  for (const block of detailsForDocument(state.doc)) {
     if (
       source.has(block.headerFrom) ||
       selectionRevealsPreview(state.selection.ranges, block.from, block.end)
@@ -282,7 +282,7 @@ function buildBodyDecorations(state) {
   const overrides = state.field(visualOverrides);
   const source = state.field(sourceOverrides);
   const ranges = [];
-  for (const block of parseDetailsBlocks(state.doc.toString())) {
+  for (const block of detailsForDocument(state.doc)) {
     if (
       source.has(block.headerFrom) ||
       selectionRevealsPreview(state.selection.ranges, block.from, block.end)

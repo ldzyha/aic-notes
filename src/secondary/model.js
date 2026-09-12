@@ -35,6 +35,15 @@ export function activeResource(
   return activeTabPresent ? activeTabUri : activeEditorUri;
 }
 
+export function activeWindowResource(window) {
+  const tab = window.tabGroups?.activeTabGroup?.activeTab;
+  return activeResource(
+    tab?.input?.uri ?? tab?.input?.modified,
+    window.activeTextEditor?.document?.uri,
+    Boolean(tab),
+  );
+}
+
 export function preferredWorkspaceFolder(
   candidateUris,
   workspaceFolders,

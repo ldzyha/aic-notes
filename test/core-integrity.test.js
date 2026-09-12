@@ -57,6 +57,16 @@ test("shared core snapshot rejects a tampered module", async (t) => {
   await assert.rejects(verifyCoreSnapshot(root), /hash mismatch: module\.js/u);
 });
 
+test("local snapshots explicitly distinguish working-tree source from committed provenance", async (t) => {
+  const { root, snapshot, saveSnapshot } = await fixture(t);
+  snapshot.sourceState = "working-tree";
+  await saveSnapshot();
+  assert.equal((await verifyCoreSnapshot(root)).sourceState, "working-tree");
+  snapshot.sourceState = "unknown";
+  await saveSnapshot();
+  await assert.rejects(verifyCoreSnapshot(root), /Invalid.*metadata/u);
+});
+
 test("shared core snapshot rejects a missing declaration", async (t) => {
   const { root, vendor } = await fixture(t);
   await rm(path.join(vendor, "module.d.ts"));

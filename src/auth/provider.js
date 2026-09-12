@@ -52,17 +52,86 @@ export function standardNotesAccountMessage(state) {
   return `${message} [${code}${diagnostic.status ? `; HTTP ${diagnostic.status}` : ""}]`;
 }
 
-function prompt(options, signal) {
-  const cancellation = new vscode.CancellationTokenSource();
-  const cancel = () => cancellation.cancel();
-  signal?.addEventListener("abort", cancel, { once: true });
-  if (signal?.aborted) cancel();
-  return vscode.window
-    .showInputBox({ ignoreFocusOut: true, ...options }, cancellation.token)
-    .finally(() => {
-      signal?.removeEventListener("abort", cancel);
-      cancellation.dispose();
-    });
+export function showAuthInput(options, signal) {
+  // A native button is an explicit submit path when Enter is intercepted by
+  // the host or another extension. Both paths use the same local validation.
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return resolve(undefined);
+    let input;
+    let finished = false;
+    const subscriptions = [];
+    const cancel = () => finish(undefined);
+    const finish = (value, error) => {
+      if (finished) return;
+      finished = true;
+      const clean = (action) => {
+        try {
+          action();
+        } catch (failure) {
+          error ??= failure;
+        }
+      };
+      clean(() => signal?.removeEventListener("abort", cancel));
+      for (const subscription of subscriptions.splice(0))
+        clean(() => subscription.dispose());
+      if (input) {
+        clean(() => {
+          input.value = "";
+        });
+        clean(() => input.hide());
+        clean(() => input.dispose());
+      }
+      if (error) reject(error);
+      else resolve(value);
+    };
+    try {
+      input = vscode.window.createInputBox();
+      const { validateInput, ...properties } = options;
+      Object.assign(input, { ignoreFocusOut: true, ...properties });
+      const continueButton = {
+        iconPath: new vscode.ThemeIcon("arrow-right"),
+        tooltip: "Continue (Enter)",
+      };
+      input.buttons = [continueButton];
+      // All three host-owned validators are synchronous and return an error
+      // string or undefined. Never send a value until local validation passes.
+      const validate = () => {
+        const error = validateInput?.(input.value);
+        input.validationMessage = error;
+        return !error;
+      };
+      const accept = () => {
+        if (finished) return;
+        try {
+          if (validate()) finish(input.value);
+        } catch (error) {
+          finish(undefined, error);
+        }
+      };
+      subscriptions.push(input.onDidAccept(accept));
+      subscriptions.push(
+        input.onDidTriggerButton((button) => {
+          if (button === continueButton) accept();
+        }),
+      );
+      subscriptions.push(
+        input.onDidChangeValue(() => {
+          if (finished) return;
+          try {
+            validate();
+          } catch (error) {
+            finish(undefined, error);
+          }
+        }),
+      );
+      subscriptions.push(input.onDidHide(cancel));
+      signal?.addEventListener("abort", cancel, { once: true });
+      if (signal?.aborted) cancel();
+      else input.show();
+    } catch (error) {
+      finish(undefined, error);
+    }
+  });
 }
 
 export function registerStandardNotesAuth(context) {
@@ -99,6 +168,8 @@ export function registerStandardNotesAuth(context) {
       item.show();
     },
   });
+  let readiness = Promise.resolve();
+  let entryRevision = 0;
   const announce = async () => {
     if (account.state.issue)
       await vscode.window.showWarningMessage(
@@ -112,14 +183,26 @@ export function registerStandardNotesAuth(context) {
       );
       return;
     }
+    const revision = ++entryRevision;
+    // Command activation can finish before SecretStorage restoration does.
+    // Preserve this request instead of losing it to the account's busy guard.
+    await readiness;
+    if (
+      revision !== entryRevision ||
+      account.disposed ||
+      !vscode.workspace.isTrusted
+    )
+      return;
     await account.signIn(
       async (signal) => {
-        const email = await prompt(
+        const email = await showAuthInput(
           {
             title: "Standard Notes · Sign in",
             prompt:
-              "Email · authentication only; no notes will be imported or synced",
-            placeHolder: "you@example.com",
+              "Email · press Enter or click → to continue. No notes will be synced.",
+            step: 1,
+            totalSteps: 2,
+            placeholder: "you@example.com",
             validateInput: (value) =>
               !value.trim() || value.length > 320
                 ? "Enter your Standard Notes email."
@@ -128,12 +211,14 @@ export function registerStandardNotesAuth(context) {
           signal,
         );
         if (email === undefined) return;
-        const password = await prompt(
+        const password = await showAuthInput(
           {
             title: "Standard Notes · Password",
             prompt:
               "Derived locally. Your account password is not sent to the server.",
             password: true,
+            step: 2,
+            totalSteps: 2,
             validateInput: (value) =>
               !value || value.length > 4096
                 ? "Enter your password."
@@ -145,7 +230,7 @@ export function registerStandardNotesAuth(context) {
         return { email: email.trim(), password };
       },
       (retry, signal) =>
-        prompt(
+        showAuthInput(
           {
             title: "Standard Notes · Two-factor code",
             prompt: retry
@@ -167,6 +252,7 @@ export function registerStandardNotesAuth(context) {
       );
   };
   const signOut = async () => {
+    entryRevision++;
     await account.signOut();
     await announce();
   };
@@ -212,14 +298,14 @@ export function registerStandardNotesAuth(context) {
       check,
     ),
     vscode.workspace.onDidGrantWorkspaceTrust(() => {
-      void account.restore();
+      readiness = account.restore();
     }),
     context.secrets?.onDidChange?.((event) => {
       if (event.key === AUTH_SECRET_KEY && vscode.workspace.isTrusted)
         void account.secretChanged();
     }) ?? { dispose() {} },
   );
-  if (vscode.workspace.isTrusted) void account.restore();
+  if (vscode.workspace.isTrusted) readiness = account.restore();
   else account.publish("signed-out");
   return account;
 }
