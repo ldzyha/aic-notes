@@ -1,5 +1,15 @@
 # Changelog
 
+## 33.0.1 — 2026-09-12
+
+Release sequence 33 · 0 feature outcomes · 1 fixed-bug outcome.
+
+### Fix
+
+1. Security Paste directly reads the latest system clipboard text only for empty fields, without an AIC picker, intermediate input or visible reading panel. Filled fields keep a disabled Paste icon; no Replace flow exists. Copy remains available, while changing a populated value requires complete Markdown Edit. Empty, failed or stale reads cannot overwrite fields, and malformed non-string request IDs are rejected before native clipboard access. Inline masked paste-only capture remains a fallback solely when API access fails. No clipboard-history collection or platform helper is added.
+
+Compatibility: universal VSIX, AIC Editor Core 3.6.1, Standard Notes AIC 24.0.1. Explicit saving, password generation and authentication-only Standard Notes integration remain unchanged.
+
 ## 32.2.1 — 2026-09-12
 
 Release sequence 32 · 2 feature outcomes · 1 fixed-bug outcome.

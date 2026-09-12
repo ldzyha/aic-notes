@@ -8,11 +8,20 @@ upload, remote deletion or remote conflict state.
 ## Security field actions
 
 Tap/click a security field label or value to copy **only its value**; “Copied” appears
-beside it after success. Tab navigates; Enter/Space activates. The field icon is **Paste**;
-whole-block Copy remains in the header. VS Code uses its native clipboard through a bounded,
-identity-bound request, never background reads. Hidden values are not previewed. Populated
-replacement requires confirmation; empty clipboard text cannot erase. Manual edits/clearing
-use source Edit. These actions never save automatically; use Ctrl/Cmd+S.
+beside it after success. Tab navigates; Enter/Space activates. The field icon is **Paste**,
+enabled only for empty fields and disabled for populated ones. There is no Replace action.
+Whole-block Copy remains in the header; filled fields can be copied, but changing their
+values requires source Edit. URL Open and TOTP controls are unchanged. These actions never
+save automatically; use Ctrl/Cmd+S.
+
+Paste directly reads the latest text using VS Code's
+[native clipboard API](https://code.visualstudio.com/api/references/vscode-api#Clipboard),
+through a bounded, identity-bound request. There is no AIC dialog, intermediate input or
+history picker on success. Hidden values are never previewed; empty clipboard text makes
+no change. Only denied/unavailable/timed-out access offers inline masked paste-only capture.
+Standard Notes uses the [browser API](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/readText),
+which may show its own permission prompt. AIC cannot bypass platform clipboard permissions
+and does not read or store clipboard history.
 
 An empty hidden password field (`Password*`, `PWD*`, `Пароль*`, `WebDAV Password*` and
 recognized service-qualified labels) offers **Generate password**. Default: 24 characters,
@@ -26,12 +35,12 @@ generator and UI. Options are inspired by [1Password](https://1password.com/blog
 not the same implementation. Markdown, exports and clipboard values remain plaintext.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-editor-core 3.6.0 but is a separate product. The coordinated versions are AIC Notes
-32.2.1 and AIC for Standard Notes 23.2.1. This page describes the release contract;
+editor-core 3.6.1 but is a separate product. The coordinated versions are AIC Notes
+33.0.1 and AIC for Standard Notes 24.0.1. This page describes the release contract;
 published artifacts are verified separately by the release workflow. Signing in does not move notes
 between the two applications.
 
-## Coordinated release — 32.2.1
+## Coordinated release — 33.0.1
 
 The shared `/security` template inserts the same `aic-security` Markdown block
 as the Standard Notes plugin. `## Main` starts a section, `Label*: value`
@@ -96,9 +105,9 @@ Tests include the official production-cost key-derivation vector and mocked logi
 storage, cancellation and logout paths. They do not replace a real-account sign-in and reload
 smoke test; no live authenticated Standard Notes result is claimed here.
 
-## Editor features — shared editor core 3.6.0
+## Editor features — shared editor core 3.6.1
 
-This release target pairs with AIC for Standard Notes 23.2.1. Both products use the same
+This release target pairs with AIC for Standard Notes 24.0.1. Both products use the same
 byte-verified core. Automated tests, production builds and Windows browser checks cover the
 shared controls; Linux desktop and live authenticated Standard Notes smoke checks are not implied.
 
@@ -165,25 +174,25 @@ this section does not assert that all clients or operating systems have complete
 
 ## Install
 
-Download `aic-notes-32.2.1.vsix` and its
-`aic-notes-32.2.1.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+Download `aic-notes-33.0.1.vsix` and its
+`aic-notes-33.0.1.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-32.2.1.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-32.2.1.vsix.sha256
-code --install-extension .\aic-notes-32.2.1.vsix --force
+(Get-FileHash .\aic-notes-33.0.1.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-33.0.1.vsix.sha256
+code --install-extension .\aic-notes-33.0.1.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-32.2.1.vsix.sha256
-code --install-extension ./aic-notes-32.2.1.vsix --force
-# or: code-server --install-extension ./aic-notes-32.2.1.vsix --force
+sha256sum -c aic-notes-33.0.1.vsix.sha256
+code --install-extension ./aic-notes-33.0.1.vsix --force
+# or: code-server --install-extension ./aic-notes-33.0.1.vsix --force
 ```
 
 Reload the VS Code window after installation. Editing and Standard Notes sign-in require no
@@ -303,8 +312,8 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-The coordinated version `32.2.1` records sequence 32, two feature outcomes and one fixed-bug
-outcomes; it is not a publication marker by itself.
+The coordinated version `33.0.1` records sequence 33, zero feature outcomes and one fixed-bug
+outcome; it is not a publication marker by itself.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and
 [PROVENANCE.md](PROVENANCE.md) for the shared-core snapshot identity.

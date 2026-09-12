@@ -1,7 +1,7 @@
 # Functional index
 
-This index records the coordinated AIC Notes 32.2.1 / Standard Notes AIC 23.2.1 /
-shared editor core 3.6.0 release target. Public commands, state boundaries, side effects and
+This index records the coordinated AIC Notes 33.0.1 / Standard Notes AIC 24.0.1 /
+shared editor core 3.6.1 release target. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
 
@@ -11,10 +11,11 @@ exhaustive runtime coverage or that publication has already completed.
   length8–128, every enabled group represented). Only empty recognized hidden password fields
   can generate; existing values/TOTP/API keys are excluded.
 - Field label/value tap copies only its value with per-field acknowledged feedback; Tab
-  navigates. The field button is Paste, populated replacement needs confirmation and empty
-  clipboard contents cannot erase. Source Edit is the sole manual value editor. Main/sidebar
-  use an identity-bound native clipboard manager, with no polling, secret diagnostics or
-  automatic save. Standard Notes offers masked native paste-only fallback when needed.
+  navigates. Paste directly reads current text and is disabled on all populated fields;
+  no Replace, history picker or visible panel on success. Empty reads cannot erase.
+  Source Edit is the sole manual value editor. Main/sidebar use an identity-bound native
+  clipboard manager with no polling, history storage, secret diagnostics or automatic save.
+  Both hosts offer inline masked paste-only capture only after clipboard access fails.
 
 - Shared `aic-security` blocks have one canonical model. `##` headings define
   independent sections; `Label*: value` masks a field, `Label: value` keeps it
@@ -49,9 +50,9 @@ exhaustive runtime coverage or that publication has already completed.
 Standard Notes authentication is implemented but auth-only; no note synchronization exists.
 The contracts below describe this coordinated release target, not future sync behavior.
 
-## Shared editor core 3.6.0
+## Shared editor core 3.6.1
 
-These contracts target AIC Notes 32.2.1 and pair with Standard Notes AIC 23.2.1.
+These contracts target AIC Notes 33.0.1 and pair with Standard Notes AIC 24.0.1.
 The exact canonical commit and all shared hashes are recorded in CORE_SNAPSHOT.json.
 Automated tests, production builds and Windows browser checks cover the shared editor;
 Linux desktop and live authenticated Standard Notes smoke checks are not implied.

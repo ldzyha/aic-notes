@@ -25,6 +25,9 @@ const source = [
   "# Vault", "", "```aic-security", "## Main",
   "Password*: example-secret", "Email: alice@example.com", "```", "", "Tail", "",
 ].join("\n");
+const emptySource = source
+  .replace("Password*: example-secret", "Password*:")
+  .replace("Email: alice@example.com", "Email:");
 
 async function openPage(secondary) {
   const page = await browser.newPage({ viewport: { width: secondary ? 460 : 1100, height: 720 } });
@@ -137,54 +140,92 @@ try {
     assert.equal(await count(page, "commit"), 0, `${surface}: Copy never saves`);
     assert.equal(await count(page, "save"), 0, `${surface}: Copy never saves`);
 
-    const paste = row.getByRole("button", { name: "Paste Password", exact: true });
-    await paste.click();
-    await page.locator(".cm-aic-security-panel").waitFor();
-    assert.equal(await count(page, "clipboard.request"), 2, `${surface}: opening Replace does not read`);
-    await page.getByRole("button", { name: "Replace", exact: true }).click();
-    const read = await nextRequest(page, "read");
-    assert.equal(Object.hasOwn(read, "text"), false, `${surface}: read request carries no secret`);
-    assert.equal(await count(page, "edit"), 0, `${surface}: no edit before read ACK`);
-    assert.equal(await count(page, "commit"), 0, `${surface}: no commit before read ACK`);
-    await ack(page, read, true, "new-secret");
-    await page.waitForFunction(() => window.messages.some((message) =>
-      message.type === "edit" || (message.type === "draft.state" && message.dirty)));
-    assert.match(await sourceSnapshot(page, "vault.note.md"), /Password\*: new-secret/u);
-    const updatedValue = page.getByRole("button", { name: "Copy Password value", exact: true });
-    if (await updatedValue.count()) assert.equal(await updatedValue.textContent(), "••••••••");
-    const editsAfterPaste = await count(page, "edit");
+    for (const field of ["Password", "Email"]) {
+      const filledPaste = page.getByRole("button", { name: `Paste ${field}`, exact: true });
+      assert.equal(await filledPaste.isDisabled(), true, `${surface}: filled ${field} Paste disabled`);
+      // A synthetic click must not bypass the domain guard behind disabled UI.
+      await filledPaste.dispatchEvent("click");
+      assert.equal(await page.locator(".cm-aic-security-panel").count(), 0);
+      assert.equal(await count(page, "clipboard.request"), 2);
+      assert.equal(await count(page, "edit"), 0);
+    }
+
+    // Empty-field Paste explicitly requests the latest OS clipboard value.
+    // Pending read is silent: no replacement prompt or visible panel.
+    await init(page, secondary, emptySource);
+    const editsBeforePaste = await count(page, "edit");
+    const draftsBeforePaste = await count(page, "draft.state");
     await page.getByRole("button", { name: "Paste Password", exact: true }).click();
-    await page.getByRole("button", { name: "Replace", exact: true }).click();
-    const failedRead = await nextRequest(page, "read", 1);
-    await ack(page, failedRead, false);
-    await page.locator(".cm-aic-security-paste-capture").waitFor();
-    assert.doesNotMatch(await page.locator(".cm-aic-security-panel").innerText(), /Pasted/u,
-      `${surface}: failed read has no false success`);
-    assert.equal(await count(page, "edit"), editsAfterPaste, `${surface}: failed read cannot edit`);
-    await page.getByRole("button", { name: "Cancel", exact: true }).click();
-    assert.match(await sourceSnapshot(page, "vault.note.md"), /Password\*: new-secret/u);
+    const read = await nextRequest(page, "read");
+    assert.equal(Object.hasOwn(read, "text"), false, `${surface}: read request carries no value`);
+    assert.equal(await page.locator(".cm-aic-security-row .cm-aic-security-field-status").first().textContent(),
+      "Pasting…", `${surface}: pending read gives inline status only`);
+    assert.equal(await page.locator(".cm-aic-security-panel:visible").count(), 0,
+      `${surface}: no visible panel while clipboard read is pending`);
+    assert.equal(await page.getByRole("button", { name: "Replace", exact: true }).count(), 0);
+    assert.equal(await page.getByRole("button", { name: "Paste latest", exact: true }).count(), 0);
+    assert.equal(await count(page, "edit"), editsBeforePaste, `${surface}: no edit before read ACK`);
+    assert.equal(await count(page, "draft.state"), draftsBeforePaste,
+      `${surface}: no draft change before read ACK`);
+    await ack(page, read, true, "latest-secret");
+    await page.waitForFunction(({ secondary, edits, drafts }) =>
+      window.messages.filter((message) => message.type === (secondary ? "draft.state" : "edit")).length >
+        (secondary ? drafts : edits),
+    { secondary, edits: editsBeforePaste, drafts: draftsBeforePaste });
+    assert.match(await sourceSnapshot(page, "vault.note.md"), /Password\*: latest-secret/u);
+    assert.equal(await page.getByRole("button", { name: "Copy Password value", exact: true }).textContent(),
+      "••••••••", `${surface}: latest paste remains masked`);
+    assert.equal(await page.locator(".cm-aic-security-panel:visible").count(), 0,
+      `${surface}: successful read has no visible panel`);
     assert.equal(await count(page, "commit"), 0, `${surface}: Paste edit does not commit`);
     assert.equal(await count(page, "save"), 0, `${surface}: Paste edit does not save`);
     await page.locator("#pane-pin, .cm-content").first().click();
     assert.equal(await count(page, "commit"), 0, `${surface}: blur does not commit`);
     assert.equal(await count(page, "save"), 0, `${surface}: blur does not save`);
+    await page.waitForFunction(() => document.body.dataset.readOnly === "false");
     await page.locator(".cm-content").focus();
     await page.keyboard.press("Control+s");
     await page.waitForFunction((kind) => window.messages.some((message) => message.type === kind),
       secondary ? "commit" : "save");
+    const commitsAfterExplicit = await count(page, "commit");
+    const savesAfterExplicit = await count(page, "save");
 
-    // A read begun for one note must not hydrate a newly initialized note.
-    await init(page, secondary, source, "old.note.md");
+    await init(page, secondary, emptySource);
     await page.getByRole("button", { name: "Paste Password", exact: true }).click();
-    await page.getByRole("button", { name: "Replace", exact: true }).click();
-    const staleRead = await nextRequest(page, "read", 1);
-    await init(page, secondary, source.replace("example-secret", "other-secret"), "new.note.md");
+    const failedRead = await nextRequest(page, "read", 1);
+    const editsBeforeFailure = await count(page, "edit");
+    await ack(page, failedRead, false);
+    const capture = page.locator(".cm-aic-security-paste-capture");
+    await capture.waitFor();
+    assert.equal(await capture.getAttribute("type"), "password");
+    assert.equal(await page.locator(".cm-aic-security-panel:visible").count(), 1,
+      `${surface}: fallback capture appears only on read failure`);
+    assert.equal(await count(page, "edit"), editsBeforeFailure,
+      `${surface}: failed read cannot edit`);
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    assert.equal(await sourceSnapshot(page, "vault.note.md"), emptySource);
+    assert.equal(await count(page, "commit"), commitsAfterExplicit,
+      `${surface}: failed read does not commit`);
+    assert.equal(await count(page, "save"), savesAfterExplicit,
+      `${surface}: failed read does not save`);
+    await page.locator("#pane-pin, .cm-content").first().click();
+    assert.equal(await count(page, "commit"), commitsAfterExplicit,
+      `${surface}: blur after failure does not commit`);
+    assert.equal(await count(page, "save"), savesAfterExplicit,
+      `${surface}: blur after failure does not save`);
+
+    // A read begun for one note must not hydrate a new note.
+    await init(page, secondary, emptySource, "old.note.md");
+    await page.getByRole("button", { name: "Paste Password", exact: true }).click();
+    const staleRead = await nextRequest(page, "read", 2);
+    const newSource = emptySource.replace("# Vault", "# Another");
+    await init(page, secondary, newSource, "new.note.md");
     await ack(page, staleRead, true, "late-secret");
-    assert.equal(await sourceSnapshot(page, "new.note.md"), source.replace("example-secret", "other-secret"));
+    assert.equal(await sourceSnapshot(page, "new.note.md"), newSource);
     assert.doesNotMatch(await page.locator(".cm-aic-security").innerText(), /late-secret/u);
     assert.equal(await page.evaluate(() => window.nativeClipboardCalls), 0,
       `${surface}: only host ACK bridge may access clipboard`);
-    passed.push(`${surface}: label/value Copy ACK, masked Paste, explicit Save, stale-note cancellation`);
+    passed.push(`${surface}: Copy ACK, filled Paste disabled, silent empty-field read, failure fallback, explicit Save, stale-note cancellation`);
     await page.close();
   }
   assert.deepEqual(errors, []);

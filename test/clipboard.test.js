@@ -78,6 +78,17 @@ test("host rejects malformed requests and fixed-category failures", async () => 
   assert.equal(stalled.messages[0].error, "timeout");
 });
 
+test("host never reads or writes for missing or non-string request identifiers", async () => {
+  let operations = 0;
+  const f = fixture({ readText: async () => { operations++; return "synthetic"; }, writeText: async () => { operations++; } });
+  for (const requestId of [undefined, null, false, 0, 123, {}, []]) {
+    await f.host.handle(f.request("read", { requestId }), f.webview);
+    await f.host.handle(f.request("write", { requestId, text: "synthetic" }), f.webview);
+  }
+  assert.equal(operations, 0);
+  assert.deepEqual(f.messages, []);
+});
+
 test("client ignores unknown ACKs, cancels on reset/pagehide, and bounds waits", async () => {
   const sent = [];
   const listeners = new Map();

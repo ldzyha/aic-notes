@@ -19,6 +19,7 @@ export class ClipboardHost {
     const requestId = message?.requestId;
     if (
       message?.type !== "clipboard.request" ||
+      typeof requestId !== "string" ||
       !REQUEST_ID.test(requestId) ||
       !["read", "write"].includes(message.action) ||
       typeof message.relativePath !== "string" ||

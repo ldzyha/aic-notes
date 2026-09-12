@@ -1,5 +1,19 @@
 # Release provenance
 
+## Release 33.0.1 — direct empty-field Paste
+
+Core 3.6.1, paired with Standard Notes AIC 24.0.1, retains the explicit 65-file
+inventory. Shared security preview now enforces empty targets at control, snapshot
+and commit boundaries. Direct clipboard reads do not open an AIC panel on success;
+masked input is only an access-failure fallback. No Replace or history picker is shipped.
+
+The VS Code clipboard host additionally rejects missing/non-string request IDs before
+native access. No dependency or platform helper changes. The committed canonical
+revision and exact SHA-256 inventory are recorded by CORE_SNAPSHOT.json. Tests cover
+both actual webview bundles and the shared editor with synthetic clipboard data.
+
+Historical releases below remain unchanged.
+
 ## Release 32.2.1 — shared security clipboard and password generation
 
 The explicit shared inventory now contains 65 files. Core 3.6.0, paired with
