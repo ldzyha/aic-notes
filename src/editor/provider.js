@@ -24,6 +24,7 @@ import { isNotePath } from "../secondary/model.js";
 import { stampNoteProperties } from "../notes/properties.js";
 import { DisposableScope } from "../lifecycle.js";
 import { documentSnapshot } from "../notes/operation.js";
+import { ClipboardHost } from "../clipboard.js";
 
 // [[target]] → note path candidates, aic LINK_RE semantics (sync.js:913):
 // a *.md target is used as-is, anything else gets `.note.md`; tried both
@@ -159,6 +160,20 @@ export class MarkdownEditorProvider {
       saving: false,
       scope: this.scope.child(),
     };
+    session.clipboard = new ClipboardHost({
+      scope: session.scope,
+      clipboard: vscode.env?.clipboard,
+      context: () => ({
+        webview,
+        identity: document.uri.toString(),
+        relativePath: vscode.workspace.asRelativePath(document.uri, false).replaceAll("\\", "/"),
+        generation: state.generation,
+        hasSurface: !document.isClosed,
+        ready: session.ready,
+        readOnly: session.saving || Boolean(session.editSurface &&
+          this.ownership.state(session.editSurface).readOnly),
+      }),
+    });
     this.sessions.add(session);
     const relativePath = vscode.workspace
       .asRelativePath(document.uri, false)
@@ -220,6 +235,11 @@ export class MarkdownEditorProvider {
     let messageQueue = Promise.resolve();
     const messageSub = webview.onDidReceiveMessage((msg) => {
       if (session.scope.disposed) return;
+      if (msg?.type === "clipboard.request") {
+        // Clipboard IO is independent of the document edit/save FIFO.
+        void session.clipboard.handle(msg, webview);
+        return;
+      }
       // The snapshot is an edit barrier, not a mutation. Resolve it outside the
       // FIFO so a source-open action can safely probe its own paused webview.
       if (msg.type === "editing.snapshot") {

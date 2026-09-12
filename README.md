@@ -5,25 +5,45 @@ preview-first surface, including `*.note.md`, and shows linked notes in the Seco
 Optional Standard Notes sign-in is available. There is no note synchronization, import, polling,
 upload, remote deletion or remote conflict state.
 
+## Security field actions
+
+Tap/click a security field label or value to copy **only its value**; “Copied” appears
+beside it after success. Tab navigates; Enter/Space activates. The field icon is **Paste**;
+whole-block Copy remains in the header. VS Code uses its native clipboard through a bounded,
+identity-bound request, never background reads. Hidden values are not previewed. Populated
+replacement requires confirmation; empty clipboard text cannot erase. Manual edits/clearing
+use source Edit. These actions never save automatically; use Ctrl/Cmd+S.
+
+An empty hidden password field (`Password*`, `PWD*`, `Пароль*`, `WebDAV Password*` and
+recognized service-qualified labels) offers **Generate password**. Default: 24 characters,
+uppercase/lowercase/numbers/symbols enabled; length 8–128 and groups are configurable.
+Each enabled group occurs at least once. No existing value is overwritten or automatically
+copied/revealed. Clear through source Edit and return to preview to generate again.
+TOTP/API keys and arbitrary masked labels are not password-generation targets.
+
+Both products use the same local [Web Crypto](https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues)
+generator and UI. Options are inspired by [1Password](https://1password.com/blog/how-to-generate-random-password),
+not the same implementation. Markdown, exports and clipboard values remain plaintext.
+
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-editor-core 3.5.0 but is a separate product. The coordinated release targets are AIC Notes
-31.3.8 and AIC for Standard Notes 22.1.8; this page describes their intended release contract,
-not a claim that either package has already been published. Signing in does not move notes
+editor-core 3.6.0 but is a separate product. The coordinated versions are AIC Notes
+32.2.1 and AIC for Standard Notes 23.2.1. This page describes the release contract;
+published artifacts are verified separately by the release workflow. Signing in does not move notes
 between the two applications.
 
-## Coordinated release target — 31.3.8
+## Coordinated release — 32.2.1
 
 The shared `/security` template inserts the same `aic-security` Markdown block
 as the Standard Notes plugin. `## Main` starts a section, `Label*: value`
 masks a field in preview, and `Label: value` keeps it visible. Edit opens raw
-Markdown; there is no inline form. Add section, quick field actions and New
+Markdown; there is no inline manual value editor. Add section, quick field actions and New
 block insert independent content without saving. Preview can copy individual
 values, current one-time codes and the complete fenced block, or open a safe
 HTTP(S) URL. Save remains Ctrl/Cmd+S. This is
 visual masking only: raw Markdown, other editors, local files, exports and
 copied blocks still contain plaintext secrets. There is no QR import UI. It
 does not enable Standard Notes synchronization or convert native Authenticator
-notes. Not yet released.
+notes.
 
 Both editors share task controls, details parsing, code-language aliases and the bounded
 Mermaid render queue. Nested inputs own their selection; Ctrl/Cmd+A inside a diagram field
@@ -76,9 +96,9 @@ Tests include the official production-cost key-derivation vector and mocked logi
 storage, cancellation and logout paths. They do not replace a real-account sign-in and reload
 smoke test; no live authenticated Standard Notes result is claimed here.
 
-## Editor features — shared editor core 3.5.0
+## Editor features — shared editor core 3.6.0
 
-This release target pairs with AIC for Standard Notes 22.1.8. Both products use the same
+This release target pairs with AIC for Standard Notes 23.2.1. Both products use the same
 byte-verified core. Automated tests, production builds and Windows browser checks cover the
 shared controls; Linux desktop and live authenticated Standard Notes smoke checks are not implied.
 
@@ -145,25 +165,25 @@ this section does not assert that all clients or operating systems have complete
 
 ## Install
 
-When the coordinated release is published, download `aic-notes-31.3.8.vsix` and its
-`aic-notes-31.3.8.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+Download `aic-notes-32.2.1.vsix` and its
+`aic-notes-32.2.1.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-31.3.8.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-31.3.8.vsix.sha256
-code --install-extension .\aic-notes-31.3.8.vsix --force
+(Get-FileHash .\aic-notes-32.2.1.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-32.2.1.vsix.sha256
+code --install-extension .\aic-notes-32.2.1.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-31.3.8.vsix.sha256
-code --install-extension ./aic-notes-31.3.8.vsix --force
-# or: code-server --install-extension ./aic-notes-31.3.8.vsix --force
+sha256sum -c aic-notes-32.2.1.vsix.sha256
+code --install-extension ./aic-notes-32.2.1.vsix --force
+# or: code-server --install-extension ./aic-notes-32.2.1.vsix --force
 ```
 
 Reload the VS Code window after installation. Editing and Standard Notes sign-in require no
@@ -283,7 +303,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-The coordinated target `31.3.8` records sequence 31, three feature outcomes and eight fixed-bug
+The coordinated version `32.2.1` records sequence 32, two feature outcomes and one fixed-bug
 outcomes; it is not a publication marker by itself.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and

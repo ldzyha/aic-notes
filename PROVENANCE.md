@@ -1,5 +1,25 @@
 # Release provenance
 
+## Release 32.2.1 — shared security clipboard and password generation
+
+The explicit shared inventory now contains 65 files. Core 3.6.0, paired with
+Standard Notes AIC 23.2.1, adds `security-password.js` and its declaration. Field
+preview, masking, clipboard consent/cancellation, password controls and icon/CSS
+assets remain canonical in `standard-notes-aic/src/core`; the VS Code adapter only
+provides the native clipboard channel. No platform executable or dependency was added.
+
+`CORE_SNAPSHOT.json` records the canonical commit, source state and each file's
+SHA-256. Release verification requires a committed canonical source. The clipboard
+host and webview client additionally bind requests to the initiating surface,
+document path and generation, with bounded waits and fixed-category diagnostics.
+
+Synthetic browser checks cover actual main/sidebar bundles and the Standard Notes
+editor, including tap/keyboard actions, masked Paste, read cancellation, empty-field
+generation, explicit saving and mobile theme/target sizes. Emulation does not establish
+physical mobile clipboard permission behavior or real-account authentication.
+
+Historical release provenance is retained below.
+
 ## Release 31.3.8 — lifecycle, shared security and context review
 
 The current snapshot includes 63 explicitly distributed core files, selected by canonical

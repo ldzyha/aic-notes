@@ -21,6 +21,7 @@ import { stampNoteProperties } from "../notes/properties.js";
 import { parentNoteCandidates } from "../notes/parent-context.js";
 import { DisposableScope } from "../lifecycle.js";
 import { documentSnapshot, createNoteDocument } from "../notes/operation.js";
+import { ClipboardHost } from "../clipboard.js";
 
 export const SECONDARY_VIEW_ID = "aicNotes.secondary";
 
@@ -167,6 +168,20 @@ export class SecondaryNotePane {
     const scope = this.scope.child();
     this.viewScope = scope;
     this.view = view;
+    const clipboard = new ClipboardHost({
+      scope,
+      clipboard: vscode.env?.clipboard,
+      context: () => ({
+        webview: this.view?.webview,
+        identity: (this.documentUri ?? this.placeholderUri)?.toString(),
+        relativePath: this.editingPath(),
+        generation: this.generation,
+        hasSurface: Boolean(this.documentUri || this.placeholderUri),
+        ready: this.ready,
+        readOnly: this.navigationPaused || Boolean(this.editSurface &&
+          this.ownership.state(this.editSurface).readOnly),
+      }),
+    });
     const distRoot = vscode.Uri.joinPath(
       this.context.extensionUri,
       "dist",
@@ -178,7 +193,13 @@ export class SecondaryNotePane {
     };
     scope.add(
       view.webview.onDidReceiveMessage((message) => {
-        if (!scope.disposed) return this.onMessage(message);
+        if (scope.disposed) return;
+        if (message?.type === "clipboard.request") {
+          // Never enter the save/commit queue for an OS clipboard call.
+          void clipboard.handle(message, view.webview);
+          return;
+        }
+        return this.onMessage(message);
       }),
     );
     scope.defer(() => {

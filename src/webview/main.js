@@ -41,7 +41,7 @@ import { makeMermaidExtension } from "../../vendor/markdown/mermaid.js";
 import { MARKDOWN_CSS } from "../../vendor/markdown/styles.js";
 import { makeFencedMarkdown } from "./fenced-local.js";
 import { darkHighlight } from "./highlight.js";
-import { makeHost } from "./host-shim.js";
+import { makeHost, makeClipboardClient } from "./host-shim.js";
 import { detailsExtension } from "./details.js";
 import { upsertLinkedCodeReference } from "../notes/selection-model.js";
 import {
@@ -89,6 +89,7 @@ const docState = {
 };
 const draft = new SecondaryDraft();
 const host = makeHost(api, docState);
+const clipboard = makeClipboardClient(api, docState);
 let paneNotice = "";
 
 function reflectSaveState() {
@@ -191,6 +192,7 @@ function setEditingState(readOnly, lease = docState.lease) {
   const changed =
     docState.readOnly !== Boolean(readOnly || docState.editingConflict);
   docState.readOnly = Boolean(readOnly || docState.editingConflict);
+  if (docState.readOnly) clipboard.cancel();
   if (!docState.readOnly && paneNotice.startsWith("Read-only here"))
     paneNotice = "";
   docState.lease = lease;
@@ -308,10 +310,8 @@ function makeEditor(text) {
         }),
         makeSecurityBlockExtension({
           document,
-          onCopy: (source, label) => {
-            host.bus.publish("clipboard.write", { text: source, label });
-            return true;
-          },
+          onReadClipboard: () => clipboard.readText(),
+          onCopy: (source) => clipboard.writeText(source),
           onOpen: (url) => {
             host.bus.publish("link.external", { url });
           },
@@ -412,6 +412,7 @@ function makeEditor(text) {
 
 window.addEventListener("message", (event) => {
   const msg = event.data;
+  if (clipboard.handleMessage(msg)) return;
   switch (msg.type) {
     case "linkedCode.insert": {
       let result;
@@ -482,6 +483,7 @@ window.addEventListener("message", (event) => {
       break;
     }
     case "init": {
+      clipboard.cancel();
       docState.relativePath = msg.relativePath;
       docState.hasSurface = true;
       docState.editingConflict = false;
@@ -532,6 +534,7 @@ window.addEventListener("message", (event) => {
         return;
       }
       docState.generation = msg.generation;
+      clipboard.cancel();
       view.dispatch({
         changes: msg.changes,
         annotations: [remote.of(true)],
@@ -545,6 +548,7 @@ window.addEventListener("message", (event) => {
       if (!view) return;
       if (docState.editingConflict) return;
       docState.generation = msg.generation;
+      clipboard.cancel();
       view.dispatch({
         changes: { from: 0, to: view.state.doc.length, insert: msg.text },
         annotations: [remote.of(true)],
@@ -585,6 +589,7 @@ window.addEventListener("message", (event) => {
       docState.canTrash = Boolean(msg.canTrash);
       docState.actionPending = Boolean(msg.actionPending);
       docState.hasSurface = Boolean(msg.hasSurface);
+      if (!docState.hasSurface) clipboard.cancel();
       docState.placeholder = secondarySurface && Boolean(msg.hasPlaceholder);
       document.body.dataset.placeholder = String(docState.placeholder);
       paneNotice = msg.status || "";

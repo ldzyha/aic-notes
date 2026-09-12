@@ -1,5 +1,20 @@
 # Changelog
 
+## 32.2.1 — 2026-09-12
+
+Release sequence 32 · 2 feature outcomes · 1 fixed-bug outcome.
+
+### Features
+
+1. Security field clipboard actions are shared with Standard Notes: tap/click label or value copies only its value and acknowledges success beside that field; the field icon pastes. An identity-bound, timed native clipboard manager serves both main and secondary editors without entering save queues. Filled-field replacement requires confirmation, empty clipboard text cannot erase, and late reads cannot affect a different document or source-edit session. Whole-block Copy remains.
+2. Shared empty-password generation uses WebCrypto randomness only: default 24 characters, all four character classes enabled, configurable length 8–128. Enabled classes are guaranteed with unbiased sampling. Existing values cannot be regenerated until cleared through source Edit. TOTP/API keys are excluded; generation never reveals or automatically copies the password.
+
+### Fix
+
+1. Security field controls have explicit theme colors, mobile 44px touch targets and distinct keyboard navigation. Tab never copies; Enter/Space activates. Preview mutation stays masked, with manual source edits and saving still explicit.
+
+Compatibility: universal JavaScript VSIX, AIC Editor Core 3.6.0, Standard Notes AIC 23.2.1. No new dependencies or platform executables. Standard Notes remains authentication-only in VS Code. Security blocks mask plaintext; they are not a separate encrypted vault.
+
 ## 31.3.8 — 2026-09-12
 
 Release sequence 31 · 3 feature outcomes · 8 fixed-bug outcomes.
