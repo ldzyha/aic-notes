@@ -119,22 +119,17 @@ body[data-save-state="dirty"] #secondary-footer { border-top-color: var(--warn);
 
 /* tables: the grid carries its own surface — header AND content cells get a
    background so the table reads as one object on the page */
-.cm-editor .cm-content .cm-md-table table,
-.cm-editor .cm-content .cm-md-props table {
+.cm-editor .cm-content .cm-md-table table {
   font-family: inherit;
   font-size: 0.95em;
 }
 .cm-editor .cm-content .cm-md-table th,
-.cm-editor .cm-content .cm-md-table td,
-.cm-editor .cm-content .cm-md-props th,
-.cm-editor .cm-content .cm-md-props td {
+.cm-editor .cm-content .cm-md-table td {
   border-color: var(--border);
   padding: 0.3rem 0.6rem;
 }
-.cm-editor .cm-content .cm-md-table thead th,
-.cm-editor .cm-content .cm-md-props th { background: var(--aic-contrast); }
-.cm-editor .cm-content .cm-md-table td,
-.cm-editor .cm-content .cm-md-props td { background: color-mix(in srgb, var(--fg) 3%, var(--bg)); }
+.cm-editor .cm-content .cm-md-table thead th { background: var(--aic-contrast); }
+.cm-editor .cm-content .cm-md-table td { background: color-mix(in srgb, var(--fg) 3%, var(--bg)); }
 .cm-editor .cm-content .cm-md-table td code.cm-md-code {
   background: var(--chip);
   color: color-mix(in srgb, var(--fg) 78%, var(--muted));
@@ -204,8 +199,7 @@ body[data-save-state="dirty"] #secondary-footer { border-top-color: var(--warn);
   background: color-mix(in srgb, var(--aic-accent) 10%, transparent);
   outline: none;
 }
-.cm-editor .cm-content .cm-md-table.cm-md-block-preview,
-.cm-editor .cm-content .cm-md-props.cm-md-block-preview { padding: 0; }
+.cm-editor .cm-content .cm-md-table.cm-md-block-preview { padding: 0; }
 .cm-editor .cm-content .cm-md-code-preview.cm-md-block-preview { padding: 0; }
 .cm-md-code-preview > pre {
   box-sizing: border-box;
@@ -221,48 +215,6 @@ body[data-save-state="dirty"] #secondary-footer { border-top-color: var(--warn);
 }
 .cm-md-code-preview > pre > code { font: inherit; }
 .cm-editor .cm-content .cm-md-block-preview > table { margin: 0.35rem; }
-.cm-aic-note-relations {
-  border-top: 1px solid var(--aic-details-border);
-  font: 500 0.78rem/1.35 var(--vscode-font-family, system-ui, sans-serif);
-}
-.cm-aic-note-relations-heading {
-  padding: 0.35rem 0.55rem 0.2rem;
-  color: var(--aic-muted);
-  font-size: 0.72rem;
-  font-weight: 650;
-  letter-spacing: 0.025em;
-  text-transform: uppercase;
-}
-.cm-aic-note-relations ul { margin: 0; padding: 0.1rem 0 0.4rem; list-style: none; }
-.cm-aic-note-relations li { margin: 0; padding: 0; }
-.cm-aic-note-relation-open {
-  display: grid;
-  grid-template-columns: 0.8rem minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.35rem;
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 1.7rem;
-  padding: 0.15rem 0.55rem 0.15rem min(calc(0.55rem + var(--aic-note-depth) * 0.72rem), 4rem);
-  border: 0;
-  background: transparent;
-  color: var(--aic-contrast-fg);
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-}
-.cm-aic-note-relation-open:hover,
-.cm-aic-note-relation-open:focus-visible {
-  background: color-mix(in srgb, var(--aic-accent) 9%, transparent);
-  outline: none;
-}
-.cm-aic-note-relations [aria-current="true"] .cm-aic-note-relation-open {
-  color: var(--aic-accent);
-  font-weight: 650;
-}
-.cm-aic-note-relation-marker { color: var(--aic-muted); font-size: 0.65rem; }
-.cm-aic-note-relation-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cm-aic-note-relation-kind { color: var(--aic-muted); font-size: 0.7rem; }
 .cm-editor .cm-content .cm-md-mermaid.cm-md-block-preview { padding-top: 0; }
 
 /* inline mermaid editing preview — the live diagram below a fence while its
@@ -494,9 +446,7 @@ body.aic-secondary-surface {
 .aic-secondary-surface .cm-editor .cm-content .cm-md-h2 { font-size: 1.25em; }
 .aic-secondary-surface .cm-editor .cm-content .cm-md-h3 { font-size: 1.12em; }
 .aic-secondary-surface .cm-editor .cm-content .cm-md-table th,
-.aic-secondary-surface .cm-editor .cm-content .cm-md-table td,
-.aic-secondary-surface .cm-editor .cm-content .cm-md-props th,
-.aic-secondary-surface .cm-editor .cm-content .cm-md-props td { padding: 0.18rem 0.35rem; }
+.aic-secondary-surface .cm-editor .cm-content .cm-md-table td { padding: 0.18rem 0.35rem; }
 
 .aic-pane-empty {
   grid-row: 1;

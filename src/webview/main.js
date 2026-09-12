@@ -3,8 +3,8 @@
 // carry the complete custom syntax): the reveal-rule handler set (headings,
 // emphasis, inline code, lists + task boxes, direct link actions, blockquote/hr/
 // strikethrough, code fences), nested fenced-code highlighting (lazy chunks),
-// and the three block widgets — the live table grid, the frontmatter props
-// table, and in-place mermaid.
+// and structured previews — the table grid, shared Properties/Security cards,
+// and in-place Mermaid.
 //
 // NO CM history: the TextDocument owns undo/redo — Ctrl+Z/Y post to the
 // extension host, the resulting document change flows back as a remote-tagged
@@ -32,10 +32,6 @@ import { HANDLERS, decorationPlugin } from "../../vendor/markdown/session.js";
 import { makeLinkActionsExtension } from "../../vendor/markdown/link-actions.js";
 import { listKeymap } from "../../vendor/markdown/handlers/list.js";
 import { makeTableExtension } from "../../vendor/markdown/handlers/table.js";
-import {
-  makeFrontmatterExtension,
-  setNoteRelationships,
-} from "../../vendor/markdown/handlers/frontmatter.js";
 import { makeCodeFenceExtension } from "../../vendor/markdown/handlers/code-fence.js";
 import { makeMermaidExtension } from "../../vendor/markdown/mermaid.js";
 import { MARKDOWN_CSS } from "../../vendor/markdown/styles.js";
@@ -52,7 +48,11 @@ import {
 import { wirePreviewSelection } from "../../vendor/aic-editor-core/structured-preview.js";
 import { editorIndentation } from "../../vendor/aic-editor-core/indentation.js";
 import { markdownFormatting } from "../../vendor/aic-editor-core/formatting.js";
-import { makeSecurityBlockExtension } from "../../vendor/aic-editor-core/security-block.js";
+import {
+  makeSecurityBlockExtension,
+  makePropertiesBlockExtension,
+  setPropertyRelationships,
+} from "../../vendor/aic-editor-core/security-block.js";
 import { makeSecurityImportExtension } from "../../vendor/aic-editor-core/security-import-extension.js";
 import { isSaveAction, wireSaveBoundary } from "../../vendor/aic-editor-core/save-boundary.js";
 import { PrimarySave } from "./primary-save.js";
@@ -379,7 +379,14 @@ function makeEditor(text) {
         decorationPlugin(HANDLERS),
         makeLinkActionsExtension(host),
         makeTableExtension(host),
-        ...makeFrontmatterExtension(host, () => docState.relationships),
+        makePropertiesBlockExtension({
+          document,
+          initialRelationships: () => docState.relationships,
+          onRelationshipOpen: (path) => host.bus.publish("note.open", { path }),
+          onReadClipboard: () => clipboard.readText(),
+          onCopy: (source) => clipboard.writeText(source),
+          onOpen: (url) => host.bus.publish("link.external", { url }),
+        }),
         ...makeCodeFenceExtension({
           document,
           onCopy: (source, language) => {
@@ -670,7 +677,7 @@ window.addEventListener("message", (event) => {
         ? msg.relationships
         : [];
       view.dispatch({
-        effects: setNoteRelationships.of(docState.relationships),
+        effects: setPropertyRelationships.of(docState.relationships),
       });
       break;
     }

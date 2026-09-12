@@ -121,27 +121,6 @@ export const MARKDOWN_CSS = `
 .cm-aic-drag-handle:active { cursor: grabbing }
 .cm-aic-drag-handle:disabled { cursor: default; opacity: .35 }
 .cm-md-block-preview:focus-within { border-color: var(--accent) !important }
-/* props (frontmatter) table (owner 2026-07-01): the leading --- YAML block
-   rendered as a read-only key/value grid — the cursor entering it reveals the
-   raw YAML (edit line by line), the same reveal rule as the table widget */
-.cm-md-props { padding: .3rem 0; overflow-x: auto }
-.cm-md-props table { width: max-content; min-width: 100%; border-collapse: collapse;
-  table-layout: auto; font-family: monospace }
-.cm-md-props th, .cm-md-props td { border: 1px solid var(--border);
-  padding: .2rem .5rem; vertical-align: top }
-.cm-md-props th { background: var(--chip); color: var(--muted); font-weight: 700;
-  text-align: right; white-space: nowrap }
-.cm-md-props td { max-width: min(32rem, 72vw); color: var(--fg);
-  text-align: left; white-space: normal; word-break: normal;
-  overflow-wrap: normal; hyphens: none }
-.cm-aic-property-key-cell { width: 1%; min-width: 8rem;
-  max-width: min(20rem, 45vw); padding: .12rem .35rem !important }
-.cm-aic-property-key { display: flex; align-items: center; gap: .2rem;
-  padding-inline-start: calc(var(--aic-property-depth, 0) * .9rem) }
-.cm-aic-property-level { width: .9rem; flex: 0 0 .9rem; color: var(--muted);
-  text-align: center }
-.cm-aic-property-item, .cm-aic-property-group { color: var(--muted);
-  font-style: italic; font-weight: 400 }
 .cm-md-mermaid { padding: .5rem 0; position: relative }
 .cm-md-mermaid svg { max-width: 100% }
 /* the mermaid preview rides the console Dialog SLOT now (owner 2026-06-24: "той

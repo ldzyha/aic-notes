@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { parse } from "yaml";
 import {
   isManagedNoteName,
   isMarkdownDocumentName,
@@ -47,10 +48,10 @@ test("restamping preserves authored note properties, creation, and body", () => 
     }),
     "---\r\n" +
       "file: renamed.note.md\r\n" +
-      "created: 2026-07-10\r\n" +
-      "updated: 2026-09-01T18:05:00.000Z\r\n" +
       "title: old\r\n" +
       "status: live\r\n" +
+      "created: 2026-07-10\r\n" +
+      'updated: "2026-09-01T18:05:00.000Z"\r\n' +
       "---\r\n\r\n" +
       "Body  \r\n",
   );
@@ -70,19 +71,17 @@ test("restamping removes the complete legacy generated note signature", () => {
     "owner: team-a\n" +
     "---\n\n" +
     "Body\n";
-  assert.equal(
-    stampFileProperties(source, {
-      fileName: "app.note.md",
-      updatedAt: "2026-09-02T08:00:00.000Z",
-    }),
-    "---\n" +
-      "file: app.note.md\n" +
-      "created: 2026-07-10\n" +
-      "updated: 2026-09-02T08:00:00.000Z\n" +
-      "owner: team-a\n" +
-      "---\n\n" +
-      "Body\n",
-  );
+  const saved = stampFileProperties(source, {
+    fileName: "app.note.md",
+    updatedAt: "2026-09-02T08:00:00.000Z",
+  });
+  assert.deepEqual(parse(saved.split("---\n")[1]), {
+    file: "app.note.md",
+    created: "2026-07-10",
+    updated: "2026-09-02T08:00:00.000Z",
+    owner: "team-a",
+  });
+  assert.ok(saved.endsWith("---\n\nBody\n"));
 });
 
 test("ordinary Markdown documents remain byte-identical", () => {

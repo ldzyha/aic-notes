@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
+import { createRequire } from "node:module";
+import { runInThisContext } from "node:vm";
 
 // Bundle the real filesystem adapter with the VS Code API mocked at its
 // boundary. No extension host, filesystem writes, or test-only production API
@@ -47,7 +49,7 @@ const bundled = await build({
   ],
   bundle: true,
   platform: "node",
-  format: "esm",
+  format: "cjs",
   write: false,
   logLevel: "silent",
   plugins: [
@@ -66,9 +68,13 @@ const bundled = await build({
     },
   ],
 });
-const { noteRelationshipsForTarget } = await import(
-  `data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].contents).toString("base64")}`
-);
+// Match the extension's CommonJS bundle, including the YAML dependency's Node
+// builtins. A data-URL ESM import has no require and fails before these tests run.
+const module = { exports: {} };
+runInThisContext(`(function(module, exports, require) {\n${bundled.outputFiles[0].text}\n})`, {
+  filename: "relationships-test-bundle.cjs",
+})(module, module.exports, createRequire(import.meta.url));
+const { noteRelationshipsForTarget } = module.exports;
 delete globalThis[apiKey];
 
 function fixture({ files = [], directories = [], backslashes = false } = {}) {

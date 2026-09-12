@@ -64,12 +64,20 @@ The first section title replaces the card name, without a duplicate heading row.
 `## Account name` for a custom name or bare `##` for the default Security header.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-editor-core 4.0.0 but is a separate product. The coordinated versions are AIC Notes
-36.4.4 and AIC for Standard Notes 27.4.4. This page describes the release contract;
+editor-core 4.1.0 but is a separate product. The coordinated versions are AIC Notes
+37.1.4 and AIC for Standard Notes 28.1.4. This page describes the release contract;
 published artifacts are verified separately by the release workflow. Signing in does not move notes
 between the two applications.
 
-## Coordinated release — 36.4.4
+## Coordinated release — 37.1.4
+
+The new release outcome is a shared Security-style Properties preview over authored YAML
+frontmatter. Managed metadata is copy-only; nested custom fields can be masked and filled
+through the existing clipboard/save boundary, while populated values are edited in source.
+Targeted YAML actions preserve nested, quoted and multiline ownership, exact numeric and
+creation-value types. Unchanged Security cards retain their live DOM, and starred Properties
+are excluded from unfinished note excerpts. Recovery codes, optional security titles and
+the save-boundary behavior below shipped in 36.4.4; they remain available, not newly added.
 
 The shared `/security` template inserts the same `aic-security` Markdown block
 as the Standard Notes plugin. `## Main` starts a section, `Label*: value`
@@ -129,9 +137,9 @@ Tests include the official production-cost key-derivation vector and mocked logi
 storage, cancellation and logout paths. They do not replace a real-account sign-in and reload
 smoke test; no live authenticated Standard Notes result is claimed here.
 
-## Editor features — shared editor core 4.0.0
+## Editor features — shared editor core 4.1.0
 
-This release target pairs with AIC for Standard Notes 27.4.4. Both products use the same
+This release target pairs with AIC for Standard Notes 28.1.4. Both products use the same
 byte-verified core. Automated tests, production builds and Windows browser checks cover the
 shared controls; Linux desktop and live authenticated Standard Notes smoke checks are not implied.
 
@@ -198,25 +206,25 @@ this section does not assert that all clients or operating systems have complete
 
 ## Install
 
-Download `aic-notes-36.4.4.vsix` and its
-`aic-notes-36.4.4.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+Download `aic-notes-37.1.4.vsix` and its
+`aic-notes-37.1.4.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-36.4.4.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-36.4.4.vsix.sha256
-code --install-extension .\aic-notes-36.4.4.vsix --force
+(Get-FileHash .\aic-notes-37.1.4.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-37.1.4.vsix.sha256
+code --install-extension .\aic-notes-37.1.4.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-36.4.4.vsix.sha256
-code --install-extension ./aic-notes-36.4.4.vsix --force
-# or: code-server --install-extension ./aic-notes-36.4.4.vsix --force
+sha256sum -c aic-notes-37.1.4.vsix.sha256
+code --install-extension ./aic-notes-37.1.4.vsix --force
+# or: code-server --install-extension ./aic-notes-37.1.4.vsix --force
 ```
 
 Reload the VS Code window after installation. Editing and Standard Notes sign-in require no
@@ -280,11 +288,17 @@ and in read-only documents.
 - Tables use content-sized columns, word-level wrapping, a dedicated horizontal scroller, Copy,
   row/column insertion, and drag reordering. A transient popover textarea appears only for the
   selected cell.
-- Frontmatter properties render only for `*.note.md`. New sidecars receive exactly `file`,
-  `created`, and `updated`; `updated` changes on explicit save. Values support nested YAML,
-  transient popover editing, insertion, and drag reordering. Ordinary `*.md` documents do not
-  receive generated properties. Their existing authored frontmatter is preserved: the extension
-  cannot prove the origin of historical keys and does not automatically clean or rewrite them.
+- Frontmatter uses the shared Security-card renderer: `file`, `created`, and `updated` are
+  copy-only metadata; custom root and nested fields appear below the dynamic context tree.
+  A key ending in `*` (for example `Password*`) masks its value; marking a group masks its
+  descendants. Click a label/value to copy; only empty fields offer Paste, Delete, or password
+  generation. Filled values and YAML structure are edited through the block's Edit button.
+  Quick-add controls append empty custom fields. Secrets remain plaintext in Markdown/source
+  and whole-block Copy; masking is not encryption. Existing standalone security blocks remain
+  supported with the same clipboard, recovery-code, and generation behavior.
+  New `*.note.md` sidecars receive exactly the three managed keys; saves refresh `updated`.
+  Ordinary `*.md` documents receive no generated properties; existing authored frontmatter
+  renders without automatic metadata insertion or cleanup.
 - A read-only context tree appears directly under note properties only when frontmatter exists. It
   is derived from actual workspace notes and shows project, note-bearing parents, current target,
   children, and nearby notes; it is not stored in the Markdown and cannot be edited. Project and
@@ -337,7 +351,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-The coordinated version `36.4.4` records sequence 36, four feature outcomes and four fixed-bug
+The coordinated version `37.1.4` records sequence 37, one feature outcome and four fixed-bug
 outcomes; it is not a publication marker by itself.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and

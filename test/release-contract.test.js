@@ -17,9 +17,21 @@ test("retired File Context sphere has no contribution, activation or build entry
     await assert.rejects(access(new URL(file, root)));
 });
 
-test("36.4.4 is a universal local editor with optional auth-only connection", () => {
-  assert.equal(packageJson.version, "36.4.4");
-  assert.equal(packageJson.aicEditorCore, "4.0.0");
+test("Properties and Security share one core widget with only host routing in the webview", async () => {
+  const main = await read("src/webview/main.js");
+  const shared = await read("vendor/aic-editor-core/security-block.js");
+  assert.match(main, /makePropertiesBlockExtension/u);
+  assert.match(main, /setPropertyRelationships/u);
+  assert.doesNotMatch(main, /makeFrontmatterExtension|handlers\/frontmatter/u);
+  assert.match(shared, /class SecurityBlockWidget extends WidgetType/u);
+  assert.match(shared, /serializePropertiesBody/u);
+  assert.match(shared, /Copy properties/u);
+  await assert.rejects(access(new URL("vendor/markdown/handlers/frontmatter.js", root)));
+});
+
+test("37.1.4 is a universal local editor with optional auth-only connection", () => {
+  assert.equal(packageJson.version, "37.1.4");
+  assert.equal(packageJson.aicEditorCore, "4.1.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
   assert.match(packageJson.description, /Standard Notes sign-in/u);
@@ -246,7 +258,7 @@ test("structured previews keep explicit icon actions and transient editors", asy
     read("vendor/aic-editor-core/code-fence-preview.js"),
     read("vendor/aic-editor-core/code-fence-extension.js"),
     read("vendor/markdown/handlers/table.js"),
-    read("vendor/markdown/handlers/frontmatter.js"),
+    read("vendor/aic-editor-core/security-block.js"),
     read("vendor/markdown/handlers/code-fence.js"),
     read("vendor/markdown/mermaid.js"),
     read("vendor/markdown/styles.js"),
@@ -271,7 +283,8 @@ test("structured previews keep explicit icon actions and transient editors", asy
   assert.match(table, /Copy table/u);
   assert.match(table, /Add row/u);
   assert.match(table, /Add column/u);
-  assert.match(frontmatter, /Add property/u);
+  assert.match(frontmatter, /makePropertiesBlockExtension/u);
+  assert.match(frontmatter, /Copy properties/u);
   assert.match(codeFence, /aic-editor-core\/code-fence-extension\.js/u);
   assert.doesNotMatch(codeFence, /class CodeFenceWidget/u);
   assert.match(mermaid, /icon: "copy"/u);

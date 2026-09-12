@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+## 37.1.4 — 2026-09-13
+
+Release sequence 37 · 1 feature outcome · 4 fixed-bug outcomes.
+
+### Feature
+
+1. Replace the separate Properties table with the shared Security-card renderer. Managed `file`, `created` and `updated` are copy-only; root and nested custom YAML fields support explicit `*` masking, empty-field clipboard actions and source-only editing of filled values. The read-only related-note tree follows metadata without entering Markdown. Ordinary `.md` receives no generated properties.
+
+### Fixes
+
+1. Keep nested, quoted and multiline YAML values, comments and source ownership intact during targeted Properties actions rather than rewriting unrelated content.
+2. Preserve exact numeric scalars and the original `created` scalar type through note metadata saves; copied values remain original even when dates are formatted for display.
+3. Preserve unchanged Security block DOM and live actions during Properties cursor/selection changes, while retiring stale detached callbacks.
+4. Redact starred Properties from unfinished or truncated note excerpts, including nested secrets. Raw Markdown, exports and copied values remain plaintext.
+
+Compatibility: Standard Notes AIC 28.1.4, shared core 4.1.0 and universal VSIX. No new runtime dependency, authentication or note synchronization change. The 36.4.4 recovery-code, security-title and save-boundary work remains available but is not counted as new in this release. Publication requires separate artifact verification.
+
 ## 36.4.4 — 2026-09-12
 
 Release sequence 36 · 4 feature outcomes · 4 fixed-bug outcomes.
