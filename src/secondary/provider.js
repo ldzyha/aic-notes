@@ -22,6 +22,7 @@ import { parentNoteCandidates } from "../notes/parent-context.js";
 import { DisposableScope } from "../lifecycle.js";
 import { documentSnapshot, createNoteDocument } from "../notes/operation.js";
 import { ClipboardHost } from "../clipboard.js";
+import { createNoteHeaderLabel } from "../notes/header-label.js";
 
 export const SECONDARY_VIEW_ID = "aicNotes.secondary";
 
@@ -64,6 +65,7 @@ export class SecondaryNotePane {
 
   constructor(context, ownership) {
     this.context = context;
+    this.headerLabel = createNoteHeaderLabel();
     this.scope = new DisposableScope();
     this.view = undefined;
     this.document = undefined;
@@ -819,7 +821,7 @@ export class SecondaryNotePane {
       hasSource: Boolean(this.sourceUri),
     });
     this.view.title = title;
-    this.view.description = "";
+    this.view.description = this.headerLabel(this.document?.getText() ?? "");
     await this.view.webview.postMessage({
       type: "paneState",
       title,

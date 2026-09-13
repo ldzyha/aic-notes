@@ -29,13 +29,12 @@ test("Properties and Security share one core widget with only host routing in th
   await assert.rejects(access(new URL("vendor/markdown/handlers/frontmatter.js", root)));
 });
 
-test("39.3.3 is a universal local editor with optional auth-only connection", () => {
-  assert.equal(packageJson.version, "39.3.3");
-  assert.equal(packageJson.aicEditorCore, "4.3.0");
+test("40.6.6 is a universal local editor without account connectivity", () => {
+  assert.equal(packageJson.version, "40.6.6");
+  assert.equal(packageJson.aicEditorCore, "5.0.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
-  assert.match(packageJson.description, /Standard Notes sign-in/u);
-  assert.match(packageJson.description, /synchronization is not enabled/u);
+  assert.match(packageJson.description, /no account connection or note synchronization/u);
   assert.doesNotMatch(packageJson.scripts.package, /--target|linux|win32/iu);
   assert.equal(packageJson.scripts["package:windows"], undefined);
   assert.match(packageJson.scripts["release:gate"], /release:checksum/u);
@@ -47,6 +46,15 @@ test("39.3.3 is a universal local editor with optional auth-only connection", ()
   assert.ok(commands.includes("aicNotes.linkSelectionToNote"));
   assert.ok(!commands.includes("aicNotes.syncCurrentNote"));
   assert.ok(!commands.includes("aicNotes.pullProjectNotes"));
+  for (const command of [
+    "aicNotes.standardNotesAccount",
+    "aicNotes.signInStandardNotes",
+    "aicNotes.signOutStandardNotes",
+    "aicNotes.checkStandardNotesConnection",
+  ]) assert.ok(!commands.includes(command));
+  assert.ok(!JSON.stringify(packageJson.contributes.menus).includes("standardNotesAccount"));
+  assert.ok(!Object.hasOwn(packageJson.devDependencies, "@noble/hashes"));
+  assert.ok(!Object.hasOwn(packageJson.devDependencies, "proper-lockfile"));
   assert.ok(
     !Object.keys(packageJson.contributes.configuration.properties).some((key) =>
       key.startsWith("aicNotes.standardNotes."),
@@ -168,6 +176,13 @@ test("upgrade removes only retired local integration metadata", async () => {
     /context\.globalState\.update\(RETIRED_SYNC_CLEANUP_KEY, true\)/u,
   );
   assert.doesNotMatch(extension, /fetch\(|https?:\/\/|openExternal/u);
+  assert.match(extension, /await removeRetiredAuthData\(context\)/u);
+  assert.doesNotMatch(extension, /registerStandardNotesAuth|StandardNotesAuthTransport/u);
+});
+
+test("active account runtime and its host-only smoke script are absent", async () => {
+  for (const relativePath of ["src/auth", "scripts/host-auth-smoke.cjs"])
+    await assert.rejects(access(new URL(relativePath, root)));
 });
 
 test("retired synchronization source, bridge, and binaries are absent", async () => {
@@ -417,7 +432,7 @@ test("universal release gate rejects platform and retired integration content", 
   assert.match(verifier, /TargetPlatform=/u);
   assert.match(verifier, /extension\/bin\//u);
   assert.match(verifier, /extension\/bridge\//u);
-  assert.match(verifier, /retired synchronization runtime remains/u);
+  assert.match(verifier, /retired account runtime remains/u);
   assert.match(checksum, /createHash\("sha256"\)/u);
   assert.doesNotMatch(ignore, /!bin\/|bridge\/\*\*/u);
 });

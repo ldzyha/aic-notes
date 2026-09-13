@@ -7,6 +7,10 @@ import {
   selectionStaysInSource,
 } from "../../vendor/aic-editor-core/structured-preview.js";
 import { providePreviewRanges } from "../../vendor/aic-editor-core/preview-ranges.js";
+import {
+  sourcePreviewExit,
+  sourcePreviewExitHandlers,
+} from "../../vendor/aic-editor-core/source-mode.js";
 import { detailsForDocument, toggleDetailsMarker } from "./details-model.js";
 
 const toggleVisual = StateEffect.define();
@@ -41,6 +45,8 @@ const sourceOverrides = StateField.define({
       if (next === value) next = new Set(next);
       next.add(effect.value);
     }
+    if (transaction.effects.some((effect) => effect.is(sourcePreviewExit)))
+      next = new Set();
     if (transaction.selection && next.size) {
       const blocks = detailsForDocument(transaction.state.doc);
       const selected = transaction.state.selection.ranges;
@@ -247,7 +253,10 @@ function previewStateChanged(transaction) {
     Boolean(transaction.selection) ||
     transaction.startState.readOnly !== transaction.state.readOnly ||
     transaction.effects.some(
-      (effect) => effect.is(toggleVisual) || effect.is(editSource),
+      (effect) =>
+        effect.is(toggleVisual) ||
+        effect.is(editSource) ||
+        effect.is(sourcePreviewExit),
     )
   );
 }
@@ -316,6 +325,14 @@ export function detailsExtension(host) {
   return [
     visualOverrides,
     sourceOverrides,
+    sourcePreviewExitHandlers.of((state) => {
+      const active = state.field(sourceOverrides);
+      return (
+        detailsForDocument(state.doc).find((block) =>
+          active.has(block.headerFrom),
+        ) ?? null
+      );
+    }),
     bodyDecorations,
     detailsDecorations(host),
   ];

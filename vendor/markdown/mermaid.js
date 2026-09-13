@@ -23,6 +23,7 @@ import {
   showIconFeedback,
 } from "../aic-editor-core/structured-preview.js";
 import { providePreviewRanges } from "../aic-editor-core/preview-ranges.js";
+import { sourcePreviewExitHandlers } from "../aic-editor-core/source-mode.js";
 import { createMermaidViewport } from "../aic-editor-core/mermaid-viewport.js";
 import {
   createDiagramEditButton,
@@ -327,7 +328,7 @@ export function makeMermaidExtension(host) {
       const inside =
         state.selection.ranges.some(
           (range) =>
-            range.empty && range.from >= fence.from && range.from <= fence.to,
+            range.empty && range.from >= fence.from && range.from < fence.to,
         ) ||
         selectionRevealsPreview(state.selection.ranges, fence.from, fence.to);
       if (inside) {
@@ -391,5 +392,17 @@ export function makeMermaidExtension(host) {
     },
   );
 
-  return [field, onScroll];
+  return [
+    sourcePreviewExitHandlers.of(
+      (state) =>
+        mermaidFences(state).find((fence) =>
+          state.selection.ranges.some(
+            (range) =>
+              range.empty && range.head >= fence.from && range.head < fence.to,
+          ),
+        ) ?? null,
+    ),
+    field,
+    onScroll,
+  ];
 }

@@ -14,6 +14,10 @@ import {
   updateTableCell,
 } from "../../aic-editor-core/structured-preview.js";
 import { providePreviewRanges } from "../../aic-editor-core/preview-ranges.js";
+import {
+  sourcePreviewExit,
+  sourcePreviewExitHandlers,
+} from "../../aic-editor-core/source-mode.js";
 
 const editSource = StateEffect.define({
   map: (value, mapping) => ({ ...value, from: mapping.mapPos(value.from) }),
@@ -334,6 +338,7 @@ export function makeTableExtension(host) {
         : null;
       for (const effect of transaction.effects) {
         if (effect.is(editSource)) next = effect.value;
+        if (effect.is(sourcePreviewExit)) next = null;
       }
       if (!next) return null;
       const node = tableNodes(transaction.state).find(
@@ -367,13 +372,20 @@ export function makeTableExtension(host) {
   };
   return [
     sourceOverrides,
+    sourcePreviewExitHandlers.of((state) => {
+      const source = state.field(sourceOverrides);
+      return source
+        ? (tableNodes(state).find((node) => node.from === source.from) ?? null)
+        : null;
+    }),
     StateField.define({
       create: build,
       update(value, transaction) {
         if (
           !transaction.docChanged &&
           !transaction.selection &&
-          transaction.startState.readOnly === transaction.state.readOnly
+          transaction.startState.readOnly === transaction.state.readOnly &&
+          !transaction.effects.some((effect) => effect.is(sourcePreviewExit))
         )
           return value;
         return build(transaction.state);

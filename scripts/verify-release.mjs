@@ -142,24 +142,28 @@ for (const retired of [
   "pullProjectNotes",
   "aicNotes.contextSphere",
   "aicNotes.toggleContextSphere",
+  "api.standardnotes.com",
+  "aicNotes.signInStandardNotes",
+  "aicNotes.signOutStandardNotes",
+  "aicNotes.checkStandardNotesConnection",
+  "Authentication only",
 ]) {
   if (packagedHost.includes(retired))
-    throw new Error(`retired synchronization runtime remains: ${retired}`);
+    throw new Error(`retired account runtime remains: ${retired}`);
 }
 
-for (const required of [
-  "api.standardnotes.com",
-  "aicNotes.snAuth.session.v1",
+if (!packagedHost.includes("aicNotes.snAuth.session.v1"))
+  throw new Error("retired session cleanup is missing");
+if (packagedEditor.includes("aicNotes.snAuth.session.v1"))
+  throw new Error("retired session cleanup leaked into the editor webview");
+for (const retired of [
+  "aicNotes.standardNotesAccount",
   "aicNotes.signInStandardNotes",
-  "Authentication only",
-  "secure_storage_unavailable",
+  "aicNotes.signOutStandardNotes",
+  "aicNotes.checkStandardNotesConnection",
 ]) {
-  if (!packagedHost.includes(required))
-    throw new Error(`packaged authentication is missing: ${required}`);
-  if (packagedEditor.includes(required))
-    throw new Error(
-      `authentication leaked into the editor webview: ${required}`,
-    );
+  if (JSON.stringify(packagedManifest.contributes).includes(retired))
+    throw new Error(`retired account command remains in the manifest: ${retired}`);
 }
 
 for (const command of [
@@ -167,10 +171,6 @@ for (const command of [
   "aicNotes.openProjectNote",
   "aicNotes.enableAgentWorkflow",
   "aicNotes.syncAgentInstructions",
-  "aicNotes.standardNotesAccount",
-  "aicNotes.signInStandardNotes",
-  "aicNotes.signOutStandardNotes",
-  "aicNotes.checkStandardNotesConnection",
 ]) {
   if (
     !packagedManifest.contributes.commands.some(

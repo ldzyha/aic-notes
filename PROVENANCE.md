@@ -101,52 +101,6 @@ Core 3.5.0 is paired with Standard Notes AIC 22.1.8. The canonical source commit
 distributed bytes are recorded in CORE_SNAPSHOT.json rather than a manually copied revision.
 This section does not change historical release provenance below.
 
-## Release 30.0.1 — authentication response compatibility
-
-This hotfix is based on release 29.1.0 commit `3364aade127a286cc82814873632f2841bb50f3c`.
-Only the host authentication transport, account diagnostic projection and account message
-formatter change at runtime. Shared editor core remains the exact 3.4.0 snapshot below;
-Standard Notes plugin 21.3.5 requires no update. Unfinished parent routing and sphere work
-is not part of this release.
-
-An isolated VS Code 1.137.0 host (Node 24.18.1 / Electron 42.10.0) reproduced the old
-leading-BOM and folded-cookie rejection against a loopback synthetic server. The patched
-transport passed both cases and a combined case with VS Code's Electron fetch enabled.
-No real account, credentials, notes or remote sync endpoints were used in those probes.
-Unit tests cover bounded parsing, cookie-pair validation, HTTP/challenge precedence,
-account-state propagation and allowlisted diagnostics with secret canaries.
-
-This is verification of specific compatibility fixes, not a claim that a user's observed
-login failure has been reproduced with their account. A user-entered native sign-in remains
-the acceptance check; if it fails, the UI reports a fixed stage/reason without response data.
-
-## Release 29.1.0 — host-only authentication
-
-Editor core remains the exact 3.4.0 snapshot below. No sphere module or sync runtime is enabled.
-`src/auth` owns host UI, bounded auth transport and SecretStorage lifecycle; the Standard Notes
-editor plugin does not duplicate this host adapter. Account sign-in never enters the editor bus.
-
-The protocol implementation was checked against primary upstream sources, not an unofficial SDK:
-
-- Standard Notes app commit `6fcb991e626b0388a2220fa0d94815bf6c0c9f8d`:
-  `packages/snjs/specification.md`, `lib/Services/Api/ApiService.ts`,
-  `lib/Services/Session/SessionManager.ts` (the latter paths under `packages/snjs`),
-  and `packages/snjs/mocha/004.test.js` for the production-cost root-key vector.
-- Standard Notes server commit `6a43c34eff09780cb556f8fea06bb97ddcb42002`:
-  auth `SessionService`, `GetSessionFromToken`, `CookieFactory`, `BaseAuthController`
-  and `BaseSessionController`. API 20200115 requests legacy bearer sessions; cookie-v2
-  selectors are accepted only with a validated access/refresh cookie pair.
-- The JavaScript Argon2id implementation is pinned to MIT-licensed `@noble/hashes` 2.4.0
-  in package-lock.json. Its complete license is in THIRD_PARTY_NOTICES.md.
-- Cooperative auth-operation exclusion uses `proper-lockfile` 4.1.2 with a 60-second stale
-  threshold and 10-second heartbeat, on VS Code extension global storage. It stores no keys
-  or tokens on disk. All auth mutations re-read SecretStorage under this lease; busy windows
-  fail explicitly. This does not implement cross-device editing locks.
-
-Network requests are limited to login parameters, login, session listing/check, refresh and logout.
-Tests mock these routes except the local official-vector KDF. A real account smoke test has not
-been substituted by these mocks. No credentials or user note contents are release fixtures.
-
 ## Release 28.4.5 — canonical shared core
 
 The canonical editor sources are `../standard-notes-aic/src/core`; all JavaScript,

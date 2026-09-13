@@ -145,7 +145,7 @@ try {
       () => document.body.dataset.saveState === "saved",
     );
 
-    await init("```aic-security\n##\nPassword*:\n```\n");
+    await init("```aic\n##\nPassword*:\n```\n");
     await page.getByRole("button", { name: "Add Email", exact: true }).click();
     await waitCount(5);
     await acknowledge((await requests())[4]);

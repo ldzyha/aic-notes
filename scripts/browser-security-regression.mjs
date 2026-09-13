@@ -22,7 +22,7 @@ const origin = "http://aic-security-webview.test";
 const errors = [];
 const passed = [];
 const source = [
-  "# Vault", "", "```aic-security", "## Main",
+  "# Vault", "", "```aic", "## Main",
   "Password*: example-secret", "Email: alice@example.com", "```", "", "Tail", "",
 ].join("\n");
 const emptySource = source
@@ -122,7 +122,8 @@ try {
     });
     const label = row.getByRole("button", { name: "Copy Password", exact: true });
     const value = row.getByRole("button", { name: "Copy Password value", exact: true });
-    const status = row.locator(".cm-aic-security-field-status");
+    const labelStatus = row.locator(":scope > .cm-aic-security-field-status").first();
+    const status = row.locator(":scope > .cm-aic-security-field-status").last();
     assert.equal(await value.textContent(), "••••••••", `${surface}: secret stays masked`);
     assert.doesNotMatch(await page.locator(".cm-aic-security").innerText(), /example-secret/u);
 
@@ -133,17 +134,17 @@ try {
 
     await label.click();
     const failedCopy = await nextRequest(page, "write");
-    assert.equal(failedCopy.text, "example-secret", `${surface}: label copies the exact value`);
+    assert.equal(failedCopy.text, "Password", `${surface}: label copies the label`);
     assert.doesNotMatch(await status.textContent(), /Copied/u, `${surface}: no optimistic success`);
     await ack(page, failedCopy, false);
-    await page.waitForFunction(() => document.querySelector(".cm-aic-security-row .cm-aic-security-field-status")?.textContent === "Copy failed");
+    await labelStatus.filter({ hasText: "Copy failed" }).waitFor();
     assert.doesNotMatch(await status.textContent(), /Copied/u);
 
     await value.click();
     const valueCopy = await nextRequest(page, "write", 1);
     assert.equal(valueCopy.text, "example-secret", `${surface}: value button copies exact value`);
     await ack(page, valueCopy, true);
-    await page.waitForFunction(() => document.querySelector(".cm-aic-security-row .cm-aic-security-field-status")?.textContent === "Copied");
+    await status.filter({ hasText: "Copied" }).waitFor();
     assert.equal(await status.textContent(), "Copied");
     assert.equal(await count(page, "commit"), 0, `${surface}: Copy never saves`);
     assert.equal(await count(page, "save"), 0, `${surface}: Copy never saves`);
@@ -253,7 +254,7 @@ try {
     await convert.click();
     await page.getByRole("button", { name: "Copy Password", exact: true }).waitFor();
     const imported = await sourceSnapshot(page, "authenticator.note.md");
-    assert.equal((imported.match(/```aic-security v3/gu) || []).length, 1);
+    assert.equal((imported.match(/```aic/gu) || []).length, 1);
     assert.equal((imported.match(/^---$/gmu) || []).length, 1);
     assert.equal(await page.locator(".cm-aic-security-section").count(), 2);
     assert.match(imported, /Password\*: DUMMY-IMPORT-PASSWORD/u);

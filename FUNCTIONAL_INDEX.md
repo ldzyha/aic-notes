@@ -1,11 +1,28 @@
 # Functional index
 
-This index records the coordinated AIC Notes 39.3.3 / Standard Notes AIC 30.3.3 /
-shared editor core 4.3.0 release target. Public commands, state boundaries, side effects and
+This index records the coordinated AIC Notes 40.6.6 / Standard Notes AIC 31.5.6 /
+shared editor core 5.0.0 release target. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
 
-## Shared-core changes in release 39.3.3
+## Shared-core changes in release 40.6.6
+
+New Security content uses one unversioned `aic` fence grammar with optional section
+labels. This breaking core change does not silently rewrite authored versioned Security
+fences. Compact cards show the last four fields and compact multi-part card fields;
+dragging fields can cross sections while preserving unrelated authored source. Properties
+brings managed metadata, related-note navigation and custom fields into the compact
+shared Security surface without making managed values editable. Labelled Add controls
+show capacity and explain disabled-limit reasons.
+
+Escape handling includes Mermaid fence boundaries; target feedback is transient and
+stale-safe; label/value Copy are distinct; filtering does not reveal PAN; label/drag
+styling stays usable on narrow layouts in dark and light themes; unchanged filtering
+and rendering avoid repeated work. The VS Code host removes Standard Notes sign-in and
+transport, leaving local-only editing. These are release-source contracts; tests and
+artifact publication are separate gates.
+
+## Prior shared-core changes in release 39.3.3
 
 New Security templates/conversions use v3 with `---` section boundaries and optional titles;
 unversioned/v2 notes retain their existing interpretation. Import packs accounts into one
@@ -32,20 +49,21 @@ production webview browser checks. Artifact publication is verified separately f
 
 ## Current release contracts
 
-- The three 39.3.3 feature outcomes are v3 `---` sections with optional headings;
-  lossless grouped Authenticator import with capacity spill; and visible Security limits
-  with disabled over-limit Add controls plus purpose-based grouping guidance. Three fixes
-  provide safe Security/Properties source-position diagnostics, close an EOF-terminated
-  previous fence before New block, and preserve exact source in whole-card moves for
-  versioned v2/v3 fences. Earlier group controls, source mode and pipe fields remain
-  available but are not counted again.
-- `aic-security v2` opts into `*` masked values, `#` TOTP seeds and `_` card parts;
+- The six 40.6.6 feature outcomes are one unversioned `aic` grammar with optional labels;
+  compact last-four/card-part display; cross-section field dragging; compact Properties
+  metadata/tree/custom fields; labelled Add controls with limit reasons; and removal of
+  Standard Notes auth/transport for local-only editing. Six fixes cover escape/Mermaid
+  boundaries, stale-safe transient target feedback, independent label/value Copy,
+  PAN-safe filtering, responsive theme-aware label/drag styling and reduced repeated
+  render/filter work. Prior v3/import/capacity work is not counted again.
+- The current unversioned `aic` grammar uses `*` masked values, `#` TOTP seeds and `_` card parts;
   PAN/date/CVV copy independently, the third slot stays masked, and Paste fills only empty
   parts. `# aic-fields: v2` must be the first body line of YAML frontmatter to activate
   the equivalent custom Properties syntax; the comment is hidden in preview. Managed
-  `file`/`created`/`updated` remain read-only. Unversioned content keeps literal pipes and
-  legacy marker-like names. Existing headers require explicit marker insertion and review
-  of literal pipes/labels, never blanket migration. Filled values change only in source.
+  `file`/`created`/`updated` remain read-only. Previously authored Security fences and
+  unmarked Properties headers are not silently migrated. Existing Properties headers
+  require explicit marker insertion and review of literal pipes/labels. Filled values
+  change only in source.
 - Security/Properties filtering searches names and visible values only; hidden values,
   recovery codes and generated codes are excluded. It is local UI state and disables
   reordering. Supported Security field/section/card and sibling Properties field/group
@@ -63,7 +81,7 @@ production webview browser checks. Artifact publication is verified separately f
 - Shared `security-password` provides bounded WebCrypto-only unbiased generation (default24,
   length8–128, every enabled group represented). Only empty recognized hidden password fields
   can generate; existing values/TOTP/API keys are excluded.
-- Field label/value tap copies only its value with per-field acknowledged feedback; Tab
+- Field label and value Copy are independent, with per-field acknowledged feedback; Tab
   navigates. Paste directly reads current text and is absent on all populated fields;
   no Replace, history picker or visible panel on success. Empty reads cannot erase.
   Source Edit is the sole manual value editor. Main/sidebar use an identity-bound native
@@ -71,8 +89,8 @@ production webview browser checks. Artifact publication is verified separately f
   request an immediate parent-managed save; Delete only removes empty fields.
   Both hosts offer inline masked paste-only capture only after clipboard access fails.
 
-- Shared `aic-security` blocks have one canonical model. `##` headings define
-  independent sections; `Label*: value` masks a field, `Label: value` keeps it
+- Shared `aic` blocks have one canonical unversioned model with optional section
+  labels; `Label*: value` masks a field, `Label: value` keeps it
   visible. Edit opens raw Markdown. Explicit Copy block and field actions,
   safe HTTP(S) Open, Add section, quick fields and New block work without an
   inline form. Mutating buttons save through the host manager. TOTP derives a current code from a key. Ordinary
@@ -98,17 +116,17 @@ production webview browser checks. Artifact publication is verified separately f
 - The retired File Context sphere has no view, command, setting, background indexer or
   shared runtime. Parent-note relationships and the Notes & Documents tree are independent.
 
-Standard Notes authentication is implemented but auth-only; no note synchronization exists.
+The VS Code extension is local-only and has no Standard Notes account connection.
 The contracts below describe this coordinated release target, not future sync behavior.
 
-## Shared editor core 4.3.0
+## Shared editor core 5.0.0
 
-These contracts target AIC Notes 39.3.3 and pair with Standard Notes AIC 30.3.3.
+These contracts target AIC Notes 40.6.6 and pair with Standard Notes AIC 31.5.6.
 The exact canonical commit and all shared hashes belong in CORE_SNAPSHOT.json after the
 canonical source is committed and the mirror snapshot is regenerated; a working-tree
 snapshot is not proof of committed release identity.
 Automated tests, production builds and Windows browser checks cover the shared editor;
-Linux desktop and live authenticated Standard Notes smoke checks are not implied.
+Linux desktop smoke checks are not implied.
 
 | Area / owner                                                | Implemented contract                                                                                                                                          | Explicit limitation                                                                                                   |
 | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
@@ -126,10 +144,8 @@ are implemented; completed cross-platform/live-client smoke testing is not impli
 
 ## Product boundary
 
-Authentication responses use bounded UTF-8 decoding and validated cookie pairs, including
-Electron-folded headers. Error messages expose only allowlisted stage/reason labels and HTTP
-status. Synthetic regressions cover BOM, cookies, challenges and secret-free account diagnostics;
-they are not a real-account sign-in result.
+No Standard Notes account connection is offered by the VS Code extension. The independent
+Standard Notes editor plugin owns its own host lifecycle; shared editor code does not connect accounts.
 
 The AIC Markdown editor shares heading/list formatting commands with the Standard Notes
 component: Ctrl/Cmd+Alt+1…6 (headings), Ctrl/Cmd+Alt+0 (paragraph),
@@ -141,18 +157,15 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 - The note editor persists only local workspace `*.md` and `*.note.md` files. The optional
   trusted agent workflow may write its thin workspace marker and run AIC-owned global rule sync;
   neither path is note synchronization.
-- Standard Notes authorization is optional and auth-only. The host has a fixed-origin auth
-  endpoint allowlist, native password/TOTP prompts, protocol-004 derivation and SecretStorage.
-  Connected requires authenticated verification and persisted secrets; Offline is distinct.
-  No import, note synchronization, tag graph, conflict resolver, remote note Trash action,
-  native helper or WebAssembly helper exists. Saved notes remain local.
+- There is no account sign-in, note synchronization, tag graph, conflict resolver, or remote
+  note Trash action in the VS Code host. Saved notes remain local.
 - The independent Standard Notes editor plugin may share byte-equivalent AIC Editor Core files;
   sharing presentation logic does not create an account or data connection.
 - One universal VSIX supports Windows, Linux, macOS, and code-server without platform binaries.
 - Opening a Markdown language buffer activates the extension so native-editor slash templates do
   not depend on first opening the Notes view or an AIC custom editor.
-- Upgrade cleanup removes only retired local session material and binding metadata. It never
-  deletes Markdown or contacts a remote service.
+- Upgrade cleanup removes only retired local session material, binding metadata, and the
+  exact former authentication SecretStorage key. It never deletes Markdown or contacts a remote service.
 
 ## State contracts
 
@@ -201,10 +214,6 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 
 | Command                                 | Contract                                                                                                                 |
 | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `aicNotes.standardNotesAccount`         | Visible account menu; never exposes tokens to editor webviews                                                            |
-| `aicNotes.signInStandardNotes`          | Trusted-workspace password/TOTP login; derived server password only; verified session must persist securely              |
-| `aicNotes.checkStandardNotesConnection` | Verify/refresh saved authentication only; preserve secrets offline; never access note items                              |
-| `aicNotes.signOutStandardNotes`         | Delete local secret and revoke only this session; warn if remote revocation is unconfirmed                               |
 | `aicNotes.noteForCurrentFile`           | Follow a lazy sidecar for the active local source, or open a note's source; without an active file, report what to focus |
 | `aicNotes.linkSelectionToNote`          | Copy selected source into one deduplicated linked-comment block and focus its comment caret                              |
 | `aicNotes.openInSecondary`              | Route an existing sidecar or placeholder to the Secondary pane                                                           |
@@ -271,8 +280,8 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 - Host navigation, parent selection, draft/save races and edit leases:
   `test/note-routing.test.js`, `test/note-transition-races.test.js`,
   `test/edit-ownership.test.js`.
-- Auth transport, SecretStorage, cross-window lock and trusted agent bootstrap:
-  `test/standard-notes-*.test.js`, `test/agent-bootstrap.test.js`.
+- Exact-key retired-auth cleanup and trusted agent bootstrap:
+  `test/retired-auth-cleanup.test.js`, `test/agent-bootstrap.test.js`.
 - Manifest, UI wiring, local-only boundary, upgrade cleanup, and packaging contract:
   `test/release-contract.test.js`.
 - Command registration/index completeness: `test/function-index.test.js`.
@@ -280,4 +289,4 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 - Universal archive/checksum/secret scan: `scripts/verify-release.mjs`.
 - Tag build and GitHub asset publication: `.github/workflows/release.yml`.
 - These are automated and bounded checks, not proof of exhaustive memory/context recall,
-  live Standard Notes account access, all remote providers, or all desktop platforms.
+  all remote providers or all desktop platforms.

@@ -20,7 +20,7 @@ import { NoteEditOwnership } from "./notes/edit-ownership.js";
 import { linkSelectionToNote } from "./notes/selection.js";
 import { deleteNotes } from "./notes/delete.js";
 import { AgentWorkflowBootstrap } from "./agents/bootstrap.js";
-import { registerStandardNotesAuth } from "./auth/provider.js";
+import { removeRetiredAuthData } from "./retired-auth-cleanup.js";
 
 const RETIRED_SYNC_STATE_PREFIX = "aicNotes.standardNotes.";
 const RETIRED_SYNC_SECRET = "aicNotes.standardNotes.vaultKey.v1";
@@ -52,7 +52,7 @@ async function removeRetiredSyncData(context) {
 
 export async function activate(context) {
   await removeRetiredSyncData(context);
-  const standardNotesAccount = registerStandardNotesAuth(context);
+  await removeRetiredAuthData(context);
   AgentWorkflowBootstrap.register(context);
   const tree = new NotesTree();
   const ownership = new NoteEditOwnership();
@@ -178,8 +178,6 @@ export async function activate(context) {
   );
 
   hintIfShadowed(context);
-  // Read-only integration/smoke status. Never export the account object or key material.
-  return { getStandardNotesStatus: () => ({ ...standardNotesAccount.state }) };
 }
 
 export function deactivate() {}

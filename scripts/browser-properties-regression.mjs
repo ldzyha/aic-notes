@@ -41,7 +41,7 @@ const source = [
   "",
   "# Body remains Markdown",
   "",
-  "```aic-security",
+  "```aic",
   "## Main",
   "Password*: SYNTHETIC-BLOCK-SECRET",
   "```",
@@ -194,7 +194,9 @@ try {
       0,
     );
   }
-  await card.getByRole("button", { name: "Copy created value" }).click();
+  assert.equal(await card.getByRole("button", { name: "Copy file" }).count(), 0);
+  assert.equal((await card.textContent()).includes("vault.note.md"), false);
+  await card.getByRole("button", { name: "Copy created" }).click();
   const copied = await request(sidebar, "write");
   assert.equal(copied.text, "2026-09-12T10:00:00Z");
   await post(sidebar, {
@@ -207,15 +209,28 @@ try {
   const sections = card.locator(".cm-aic-security-section");
   const tree = card.locator(".cm-aic-note-relations");
   assert.ok(await tree.count());
-  assert.equal(
+  assert.deepEqual(
     await card.evaluate((element) => {
-      const first = element.querySelector(".cm-aic-security-section");
+      const metadata = element.querySelector(".cm-aic-properties-metadata");
       const related = element.querySelector(".cm-aic-note-relations");
-      const next = first?.nextElementSibling;
-      return next === related;
+      const custom = element.querySelector(".cm-aic-security-body");
+      return {
+        metadataBeforeTree: Boolean(
+          metadata.compareDocumentPosition(related) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ),
+        treeBeforeCustom: Boolean(
+          related.compareDocumentPosition(custom) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ),
+        hasContextHeading: related.textContent.includes("Context"),
+      };
     }),
-    true,
-    "related tree follows managed metadata",
+    {
+      metadataBeforeTree: true,
+      treeBeforeCustom: true,
+      hasContextHeading: false,
+    },
   );
   assert.ok(await sections.count());
   await tree
@@ -239,6 +254,47 @@ try {
     0,
     "navigation must not edit or save",
   );
+  await post(sidebar, {
+    type: "relationships",
+    relationships: [
+      {
+        relation: "child",
+        label: "Updated child",
+        path: "Updated.note.md",
+        exists: true,
+      },
+    ],
+  });
+  await tree
+    .getByRole("button", { name: "Open child note Updated child" })
+    .waitFor();
+  assert.equal(
+    await tree
+      .getByRole("button", { name: "Open parent note Synthetic parent" })
+      .count(),
+    0,
+  );
+  await tree
+    .getByRole("button", { name: "Open child note Updated child" })
+    .click();
+  await sidebar.waitForFunction(() =>
+    window.messages.filter(
+      (message) => message.type === "bus" && message.topic === "note.open",
+    ).length === 2,
+  );
+  assert.deepEqual(
+    await sidebar.evaluate(
+      () =>
+        window.messages
+          .filter(
+            (message) =>
+              message.type === "bus" && message.topic === "note.open",
+          )
+          .at(-1).payload,
+    ),
+    { path: "Updated.note.md" },
+  );
+  assert.equal(await count(sidebar, "commit"), 0);
 
   await card.getByRole("button", { name: "Paste empty" }).click();
   const read = await request(sidebar, "read");
@@ -257,7 +313,7 @@ try {
   assert.ok(changed.includes("# Authored comment"));
   assert.ok(
     changed.endsWith(
-      "# Body remains Markdown\n\n```aic-security\n## Main\nPassword*: SYNTHETIC-BLOCK-SECRET\n```",
+      "# Body remains Markdown\n\n```aic\n## Main\nPassword*: SYNTHETIC-BLOCK-SECRET\n```",
     ),
   );
   assert.doesNotMatch(
@@ -296,7 +352,8 @@ try {
     const properties = page.locator(".cm-aic-properties");
     const filter = properties.getByRole("searchbox", { name: "Filter fields and groups" });
     await filter.fill("SYNTHETIC-ROOT-SECRET");
-    assert.equal(await properties.locator('.cm-aic-security-section:not([hidden])').count(), 1, "managed metadata remains visible but secret is not searched");
+    assert.equal(await properties.locator('.cm-aic-security-section:not([hidden])').count(), 0, "secret is not searched");
+    assert.equal(await properties.locator(".cm-aic-properties-metadata").isVisible(), true, "managed metadata remains visible outside custom filtering");
     await filter.fill("Email");
     assert.equal(await properties.getByRole("button", { name: "Copy Email value", exact: true }).isVisible(), true);
     assert.equal(await snapshot(page, "grouped.note.md"), text);

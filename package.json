@@ -1,9 +1,9 @@
 {
   "name": "aic-notes",
   "displayName": "AIC Notes",
-  "description": "Local AIC Markdown documents and linked notes, with optional Standard Notes sign-in. Note synchronization is not enabled.",
-  "version": "39.3.3",
-  "aicEditorCore": "4.3.0",
+  "description": "Local AIC Markdown documents and linked notes, with no account connection or note synchronization.",
+  "version": "40.6.6",
+  "aicEditorCore": "5.0.0",
   "publisher": "ldzyha",
   "icon": "media/icon.png",
   "license": "MIT",
@@ -96,27 +96,6 @@
       ]
     },
     "commands": [
-      {
-        "command": "aicNotes.standardNotesAccount",
-        "title": "Standard Notes Account",
-        "category": "AIC Notes",
-        "icon": "$(account)"
-      },
-      {
-        "command": "aicNotes.signInStandardNotes",
-        "title": "Sign In to Standard Notes",
-        "category": "AIC Notes"
-      },
-      {
-        "command": "aicNotes.signOutStandardNotes",
-        "title": "Sign Out of Standard Notes",
-        "category": "AIC Notes"
-      },
-      {
-        "command": "aicNotes.checkStandardNotesConnection",
-        "title": "Check Standard Notes Connection",
-        "category": "AIC Notes"
-      },
       {
         "command": "aicNotes.noteForCurrentFile",
         "title": "Open Linked Note",
@@ -246,11 +225,6 @@
         }
       ],
       "view/title": [
-        {
-          "command": "aicNotes.standardNotesAccount",
-          "when": "view == aicNotes.tree || view == aicNotes.secondary",
-          "group": "navigation@9"
-        },
         {
           "command": "aicNotes.openProjectNote",
           "when": "view == aicNotes.tree && workspaceFolderCount > 0",
@@ -388,13 +362,11 @@
     "@lezer/highlight": "^1.2.3",
     "@lezer/javascript": "1.5.4",
     "@lezer/markdown": "^1.6.4",
-    "@noble/hashes": "2.4.0",
     "@types/vscode": "^1.106.0",
     "@vscode/vsce": "^3.3.0",
     "adm-zip": "0.5.16",
     "esbuild": "^0.28.0",
     "mermaid": "11.16.1",
-    "proper-lockfile": "4.1.2",
     "yaml": "2.9.0"
   },
   "dependencies": {

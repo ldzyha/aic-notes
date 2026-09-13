@@ -2,19 +2,19 @@
 
 AIC Notes is a local Markdown editor for VS Code/Code. It edits every `*.md` document with the AIC
 preview-first surface, including `*.note.md`, and shows linked notes in the Secondary Side Bar.
-Optional Standard Notes sign-in is available. There is no note synchronization, import, polling,
-upload, remote deletion or remote conflict state.
+The extension is fully local: no Standard Notes sign-in, account requests, note synchronization,
+polling, upload, remote deletion or remote conflict state. Copy blocks manually when needed.
 
 ## Shared Properties, group controls and source mode
 
 The main editor and note sidebar consume the same Security/Properties component as Standard Notes.
 Group filters search names and visible values, never hidden secrets or generated codes. Managed
 Properties and related-note navigation stay visible and fixed. A **+** disclosure replaces repeated
-add buttons; `# Group title` names a Security card independently of its `##` sections.
+add buttons; `# Group title` names a Security card independently of its `---` sections.
 
-Drag handles reorder fields inside their own section, supported sibling Properties groups,
+Drag handles move Security fields within or between sections, supported sibling Properties groups,
 Security sections and standalone Security cards. Alt+Up/Down on a handle also reorders.
-Filtering disables list reordering; unsupported YAML layouts and legacy Security YAML stay in
+Filtering disables list reordering; unsupported Properties YAML layouts stay in
 source editing. Properties moves preserve YAML spelling, types and comments and never move managed
 metadata. Reorder actions use the existing host save/undo contract.
 
@@ -23,15 +23,17 @@ from opening the native editor. Source, Undo, dirty state and save rules do not 
 is temporary for the current note: a different note opens in preview. Source mode explicitly
 shows the raw Markdown, including starred values; it does not change masking or encrypt the file.
 
-The versioned pipe format is opt-in through an `aic-security v2` fence:
+Security uses one unversioned `aic` fence:
 `Name*: value | description | additional secret`, `Name#: seed | description`, or
 `Name_: number | MM/YY | CVV`. Every component copies independently; the third is always masked.
 Only empty components accept Paste. Literal `|` is escaped as `\|` and `\` as `\\`.
 `*` marks a masked value, `#` a TOTP seed, and `_` a card; labels alone do not select a kind.
 TOTP codes derive only from `#` fields. Card number (PAN), date and CVV copy separately.
-New Security templates and converted Authenticator records use v3, adding standalone `---`
-section separators and optional `##` section titles to v2 pipe fields. Existing unversioned
-blocks retain literal pipes and `#`/`_` in labels; they are not silently migrated.
+Use standalone `---` section separators and optional `##` section titles. Field labels are
+optional too (`*: secret`, `#: seed`, `_: number | MM/YY | CVV`). Historical Security fences
+show a repair diagnostic instead of exposing their contents; notes are not rewritten automatically.
+Card previews show only the last four number digits, date and masked CVV in one compact row.
+Escape exits source editing to preview without changing or saving the document.
 
 New Properties frontmatter uses `# aic-fields: v2` as the first body line after the opening
 `---`. This YAML comment is hidden in preview. Custom scalar keys then support the same `*`,
@@ -46,7 +48,7 @@ marker-like keys. No blanket automatic migration is performed.
 
 Open an original Authenticator JSON array in AIC Markdown, or select the complete array
 inside a document. **Convert and save security blocks** appears for recognized records with
-`service`, `account` and `secret` strings. The shared converter creates one `aic-security`
+`service`, `account` and `secret` strings. The shared converter creates one `aic`
 block with independent sections: Service/Account/Notes are visible; TOTP, Password and extra string fields
 are hidden. Safe service URLs also gain a separate Open-capable URL field.
 Standalone `---` separates sections; headings are optional. Overflow moves to further
@@ -65,8 +67,9 @@ trimmed or repaired; use valid original JSON rather than Markdown-escaped creden
 
 ### Copy, Paste and generation
 
-Tap/click a security field label or value to copy **only its value**; “Copied” appears
-beside it after success. Tab navigates; Enter/Space activates. The field icon is **Paste**,
+Tap/click a security field label to copy the label itself (for example a username), or its
+value to copy the stored value. “Copied” briefly overlays the pressed target after success.
+Tab navigates; Enter/Space activates. The field icon is **Paste**,
 present only for empty fields, alongside Delete empty field. Filled fields have neither button.
 There is no Replace action.
 Whole-block Copy remains in the header; filled fields can be copied, but changing their
@@ -106,22 +109,21 @@ without a duplicate heading row. Use `## Account name` for a custom name or bare
 for the default Security header.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-editor-core 4.3.0 but is a separate product. The coordinated versions are AIC Notes
-39.3.3 and AIC for Standard Notes 30.3.3. This page describes the release contract;
-published artifacts are verified separately by the release workflow. Signing in does not move notes
-between the two applications.
+editor-core 5.0.0 but is a separate product. The coordinated versions are AIC Notes
+40.6.6 and AIC for Standard Notes 31.5.6. This page describes the release contract;
+published artifacts are verified separately by the release workflow. Transfer content manually
+between the two applications; VS Code has no Standard Notes account integration.
 
-## Coordinated release — 39.3.3
+## Coordinated release — 40.6.6
 
-The three feature outcomes are v3 `---` sections with optional headings; lossless grouped
-Authenticator conversion with capacity spill into additional blocks; and visible Security
-capacity with over-limit Add controls disabled and purpose-based grouping guidance. Three
-fixes provide precise, safe Security/Properties diagnostics with source navigation; close
-an EOF-terminated previous fence before New block; and preserve exact source in whole-card
-reordering for versioned v2/v3 fences. Existing v1/v2 grammar, authentication and note
-synchronization do not change.
+Six feature outcomes are the single `aic` grammar with optional labels, compact masked
+cards, cross-section field moves, Properties metadata/tree separation, labelled Add
+controls with limit explanations, and a fully local extension without account integration.
+Six fixes cover Escape exits, transient ordered copy feedback, independent label/value copying,
+safe card filtering, responsive theme styling, and redundant rendering/filter work.
+Historical Security formats require manual source repair; no notes are automatically rewritten.
 
-The shared `/security` template inserts the same `aic-security v3` Markdown block
+The shared `/security` template inserts the same `aic` Markdown block
 as the Standard Notes plugin. A standalone `---` starts another section;
 `## Main` optionally titles one. `Label*: value`
 masks a field in preview, and `Label: value` keeps it visible. Edit opens raw
@@ -146,45 +148,11 @@ scopes retire subscriptions and pending requests when a surface closes.
 The File Context sphere, its toggle/setting and its background graph analysis have been
 removed. Linked Note, the Notes & Documents tree and parent-note relationships remain.
 
-## Standard Notes sign-in (authentication only)
-
-Authentication accepts leading-BOM JSON and validated cookies, including Electron-folded
-headers. Rate limits and verification challenges retain actionable fixed stage/reason codes
-without exposing credentials or raw server data. No note items, tags or sync endpoints are used.
-
-After installing the release artifact, save drafts and run **Developer: Reload Window**. Open an
-AIC Notes view, a Markdown file, or the command below to activate the extension.
-
-1. Click **SN: Sign in** in the status bar, the account icon on the Notes panel, or run
-   **AIC Notes: Sign In to Standard Notes** from the Command Palette.
-2. In a trusted workspace, enter your email and password in native VS Code prompts, then a
-   six-digit authenticator code if requested. Never paste a password into a note or settings.
-3. **SN: Connected** appears only after the session passes an authenticated server check and
-   is written to VS Code SecretStorage. The account menu offers **Check connection** and **Sign out**.
-4. On restart, the saved session is checked again. Offline is distinct from Connected; an absent
-   account is quiet. Sign-out removes the local secret and attempts to revoke that session only.
-   If server revocation cannot be confirmed, the action explicitly warns you.
-
-The host supports `https://api.standardnotes.com`, protocol 004, password and TOTP sign-in.
-Security-key and human-verification challenges fail with an explicit unsupported message;
-self-hosted servers and older encryption protocols are not supported in this release.
-Working SecretStorage is required; there is no plaintext, file or settings fallback.
-The password is derived locally with Argon2id; only its derived server-password half is submitted.
-Tokens and the local master key stay in SecretStorage, never in editor webviews or note files.
-VS Code windows sharing extension storage observe secret changes. Auth mutations take a
-JavaScript-only inter-window lease; a busy window reports the conflict without deleting or
-overwriting the session. Its empty heartbeat directory in extension storage contains no secrets.
-This is not a distributed editing lock or note-sync system.
-
-Tests include the official production-cost key-derivation vector and mocked login, MFA, refresh,
-storage, cancellation and logout paths. They do not replace a real-account sign-in and reload
-smoke test; no live authenticated Standard Notes result is claimed here.
-
-## Editor features — shared editor core 4.3.0
+## Editor features — shared editor core 5.0.0
 
 This release target pairs with AIC for Standard Notes 30.3.3. Both products use the same
 byte-verified core. Automated tests, production builds and Windows browser checks cover the
-shared controls; Linux desktop and live authenticated Standard Notes smoke checks are not implied.
+shared controls; Linux desktop smoke checks are not implied.
 
 - `/page`, `/section`, `/context` and `/implementation` follow Core's question → answer → detail
   structure, with dependency-ordered steps and verification where needed. There are no compulsory
@@ -249,28 +217,28 @@ this section does not assert that all clients or operating systems have complete
 
 ## Install
 
-After publication, download `aic-notes-39.3.3.vsix` and its
-`aic-notes-39.3.3.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+After publication, download `aic-notes-40.6.6.vsix` and its
+`aic-notes-40.6.6.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-39.3.3.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-39.3.3.vsix.sha256
-code --install-extension .\aic-notes-39.3.3.vsix --force
+(Get-FileHash .\aic-notes-40.6.6.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-40.6.6.vsix.sha256
+code --install-extension .\aic-notes-40.6.6.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-39.3.3.vsix.sha256
-code --install-extension ./aic-notes-39.3.3.vsix --force
-# or: code-server --install-extension ./aic-notes-39.3.3.vsix --force
+sha256sum -c aic-notes-40.6.6.vsix.sha256
+code --install-extension ./aic-notes-40.6.6.vsix --force
+# or: code-server --install-extension ./aic-notes-40.6.6.vsix --force
 ```
 
-Reload the VS Code window after installation. Editing and Standard Notes sign-in require no
+Reload the VS Code window after installation. Local editing requires no
 additional executable; the optional agent workflow uses AIC only when explicitly enabled.
 
 ## Local note model
@@ -304,7 +272,8 @@ modify another application.
 
 When upgrading from a synchronization-capable release, AIC Notes removes only its retired local
 session key, encrypted session directory, and workspace bindings. Existing `*.md` and `*.note.md`
-files are preserved unchanged. No remote request is made during cleanup.
+files are preserved unchanged. A separate exact-key cleanup removes the former VS Code
+Standard Notes sign-in session from SecretStorage. Neither cleanup makes a remote request.
 
 ## Editor interactions
 
@@ -331,10 +300,11 @@ and in read-only documents.
 - Tables use content-sized columns, word-level wrapping, a dedicated horizontal scroller, Copy,
   row/column insertion, and drag reordering. A transient popover textarea appears only for the
   selected cell.
-- Frontmatter uses the shared Security-card renderer: `file`, `created`, and `updated` are
-  copy-only metadata; custom root and nested fields appear below the dynamic context tree.
+- Frontmatter uses the shared Security-card renderer: read-only creation and update dates
+  appear above the dependency tree, without repeating the filename. Custom root and nested
+  fields appear in the card below the tree.
   A key ending in `*` (for example `Password*`) masks its value; marking a group masks its
-  descendants. Click a label/value to copy; only empty fields offer Paste, Delete, or password
+  descendants. Click a label to copy the label, or a value to copy the value; only empty fields offer Paste, Delete, or password
   generation. Filled values and YAML structure are edited through the block's Edit button.
   Quick-add controls append empty custom fields. Secrets remain plaintext in Markdown/source
   and whole-block Copy; masking is not encryption. Existing standalone security blocks remain
@@ -342,7 +312,7 @@ and in read-only documents.
   New `*.note.md` sidecars receive exactly the three managed keys; saves refresh `updated`.
   Ordinary `*.md` documents receive no generated properties; existing authored frontmatter
   renders without automatic metadata insertion or cleanup.
-- A read-only context tree appears directly under note properties only when frontmatter exists. It
+- A read-only dependency tree appears before custom note properties when frontmatter exists. It
   is derived from actual workspace notes and shows project, note-bearing parents, current target,
   children, and nearby notes; it is not stored in the Markdown and cannot be edited. Project and
   current-target placeholders remain navigable; absent ancestor folders are omitted.
@@ -394,7 +364,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-The coordinated version `39.3.3` records sequence 39, three feature outcomes and three fixed-bug
+The coordinated version `40.6.6` records sequence 40, six feature outcomes and six fixed-bug
 outcomes; it is not a publication marker by itself.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and
