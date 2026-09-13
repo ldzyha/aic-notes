@@ -55,6 +55,7 @@ import {
 } from "../../vendor/aic-editor-core/security-block.js";
 import { makeSecurityImportExtension } from "../../vendor/aic-editor-core/security-import-extension.js";
 import { isSaveAction, wireSaveBoundary } from "../../vendor/aic-editor-core/save-boundary.js";
+import { createSourceModeController } from "../../vendor/aic-editor-core/source-mode.js";
 import { PrimarySave } from "./primary-save.js";
 import {
   SLASH_SNIPPET_PLACEHOLDER,
@@ -199,6 +200,7 @@ for (const css of [
 
 let view = null;
 const accessCompartment = new Compartment();
+const sourceMode = createSourceModeController();
 function accessExtension() {
   return [
     EditorState.readOnly.of(docState.readOnly),
@@ -261,14 +263,20 @@ function wirePaneControls() {
   save.hidden = true;
   save.addEventListener("click", () => commitDraft("explicit"));
   footer.prepend(save);
-  document
-    .getElementById("document-source")
-    ?.addEventListener("click", () => {
+  footer.prepend(sourceMode.createButton(document, () => view, "aic-pane-icon"));
+  const nativeSource = document.getElementById("document-source");
+  if (nativeSource) {
+    nativeSource.dataset.aicIcon = "open";
+    nativeSource.setAttribute("aria-label", "Open original file");
+    nativeSource.title = "Open original file";
+    nativeSource.addEventListener("click", () => {
       const path = docState.relativePath;
       void saveCurrentDraft().then((saved) => {
-        if (saved && path === docState.relativePath) api.postMessage({ type: "source.open" });
+        if (saved && path === docState.relativePath)
+          api.postMessage({ type: "source.open" });
       });
     });
+  }
   if (!secondarySurface) return;
   document
     .getElementById("pane-pin")
@@ -376,38 +384,40 @@ function makeEditor(text) {
         // colors nested fenced-code tokens; markdown structure styling is
         // owned by the handler classes (theme.css bumps their specificity)
         syntaxHighlighting(darkHighlight, { fallback: true }),
-        decorationPlugin(HANDLERS),
-        makeLinkActionsExtension(host),
-        makeTableExtension(host),
-        makePropertiesBlockExtension({
-          document,
-          initialRelationships: () => docState.relationships,
-          onRelationshipOpen: (path) => host.bus.publish("note.open", { path }),
-          onReadClipboard: () => clipboard.readText(),
-          onCopy: (source) => clipboard.writeText(source),
-          onOpen: (url) => host.bus.publish("link.external", { url }),
-        }),
-        ...makeCodeFenceExtension({
-          document,
-          onCopy: (source, language) => {
-            host.bus.publish("clipboard.write", {
-              text: source,
-              label: `${language || "code"} block`,
-            });
-            return true;
-          },
-        }),
-        makeSecurityBlockExtension({
-          document,
-          onReadClipboard: () => clipboard.readText(),
-          onCopy: (source) => clipboard.writeText(source),
-          onOpen: (url) => {
-            host.bus.publish("link.external", { url });
-          },
-        }),
-        makeSecurityImportExtension({ onSave: saveCurrentDraft }),
-        makeMermaidExtension(host),
-        ...detailsExtension(host),
+        sourceMode.extension([
+          decorationPlugin(HANDLERS),
+          makeLinkActionsExtension(host),
+          makeTableExtension(host),
+          makePropertiesBlockExtension({
+            document,
+            initialRelationships: () => docState.relationships,
+            onRelationshipOpen: (path) => host.bus.publish("note.open", { path }),
+            onReadClipboard: () => clipboard.readText(),
+            onCopy: (source) => clipboard.writeText(source),
+            onOpen: (url) => host.bus.publish("link.external", { url }),
+          }),
+          ...makeCodeFenceExtension({
+            document,
+            onCopy: (source, language) => {
+              host.bus.publish("clipboard.write", {
+                text: source,
+                label: `${language || "code"} block`,
+              });
+              return true;
+            },
+          }),
+          makeSecurityBlockExtension({
+            document,
+            onReadClipboard: () => clipboard.readText(),
+            onCopy: (source) => clipboard.writeText(source),
+            onOpen: (url) => {
+              host.bus.publish("link.external", { url });
+            },
+          }),
+          makeSecurityImportExtension({ onSave: saveCurrentDraft }),
+          makeMermaidExtension(host),
+          ...detailsExtension(host),
+        ]),
         drawSelection(),
         ...(secondarySurface ? [history()] : []),
         keymap.of([
@@ -594,6 +604,7 @@ window.addEventListener("message", (event) => {
     case "init": {
       finishSaveRequests(false);
       clipboard.cancel();
+      if (docState.relativePath !== msg.relativePath) sourceMode.reset();
       docState.relativePath = msg.relativePath;
       docState.hasSurface = true;
       docState.editingConflict = false;

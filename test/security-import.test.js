@@ -12,10 +12,10 @@ test("vendored Authenticator conversion preserves independent masked records", (
   const result = convertAuthenticatorJson(JSON.stringify(records));
   assert.equal(result.ok, true);
   assert.equal(result.count, 2);
-  const blocks = result.markdown.split("\n\n").map(block => parseSecurityBlock(block.slice("```aic-security\n".length, -3)));
+  const blocks = result.markdown.split("\n\n").map(block => parseSecurityBlock(block.slice("```aic-security v2\n".length, -3), { fieldSyntax: "pipes" }));
   assert.ok(blocks.every(block => block.ok));
   assert.deepEqual(blocks.map(block => block.model.sections[0].fields.find(field => field.label === "TOTP")),
-    records.map(record => ({label: "TOTP", value: record.secret, hide: true})));
+    records.map(record => ({label: "TOTP", value: record.secret, hide: true, kind: "totp"})));
   assert.deepEqual(convertAuthenticatorJson(JSON.stringify([records[0], {...records[1], secret: false}])),
     {ok: false, code: "unsupported_authenticator"});
 });

@@ -5,6 +5,40 @@ preview-first surface, including `*.note.md`, and shows linked notes in the Seco
 Optional Standard Notes sign-in is available. There is no note synchronization, import, polling,
 upload, remote deletion or remote conflict state.
 
+## Shared Properties, group controls and source mode
+
+The main editor and note sidebar consume the same Security/Properties component as Standard Notes.
+Group filters search names and visible values, never hidden secrets or generated codes. Managed
+Properties and related-note navigation stay visible and fixed. A **+** disclosure replaces repeated
+add buttons; `# Group title` names a Security card independently of its `##` sections.
+
+Drag handles reorder fields inside their own section, supported sibling Properties groups,
+Security sections and standalone Security cards. Alt+Up/Down on a handle also reorders.
+Filtering disables list reordering; unsupported YAML layouts and legacy Security YAML stay in
+source editing. Properties moves preserve YAML spelling, types and comments and never move managed
+metadata. Reorder actions use the existing host save/undo contract.
+
+The **Show Markdown source / Show preview** icon toggles all AIC previews in-place, separately
+from opening the native editor. Source, Undo, dirty state and save rules do not change. The mode
+is temporary for the current note: a different note opens in preview. Source mode explicitly
+shows the raw Markdown, including starred values; it does not change masking or encrypt the file.
+
+The versioned pipe format is opt-in through an `aic-security v2` fence:
+`Name*: value | description | additional secret`, `Name#: seed | description`, or
+`Name_: number | MM/YY | CVV`. Every component copies independently; the third is always masked.
+Only empty components accept Paste. Literal `|` is escaped as `\|` and `\` as `\\`.
+`*` marks a masked value, `#` a TOTP seed, and `_` a card; labels alone do not select a kind.
+TOTP codes derive only from `#` fields. Card number (PAN), date and CVV copy separately.
+New Security templates and newly converted Authenticator records use v2. Existing unversioned
+blocks retain literal pipes and `#`/`_` in labels; they are not silently migrated.
+
+New Properties frontmatter uses `# aic-fields: v2` as the first body line after the opening
+`---`. This YAML comment is hidden in preview. Custom scalar keys then support the same `*`,
+`#` and `_` kinds, independent part Copy and empty-part Paste. Managed `file`, `created` and
+`updated` remain read-only. Existing unmarked Properties retain their legacy meaning: activate
+v2 only by deliberately inserting the marker after reviewing/escaping literal pipes and
+marker-like keys. No blanket automatic migration is performed.
+
 ## Security field actions
 
 ### Authenticator JSON conversion
@@ -60,26 +94,29 @@ ignored, exact spaces and duplicate codes retained. Codes remain masked and copy
 The reversible **Used** checkbox does not delete a code; copying is not proof that a service
 accepted it. Whole-block Copy preserves codes and their used flags in another document.
 
-The first section title replaces the card name, without a duplicate heading row. Use
-`## Account name` for a custom name or bare `##` for the default Security header.
+Without an independent `#` card title, the first section title replaces the card name,
+without a duplicate heading row. Use `## Account name` for a custom name or bare `##`
+for the default Security header.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-editor-core 4.1.0 but is a separate product. The coordinated versions are AIC Notes
-37.1.4 and AIC for Standard Notes 28.1.4. This page describes the release contract;
+editor-core 4.2.0 but is a separate product. The coordinated versions are AIC Notes
+38.4.3 and AIC for Standard Notes 29.4.3. This page describes the release contract;
 published artifacts are verified separately by the release workflow. Signing in does not move notes
 between the two applications.
 
-## Coordinated release — 37.1.4
+## Coordinated release — 38.4.3
 
-The new release outcome is a shared Security-style Properties preview over authored YAML
-frontmatter. Managed metadata is copy-only; nested custom fields can be masked and filled
-through the existing clipboard/save boundary, while populated values are edited in source.
-Targeted YAML actions preserve nested, quoted and multiline ownership, exact numeric and
-creation-value types. Unchanged Security cards retain their live DOM, and starred Properties
-are excluded from unfinished note excerpts. Recovery codes, optional security titles and
-the save-boundary behavior below shipped in 36.4.4; they remain available, not newly added.
+The four feature outcomes are compact searchable Security/Properties groups with menus and
+independent `#` card titles; safe field/group/whole-card drag and keyboard reordering;
+a temporary whole-editor Markdown source toggle without entering the native editor; and
+opt-in v2 pipe fields for Security and Properties, including separately copyable card parts
+and newly generated v2 content. Three fixes retire stale code-preview callbacks after source
+or note changes, retain Mermaid visual drafts and focus across source mode while blocking
+stale Apply, and make coarse mobile menus and part layouts readable without overflow.
+Earlier Properties, recovery-code and save-boundary work remains available but is not
+recounted as new in this release.
 
-The shared `/security` template inserts the same `aic-security` Markdown block
+The shared `/security` template inserts the same `aic-security v2` Markdown block
 as the Standard Notes plugin. `## Main` starts a section, `Label*: value`
 masks a field in preview, and `Label: value` keeps it visible. Edit opens raw
 Markdown; there is no inline manual value editor. Add section, quick field actions and New
@@ -137,9 +174,9 @@ Tests include the official production-cost key-derivation vector and mocked logi
 storage, cancellation and logout paths. They do not replace a real-account sign-in and reload
 smoke test; no live authenticated Standard Notes result is claimed here.
 
-## Editor features — shared editor core 4.1.0
+## Editor features — shared editor core 4.2.0
 
-This release target pairs with AIC for Standard Notes 28.1.4. Both products use the same
+This release target pairs with AIC for Standard Notes 29.4.3. Both products use the same
 byte-verified core. Automated tests, production builds and Windows browser checks cover the
 shared controls; Linux desktop and live authenticated Standard Notes smoke checks are not implied.
 
@@ -206,25 +243,25 @@ this section does not assert that all clients or operating systems have complete
 
 ## Install
 
-Download `aic-notes-37.1.4.vsix` and its
-`aic-notes-37.1.4.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+After publication, download `aic-notes-38.4.3.vsix` and its
+`aic-notes-38.4.3.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-37.1.4.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-37.1.4.vsix.sha256
-code --install-extension .\aic-notes-37.1.4.vsix --force
+(Get-FileHash .\aic-notes-38.4.3.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-38.4.3.vsix.sha256
+code --install-extension .\aic-notes-38.4.3.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-37.1.4.vsix.sha256
-code --install-extension ./aic-notes-37.1.4.vsix --force
-# or: code-server --install-extension ./aic-notes-37.1.4.vsix --force
+sha256sum -c aic-notes-38.4.3.vsix.sha256
+code --install-extension ./aic-notes-38.4.3.vsix --force
+# or: code-server --install-extension ./aic-notes-38.4.3.vsix --force
 ```
 
 Reload the VS Code window after installation. Editing and Standard Notes sign-in require no
@@ -351,7 +388,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-The coordinated version `37.1.4` records sequence 37, one feature outcome and four fixed-bug
+The coordinated version `38.4.3` records sequence 38, four feature outcomes and three fixed-bug
 outcomes; it is not a publication marker by itself.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and

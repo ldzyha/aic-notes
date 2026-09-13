@@ -1,7 +1,7 @@
 # Functional index
 
-This index records the coordinated AIC Notes 37.1.4 / Standard Notes AIC 28.1.4 /
-shared editor core 4.1.0 release target. Public commands, state boundaries, side effects and
+This index records the coordinated AIC Notes 38.4.3 / Standard Notes AIC 29.4.3 /
+shared editor core 4.2.0 release target. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
 
@@ -17,11 +17,26 @@ production webview browser checks. Artifact publication is verified separately f
 
 ## Current release contracts
 
-- The 37.1.4 feature outcome is the shared Security-style Properties renderer over authored
-  YAML frontmatter. Four fixes protect nested/quoted/multiline YAML ownership, exact numeric
-  and `created` scalar types, unchanged Security widget DOM lifetimes, and starred-Properties
-  redaction from unfinished note excerpts. Recovery codes, optional titles and save boundaries
-  from 36.4.4 remain available but are not recounted.
+- The four 38.4.3 feature outcomes are compact searchable Security/Properties groups and
+  independent `#` card titles; safe field/group/whole-card DnD and keyboard reordering;
+  temporary whole-AIC-editor Markdown source mode; and opt-in v2 pipe fields for Security
+  and Properties, including newly generated v2 templates/conversions. Three fixes retire
+  stale code-preview callbacks, preserve Mermaid visual drafts/focus through source mode
+  with stale Apply blocked, and improve coarse mobile contrast/menu/part layout without
+  overflow. Earlier Properties, recovery-code and save-boundary work is not counted again.
+- `aic-security v2` opts into `*` masked values, `#` TOTP seeds and `_` card parts;
+  PAN/date/CVV copy independently, the third slot stays masked, and Paste fills only empty
+  parts. `# aic-fields: v2` must be the first body line of YAML frontmatter to activate
+  the equivalent custom Properties syntax; the comment is hidden in preview. Managed
+  `file`/`created`/`updated` remain read-only. Unversioned content keeps literal pipes and
+  legacy marker-like names. Existing headers require explicit marker insertion and review
+  of literal pipes/labels, never blanket migration. Filled values change only in source.
+- Security/Properties filtering searches names and visible values only; hidden values,
+  recovery codes and generated codes are excluded. It is local UI state and disables
+  reordering. Supported Security field/section/card and sibling Properties field/group
+  moves have Alt+Up/Down handles and reject stale, managed or unsupported targets.
+  Source mode changes no Markdown, Undo, save boundary or host editor choice, and resets
+  on a different note. Raw source may reveal visually masked values.
 - Shared `security-recovery` and widget rendering provide bounded hidden code batches, exact
   per-code Copy and reversible Used flags in Markdown. Whole-block Copy preserves used flags.
   Optional titles replace the first card heading; empty field Delete never clears a value.
@@ -71,10 +86,12 @@ production webview browser checks. Artifact publication is verified separately f
 Standard Notes authentication is implemented but auth-only; no note synchronization exists.
 The contracts below describe this coordinated release target, not future sync behavior.
 
-## Shared editor core 4.1.0
+## Shared editor core 4.2.0
 
-These contracts target AIC Notes 37.1.4 and pair with Standard Notes AIC 28.1.4.
-The exact canonical commit and all shared hashes are recorded in CORE_SNAPSHOT.json.
+These contracts target AIC Notes 38.4.3 and pair with Standard Notes AIC 29.4.3.
+The exact canonical commit and all shared hashes belong in CORE_SNAPSHOT.json after the
+canonical source is committed and the mirror snapshot is regenerated; a working-tree
+snapshot is not proof of committed release identity.
 Automated tests, production builds and Windows browser checks cover the shared editor;
 Linux desktop and live authenticated Standard Notes smoke checks are not implied.
 
@@ -204,9 +221,10 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 - Tables expose Copy, insertion, drag reorder, content-sized word-wrapped columns, horizontal scroll,
   and one transient popover editor for the selected cell.
 - Properties and security blocks use one shared widget and action lifecycle. Managed metadata
-  is copy-only; custom nested YAML fields support explicit `*` masking, empty-field paste/delete,
-  secure generation and recovery codes. Add appends an empty map field; changing populated values
-  or structure requires source Edit. Plain Markdown has no generated properties.
+  is copy-only; custom nested YAML fields support explicit `*` masking, and v2-marked headers
+  also support `#` TOTP and `_` card parts. Empty fields/parts can Paste/Delete; supported
+  siblings can reorder. Add appends an empty map field; changing populated values or unsupported
+  structure requires source Edit. Plain Markdown has no generated properties.
 - Details accordions preserve comments, task-checkbox interaction, collapsed/open state, and links.
 - Action glyphs are CSS SVG masks; no renderer must accept inline SVG button markup.
 - Slash on an otherwise empty Markdown line opens the shared contextual template catalog in AIC

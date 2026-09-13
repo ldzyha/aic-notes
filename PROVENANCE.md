@@ -1,5 +1,29 @@
 # Release provenance
 
+## Release 38.4.3 — versioned Security/Properties field contract
+
+AIC Editor Core 4.2.0 pairs with Standard Notes AIC 29.4.3. The canonical source is
+`standard-notes-aic/src/core`; AIC Notes consumes its explicitly inventoried mirror in
+`vendor/aic-editor-core`. This release target adds compact searchable Security/Properties
+groups and menus, safe field/group/card reordering, temporary whole-editor Markdown
+source mode, and opt-in v2 pipe fields. It also retires stale code-preview callbacks,
+protects Mermaid visual drafts across source-mode changes, and improves coarse mobile
+control layout and contrast. Host adapters keep persistence, clipboard and theme ownership;
+no authentication or note-synchronization mechanism is added.
+
+`aic-security v2` and the first-body-line frontmatter comment `# aic-fields: v2` are
+explicit format gates. New Security templates and newly converted Authenticator records
+use v2. Existing unversioned blocks and Properties headers are not automatically
+migrated; literal pipes and marker-like labels remain legacy data. An existing header
+requires deliberate marker insertion after reviewing/escaping authored values. Managed
+`file`, `created` and `updated` remain read-only; raw Markdown and exports remain plaintext.
+
+The exact canonical source commit and each mirrored file's SHA-256 must be recorded in
+`CORE_SNAPSHOT.json` after the final canonical commit and snapshot regeneration. Any
+current working-tree snapshot identifies working-tree bytes, not a committed release;
+publication must pass the core identity and artifact gates. Historical entries below
+remain unchanged.
+
 ## Release 36.4.4 — shared security lifecycle, recovery and save boundaries
 
 Core 4.0.0 pairs with Standard Notes AIC 27.4.4. The explicit inventory adds the

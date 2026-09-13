@@ -23,6 +23,7 @@ test("file properties contain only filename, creation, and explicit-save update"
   assert.equal(
     stamped,
     "---\n" +
+      "# aic-fields: v2\n" +
       "file: 00-documentation-map.note.md\n" +
       "created: 2026-08-20T10:00:00.000Z\n" +
       "updated: 2026-09-01T18:00:00.000Z\n" +

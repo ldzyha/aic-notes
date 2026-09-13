@@ -286,6 +286,82 @@ try {
   assert.equal(await count(main, "save"), 0);
   passed.push("main ordinary .md: no generated Properties or edit/save");
   await main.close();
+
+  // Shared group controls and one-shot source mode must work in both surfaces,
+  // not merely in an isolated Security renderer.
+  for (const secondary of [true, false]) {
+    const page = await openPage(secondary);
+    const text = source.replace("empty*: ", "Email: public@example.test\nempty*: ");
+    await init(page, secondary, text, "grouped.note.md");
+    const properties = page.locator(".cm-aic-properties");
+    const filter = properties.getByRole("searchbox", { name: "Filter fields and groups" });
+    await filter.fill("SYNTHETIC-ROOT-SECRET");
+    assert.equal(await properties.locator('.cm-aic-security-section:not([hidden])').count(), 1, "managed metadata remains visible but secret is not searched");
+    await filter.fill("Email");
+    assert.equal(await properties.getByRole("button", { name: "Copy Email value", exact: true }).isVisible(), true);
+    assert.equal(await snapshot(page, "grouped.note.md"), text);
+    assert.equal(await count(page, "edit"), 0);
+    assert.equal(await count(page, secondary ? "commit" : "save"), 0);
+    await properties.getByRole("button", { name: "Clear filter" }).click();
+    await properties.getByRole("button", { name: "Add field to Fields" }).click();
+    assert.equal(await properties.getByRole("button", { name: "Add Password", exact: true }).isVisible(), true);
+    await page.keyboard.press("Escape");
+    assert.equal(await properties.getByRole("button", { name: "Add Password", exact: true }).isVisible(), false);
+
+    await page.getByRole("button", { name: "Show Markdown source", exact: true }).click();
+    assert.equal(await page.locator(".cm-aic-security").count(), 0, "source mode removes both card renderers");
+    assert.ok((await page.locator(".cm-content").textContent()).includes("SYNTHETIC-ROOT-SECRET"), "explicit source editing exposes original Markdown, not another document");
+    assert.equal(await snapshot(page, "grouped.note.md"), text);
+    assert.equal(await count(page, "edit"), 0);
+    assert.equal(await count(page, secondary ? "commit" : "save"), 0);
+    assert.equal(await count(page, "source.open"), 0, "mode button never opens native editor");
+
+    await post(page, { type: "external", relativePath: "grouped.note.md", generation: 1, changes: [{ from: text.length, insert: "\nRemote text" }] });
+    assert.equal(await snapshot(page, "grouped.note.md"), text + "\nRemote text");
+    assert.equal(await page.getByRole("button", { name: "Show preview", exact: true }).count(), 1, "same-note host update retains temporary mode");
+    await post(page, { type: "reset", generation: 2, text });
+    assert.equal(await snapshot(page, "grouped.note.md"), text);
+    assert.equal(await page.getByRole("button", { name: "Show preview", exact: true }).count(), 1, "same-note reset retains temporary mode");
+    await page.getByRole("button", { name: "Show preview", exact: true }).click();
+    await properties.waitFor();
+    assert.doesNotMatch(await properties.textContent(), /SYNTHETIC-ROOT-SECRET/u);
+    await page.getByRole("button", { name: "Show Markdown source", exact: true }).click();
+    await init(page, secondary, text, "different.note.md");
+    await properties.waitFor();
+    assert.equal(await page.getByRole("button", { name: "Show Markdown source", exact: true }).count(), 1, "another note always starts in preview");
+    assert.equal(await page.evaluate(() => window.nativeClipboardCalls), 0);
+    passed.push(`${secondary ? "secondary" : "main"}: common filter/add menu, transient source toggle, exact source and identity reset without edits/save/native mode`);
+    await page.close();
+  }
+  for (const secondary of [true, false]) {
+    const page = await openPage(secondary);
+    const text = "---\n# aic-fields: v2\nfile: payment.note.md\nCard_: '4242 4242 4242 4242 | 09/28 | '\nCorporate#: 'JBSWY3DPEHPK3PXP | Work'\n---\nBody";
+    await init(page, secondary, text, "payment.note.md");
+    const props = page.locator(".cm-aic-properties");
+    await props.waitFor();
+    assert.doesNotMatch(await props.innerHTML(), /JBSWY3DPEHPK3PXP|aic-fields/u);
+    await props.getByRole("button", { name: "Copy Card number value", exact: true }).click();
+    const copied = await request(page, "write");
+    assert.equal(copied.text, "4242 4242 4242 4242");
+    await post(page, { type: "clipboard.response", requestId: copied.requestId, ok: true });
+    await props.getByRole("button", { name: "Paste Card cvv", exact: true }).click();
+    const pasted = await request(page, "read");
+    await post(page, { type: "clipboard.response", requestId: pasted.requestId, ok: true, text: "739" });
+    await page.waitForFunction(() => !document.querySelector('[aria-label="Paste Card cvv"]'));
+    const saved = await snapshot(page, "payment.note.md");
+    assert.ok(saved.startsWith("---\n# aic-fields: v2\n"));
+    assert.ok(saved.includes("09/28 | 739"));
+    assert.doesNotMatch(await props.innerHTML(), /739|JBSWY3DPEHPK3PXP/u);
+    assert.equal(await count(page, secondary ? "commit" : "save"), 1);
+    await init(page, secondary, saved, "reopened.note.md");
+    await props.getByRole("button", { name: "Copy Card cvv value", exact: true }).click();
+    const cvv = await request(page, "write", 1);
+    assert.equal(cvv.text, "739");
+    await post(page, { type: "clipboard.response", requestId: cvv.requestId, ok: true });
+    assert.equal(await page.evaluate(() => window.nativeClipboardCalls), 0);
+    passed.push(`${secondary ? "secondary" : "main"}: activated v2 Properties, independent card copy, empty CVV Paste/save and masked reopen`);
+    await page.close();
+  }
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({ passed }, null, 2));
 } finally {

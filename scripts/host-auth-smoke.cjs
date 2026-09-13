@@ -12,7 +12,7 @@ async function until(check, label) {
 exports.run = async () => {
   assert.equal(vscode.workspace.workspaceFolders?.[0]?.name, "aic-auth-smoke");
   const extension = vscode.extensions.getExtension("ldzyha.aic-notes");
-  assert.equal(extension.packageJSON.version, "37.1.4");
+  assert.equal(extension.packageJSON.version, "38.4.3");
   const api = await extension.activate();
   await until(
     () => api.getStandardNotesStatus().status === "signed-out",
