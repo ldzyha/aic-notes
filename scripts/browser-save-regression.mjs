@@ -100,6 +100,11 @@ try {
         saved,
       });
     };
+    const addEmail = async () => {
+      const block = page.locator(".cm-aic-security:not(.cm-aic-properties)");
+      await block.getByRole("button", { name: /^Add field to /u }).first().click();
+      await block.getByRole("button", { name: "Add Email", exact: true }).click();
+    };
     await init("# Synthetic\n\nText");
     await page.keyboard.insertText(" first");
     assert.equal((await requests()).length, 0, "ordinary input does not save");
@@ -146,7 +151,7 @@ try {
     );
 
     await init("```aic\n##\nPassword*:\n```\n");
-    await page.getByRole("button", { name: "Add Email", exact: true }).click();
+    await addEmail();
     await waitCount(5);
     await acknowledge((await requests())[4]);
     await page.waitForFunction(
@@ -174,7 +179,7 @@ try {
     );
     await page.getByText("Note saved", { exact: true }).last().waitFor();
 
-    await page.getByRole("button", { name: "Add Email", exact: true }).click();
+    await addEmail();
     await waitCount(7);
     const old = (await requests())[6];
     await init("# Other", "other.note.md");

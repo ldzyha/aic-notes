@@ -195,10 +195,37 @@ try {
     const baseColor = await page
       .locator(".cm-editor")
       .evaluate((el) => getComputedStyle(el).backgroundColor);
-    assert.ok(
-      (await page.getByText("Properties", { exact: true }).boundingBox()).y <
-        45,
-      "properties start at top, not below a duplicate header",
+    const properties = page.locator(".cm-aic-properties");
+    assert.equal(await properties.count(), 1, "one Properties preview, without duplicate chrome");
+    assert.deepEqual(
+      await properties.evaluate((card) => {
+        const metadata = card.querySelector(".cm-aic-properties-metadata");
+        const tree = card.querySelector(".cm-aic-note-relations");
+        const custom = card.querySelector(".cm-aic-security-body");
+        return {
+          dates: metadata?.querySelectorAll(".cm-aic-properties-date").length,
+          metadataBeforeTree: Boolean(metadata && tree &&
+            metadata.compareDocumentPosition(tree) & Node.DOCUMENT_POSITION_FOLLOWING),
+          treeBeforeCustom: Boolean(tree && custom &&
+            tree.compareDocumentPosition(custom) & Node.DOCUMENT_POSITION_FOLLOWING),
+          currentProject: tree?.querySelector('[aria-current="true"] .cm-aic-note-relation-label')?.textContent,
+          hasContextHeading: Boolean(card.querySelector(".cm-aic-note-relations-heading")),
+          hasFilename: card.textContent.includes("Project.note.md"),
+          customRows: custom?.querySelectorAll(".cm-aic-security-row").length,
+          customFilter: Boolean(custom?.querySelector(".cm-aic-security-filter")),
+        };
+      }),
+      {
+        dates: 2,
+        metadataBeforeTree: true,
+        treeBeforeCustom: true,
+        currentProject: "Project",
+        hasContextHeading: false,
+        hasFilename: false,
+        customRows: 0,
+        customFilter: false,
+      },
+      "managed dates and current-note tree precede an empty custom panel",
     );
     await page.keyboard.insertText(" Changed.");
     await state(page, "dirty");
