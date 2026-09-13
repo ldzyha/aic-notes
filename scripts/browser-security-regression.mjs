@@ -253,9 +253,11 @@ try {
     await convert.click();
     await page.getByRole("button", { name: "Copy Password", exact: true }).waitFor();
     const imported = await sourceSnapshot(page, "authenticator.note.md");
-    assert.equal((imported.match(/```aic-security/gu) || []).length, 2);
+    assert.equal((imported.match(/```aic-security v3/gu) || []).length, 1);
+    assert.equal((imported.match(/^---$/gmu) || []).length, 1);
+    assert.equal(await page.locator(".cm-aic-security-section").count(), 2);
     assert.match(imported, /Password\*: DUMMY-IMPORT-PASSWORD/u);
-    assert.match(imported, /TOTP\*: GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ/u);
+    assert.match(imported, /TOTP#: GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ/u);
     assert.doesNotMatch(await page.locator(".cm-editor").innerHTML(), /DUMMY-IMPORT-PASSWORD|GEZDGNBVGY3TQOJQ/u);
     if (!secondary) assert.equal(await count(page, "edit"), editCount + 1, "main conversion posts one atomic document edit");
     assert.equal(await count(page, "clipboard.request"), clipboardCount);

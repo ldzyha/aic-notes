@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+## 39.3.3 — 2026-09-13
+
+Release sequence 39 · 3 feature outcomes · 3 fixed-bug outcomes. Release source target;
+VSIX publication requires separate verification.
+
+### Features
+
+1. `aic-security v3` adds standalone `---` section boundaries and optional `##` headings. New templates use v3; existing unversioned/v2 blocks retain their grammar and are not migrated.
+2. Authenticator JSON conversion preserves ordered records and exact string values in grouped v3 blocks, spilling at canonical capacity and splitting oversized accounts only at field boundaries. Invalid input still rejects atomically without partial conversion.
+3. Security previews show section, field and text capacity. Add controls that would exceed a limit are disabled, while New block remains available; conversion guidance suggests separate blocks by purpose, such as services, banks, web and social networks.
+
+### Fixes
+
+1. Security and Properties errors provide safe, precise source line/column diagnostics and Edit navigation without exposing credentials or raw parser messages.
+2. New block closes an EOF-terminated previous fence before inserting an independent Security block.
+3. Whole-card reordering preserves exact authored source and supports versioned v2/v3 fences without rewriting fields or unrelated Markdown.
+
+Compatibility: Standard Notes AIC 30.3.3 mirrors shared core 4.3.0 in the universal VSIX. No authentication or note-synchronization change. Masking is visual, not Markdown encryption; raw source, exports and copied values can contain plaintext.
+
 ## 38.4.3 — 2026-09-13
 
 Release sequence 38 · 4 feature outcomes · 3 fixed-bug outcomes. Release source target;

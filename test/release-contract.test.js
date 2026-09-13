@@ -29,9 +29,9 @@ test("Properties and Security share one core widget with only host routing in th
   await assert.rejects(access(new URL("vendor/markdown/handlers/frontmatter.js", root)));
 });
 
-test("38.4.3 is a universal local editor with optional auth-only connection", () => {
-  assert.equal(packageJson.version, "38.4.3");
-  assert.equal(packageJson.aicEditorCore, "4.2.0");
+test("39.3.3 is a universal local editor with optional auth-only connection", () => {
+  assert.equal(packageJson.version, "39.3.3");
+  assert.equal(packageJson.aicEditorCore, "4.3.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
   assert.match(packageJson.description, /Standard Notes sign-in/u);

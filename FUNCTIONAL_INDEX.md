@@ -1,15 +1,30 @@
 # Functional index
 
-This index records the coordinated AIC Notes 38.4.3 / Standard Notes AIC 29.4.3 /
-shared editor core 4.2.0 release target. Public commands, state boundaries, side effects and
+This index records the coordinated AIC Notes 39.3.3 / Standard Notes AIC 30.3.3 /
+shared editor core 4.3.0 release target. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
+
+## Shared-core changes in release 39.3.3
+
+New Security templates/conversions use v3 with `---` section boundaries and optional titles;
+unversioned/v2 notes retain their existing interpretation. Import packs accounts into one
+block, spilling at canonical capacity and splitting oversized accounts at field boundaries
+without dropping values. Preview exposes section/field/text/value limits and disables Add
+actions that would overflow; New block remains available. Purpose examples recommend
+separate blocks for services, banks, web and social networks.
+
+Shared Security/Properties diagnostics identify line/column and navigate directly to source
+without echoing credentials. New block safely closes an EOF-terminated previous fence first.
+Exact-source whole-card reordering supports versioned v2/v3 fences without rewriting
+their authored field syntax or unrelated text. These changes are mirrored from canonical
+core, not independently implemented here; publication is verified separately.
 
 ## Authenticator JSON conversion
 
 Shared `security-import` owns the bounded, lossless, all-or-nothing JSON-to-security mapping;
 `security-import-extension` owns the contextual panel and atomic editor transaction in both
-main and sidebar. Each record becomes a separate block. Secret/password and extra string
+main and sidebar. Each record becomes a separate section, with capacity-based block overflow. Secret/password and extra string
 fields are masked; duplicate keys and unrepresentable values never silently disappear.
 Conversion acts only on the current document/selection, never the account or clipboard, and
 requests a parent-managed save after conversion. Tests: `security-import`, canonical import model/UI suites and
@@ -17,13 +32,13 @@ production webview browser checks. Artifact publication is verified separately f
 
 ## Current release contracts
 
-- The four 38.4.3 feature outcomes are compact searchable Security/Properties groups and
-  independent `#` card titles; safe field/group/whole-card DnD and keyboard reordering;
-  temporary whole-AIC-editor Markdown source mode; and opt-in v2 pipe fields for Security
-  and Properties, including newly generated v2 templates/conversions. Three fixes retire
-  stale code-preview callbacks, preserve Mermaid visual drafts/focus through source mode
-  with stale Apply blocked, and improve coarse mobile contrast/menu/part layout without
-  overflow. Earlier Properties, recovery-code and save-boundary work is not counted again.
+- The three 39.3.3 feature outcomes are v3 `---` sections with optional headings;
+  lossless grouped Authenticator import with capacity spill; and visible Security limits
+  with disabled over-limit Add controls plus purpose-based grouping guidance. Three fixes
+  provide safe Security/Properties source-position diagnostics, close an EOF-terminated
+  previous fence before New block, and preserve exact source in whole-card moves for
+  versioned v2/v3 fences. Earlier group controls, source mode and pipe fields remain
+  available but are not counted again.
 - `aic-security v2` opts into `*` masked values, `#` TOTP seeds and `_` card parts;
   PAN/date/CVV copy independently, the third slot stays masked, and Paste fills only empty
   parts. `# aic-fields: v2` must be the first body line of YAML frontmatter to activate
@@ -86,9 +101,9 @@ production webview browser checks. Artifact publication is verified separately f
 Standard Notes authentication is implemented but auth-only; no note synchronization exists.
 The contracts below describe this coordinated release target, not future sync behavior.
 
-## Shared editor core 4.2.0
+## Shared editor core 4.3.0
 
-These contracts target AIC Notes 38.4.3 and pair with Standard Notes AIC 29.4.3.
+These contracts target AIC Notes 39.3.3 and pair with Standard Notes AIC 30.3.3.
 The exact canonical commit and all shared hashes belong in CORE_SNAPSHOT.json after the
 canonical source is committed and the mirror snapshot is regenerated; a working-tree
 snapshot is not proof of committed release identity.

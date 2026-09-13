@@ -44,7 +44,7 @@ test("shared slash catalog covers pages, sections, and formatting blocks", () =>
   for (const entry of DOCUMENTATION_SNIPPETS) {
     assert.match(entry.question, /\?$/u);
     if (entry.command === "security")
-      assert.match(entry.template, /^```aic-security v2\n/u);
+      assert.match(entry.template, /^```aic-security v3\n/u);
     else assert.match(entry.template, /\$\{/u);
   }
 });

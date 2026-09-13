@@ -29,7 +29,8 @@ The versioned pipe format is opt-in through an `aic-security v2` fence:
 Only empty components accept Paste. Literal `|` is escaped as `\|` and `\` as `\\`.
 `*` marks a masked value, `#` a TOTP seed, and `_` a card; labels alone do not select a kind.
 TOTP codes derive only from `#` fields. Card number (PAN), date and CVV copy separately.
-New Security templates and newly converted Authenticator records use v2. Existing unversioned
+New Security templates and converted Authenticator records use v3, adding standalone `---`
+section separators and optional `##` section titles to v2 pipe fields. Existing unversioned
 blocks retain literal pipes and `#`/`_` in labels; they are not silently migrated.
 
 New Properties frontmatter uses `# aic-fields: v2` as the first body line after the opening
@@ -46,8 +47,14 @@ marker-like keys. No blanket automatic migration is performed.
 Open an original Authenticator JSON array in AIC Markdown, or select the complete array
 inside a document. **Convert and save security blocks** appears for recognized records with
 `service`, `account` and `secret` strings. The shared converter creates one `aic-security`
-block per record: Service/Account/Notes are visible; TOTP, Password and extra string fields
+block with independent sections: Service/Account/Notes are visible; TOTP, Password and extra string fields
 are hidden. Safe service URLs also gain a separate Open-capable URL field.
+Standalone `---` separates sections; headings are optional. Overflow moves to further
+blocks without dropping data. The preview shows limits (16 sections, 64 fields per section,
+65,536 text units per block, 16,384 per field including all pipe parts and escapes)
+and disables additions that would exceed them.
+New block stays available. Group blocks by purpose, for example services, banks, web or
+social networks. Existing notes are never automatically repartitioned.
 
 Conversion is one explicit edit, undoable with Ctrl/Cmd+Z, saved through the same parent
 manager as other security actions. It works in the main editor and linked-note sidebar. It does not scan the account,
@@ -99,25 +106,24 @@ without a duplicate heading row. Use `## Account name` for a custom name or bare
 for the default Security header.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-editor-core 4.2.0 but is a separate product. The coordinated versions are AIC Notes
-38.4.3 and AIC for Standard Notes 29.4.3. This page describes the release contract;
+editor-core 4.3.0 but is a separate product. The coordinated versions are AIC Notes
+39.3.3 and AIC for Standard Notes 30.3.3. This page describes the release contract;
 published artifacts are verified separately by the release workflow. Signing in does not move notes
 between the two applications.
 
-## Coordinated release — 38.4.3
+## Coordinated release — 39.3.3
 
-The four feature outcomes are compact searchable Security/Properties groups with menus and
-independent `#` card titles; safe field/group/whole-card drag and keyboard reordering;
-a temporary whole-editor Markdown source toggle without entering the native editor; and
-opt-in v2 pipe fields for Security and Properties, including separately copyable card parts
-and newly generated v2 content. Three fixes retire stale code-preview callbacks after source
-or note changes, retain Mermaid visual drafts and focus across source mode while blocking
-stale Apply, and make coarse mobile menus and part layouts readable without overflow.
-Earlier Properties, recovery-code and save-boundary work remains available but is not
-recounted as new in this release.
+The three feature outcomes are v3 `---` sections with optional headings; lossless grouped
+Authenticator conversion with capacity spill into additional blocks; and visible Security
+capacity with over-limit Add controls disabled and purpose-based grouping guidance. Three
+fixes provide precise, safe Security/Properties diagnostics with source navigation; close
+an EOF-terminated previous fence before New block; and preserve exact source in whole-card
+reordering for versioned v2/v3 fences. Existing v1/v2 grammar, authentication and note
+synchronization do not change.
 
-The shared `/security` template inserts the same `aic-security v2` Markdown block
-as the Standard Notes plugin. `## Main` starts a section, `Label*: value`
+The shared `/security` template inserts the same `aic-security v3` Markdown block
+as the Standard Notes plugin. A standalone `---` starts another section;
+`## Main` optionally titles one. `Label*: value`
 masks a field in preview, and `Label: value` keeps it visible. Edit opens raw
 Markdown; there is no inline manual value editor. Add section, quick field actions and New
 block insert independent content and request a save. Preview can copy individual
@@ -174,9 +180,9 @@ Tests include the official production-cost key-derivation vector and mocked logi
 storage, cancellation and logout paths. They do not replace a real-account sign-in and reload
 smoke test; no live authenticated Standard Notes result is claimed here.
 
-## Editor features — shared editor core 4.2.0
+## Editor features — shared editor core 4.3.0
 
-This release target pairs with AIC for Standard Notes 29.4.3. Both products use the same
+This release target pairs with AIC for Standard Notes 30.3.3. Both products use the same
 byte-verified core. Automated tests, production builds and Windows browser checks cover the
 shared controls; Linux desktop and live authenticated Standard Notes smoke checks are not implied.
 
@@ -243,25 +249,25 @@ this section does not assert that all clients or operating systems have complete
 
 ## Install
 
-After publication, download `aic-notes-38.4.3.vsix` and its
-`aic-notes-38.4.3.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+After publication, download `aic-notes-39.3.3.vsix` and its
+`aic-notes-39.3.3.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-38.4.3.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-38.4.3.vsix.sha256
-code --install-extension .\aic-notes-38.4.3.vsix --force
+(Get-FileHash .\aic-notes-39.3.3.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-39.3.3.vsix.sha256
+code --install-extension .\aic-notes-39.3.3.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-38.4.3.vsix.sha256
-code --install-extension ./aic-notes-38.4.3.vsix --force
-# or: code-server --install-extension ./aic-notes-38.4.3.vsix --force
+sha256sum -c aic-notes-39.3.3.vsix.sha256
+code --install-extension ./aic-notes-39.3.3.vsix --force
+# or: code-server --install-extension ./aic-notes-39.3.3.vsix --force
 ```
 
 Reload the VS Code window after installation. Editing and Standard Notes sign-in require no
@@ -388,7 +394,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-The coordinated version `38.4.3` records sequence 38, four feature outcomes and three fixed-bug
+The coordinated version `39.3.3` records sequence 39, three feature outcomes and three fixed-bug
 outcomes; it is not a publication marker by itself.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and
