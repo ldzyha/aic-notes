@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 42.0.3 — 2026-09-14
+
+Release sequence 42 · 0 feature outcomes · 3 fixed-bug outcomes. Release source target;
+VSIX publication requires separate verification. The shared editor core moves to 5.2.0
+with an additive `previewOnly` API; no new VS Code user feature is counted.
+
+### Fixes
+
+1. Generic pipe-style Security and Properties fields use a compact single-row preview, while shared parsing avoids repeated work across fields. Independent copying, masking and authored Markdown remain unchanged.
+2. Add-field menus stay within the visible editor viewport and scroll internally when space is limited, so actions remain reachable in short or narrow panes.
+3. The CodeMirror writing caret stays visible at a consistent 2 px width and follows the active text color in light and dark themes, including source mode and focus changes; reduced-motion preferences still disable blinking.
+
+Compatibility: Standard Notes AIC 33.2.4 mirrors shared core 5.2.0. The separate browser extension remains experimental at 0.1.4; it does not add account connectivity or note synchronization to AIC Notes. Masking remains visual, not Markdown encryption. Published VSIX and store availability require separate verification.
+
 ## 41.1.1 — 2026-09-14
 
 Release sequence 41 · 1 feature outcome · 1 fixed-bug outcome. Release source target;

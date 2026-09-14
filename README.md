@@ -121,24 +121,23 @@ without a duplicate heading row. Use `## Account name` for a custom name or bare
 for the default Security header.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-editor-core 5.1.0 but is a separate product. The coordinated versions are AIC Notes
-41.1.1 and AIC for Standard Notes 32.1.1. This page describes the release contract;
+editor-core 5.2.0 but is a separate product. The coordinated release targets are AIC Notes
+42.0.3 and AIC for Standard Notes 33.2.4. This page describes the release contract;
 published artifacts are verified separately by the release workflow. Transfer content manually
 between the two applications; VS Code has no Standard Notes account integration.
 
-## Coordinated release — 41.1.1
+## Coordinated release — 42.0.3
 
-This release adds quoted value slots across Security and v2-marked Properties, and fixes
-literal pipe handling outside the exact spaced separator. Prior Security/Properties UI and
-local-only extension behavior remain as described below. Release assets require separate
-verification.
+This release has no new VS Code feature. It fixes three shared-editor presentation issues:
+generic pipe fields are compact and avoid repeated parsing; Add-field menus fit and scroll
+inside short or narrow editors; and the writing caret stays visible in light/dark themes,
+source mode and focus changes. The shared core's new `previewOnly` API is additive, not a
+new VS Code user feature. Local-only behavior remains unchanged. Release assets require
+separate verification.
 
-The previous release's six feature outcomes are the single `aic` grammar with optional labels, compact masked
-cards, cross-section field moves, Properties metadata/tree separation, labelled Add
-controls with limit explanations, and a fully local extension without account integration.
-Its six fixes cover Escape exits, transient ordered copy feedback, independent label/value copying,
-safe card filtering, responsive theme styling, and redundant rendering/filter work.
-Historical Security formats require manual source repair; no notes are automatically rewritten.
+The previous 41.1.1 release added quoted value slots to Security and opt-in v2 Properties,
+and fixed literal-pipe handling outside the exact spaced separator. Historical Security
+formats require manual source repair; no notes are automatically rewritten.
 
 The shared `/security` template inserts the same `aic` Markdown block
 as the Standard Notes plugin. A standalone `---` starts another section;
@@ -165,11 +164,12 @@ scopes retire subscriptions and pending requests when a surface closes.
 The File Context sphere, its toggle/setting and its background graph analysis have been
 removed. Linked Note, the Notes & Documents tree and parent-note relationships remain.
 
-## Editor features — shared editor core 5.1.0
+## Editor features — shared editor core 5.2.0
 
-This release target pairs with AIC for Standard Notes 30.3.3. Both products use the same
-byte-verified core. Automated tests, production builds and Windows browser checks cover the
-shared controls; Linux desktop smoke checks are not implied.
+This release target pairs with AIC for Standard Notes 33.2.4. The release gate must
+byte-verify their shared core and run automated tests and production builds. Prior Windows
+browser checks cover the shared controls but do not replace final package verification;
+Linux desktop smoke checks are not implied.
 
 - `/page`, `/section`, `/context` and `/implementation` follow Core's question → answer → detail
   structure, with dependency-ordered steps and verification where needed. There are no compulsory
@@ -234,25 +234,25 @@ this section does not assert that all clients or operating systems have complete
 
 ## Install
 
-After publication, download `aic-notes-41.1.1.vsix` and its
-`aic-notes-41.1.1.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+After publication, download `aic-notes-42.0.3.vsix` and its
+`aic-notes-42.0.3.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-41.1.1.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-41.1.1.vsix.sha256
-code --install-extension .\aic-notes-41.1.1.vsix --force
+(Get-FileHash .\aic-notes-42.0.3.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-42.0.3.vsix.sha256
+code --install-extension .\aic-notes-42.0.3.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-41.1.1.vsix.sha256
-code --install-extension ./aic-notes-41.1.1.vsix --force
-# or: code-server --install-extension ./aic-notes-41.1.1.vsix --force
+sha256sum -c aic-notes-42.0.3.vsix.sha256
+code --install-extension ./aic-notes-42.0.3.vsix --force
+# or: code-server --install-extension ./aic-notes-42.0.3.vsix --force
 ```
 
 Reload the VS Code window after installation. Local editing requires no
@@ -381,7 +381,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-The coordinated version `41.1.1` records sequence 41, one feature outcome and one fixed-bug
+The coordinated version `42.0.3` records sequence 42, no feature outcome and three fixed-bug
 outcomes; it is not a publication marker by itself.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and

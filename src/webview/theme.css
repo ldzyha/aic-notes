@@ -5,6 +5,7 @@
   color-scheme: light dark;
   --aic-bg: var(--vscode-editor-background, #f7f8fa);
   --aic-fg: var(--vscode-editor-foreground, #20242b);
+  --aic-caret: var(--vscode-editorCursor-foreground, var(--aic-fg));
   --aic-muted: var(--vscode-descriptionForeground, #68717d);
   --aic-border: var(--vscode-panel-border, #d8dde5);
   --aic-contrast: var(--vscode-sideBar-background, #ffffff);
@@ -66,9 +67,7 @@ body[data-save-state="dirty"] #secondary-footer { border-top-color: var(--warn);
   max-width: 76ch;
   margin: 0 auto;
   padding: 1.25rem 1rem 33vh;
-  caret-color: #aeafad;
 }
-.cm-editor .cm-cursor { border-left-color: #aeafad; }
 .cm-editor .cm-selectionBackground,
 .cm-editor.cm-focused .cm-selectionBackground {
   background: #264f78 !important;

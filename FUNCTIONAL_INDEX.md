@@ -1,11 +1,23 @@
 # Functional index
 
-This index records the coordinated AIC Notes 41.1.1 / Standard Notes AIC 32.1.1 /
-shared editor core 5.1.0 release target. Public commands, state boundaries, side effects and
+This index records the coordinated AIC Notes 42.0.3 / Standard Notes AIC 33.2.4 /
+shared editor core 5.2.0 release target. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
 
-## Shared-core changes in release 41.1.1
+## Shared-core changes in release 42.0.3
+
+Three fixes: generic pipe fields display label, value and description in one compact
+row with independent copying and local overflow; shared parsing avoids repeated
+per-block full-tree scans. Properties/Security Add menus choose available viewport
+space and dispose their positioning listeners. CodeMirror's actual caret uses a
+visible 2 px host-themed stroke, including reduced-motion and forced colors.
+
+Core 5.2.0 also exposes an additive read-only preview option for the separate browser
+host. That API does not change VS Code editing defaults or add browser notebook UI,
+accounts, synchronization, semantic zoom or a sphere to this extension.
+
+## Prior shared-core changes in release 41.1.1
 
 One feature: each Security and v2-marked custom Properties value slot supports optional
 JSON-style double quoting. Quoted pipes, quote/backslash/control escapes retain logical values;

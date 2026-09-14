@@ -1,5 +1,16 @@
 # Release provenance
 
+## Release 42.0.3 — shared editor presentation corrections
+
+AIC Editor Core 5.2.0 pairs with Standard Notes AIC 33.2.4. Its additive `previewOnly`
+API does not add a VS Code user feature. The release target fixes compact generic
+pipe-field rendering and repeated parsing, viewport-bounded Add-field menus, and a
+visible themed writing caret. The canonical source remains
+`standard-notes-aic/src/core`; AIC Notes consumes the explicitly inventoried mirror in
+`vendor/aic-editor-core`. The final canonical commit, exact mirrored hashes and passing
+release gate must be recorded in `CORE_SNAPSHOT.json` before publication. No Marketplace
+publication is implied by this release target.
+
 ## Release 38.4.3 — versioned Security/Properties field contract
 
 AIC Editor Core 4.2.0 pairs with Standard Notes AIC 29.4.3. The canonical source is
