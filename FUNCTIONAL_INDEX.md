@@ -1,11 +1,25 @@
 # Functional index
 
-This index records the coordinated AIC Notes 40.6.6 / Standard Notes AIC 31.5.6 /
-shared editor core 5.0.0 release target. Public commands, state boundaries, side effects and
+This index records the coordinated AIC Notes 41.1.1 / Standard Notes AIC 32.1.1 /
+shared editor core 5.1.0 release target. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
 
-## Shared-core changes in release 40.6.6
+## Shared-core changes in release 41.1.1
+
+One feature: each Security and v2-marked custom Properties value slot supports optional
+JSON-style double quoting. Quoted pipes, quote/backslash/control escapes retain logical values;
+serialization quotes logical values containing a pipe or quote. Ordinary values may remain
+unquoted. Labels and titles have no quote syntax. Properties retains YAML frontmatter:
+`Password*: '"a | b" | "description"'` uses outer YAML single quotes to preserve inner
+field-slot double quotes; YAML outer quoting alone does not protect a spaced separator.
+
+One fix: only exact ` | ` outside quotes separates slots. Bare and one-sided pipes remain
+data; legacy `\|` outside quotes still parses. Invalid quotes, escapes or trailing text
+produce generic, non-secret errors; Security identifies exact source positions. Tests
+must verify these contracts; host behavior and publication are separate gates.
+
+## Prior shared-core changes in release 40.6.6
 
 New Security content uses one unversioned `aic` fence grammar with optional section
 labels. This breaking core change does not silently rewrite authored versioned Security
@@ -49,7 +63,7 @@ production webview browser checks. Artifact publication is verified separately f
 
 ## Current release contracts
 
-- The six 40.6.6 feature outcomes are one unversioned `aic` grammar with optional labels;
+- The prior six 40.6.6 feature outcomes are one unversioned `aic` grammar with optional labels;
   compact last-four/card-part display; cross-section field dragging; compact Properties
   metadata/tree/custom fields; labelled Add controls with limit reasons; and removal of
   Standard Notes auth/transport for local-only editing. Six fixes cover escape/Mermaid
@@ -119,9 +133,9 @@ production webview browser checks. Artifact publication is verified separately f
 The VS Code extension is local-only and has no Standard Notes account connection.
 The contracts below describe this coordinated release target, not future sync behavior.
 
-## Shared editor core 5.0.0
+## Shared editor core 5.1.0
 
-These contracts target AIC Notes 40.6.6 and pair with Standard Notes AIC 31.5.6.
+These contracts target AIC Notes 41.1.1 and pair with Standard Notes AIC 32.1.1.
 The exact canonical commit and all shared hashes belong in CORE_SNAPSHOT.json after the
 canonical source is committed and the mirror snapshot is regenerated; a working-tree
 snapshot is not proof of committed release identity.

@@ -26,7 +26,15 @@ shows the raw Markdown, including starred values; it does not change masking or 
 Security uses one unversioned `aic` fence:
 `Name*: value | description | additional secret`, `Name#: seed | description`, or
 `Name_: number | MM/YY | CVV`. Every component copies independently; the third is always masked.
-Only empty components accept Paste. Literal `|` is escaped as `\|` and `\` as `\\`.
+Only empty components accept Paste. A pipe separates parts only with an ASCII space on
+each side and outside double quotes, as in `value | description`.
+Each of the three value slots can optionally use JSON-style double quotes, for example
+`Password*: "a | b" | "description"`. Every pipe inside those quotes is
+literal; JSON quote, backslash and control escapes work there. Bare or one-sided pipes
+outside quotes are literal, and existing `\|` outside quotes still parses. Pasted and
+imported logical values containing a pipe or quote serialize with double quotes; ordinary
+values need no quotes. Spaces inside quotes belong to the value; outside spaces are formatting.
+Field labels and Security titles do not gain quote syntax.
 `*` marks a masked value, `#` a TOTP seed, and `_` a card; labels alone do not select a kind.
 TOTP codes derive only from `#` fields. Card number (PAN), date and CVV copy separately.
 Use standalone `---` section separators and optional `##` section titles. Field labels are
@@ -41,6 +49,10 @@ New Properties frontmatter uses `# aic-fields: v2` as the first body line after 
 `updated` remain read-only. Existing unmarked Properties retain their legacy meaning: activate
 v2 only by deliberately inserting the marker after reviewing/escaping literal pipes and
 marker-like keys. No blanket automatic migration is performed.
+Properties are still YAML frontmatter: `Password*: '"a | b" | "description"'`
+uses outer YAML single quotes to preserve the inner field-slot double quotes. Outer YAML
+quotes alone do not protect an inner ` | ` separator. Invalid slot quotes, escapes or
+trailing text produce generic, non-secret diagnostics; Security includes exact positions.
 
 ## Security field actions
 
@@ -109,17 +121,22 @@ without a duplicate heading row. Use `## Account name` for a custom name or bare
 for the default Security header.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-editor-core 5.0.0 but is a separate product. The coordinated versions are AIC Notes
-40.6.6 and AIC for Standard Notes 31.5.6. This page describes the release contract;
+editor-core 5.1.0 but is a separate product. The coordinated versions are AIC Notes
+41.1.1 and AIC for Standard Notes 32.1.1. This page describes the release contract;
 published artifacts are verified separately by the release workflow. Transfer content manually
 between the two applications; VS Code has no Standard Notes account integration.
 
-## Coordinated release — 40.6.6
+## Coordinated release — 41.1.1
 
-Six feature outcomes are the single `aic` grammar with optional labels, compact masked
+This release adds quoted value slots across Security and v2-marked Properties, and fixes
+literal pipe handling outside the exact spaced separator. Prior Security/Properties UI and
+local-only extension behavior remain as described below. Release assets require separate
+verification.
+
+The previous release's six feature outcomes are the single `aic` grammar with optional labels, compact masked
 cards, cross-section field moves, Properties metadata/tree separation, labelled Add
 controls with limit explanations, and a fully local extension without account integration.
-Six fixes cover Escape exits, transient ordered copy feedback, independent label/value copying,
+Its six fixes cover Escape exits, transient ordered copy feedback, independent label/value copying,
 safe card filtering, responsive theme styling, and redundant rendering/filter work.
 Historical Security formats require manual source repair; no notes are automatically rewritten.
 
@@ -148,7 +165,7 @@ scopes retire subscriptions and pending requests when a surface closes.
 The File Context sphere, its toggle/setting and its background graph analysis have been
 removed. Linked Note, the Notes & Documents tree and parent-note relationships remain.
 
-## Editor features — shared editor core 5.0.0
+## Editor features — shared editor core 5.1.0
 
 This release target pairs with AIC for Standard Notes 30.3.3. Both products use the same
 byte-verified core. Automated tests, production builds and Windows browser checks cover the
@@ -217,25 +234,25 @@ this section does not assert that all clients or operating systems have complete
 
 ## Install
 
-After publication, download `aic-notes-40.6.6.vsix` and its
-`aic-notes-40.6.6.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+After publication, download `aic-notes-41.1.1.vsix` and its
+`aic-notes-41.1.1.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-40.6.6.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-40.6.6.vsix.sha256
-code --install-extension .\aic-notes-40.6.6.vsix --force
+(Get-FileHash .\aic-notes-41.1.1.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-41.1.1.vsix.sha256
+code --install-extension .\aic-notes-41.1.1.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-40.6.6.vsix.sha256
-code --install-extension ./aic-notes-40.6.6.vsix --force
-# or: code-server --install-extension ./aic-notes-40.6.6.vsix --force
+sha256sum -c aic-notes-41.1.1.vsix.sha256
+code --install-extension ./aic-notes-41.1.1.vsix --force
+# or: code-server --install-extension ./aic-notes-41.1.1.vsix --force
 ```
 
 Reload the VS Code window after installation. Local editing requires no
@@ -364,7 +381,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-The coordinated version `40.6.6` records sequence 40, six feature outcomes and six fixed-bug
+The coordinated version `41.1.1` records sequence 41, one feature outcome and one fixed-bug
 outcomes; it is not a publication marker by itself.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and

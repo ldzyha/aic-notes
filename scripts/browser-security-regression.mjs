@@ -21,12 +21,15 @@ const browser = await chromium.launch({
 const origin = "http://aic-security-webview.test";
 const errors = [];
 const passed = [];
+const sourcePassword = 'example-secret|bare | spaced "quote"\\path';
+const passwordSource = `Password*: ${JSON.stringify(sourcePassword)}`;
+const pastedPassword = 'latest-secret | "literal quotes"\\path';
 const source = [
   "# Vault", "", "```aic", "## Main",
-  "Password*: example-secret", "Email: alice@example.com", "```", "", "Tail", "",
+  passwordSource, "Email: alice@example.com", "```", "", "Tail", "",
 ].join("\n");
 const emptySource = source
-  .replace("Password*: example-secret", "Password*:")
+  .replace(passwordSource, "Password*:")
   .replace("Email: alice@example.com", "Email:");
 
 async function openPage(secondary) {
@@ -142,7 +145,7 @@ try {
 
     await value.click();
     const valueCopy = await nextRequest(page, "write", 1);
-    assert.equal(valueCopy.text, "example-secret", `${surface}: value button copies exact value`);
+    assert.equal(valueCopy.text, sourcePassword, `${surface}: value button copies exact dequoted value`);
     await ack(page, valueCopy, true);
     await status.filter({ hasText: "Copied" }).waitFor();
     assert.equal(await status.textContent(), "Copied");
@@ -175,12 +178,12 @@ try {
     assert.equal(await count(page, "edit"), editsBeforePaste, `${surface}: no edit before read ACK`);
     assert.equal(await count(page, "draft.state"), draftsBeforePaste,
       `${surface}: no draft change before read ACK`);
-    await ack(page, read, true, "latest-secret");
+    await ack(page, read, true, pastedPassword);
     await page.waitForFunction(({ secondary, edits, drafts }) =>
       window.messages.filter((message) => message.type === (secondary ? "draft.state" : "edit")).length >
         (secondary ? drafts : edits),
     { secondary, edits: editsBeforePaste, drafts: draftsBeforePaste });
-    assert.match(await sourceSnapshot(page, "vault.note.md"), /Password\*: latest-secret/u);
+    assert.ok((await sourceSnapshot(page, "vault.note.md")).includes(`Password*: ${JSON.stringify(pastedPassword)}`));
     assert.equal(await page.getByRole("button", { name: "Copy Password value", exact: true }).textContent(),
       "••••••••", `${surface}: latest paste remains masked`);
     assert.equal(await page.locator(".cm-aic-security-panel:visible").count(), 0,
