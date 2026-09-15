@@ -15,14 +15,16 @@ import {
   notePlaceholderForUri,
 } from "../notes/create.js";
 import { noteRelationshipsForTarget } from "../notes/relationships.js";
-import { openSourceAtHref, openExternalLink, workspaceLinkUri } from "../notes/navigation.js";
+import {
+  openSourceAtHref,
+  openExternalLink,
+  workspaceLinkUri,
+} from "../notes/navigation.js";
 import { trashNotesLocally } from "../notes/delete.js";
-import { stampNoteProperties } from "../notes/properties.js";
 import { parentNoteCandidates } from "../notes/parent-context.js";
 import { DisposableScope } from "../lifecycle.js";
 import { documentSnapshot, createNoteDocument } from "../notes/operation.js";
 import { ClipboardHost } from "../clipboard.js";
-import { createNoteHeaderLabel } from "../notes/header-label.js";
 
 export const SECONDARY_VIEW_ID = "aicNotes.secondary";
 
@@ -65,7 +67,6 @@ export class SecondaryNotePane {
 
   constructor(context, ownership) {
     this.context = context;
-    this.headerLabel = createNoteHeaderLabel();
     this.scope = new DisposableScope();
     this.view = undefined;
     this.document = undefined;
@@ -181,10 +182,18 @@ export class SecondaryNotePane {
         clearTimeout(timeout);
         resolve(result);
       });
-      void this.view.webview.postMessage({ type: "draft.saveRequest", requestId, relativePath: path }).then(
-        (sent) => { if (!sent) this.saveWaiters.get(requestId)?.(false); },
-        () => this.saveWaiters.get(requestId)?.(false),
-      );
+      void this.view.webview
+        .postMessage({
+          type: "draft.saveRequest",
+          requestId,
+          relativePath: path,
+        })
+        .then(
+          (sent) => {
+            if (!sent) this.saveWaiters.get(requestId)?.(false);
+          },
+          () => this.saveWaiters.get(requestId)?.(false),
+        );
     });
     await this.editQueue.catch(() => undefined);
     return Boolean(saved && this.editingPath() === path && !this.draftDirty);
@@ -206,8 +215,11 @@ export class SecondaryNotePane {
         generation: this.generation,
         hasSurface: Boolean(this.documentUri || this.placeholderUri),
         ready: this.ready,
-        readOnly: this.navigationPaused || Boolean(this.editSurface &&
-          this.ownership.state(this.editSurface).readOnly),
+        readOnly:
+          this.navigationPaused ||
+          Boolean(
+            this.editSurface && this.ownership.state(this.editSurface).readOnly,
+          ),
       }),
     });
     const distRoot = vscode.Uri.joinPath(
@@ -255,7 +267,7 @@ export class SecondaryNotePane {
       </div>
       <div id="editor"></div>
       <footer id="secondary-footer" aria-label="Linked note actions">
-        <button id="pane-target" class="aic-pane-icon cm-aic-icon-button" type="button" data-aic-icon="source" aria-label="Open source" hidden></button>
+        <button id="pane-target" class="aic-pane-icon cm-aic-icon-button" type="button" data-aic-icon="open" aria-label="Open linked source file" title="Open linked source file" hidden></button>
         <button id="pane-clear" class="aic-pane-icon cm-aic-icon-button danger" type="button" data-aic-icon="trash" aria-label="Move note to Trash" hidden></button>
         <span class="aic-pane-footer-spacer"></span>
         <span id="editing-status" role="status" aria-live="polite"></span>
@@ -357,7 +369,9 @@ export class SecondaryNotePane {
   async beginNavigation(retried = false) {
     if (this.scope.disposed || this.actionPending) return null;
     if (this.draftDirty && !(await this.flushDraftBeforeNavigation())) {
-      await this.sendPaneState("Save failed · keep this note open and use Save to retry");
+      await this.sendPaneState(
+        "Save failed · keep this note open and use Save to retry",
+      );
       return null;
     }
     const previousPath = this.editingPath();
@@ -400,7 +414,11 @@ export class SecondaryNotePane {
       !isCurrent()
     ) {
       release();
-      if (!retried && snapshot?.dirty && await this.flushDraftBeforeNavigation())
+      if (
+        !retried &&
+        snapshot?.dirty &&
+        (await this.flushDraftBeforeNavigation())
+      )
         return this.beginNavigation(true);
       await this.sendPaneState("Unsaved · press Ctrl+S before switching notes");
       return null;
@@ -821,7 +839,9 @@ export class SecondaryNotePane {
       hasSource: Boolean(this.sourceUri),
     });
     this.view.title = title;
-    this.view.description = this.headerLabel(this.document?.getText() ?? "");
+    // Keep filesystem timestamps as host metadata; the compact header shows only
+    // the note identity and never repeats created/updated dates.
+    this.view.description = undefined;
     await this.view.webview.postMessage({
       type: "paneState",
       title,
@@ -923,7 +943,6 @@ export class SecondaryNotePane {
         return { action: "placeholder", skipped: true };
       }
 
-      if (noteUri) draft = await stampNoteProperties(draft, noteUri);
       if (!current()) return await stale();
 
       let document;
@@ -951,7 +970,6 @@ export class SecondaryNotePane {
         this.placeholderUri = undefined;
         this.placeholderText = undefined;
         document = this.document;
-        await vscode.commands.executeCommand("aicNotes.refreshTree");
       } else {
         if (this.documentUri && !(await exists(this.documentUri))) {
           if (!current()) return await stale();
@@ -965,7 +983,6 @@ export class SecondaryNotePane {
             if (!current()) return await stale();
             this.document = created;
             document = this.document;
-            await vscode.commands.executeCommand("aicNotes.refreshTree");
           } catch {
             await reply(false);
             await this.sendPaneState("Save failed · draft kept in the editor");
@@ -1103,7 +1120,6 @@ export class SecondaryNotePane {
         this.placeholderText = undefined;
       }
       this.generation++;
-      await vscode.commands.executeCommand("aicNotes.refreshTree");
       if (this.placeholderUri) await this.sendInit();
       finalStatus = "Moved local note to Trash";
     } finally {
@@ -1268,7 +1284,9 @@ export class SecondaryNotePane {
           const resolve = this.saveWaiters.get(message.requestId);
           if (!resolve) break;
           this.saveWaiters.delete(message.requestId);
-          const saved = message.relativePath === this.editingPath() && message.saved === true;
+          const saved =
+            message.relativePath === this.editingPath() &&
+            message.saved === true;
           resolve?.(saved);
           break;
         }

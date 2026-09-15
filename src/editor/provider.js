@@ -18,12 +18,14 @@
 import * as vscode from "vscode";
 import { formatError } from "../errors.js";
 import { webviewHtml } from "./webview-html.js";
-import { openSourceAtHref, openExternalLink, workspaceLinkUri } from "../notes/navigation.js";
+import {
+  openSourceAtHref,
+  openExternalLink,
+  workspaceLinkUri,
+} from "../notes/navigation.js";
 import { openNoteDocument } from "../notes/create.js";
 import { isNotePath } from "../secondary/model.js";
-import { stampNoteProperties } from "../notes/properties.js";
 import { DisposableScope } from "../lifecycle.js";
-import { documentSnapshot } from "../notes/operation.js";
 import { ClipboardHost } from "../clipboard.js";
 
 // [[target]] → note path candidates, aic LINK_RE semantics (sync.js:913):
@@ -166,12 +168,18 @@ export class MarkdownEditorProvider {
       context: () => ({
         webview,
         identity: document.uri.toString(),
-        relativePath: vscode.workspace.asRelativePath(document.uri, false).replaceAll("\\", "/"),
+        relativePath: vscode.workspace
+          .asRelativePath(document.uri, false)
+          .replaceAll("\\", "/"),
         generation: state.generation,
         hasSurface: !document.isClosed,
         ready: session.ready,
-        readOnly: session.saving || Boolean(session.editSurface &&
-          this.ownership.state(session.editSurface).readOnly),
+        readOnly:
+          session.saving ||
+          Boolean(
+            session.editSurface &&
+            this.ownership.state(session.editSurface).readOnly,
+          ),
       }),
     });
     this.sessions.add(session);
@@ -330,8 +338,10 @@ export class MarkdownEditorProvider {
                     saved,
                   });
               };
-              if ((msg.relativePath && msg.relativePath !== relativePath) ||
-                  (msg.generation != null && msg.generation !== state.generation)) {
+              if (
+                (msg.relativePath && msg.relativePath !== relativePath) ||
+                (msg.generation != null && msg.generation !== state.generation)
+              ) {
                 acknowledge();
                 break;
               }
@@ -354,54 +364,21 @@ export class MarkdownEditorProvider {
               }
               session.saving = true;
               try {
-                if (isNotePath(document.uri.path)) {
-                  const original = document.getText();
-                  const unchanged = documentSnapshot(document);
-                  // Pause the client before metadata IO. Edits made between
-                  // Ctrl+S and this probe are queued behind this save; stamping
-                  // their older host buffer would reset that still-local text.
-                  const snapshot = session.ready
-                    ? await this.editingSnapshot(session, relativePath, 250)
-                    : { text: original, dirty: false };
-                  if (
-                    snapshot &&
-                    !snapshot.dirty &&
-                    snapshot.text === original &&
-                    document.getText() === original
-                  ) {
-                    const stamped = await stampNoteProperties(
-                      original,
-                      document.uri,
-                    );
-                    // If the host changed meanwhile, skip metadata rather than
-                    // resetting the source. Save keeps its normal buffer scope.
-                    if (
-                      !session.scope.disposed &&
-                      unchanged() &&
-                      stamped !== original
-                    ) {
-                      const edit = new vscode.WorkspaceEdit();
-                      edit.replace(
-                        document.uri,
-                        new vscode.Range(
-                          document.positionAt(0),
-                          document.positionAt(original.length),
-                        ),
-                        stamped,
-                      );
-                      if (!(await vscode.workspace.applyEdit(edit))) break;
-                    }
-                  }
-                }
                 if (!session.scope.disposed) {
-                  const beforeSave = { text: document.getText(), version: document.version };
+                  const beforeSave = {
+                    text: document.getText(),
+                    version: document.version,
+                  };
                   session.savedSnapshot = null;
                   const accepted = await document.save();
                   // onDidSave captures formatter/save-participant output. A
                   // subsequent edit must never inherit that older save ACK.
                   const written = session.savedSnapshot ?? beforeSave;
-                  saved = accepted === true && !document.isDirty &&
-                    document.getText() === written.text && document.version === written.version;
+                  saved =
+                    accepted === true &&
+                    !document.isDirty &&
+                    document.getText() === written.text &&
+                    document.version === written.version;
                 }
               } finally {
                 session.saving = false;
@@ -420,13 +397,6 @@ export class MarkdownEditorProvider {
               }
               break;
             }
-            case "source.open":
-              if (isNotePath(document.uri.path))
-                await vscode.commands.executeCommand(
-                  "aicNotes.openSource",
-                  document.uri,
-                );
-              break;
             case "selection":
               session.selection = {
                 anchor: Number(msg.anchor),
@@ -479,94 +449,23 @@ export class MarkdownEditorProvider {
       if (webviewPanel.active && session.editSurface)
         void this.ownership.activate(session.editSurface);
     });
-    const willSaveSub = vscode.workspace.onWillSaveTextDocument?.((event) => {
-      if (
-        session.scope.disposed ||
-        event.document.uri.toString() !== document.uri.toString() ||
-        event.reason !== vscode.TextDocumentSaveReason.Manual ||
-        !isNotePath(document.uri.path) ||
-        session.saving ||
-        (session.editSurface &&
-          this.ownership.state(session.editSurface).readOnly)
-      )
-        return;
-      const original = document.getText();
-      const unchanged = documentSnapshot(document);
-      session.saving = true;
-      event.waitUntil(
-        (async () => {
-          // Native Save can overtake an optimistic webview edit. Briefly pause
-          // and compare the client before changing note metadata.
-          const snapshot = session.ready
-            ? await this.editingSnapshot(session, relativePath, 250)
-            : { text: original, dirty: false };
-          if (!snapshot || snapshot.dirty || snapshot.text !== original)
-            return [];
-          // A failed/slow file stat must not leave the editor paused after
-          // VS Code abandons its save participants. A late result only builds
-          // text and is ignored; it cannot apply metadata after this barrier.
-          let timeout;
-          const stamped = await Promise.race([
-            stampNoteProperties(original, document.uri),
-            new Promise((resolve) => {
-              timeout = setTimeout(() => resolve(null), 750);
-            }),
-          ]).finally(() => clearTimeout(timeout));
-          if (
-            session.scope.disposed ||
-            !unchanged() ||
-            stamped === null ||
-            document.getText() !== original ||
-            stamped === original ||
-            (session.editSurface &&
-              this.ownership.state(session.editSurface).readOnly)
-          )
-            return [];
-          // Apply while paused and await the document change/echo before
-          // releasing the client. Returning a full-document TextEdit here
-          // would defer application until AFTER finally resumes input.
-          const edit = new vscode.WorkspaceEdit();
-          edit.replace(
-            document.uri,
-            new vscode.Range(
-              document.positionAt(0),
-              document.positionAt(original.length),
-            ),
-            stamped,
-          );
-          await vscode.workspace.applyEdit(edit);
-          return [];
-        })()
-          .catch(() => [])
-          .finally(() => {
-            session.saving = false;
-            if (!session.scope.disposed && session.editSurface)
-              this.ownership.notify();
-            else if (!session.scope.disposed)
-              webview.postMessage({
-                type: "editingState",
-                relativePath,
-                readOnly: false,
-              });
-          }),
-      );
-    });
     const savedSub = vscode.workspace.onDidSaveTextDocument?.((saved) => {
       if (saved.uri.toString() !== document.uri.toString()) return;
       if (session.saving)
-        session.savedSnapshot = { text: document.getText(), version: document.version };
+        session.savedSnapshot = {
+          text: document.getText(),
+          version: document.version,
+        };
       if (session.editSurface) void this.ownership.changed(session.editSurface);
       if (!session.scope.disposed)
-        webview.postMessage({ type: "primary.saveState", relativePath, text: document.getText() });
+        webview.postMessage({
+          type: "primary.saveState",
+          relativePath,
+          text: document.getText(),
+        });
     });
 
-    for (const disposable of [
-      changeSub,
-      messageSub,
-      visibilitySub,
-      willSaveSub,
-      savedSub,
-    ])
+    for (const disposable of [changeSub, messageSub, visibilitySub, savedSub])
       session.scope.add(disposable);
     session.scope.defer(() => {
       if (session.editSurface) this.ownership.dispose(session.editSurface);
@@ -678,7 +577,7 @@ export class MarkdownEditorProvider {
       "main.js",
       '<div id="editor"></div>' +
         (isNote
-          ? '<footer id="document-actions" aria-label="Note actions"><button id="document-source" class="cm-aic-icon-button" type="button" data-aic-icon="source" aria-label="Open source"></button><span id="editing-status" role="status" aria-live="polite"></span></footer>'
+          ? '<footer id="document-actions" aria-label="Note actions"><span id="editing-status" role="status" aria-live="polite"></span></footer>'
           : ""),
       isNote ? "aic-main-note-surface" : "",
     );

@@ -2,8 +2,8 @@
   "name": "aic-notes",
   "displayName": "AIC Notes",
   "description": "Local AIC Markdown documents and linked notes, with no account connection or note synchronization.",
-  "version": "43.0.1",
-  "aicEditorCore": "5.3.0",
+  "version": "44.4.7",
+  "aicEditorCore": "6.0.0",
   "publisher": "ldzyha",
   "icon": "media/icon.png",
   "license": "MIT",
@@ -46,7 +46,7 @@
     },
     "virtualWorkspaces": {
       "supported": "limited",
-      "description": "Notes tree and editor use workspace.fs; wiki-link resolution needs stat support on the virtual filesystem."
+      "description": "The editor and linked-note pane use workspace.fs; wiki-link resolution needs stat support on the virtual filesystem."
     }
   },
   "scripts": {
@@ -62,13 +62,6 @@
   },
   "contributes": {
     "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "aicNotes",
-          "title": "Notes",
-          "icon": "media/notes.svg"
-        }
-      ],
       "secondarySidebar": [
         {
           "id": "aicNotesSecondary",
@@ -78,13 +71,6 @@
       ]
     },
     "views": {
-      "aicNotes": [
-        {
-          "id": "aicNotes.tree",
-          "name": "Notes & Documents",
-          "icon": "media/notes.svg"
-        }
-      ],
       "aicNotesSecondary": [
         {
           "id": "aicNotes.secondary",
@@ -125,12 +111,6 @@
         "icon": "$(root-folder-opened)"
       },
       {
-        "command": "aicNotes.refreshTree",
-        "title": "Refresh",
-        "category": "AIC Notes",
-        "icon": "$(refresh)"
-      },
-      {
         "command": "aicNotes.enableExplorerNesting",
         "title": "Enable Explorer Nesting for Notes",
         "category": "AIC Notes"
@@ -142,23 +122,8 @@
         "icon": "$(go-to-file)"
       },
       {
-        "command": "aicNotes.copyWikiLink",
-        "title": "Copy Wiki Link",
-        "category": "AIC Notes"
-      },
-      {
         "command": "aicNotes.useNativeForMarkdown",
         "title": "Use Native Editor for Plain Markdown",
-        "category": "AIC Notes"
-      },
-      {
-        "command": "aicNotes.deleteNote",
-        "title": "Delete Note",
-        "category": "AIC Notes"
-      },
-      {
-        "command": "aicNotes.deleteFolderNotes",
-        "title": "Delete All Notes in Folder",
         "category": "AIC Notes"
       },
       {
@@ -222,50 +187,6 @@
           "command": "aicNotes.linkSelectionToNote",
           "when": "editorHasSelection && resourceScheme == file && resourceFilename not =~ /\\.note\\.md$/",
           "group": "navigation@10"
-        }
-      ],
-      "view/title": [
-        {
-          "command": "aicNotes.openProjectNote",
-          "when": "view == aicNotes.tree && workspaceFolderCount > 0",
-          "group": "navigation@0"
-        },
-        {
-          "command": "aicNotes.noteForCurrentFile",
-          "when": "view == aicNotes.tree",
-          "group": "navigation@1"
-        },
-        {
-          "command": "aicNotes.refreshTree",
-          "when": "view == aicNotes.tree",
-          "group": "navigation@2"
-        },
-        {
-          "command": "aicNotes.enableAgentWorkflow",
-          "when": "view == aicNotes.tree && workspaceFolderCount > 0",
-          "group": "navigation@3"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "aicNotes.openSource",
-          "when": "view == aicNotes.tree && viewItem == note",
-          "group": "navigation@1"
-        },
-        {
-          "command": "aicNotes.copyWikiLink",
-          "when": "view == aicNotes.tree && viewItem =~ /note/",
-          "group": "1_copy@1"
-        },
-        {
-          "command": "aicNotes.deleteNote",
-          "when": "view == aicNotes.tree && viewItem == note",
-          "group": "9_delete@1"
-        },
-        {
-          "command": "aicNotes.deleteFolderNotes",
-          "when": "view == aicNotes.tree && viewItem =~ /^(dir|bucket)$/",
-          "group": "9_delete@1"
         }
       ]
     },

@@ -1,5 +1,28 @@
 # Release provenance
 
+## Release 44.4.7 — aic-only typed values and a smaller VS Code host
+
+AIC Editor Core 6.0.0 pairs with Standard Notes AIC 35.3.9. The explicit shared
+inventory now includes the aic-only typed-pipe model, the local editor guide, and
+canonical field presets. The VS Code host removes its native Notes & Documents tree
+and every save-time YAML metadata writer while retaining local note files, Linked
+Note, source following, contextual parents, ordinary Explorer, and exact authored text.
+The shared layout retains its BEM compatibility contract.
+Card/composite labels and first values now align with adjacent simple fields, while
+contextual Field/Row/Section actions follow the relevant row; empty sections keep
+Row/Section inline without a dedicated footer. Field-add menus use compact left-aligned items while retaining their
+actions, bounds and keyboard behavior. Masking, copy, Paste, deletion and reordering
+ownership remain host-scoped. Legacy YAML Properties are not interpreted or migrated.
+Linked-note headers no longer project filesystem dates, and the main note footer
+keeps one in-place source/preview toggle. The linked owner's navigation action remains
+separate in the Secondary pane.
+
+The canonical source remains `standard-notes-aic/src/core`; AIC Notes consumes the
+explicitly inventoried mirror in `vendor/aic-editor-core`. The final canonical commit,
+exact mirrored hashes and passing release gate must be recorded in
+`CORE_SNAPSHOT.json` before publication. This release does not include the separately
+proposed global Shared/encryption design, and no Marketplace publication is implied.
+
 ## Release 43.0.1 — additive shared UI contract and inline cards
 
 AIC Editor Core 5.3.0 pairs with Standard Notes AIC 34.3.1. The explicit inventory

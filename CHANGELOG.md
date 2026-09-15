@@ -2,6 +2,52 @@
 
 ## Unreleased
 
+## 44.4.7 — 2026-09-15
+
+Release sequence 44 · 4 feature outcomes · 7 fixed-bug outcomes. Release source
+target; VSIX publication requires separate verification. The shared editor core
+moves to 6.0.0 with one breaking AIC field grammar.
+
+### Features
+
+1. The extension-specific Notes & Documents activity-bar tree is retired. Linked
+   Note, source following, contextual parent links and ordinary Explorer remain;
+   existing note files are not migrated or deleted.
+2. One complete fenced `aic` document replaces active colon-field and YAML
+   Properties interpretation. Old text remains raw and directly editable, and no
+   save path stamps or migrates it.
+3. Both VS Code editor surfaces mount the canonical local `?` guide through their
+   existing compact action areas and host-owned popover lifecycle.
+4. `|`, `*|`, `#|`, `_|`, `1|`, and `0|` independently type following values as
+   text, secret, TOTP, card, unused one-time or used one-time data. Field/Row/Section
+   insertion is relative to the current row or section; presets combine these types.
+
+### Fixes
+
+1. Shared AIC card rows align their label and first value with
+   adjacent simple fields, including the same label typography and spacing. Cards
+   omit the extra label colon; masking and independent copy targets are unchanged.
+2. Contextual **Field**, **Row**, and **Section** actions follow the relevant row;
+   empty sections keep **Row** and **Section** inline without a dedicated New-block
+   or Section footer.
+3. Shared field-add menus use compact, left-aligned options instead of oversized
+   centered rows, while retaining their actions, bounds and keyboard behavior.
+4. The shared card filter stays in the card header between title and actions instead
+   of consuming a separate oversized row.
+5. Capacity feedback stays with the relevant Add action and uses bounded fixed text.
+6. Linked-note headers no longer repeat created/updated timestamps. Filesystem
+   metadata remains available to VS Code for operational checks but is not projected
+   into the compact note UI.
+7. Main note footers expose one in-place **Show Markdown source / Show preview**
+   action instead of a second source-looking button. Linked Note keeps its distinct
+   owner-navigation action.
+
+Compatibility: Standard Notes AIC 35.3.9 mirrors shared core 6.0.0. Browser 0.3.0
+receives the same grammar and shared presentation fixes. Unsupported text stays raw and VS Code's
+local-only boundary are unchanged. This release does not include the separately
+proposed global Shared/encryption work. Published VSIX and store availability
+require separate verification.
+
 ## 43.0.1 — 2026-09-15
 
 Release sequence 43 · 0 feature outcomes · 1 fixed-bug outcome. Release source target;
@@ -41,11 +87,11 @@ VSIX publication requires separate verification. The shared editor core moves to
 
 ### Feature
 
-1. All three Security value slots, and custom Properties slots behind `# aic-fields: v2`, accept optional JSON-style double-quoted strings. Quoted pipes (including ` | `), quotes, backslashes and control escapes retain their logical values. Serialization quotes values containing a pipe or quote, including pasted and imported values; ordinary values need no quotes. YAML outer quoting remains separate: `Password*: '"a | b" | "description"'` preserves the inner field-slot double quotes. Labels and titles have no quote syntax.
+1. All three Security value slots, and custom Properties slots behind `# aic-fields: v2`, accept optional JSON-style double-quoted strings. Quoted pipes (including `|`), quotes, backslashes and control escapes retain their logical values. Serialization quotes values containing a pipe or quote, including pasted and imported values; ordinary values need no quotes. YAML outer quoting remains separate: `Password*: '"a | b" | "description"'` preserves the inner field-slot double quotes. Labels and titles have no quote syntax.
 
 ### Fix
 
-1. Only the exact spaced ` | ` outside quotes separates slots. Bare or one-sided pipes remain literal data, while existing `\|` outside quotes still parses. Invalid quotes, escapes or trailing text receive generic, non-secret errors; Security errors identify exact source positions.
+1. Only the exact spaced `|` outside quotes separates slots. Bare or one-sided pipes remain literal data, while existing `\|` outside quotes still parses. Invalid quotes, escapes or trailing text receive generic, non-secret errors; Security errors identify exact source positions.
 
 Compatibility: Standard Notes AIC 32.1.1 mirrors shared core 5.1.0. Existing authored values are not automatically rewritten. No Standard Notes authentication or note synchronization is added; masking remains visual, not encryption. Publication requires separate verification.
 

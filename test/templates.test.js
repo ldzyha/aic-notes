@@ -7,7 +7,6 @@ import {
 import {
   fillTemplate,
   loadTemplate,
-  stripTemplateFrontmatter,
   TEMPLATE_PATHS,
 } from "../src/notes/templates.js";
 
@@ -24,14 +23,10 @@ test("fillTemplate collapses blank runs left by dropped lines", () => {
   assert.ok(!out.includes("\n\n\n"));
 });
 
-test("legacy template properties never leak into a fresh placeholder", async () => {
+test("custom template text remains authored source without automatic migration", async () => {
   const template =
     "---\r\ntitle: old\r\nlevel: file-note\r\nscope: \r\nstatus: live\r\nupdated: old\r\ncreated: old\r\nagent: true\r\n---\r\n# {{name}}\r\n";
-  assert.equal(stripTemplateFrontmatter(template), "# {{name}}\r\n");
-  assert.equal(
-    await loadTemplate("file-note", async () => template),
-    "# {{name}}\r\n",
-  );
+  assert.equal(await loadTemplate("file-note", async () => template), template);
 });
 
 test("loadTemplate: override wins only when it contains a token", () => {

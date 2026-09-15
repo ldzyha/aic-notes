@@ -216,17 +216,6 @@ async function mainEditor(h) {
   };
 }
 
-function nativeSaveEdits(h, document) {
-  const promises = [];
-  for (const listener of h.willSaveListeners)
-    listener({
-      document,
-      reason: h.vscode.TextDocumentSaveReason.Manual,
-      waitUntil: (promise) => promises.push(promise),
-    });
-  return Promise.all(promises);
-}
-
 async function auditSidebar(h) {
   const uri = h.addFile("file.note.md", "base");
   const document = h.documentFor(uri);
@@ -256,15 +245,26 @@ for (const saved of [true, false]) {
     pane.sendInit = async () => {};
     const next = h.addFile("next.note.md", "next");
     const originalSave = document.save;
-    document.save = async () => saved ? originalSave() : false;
+    document.save = async () => (saved ? originalSave() : false);
     pane.view.onPost = (message) => {
       if (message.type === "draft.saveRequest") {
-        void pane.commitDraft("base LOCAL", pane.generation, 71, "file.note.md", lease).then((result) => pane.onMessage({
-          type: "draft.saveResult", requestId: message.requestId,
-          relativePath: "file.note.md", saved: Boolean(result.saved),
-        }));
+        void pane
+          .commitDraft("base LOCAL", pane.generation, 71, "file.note.md", lease)
+          .then((result) =>
+            pane.onMessage({
+              type: "draft.saveResult",
+              requestId: message.requestId,
+              relativePath: "file.note.md",
+              saved: Boolean(result.saved),
+            }),
+          );
       } else if (message.type === "editing.probe") {
-        void pane.onMessage({ type: "editing.snapshot", requestId: message.requestId, text: document.getText(), dirty: false });
+        void pane.onMessage({
+          type: "editing.snapshot",
+          requestId: message.requestId,
+          text: document.getText(),
+          dirty: false,
+        });
       }
       return true;
     };
@@ -282,11 +282,24 @@ test("a late successful sidebar save result cannot clear a newer dirty draft sta
   pane.ready = true;
   pane.draftDirty = true;
   let request;
-  pane.view.onPost = (message) => { request = message; return true; };
+  pane.view.onPost = (message) => {
+    request = message;
+    return true;
+  };
   const flush = pane.flushDraftBeforeNavigation();
   pane.draftDirty = false;
-  await pane.onMessage({ type: "draft.state", relativePath: "file.note.md", dirty: true, pending: false });
-  await pane.onMessage({ type: "draft.saveResult", requestId: request.requestId, relativePath: "file.note.md", saved: true });
+  await pane.onMessage({
+    type: "draft.state",
+    relativePath: "file.note.md",
+    dirty: true,
+    pending: false,
+  });
+  await pane.onMessage({
+    type: "draft.saveResult",
+    requestId: request.requestId,
+    relativePath: "file.note.md",
+    saved: true,
+  });
   assert.equal(await flush, false);
   assert.equal(pane.draftDirty, true);
   pane.dispose();
@@ -581,29 +594,19 @@ test("permanent-delete fallback rechecks permission after its own confirmation",
   assert.equal(h.files.get(uri.path).text, "base");
 });
 
-test("typing queued immediately after main Ctrl+S survives the save barrier and remains dirty", async () => {
+test("main save preserves exact source and a later edit remains dirty", async () => {
   const h = harness();
   const { document, provider, panel, lease } = await mainEditor(h);
-  let pendingEdit;
-  panel.onPost = (message) => {
-    if (message.type !== "editing.probe") return;
-    pendingEdit = panel.send({
-      type: "edit",
-      generation: 0,
-      lease,
-      changes: [{ from: 4, to: 4, insert: " typed after save" }],
-    });
-    panel.send({
-      type: "editing.snapshot",
-      requestId: message.requestId,
-      text: "body typed after save",
-      dirty: false,
-    });
-  };
   await panel.send({ type: "save", lease });
-  await pendingEdit;
   assert.deepEqual(h.saved, ["body"]);
-  assert.equal(document.getText(), "body typed after save");
+  assert.equal(document.getText(), "body");
+  await panel.send({
+    type: "edit",
+    generation: 0,
+    lease,
+    changes: [{ from: 4, to: 4, insert: " still here" }],
+  });
+  assert.equal(document.getText(), "body still here");
   assert.equal(document.isDirty, true);
   assert.equal(
     panel.messages.some(({ type }) => type === "reset" || type === "external"),
@@ -611,217 +614,6 @@ test("typing queued immediately after main Ctrl+S survives the save barrier and 
   );
   provider.dispose();
 });
-
-test("main stays paused throughout metadata IO even if ownership notifies again", async () => {
-  const h = harness();
-  const { document, provider, panel, lease } = await mainEditor(h);
-  panel.onPost = (message) => {
-    if (message.type === "editing.probe")
-      panel.send({
-        type: "editing.snapshot",
-        requestId: message.requestId,
-        text: document.getText(),
-        dirty: false,
-      });
-  };
-  const entered = deferred();
-  const resume = deferred();
-  const stat = h.vscode.workspace.fs.stat;
-  h.vscode.workspace.fs.stat = async (resource) => {
-    entered.resolve();
-    await resume.promise;
-    return stat(resource);
-  };
-  const saving = panel.send({ type: "save", lease });
-  await entered.promise;
-  h.ownership.notify();
-  assert.equal(
-    panel.messages.filter(({ type }) => type === "editingState").at(-1)
-      .readOnly,
-    true,
-  );
-  resume.resolve();
-  await saving;
-  assert.match(document.getText(), /file: file\.note\.md/u);
-  assert.equal(document.isDirty, false);
-  assert.equal(
-    panel.messages.filter(({ type }) => type === "editingState").at(-1)
-      .readOnly,
-    false,
-  );
-  provider.dispose();
-});
-
-test("an unavailable main snapshot skips stamping without dropping queued input", async () => {
-  const h = harness();
-  const { document, provider, panel, lease } = await mainEditor(h);
-  panel.onPost = (message) => message.type !== "editing.probe";
-  const saving = panel.send({ type: "save", lease });
-  const editing = panel.send({
-    type: "edit",
-    generation: 0,
-    lease,
-    changes: [{ from: 4, to: 4, insert: " still here" }],
-  });
-  await Promise.all([saving, editing]);
-  assert.equal(document.getText(), "body still here");
-  assert.deepEqual(h.saved, ["body"]);
-  assert.equal(document.isDirty, true);
-  assert.equal(
-    panel.messages.some(({ type }) => type === "reset"),
-    false,
-  );
-  provider.dispose();
-});
-
-test("native Save cannot return a delayed metadata replacement after resuming webview input", async () => {
-  const h = harness();
-  const { document, provider, panel, lease } = await mainEditor(h);
-  let clientText = document.getText();
-  let generation = 0;
-  let pendingEdit;
-  panel.onPost = (message) => {
-    if (message.type === "editing.probe")
-      panel.send({
-        type: "editing.snapshot",
-        requestId: message.requestId,
-        text: clientText,
-        dirty: false,
-      });
-    if (message.type === "external") {
-      for (const change of [...message.changes].reverse())
-        clientText =
-          clientText.slice(0, change.from) +
-          change.insert +
-          clientText.slice(change.to);
-      generation = message.generation;
-    }
-    if (message.type === "editingState" && !message.readOnly && !pendingEdit) {
-      pendingEdit = {
-        type: "edit",
-        generation,
-        lease,
-        changes: [
-          {
-            from: clientText.length,
-            to: clientText.length,
-            insert: " typed after native barrier",
-          },
-        ],
-      };
-      clientText += " typed after native barrier";
-    }
-  };
-  const promises = [];
-  for (const listener of h.willSaveListeners)
-    listener({
-      document,
-      reason: h.vscode.TextDocumentSaveReason.Manual,
-      waitUntil: (promise) => promises.push(promise),
-    });
-  for (const edits of await Promise.all(promises))
-    for (const edit of edits)
-      document.replace(edit.range.from, edit.range.to, edit.newText);
-  assert.ok(pendingEdit, "the native save barrier must release the client");
-  await panel.send(pendingEdit);
-  assert.match(document.getText(), /file: file\.note\.md/u);
-  assert.match(document.getText(), /body typed after native barrier$/u);
-  assert.equal(
-    panel.messages.some(({ type }) => type === "reset"),
-    false,
-  );
-  provider.dispose();
-});
-
-test("native Save holds its pause through metadata application despite ownership notifications", async () => {
-  const h = harness();
-  const { document, provider, panel } = await mainEditor(h);
-  panel.onPost = (message) => {
-    if (message.type === "editing.probe")
-      panel.send({
-        type: "editing.snapshot",
-        requestId: message.requestId,
-        text: document.getText(),
-        dirty: false,
-      });
-  };
-  const entered = deferred();
-  const resume = deferred();
-  const stat = h.vscode.workspace.fs.stat;
-  h.vscode.workspace.fs.stat = async (resource) => {
-    entered.resolve();
-    await resume.promise;
-    return stat(resource);
-  };
-  const saving = nativeSaveEdits(h, document);
-  await entered.promise;
-  h.ownership.notify();
-  assert.equal(
-    panel.messages.filter(({ type }) => type === "editingState").at(-1)
-      .readOnly,
-    true,
-  );
-  resume.resolve();
-  const prepared = await saving;
-  assert.equal(prepared.length, 1);
-  assert.equal(prepared[0].length, 0);
-  assert.match(document.getText(), /file: file\.note\.md/u);
-  assert.equal(
-    panel.messages.filter(({ type }) => type === "editingState").at(-1)
-      .readOnly,
-    false,
-  );
-  provider.dispose();
-});
-
-for (const failure of ["reject", "false", "timeout"]) {
-  test(`native metadata ${failure} releases the client and cannot apply a late replacement`, async () => {
-    const h = harness();
-    const { document, provider, panel, lease } = await mainEditor(h);
-    panel.onPost = (message) => {
-      if (message.type === "editing.probe")
-        panel.send({
-          type: "editing.snapshot",
-          requestId: message.requestId,
-          text: document.getText(),
-          dirty: false,
-        });
-    };
-    const delayedStat = deferred();
-    const applyEdit = h.vscode.workspace.applyEdit;
-    if (failure === "timeout")
-      h.vscode.workspace.fs.stat = () => delayedStat.promise;
-    else
-      h.vscode.workspace.applyEdit = async () => {
-        if (failure === "reject") throw new Error("metadata edit failed");
-        return false;
-      };
-    const prepared = await nativeSaveEdits(h, document);
-    assert.equal(prepared[0].length, 0);
-    assert.equal(document.getText(), "body");
-    assert.equal(
-      panel.messages.filter(({ type }) => type === "editingState").at(-1)
-        .readOnly,
-      false,
-    );
-    delayedStat.resolve({ ctime: 1 });
-    await new Promise((resolve) => setImmediate(resolve));
-    assert.equal(
-      document.getText(),
-      "body",
-      "late metadata cannot mutate the note",
-    );
-    h.vscode.workspace.applyEdit = applyEdit;
-    await panel.send({
-      type: "edit",
-      generation: 0,
-      lease,
-      changes: [{ from: 4, to: 4, insert: " editable" }],
-    });
-    assert.equal(document.getText(), "body editable");
-    provider.dispose();
-  });
-}
 
 async function sidebar(h) {
   const first = h.addFile("first.note.md", "first");
@@ -905,7 +697,7 @@ for (const route of ["open", "follow"]) {
   });
 }
 
-test("a dirty optimistic sidebar snapshot prevents navigation before any destination lookup", async () => {
+test("a dirty optimistic sidebar snapshot prevents destination lookup", async () => {
   const h = harness();
   const { pane, first, second, source, messages } = await sidebar(h);
   pane.testSnapshot = { text: "first plus local draft", dirty: true };
@@ -918,7 +710,11 @@ test("a dirty optimistic sidebar snapshot prevents navigation before any destina
     await pane.open(second, { sourceUri: source, reveal: false }),
     false,
   );
-  assert.equal(reads, 0);
+  assert.equal(
+    reads,
+    0,
+    "dirty draft must prevent all destination metadata IO",
+  );
   assert.equal(pane.documentUri.toString(), first.toString());
   assert.equal(
     messages.some(({ type }) => type === "init"),

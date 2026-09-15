@@ -20,8 +20,20 @@ test("every public command is registered and indexed", () => {
       `${command} is not registered`,
     );
   }
-  assert.match(index, /`aicNotes\.openNote`/u);
-  assert.match(registrations, /"aicNotes\.openNote"/u);
+  for (const retired of [
+    "aicNotes.openNote",
+    "aicNotes.openTarget",
+    "aicNotes.refreshTree",
+    "aicNotes.copyWikiLink",
+    "aicNotes.deleteNote",
+    "aicNotes.deleteFolderNotes",
+  ]) {
+    assert.ok(
+      !manifest.contributes.commands.some(({ command }) => command === retired),
+    );
+    assert.ok(!registrations.includes(`"${retired}"`));
+    assert.ok(!index.includes("`" + retired + "`"));
+  }
 });
 
 test("functional index records the release-critical state contracts", () => {
@@ -29,7 +41,7 @@ test("functional index records the release-critical state contracts", () => {
     "Ctrl/Cmd+S",
     "active custom-editor tab is authoritative",
     "Pinning affects only automatic following",
-    "file`, `created`, and `updated",
+    "Secondary headers do not display file dates",
     "No Standard Notes account connection is offered by the VS Code extension",
     "One universal VSIX",
     "Trash is local",

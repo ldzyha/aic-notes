@@ -6,35 +6,92 @@ const root = new URL("../", import.meta.url);
 const read = (relativePath) => readFile(new URL(relativePath, root), "utf8");
 const packageJson = JSON.parse(await read("package.json"));
 
-test("retired File Context sphere has no contribution, activation or build entry", async () => {
+test("retired graph and native note tree have no contribution or runtime", async () => {
   const manifest = JSON.stringify(packageJson.contributes);
   assert.doesNotMatch(manifest, /contextSphere|File Context/u);
-  assert.ok(packageJson.contributes.views.aicNotesSecondary.some((view) => view.id === "aicNotes.secondary"));
-  assert.ok(packageJson.contributes.views.aicNotes.some((view) => view.id === "aicNotes.tree"));
-  assert.doesNotMatch(await read("src/extension.js"), /ContextSphere|sphere-provider/u);
+  assert.ok(
+    packageJson.contributes.views.aicNotesSecondary.some(
+      (view) => view.id === "aicNotes.secondary",
+    ),
+  );
+  assert.equal(packageJson.contributes.views.aicNotes, undefined);
+  assert.equal(packageJson.contributes.viewsContainers.activitybar, undefined);
+  assert.doesNotMatch(manifest, /aicNotes\.tree|Notes & Documents/u);
+  const extension = await read("src/extension.js");
+  assert.doesNotMatch(
+    extension,
+    /ContextSphere|sphere-provider|NotesTree|registerTreeDataProvider/u,
+  );
   assert.doesNotMatch(await read("esbuild.mjs"), /sphere\.js/u);
-  for (const file of ["src/context/sphere-provider.js", "src/context/sphere-graph.js", "src/webview/sphere.js"])
+  for (const file of [
+    "src/context/sphere-provider.js",
+    "src/context/sphere-graph.js",
+    "src/webview/sphere.js",
+    "src/notes/tree.js",
+  ])
     await assert.rejects(access(new URL(file, root)));
 });
 
-test("Properties and Security share one core widget with only host routing in the webview", async () => {
+test("legacy YAML Properties stay raw while aic blocks use the shared widget", async () => {
   const main = await read("src/webview/main.js");
   const shared = await read("vendor/aic-editor-core/security-block.js");
   assert.match(main, /makePropertiesBlockExtension/u);
   assert.match(main, /setPropertyRelationships/u);
   assert.doesNotMatch(main, /makeFrontmatterExtension|handlers\/frontmatter/u);
   assert.match(shared, /class SecurityBlockWidget extends WidgetType/u);
-  assert.match(shared, /serializePropertiesBody/u);
-  assert.match(shared, /Copy properties/u);
-  await assert.rejects(access(new URL("vendor/markdown/handlers/frontmatter.js", root)));
+  assert.match(shared, /YAML Properties are no longer supported/u);
+  assert.match(shared, /use an aic block/u);
+  await assert.rejects(access(new URL("src/notes/header-label.js", root)));
+  await assert.rejects(
+    access(new URL("vendor/markdown/handlers/frontmatter.js", root)),
+  );
 });
 
-test("43.0.1 is a universal local editor without account connectivity", () => {
-  assert.equal(packageJson.version, "43.0.1");
-  assert.equal(packageJson.aicEditorCore, "5.3.0");
+test("both VS Code editor surfaces mount the shared local guide", async () => {
+  const main = await read("src/webview/main.js");
+  assert.match(
+    main,
+    /import \{ createEditorHelp \} from "\.\.\/\.\.\/vendor\/aic-editor-core\/editor-help\.js"/u,
+  );
+  assert.match(main, /createEditorHelp\(document, \{ host: "vscode" \}\)/u);
+  assert.match(main, /setAttribute\("popover", "auto"\)/u);
+  assert.match(main, /aria-label", "Open editor guide"/u);
+  assert.doesNotMatch(main, /innerHTML.*editor guide/iu);
+});
+
+test("VS Code surfaces show no date label and own one in-place source toggle", async () => {
+  const [secondary, editor, webview] = await Promise.all([
+    read("src/secondary/provider.js"),
+    read("src/editor/provider.js"),
+    read("src/webview/main.js"),
+  ]);
+  assert.doesNotMatch(
+    secondary,
+    /createNoteHeaderLabel|Intl\.DateTimeFormat|\.mtime/u,
+  );
+  assert.match(secondary, /view\.description = undefined/u);
+  assert.match(
+    secondary,
+    /id="pane-target"[^>]*data-aic-icon="open"[^>]*aria-label="Open linked source file"/u,
+  );
+  assert.doesNotMatch(
+    secondary,
+    /id="pane-target"[^>]*data-aic-icon="source"/u,
+  );
+  assert.doesNotMatch(editor, /document-source|source\.open/u);
+  assert.doesNotMatch(webview, /document-source|Open original file/u);
+  assert.equal(webview.match(/sourceMode\.createButton\(/gu)?.length, 1);
+});
+
+test("44.4.7 is a universal local editor without account connectivity", () => {
+  assert.equal(packageJson.version, "44.4.7");
+  assert.equal(packageJson.aicEditorCore, "6.0.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
-  assert.match(packageJson.description, /no account connection or note synchronization/u);
+  assert.match(
+    packageJson.description,
+    /no account connection or note synchronization/u,
+  );
   assert.doesNotMatch(packageJson.scripts.package, /--target|linux|win32/iu);
   assert.equal(packageJson.scripts["package:windows"], undefined);
   assert.match(packageJson.scripts["release:gate"], /release:checksum/u);
@@ -44,6 +101,13 @@ test("43.0.1 is a universal local editor without account connectivity", () => {
   );
   assert.ok(commands.includes("aicNotes.openProjectNote"));
   assert.ok(commands.includes("aicNotes.linkSelectionToNote"));
+  for (const command of [
+    "aicNotes.refreshTree",
+    "aicNotes.copyWikiLink",
+    "aicNotes.deleteNote",
+    "aicNotes.deleteFolderNotes",
+  ])
+    assert.ok(!commands.includes(command));
   assert.ok(!commands.includes("aicNotes.syncCurrentNote"));
   assert.ok(!commands.includes("aicNotes.pullProjectNotes"));
   for (const command of [
@@ -51,8 +115,13 @@ test("43.0.1 is a universal local editor without account connectivity", () => {
     "aicNotes.signInStandardNotes",
     "aicNotes.signOutStandardNotes",
     "aicNotes.checkStandardNotesConnection",
-  ]) assert.ok(!commands.includes(command));
-  assert.ok(!JSON.stringify(packageJson.contributes.menus).includes("standardNotesAccount"));
+  ])
+    assert.ok(!commands.includes(command));
+  assert.ok(
+    !JSON.stringify(packageJson.contributes.menus).includes(
+      "standardNotesAccount",
+    ),
+  );
   assert.ok(!Object.hasOwn(packageJson.devDependencies, "@noble/hashes"));
   assert.ok(!Object.hasOwn(packageJson.devDependencies, "proper-lockfile"));
   assert.ok(
@@ -77,11 +146,10 @@ test("note association, project fallback, and local footer actions are explicit"
     { key: "ctrl+alt+n", mac: "cmd+alt+n", when: undefined },
   );
 
-  const [provider, create, target, tree] = await Promise.all([
+  const [provider, create, target] = await Promise.all([
     read("src/secondary/provider.js"),
     read("src/notes/create.js"),
     read("src/notes/target.js"),
-    read("src/notes/tree.js"),
   ]);
   assert.match(provider, /id="secondary-footer"/u);
   assert.match(provider, /id="pane-target"/u);
@@ -105,8 +173,7 @@ test("note association, project fallback, and local footer actions are explicit"
   );
   assert.doesNotMatch(create, /openGlobalNote|GLOBAL_NOTE_PATH/u);
   assert.match(target, /relNotePath === `\$\{folder\.name\}\.note\.md`/u);
-  assert.match(tree, /projectPlaceholder/u);
-  assert.match(tree, /Project note/u);
+  assert.doesNotMatch(provider, /aicNotes\.refreshTree/u);
 });
 
 test("Secondary save and Trash paths are deterministic and local", async () => {
@@ -177,7 +244,10 @@ test("upgrade removes only retired local integration metadata", async () => {
   );
   assert.doesNotMatch(extension, /fetch\(|https?:\/\/|openExternal/u);
   assert.match(extension, /await removeRetiredAuthData\(context\)/u);
-  assert.doesNotMatch(extension, /registerStandardNotesAuth|StandardNotesAuthTransport/u);
+  assert.doesNotMatch(
+    extension,
+    /registerStandardNotesAuth|StandardNotesAuthTransport/u,
+  );
 });
 
 test("active account runtime and its host-only smoke script are absent", async () => {
@@ -398,21 +468,23 @@ test("Mermaid owns zoom, two-dimensional scroll, and quarter-turn rotation", asy
   assert.match(mermaid, /createMermaidViewport/u);
 });
 
-test("properties are note-only and update on explicit save", async () => {
-  const [extension, secondary, properties, noteProperties] = await Promise.all([
+test("saves do not synthesize or rewrite legacy YAML Properties", async () => {
+  const [extension, secondary, editor, create] = await Promise.all([
     read("src/extension.js"),
     read("src/secondary/provider.js"),
-    read("vendor/aic-editor-core/file-properties.js"),
-    read("src/notes/properties.js"),
+    read("src/editor/provider.js"),
+    read("src/notes/create.js"),
   ]);
   assert.doesNotMatch(extension, /legacyPropertyCleanupEdits/u);
-  assert.match(secondary, /stampNoteProperties/u);
-  assert.match(noteProperties, /createdAt/u);
-  assert.match(noteProperties, /updatedAt/u);
-  assert.match(properties, /name\.endsWith\("\.note\.md"\)/u);
-  assert.match(properties, /fileName/u);
-  assert.match(properties, /created/u);
-  assert.match(properties, /updated/u);
+  assert.doesNotMatch(secondary, /stampNoteProperties|stampFileProperties/u);
+  assert.doesNotMatch(editor, /stampNoteProperties|stampFileProperties/u);
+  assert.doesNotMatch(create, /stampNoteProperties|stampFileProperties/u);
+  assert.match(create, /AIC_EMPTY_DOCUMENT/u);
+  for (const file of [
+    "src/notes/properties.js",
+    "vendor/aic-editor-core/file-properties.js",
+  ])
+    await assert.rejects(access(new URL(file, root)));
 });
 
 test("universal release gate rejects platform and retired integration content", async () => {

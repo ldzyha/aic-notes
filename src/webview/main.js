@@ -54,8 +54,12 @@ import {
   setPropertyRelationships,
 } from "../../vendor/aic-editor-core/security-block.js";
 import { makeSecurityImportExtension } from "../../vendor/aic-editor-core/security-import-extension.js";
-import { isSaveAction, wireSaveBoundary } from "../../vendor/aic-editor-core/save-boundary.js";
+import {
+  isSaveAction,
+  wireSaveBoundary,
+} from "../../vendor/aic-editor-core/save-boundary.js";
 import { createSourceModeController } from "../../vendor/aic-editor-core/source-mode.js";
+import { createEditorHelp } from "../../vendor/aic-editor-core/editor-help.js";
 import { PrimarySave } from "./primary-save.js";
 import {
   SLASH_SNIPPET_PLACEHOLDER,
@@ -105,13 +109,16 @@ function finishSaveRequests(saved) {
   if (saved && (active.pending || (active.queued && active.dirty))) return;
   for (const waiter of saveWaiters) {
     saveWaiters.delete(waiter);
-    waiter.resolve(Boolean(saved && waiter.path === docState.relativePath && !active.dirty));
+    waiter.resolve(
+      Boolean(saved && waiter.path === docState.relativePath && !active.dirty),
+    );
   }
 }
 
 function saveCurrentDraft() {
   const active = secondarySurface ? draft : primarySave;
-  if (!view || docState.readOnly || !docState.hasSurface) return Promise.resolve(false);
+  if (!view || docState.readOnly || !docState.hasSurface)
+    return Promise.resolve(false);
   if (!active.dirty && !active.pending) return Promise.resolve(true);
   return new Promise((resolve) => {
     saveWaiters.add({ path: docState.relativePath, resolve });
@@ -241,8 +248,74 @@ function setEditingState(readOnly, lease = docState.lease) {
   if (!docState.readOnly) drainRequestedSave();
 }
 
+function wireEditorHelp(actionBar) {
+  const trigger = document.createElement("button");
+  trigger.type = "button";
+  trigger.className = "cm-aic-icon-button aic-pane-icon";
+  trigger.textContent = "?";
+  trigger.title = "Editor guide";
+  trigger.setAttribute("aria-label", "Open editor guide");
+  trigger.setAttribute("aria-controls", "aic-editor-help");
+  trigger.setAttribute("aria-expanded", "false");
+
+  const popover = createEditorHelp(document, { host: "vscode" });
+  popover.id = "aic-editor-help";
+  popover.setAttribute("popover", "auto");
+  const nativePopover = typeof popover.togglePopover === "function";
+  if (!nativePopover) popover.hidden = true;
+
+  const controller = new AbortController();
+  const reflect = () => {
+    let open = !popover.hidden;
+    if (nativePopover) {
+      try {
+        open = popover.matches(":popover-open");
+      } catch {
+        open = false;
+      }
+    }
+    trigger.setAttribute("aria-expanded", String(open));
+  };
+  trigger.addEventListener(
+    "click",
+    () => {
+      if (nativePopover) popover.togglePopover();
+      else {
+        popover.hidden = !popover.hidden;
+        reflect();
+      }
+    },
+    { signal: controller.signal },
+  );
+  popover.addEventListener("toggle", reflect, { signal: controller.signal });
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (!nativePopover && event.key === "Escape" && !popover.hidden) {
+        popover.hidden = true;
+        reflect();
+        trigger.focus();
+      }
+    },
+    { signal: controller.signal },
+  );
+  window.addEventListener(
+    "unload",
+    () => {
+      controller.abort();
+      popover.remove();
+    },
+    { once: true },
+  );
+
+  document.body.append(popover);
+  actionBar.append(trigger);
+}
+
 function wirePaneControls() {
-  let footer = document.getElementById(secondarySurface ? "secondary-footer" : "document-actions");
+  let footer = document.getElementById(
+    secondarySurface ? "secondary-footer" : "document-actions",
+  );
   if (!footer) {
     footer = document.createElement("footer");
     footer.id = "document-actions";
@@ -265,32 +338,21 @@ function wirePaneControls() {
   save.hidden = true;
   save.addEventListener("click", () => commitDraft("explicit"));
   footer.prepend(save);
-  footer.prepend(sourceMode.createButton(document, () => view, "aic-pane-icon"));
-  const nativeSource = document.getElementById("document-source");
-  if (nativeSource) {
-    nativeSource.dataset.aicIcon = "open";
-    nativeSource.setAttribute("aria-label", "Open original file");
-    nativeSource.title = "Open original file";
-    nativeSource.addEventListener("click", () => {
-      const path = docState.relativePath;
-      void saveCurrentDraft().then((saved) => {
-        if (saved && path === docState.relativePath)
-          api.postMessage({ type: "source.open" });
-      });
-    });
-  }
+  footer.prepend(
+    sourceMode.createButton(document, () => view, "aic-pane-icon"),
+  );
+  wireEditorHelp(footer);
   if (!secondarySurface) return;
   document
     .getElementById("pane-pin")
     ?.addEventListener("click", () => api.postMessage({ type: "pane.pin" }));
-  document
-    .getElementById("pane-target")
-    ?.addEventListener("click", () => {
-      const path = docState.relativePath;
-      void saveCurrentDraft().then((saved) => {
-        if (saved && path === docState.relativePath) api.postMessage({ type: "pane.target" });
-      });
+  document.getElementById("pane-target")?.addEventListener("click", () => {
+    const path = docState.relativePath;
+    void saveCurrentDraft().then((saved) => {
+      if (saved && path === docState.relativePath)
+        api.postMessage({ type: "pane.target" });
     });
+  });
   document
     .getElementById("pane-clear")
     ?.addEventListener("click", () =>
@@ -362,7 +424,9 @@ function makeEditor(text) {
     state: EditorState.create({
       doc: text,
       extensions: [
-        ViewPlugin.define((editor) => ({ destroy: wirePreviewSelection(editor, document) })),
+        ViewPlugin.define((editor) => ({
+          destroy: wirePreviewSelection(editor, document),
+        })),
         accessCompartment.of(accessExtension()),
         EditorView.domEventHandlers({
           focus() {
@@ -393,7 +457,8 @@ function makeEditor(text) {
           makePropertiesBlockExtension({
             document,
             initialRelationships: () => docState.relationships,
-            onRelationshipOpen: (path) => host.bus.publish("note.open", { path }),
+            onRelationshipOpen: (path) =>
+              host.bus.publish("note.open", { path }),
             onReadClipboard: () => clipboard.readText(),
             onCopy: (source) => clipboard.writeText(source),
             onOpen: (url) => host.bus.publish("link.external", { url }),
@@ -528,11 +593,16 @@ window.addEventListener("message", (event) => {
   if (clipboard.handleMessage(msg)) return;
   switch (msg.type) {
     case "draft.saveRequest": {
-      if (!secondarySurface || msg.relativePath !== docState.relativePath) break;
-      void saveCurrentDraft().then((saved) => api.postMessage({
-        type: "draft.saveResult", requestId: msg.requestId,
-        relativePath: msg.relativePath, saved,
-      }));
+      if (!secondarySurface || msg.relativePath !== docState.relativePath)
+        break;
+      void saveCurrentDraft().then((saved) =>
+        api.postMessage({
+          type: "draft.saveResult",
+          requestId: msg.requestId,
+          relativePath: msg.relativePath,
+          saved,
+        }),
+      );
       break;
     }
     case "linkedCode.insert": {
@@ -714,7 +784,9 @@ window.addEventListener("message", (event) => {
     }
     case "primary.saved": {
       if (secondarySurface || !view || !primarySave.acknowledge(msg)) break;
-      paneNotice = msg.saved ? "" : "Save failed. Your changes are kept. Use Save to retry.";
+      paneNotice = msg.saved
+        ? ""
+        : "Save failed. Your changes are kept. Use Save to retry.";
       reflectSaveState();
       drainRequestedSave();
       finishSaveRequests(msg.saved === true);
@@ -773,6 +845,8 @@ document.addEventListener("keydown", (event) => {
   event.preventDefault();
   commitDraft("explicit");
 });
-const unwireSaveBoundary = wireSaveBoundary(document.body, () => commitDraft("explicit"));
+const unwireSaveBoundary = wireSaveBoundary(document.body, () =>
+  commitDraft("explicit"),
+);
 window.addEventListener("unload", unwireSaveBoundary, { once: true });
 api.postMessage({ type: "ready" });

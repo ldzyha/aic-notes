@@ -1,8 +1,7 @@
 // Quick note creation/opening — the ctrl+alt+m path. Mirrors aic's Mod-m
 // feel: on a source file it creates/opens the sidecar note beside; on a note
-// it jumps back to the target. Fresh notes get only the shared managed
-// file/created/updated properties plus the level's template body (project
-// `.aic/templates/` override honored).
+// it jumps back to the target. Fresh notes keep the selected template bytes;
+// an empty template receives the shared valid AIC document seed.
 
 import * as vscode from "vscode";
 import * as path from "node:path";
@@ -10,7 +9,7 @@ import { notePathFor, folderNotePathFor } from "./paths.js";
 import { loadTemplate, fillTemplate } from "./templates.js";
 import { structuredError, formatError } from "../errors.js";
 import { activeWindowResource } from "../secondary/model.js";
-import { stampFileProperties } from "../../vendor/aic-editor-core/file-properties.js";
+import { AIC_EMPTY_DOCUMENT } from "../../vendor/aic-editor-core/security-model.js";
 
 async function exists(uri) {
   try {
@@ -94,13 +93,8 @@ function workspaceReader(folder) {
   };
 }
 
-function freshNoteText(body, noteUri) {
-  const timestamp = new Date().toISOString();
-  return stampFileProperties(body, {
-    fileName: path.basename(noteUri.fsPath),
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  });
+function freshNoteText(body) {
+  return String(body).trim() ? body : AIC_EMPTY_DOCUMENT;
 }
 
 export async function openNoteDocument(uri, options = {}) {
@@ -127,7 +121,7 @@ export async function ensureNoteFile(folder, relNotePath, level, titleName) {
   if (!(await exists(uri))) {
     const template = await loadTemplate(level, workspaceReader(folder));
     const body = fillTemplate(template, titleName);
-    const text = freshNoteText(body, uri);
+    const text = freshNoteText(body);
     await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(text));
   }
   return uri;
@@ -152,7 +146,7 @@ export async function fileNotePlaceholderForUri(uri) {
   const body = fillTemplate(template, descriptor.title);
   return {
     ...descriptor,
-    text: freshNoteText(body, descriptor.noteUri),
+    text: freshNoteText(body),
   };
 }
 
@@ -168,7 +162,7 @@ export async function notePlaceholderForUri(uri) {
   const body = fillTemplate(template, descriptor.title);
   return {
     ...descriptor,
-    text: freshNoteText(body, descriptor.noteUri),
+    text: freshNoteText(body),
   };
 }
 

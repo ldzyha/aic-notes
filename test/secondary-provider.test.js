@@ -20,7 +20,7 @@ const bundled = await build({
 
 function harness(failure) {
   const uri = {
-    fsPath: failure === "stamp" ? null : "D:/workspace/project.note.md",
+    fsPath: "D:/workspace/project.note.md",
     toString: () => "file:///D:/workspace/project.note.md",
   };
   const messages = [];
@@ -110,7 +110,6 @@ function harness(failure) {
 
 for (const failure of [
   "path",
-  "stamp",
   "open",
   "refresh",
   "current",

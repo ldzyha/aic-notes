@@ -1,11 +1,33 @@
 # Functional index
 
-This index records the coordinated AIC Notes 43.0.1 / Standard Notes AIC 34.3.1 /
-shared editor core 5.3.0 release target. Public commands, state boundaries, side effects and
+This index records the coordinated AIC Notes 44.4.7 / Standard Notes AIC 35.3.9 /
+shared editor core 6.0.0 release target. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
 
-## Shared-core changes in release 43.0.1
+## Shared-core changes in release 44.4.7
+
+Four feature outcomes are the retired native Notes & Documents tree, the aic-only
+document format, the shared local guide, and typed-pipe values (including one-time
+states). Seven fixes include card/composite labels and first values using the same grid, typography and
+alignment as adjacent simple fields, without the extra card-label colon. Contextual
+Field/Row/Section actions follow the relevant row; empty sections keep Row/Section
+inline without a dedicated footer. Shared field-add menus use compact left-aligned items rather than oversized
+centered rows. Masking, independent copy targets, existing field actions, menu bounds
+and keyboard behavior remain. Linked-note headers omit file dates, and the main note
+footer has one source/preview toggle while Secondary retains its distinct owner
+navigation action.
+
+Core 6.0.0 replaces colon/YAML field interpretation with independently typed
+`|`, `*|`, `#|`, `_|`, `1|`, and `0|` values. Old text remains raw and no save
+path migrates or stamps it. Add Field/Row/Section targets the current row, below
+the current row, and after the current section. Core retains the additive card
+shared BEM compatibility contract. Compatibility
+selectors and host-specific placement remain; this does not claim a completed BEM
+migration. The release does not include the separately proposed global
+Shared/encryption design or change VS Code's local-only boundary.
+
+## Prior shared-core changes in release 43.0.1
 
 One fix: card fields display their optional label, masked last four digits, expiry
 and masked CVV in the shared compact inline composite row. Independent copy targets,
@@ -38,7 +60,7 @@ unquoted. Labels and titles have no quote syntax. Properties retains YAML frontm
 `Password*: '"a | b" | "description"'` uses outer YAML single quotes to preserve inner
 field-slot double quotes; YAML outer quoting alone does not protect a spaced separator.
 
-One fix: only exact ` | ` outside quotes separates slots. Bare and one-sided pipes remain
+One fix: only exact `|` outside quotes separates slots. Bare and one-sided pipes remain
 data; legacy `\|` outside quotes still parses. Invalid quotes, escapes or trailing text
 produce generic, non-secret errors; Security identifies exact source positions. Tests
 must verify these contracts; host behavior and publication are separate gates.
@@ -87,53 +109,33 @@ production webview browser checks. Artifact publication is verified separately f
 
 ## Current release contracts
 
-- The prior six 40.6.6 feature outcomes are one unversioned `aic` grammar with optional labels;
-  compact last-four/card-part display; cross-section field dragging; compact Properties
-  metadata/tree/custom fields; labelled Add controls with limit reasons; and removal of
-  Standard Notes auth/transport for local-only editing. Six fixes cover escape/Mermaid
-  boundaries, stale-safe transient target feedback, independent label/value Copy,
-  PAN-safe filtering, responsive theme-aware label/drag styling and reduced repeated
-  render/filter work. Prior v3/import/capacity work is not counted again.
-- The current unversioned `aic` grammar uses `*` masked values, `#` TOTP seeds and `_` card parts;
-  PAN/date/CVV copy independently, the third slot stays masked, and Paste fills only empty
-  parts. `# aic-fields: v2` must be the first body line of YAML frontmatter to activate
-  the equivalent custom Properties syntax; the comment is hidden in preview. Managed
-  `file`/`created`/`updated` remain read-only. Previously authored Security fences and
-  unmarked Properties headers are not silently migrated. Existing Properties headers
-  require explicit marker insertion and review of literal pipes/labels. Filled values
-  change only in source.
-- Security/Properties filtering searches names and visible values only; hidden values,
-  recovery codes and generated codes are excluded. It is local UI state and disables
-  reordering. Supported Security field/section/card and sibling Properties field/group
-  moves have Alt+Up/Down handles and reject stale, managed or unsupported targets.
-  Source mode changes no Markdown, Undo, save boundary or host editor choice, and resets
-  on a different note. Raw source may reveal visually masked values.
-- Shared `security-recovery` and widget rendering provide bounded hidden code batches, exact
-  per-code Copy and reversible Used flags in Markdown. Whole-block Copy preserves used flags.
-  Optional titles replace the first card heading; empty field Delete never clears a value.
+- One bounded fenced `aic` document owns structured values. `|`, `*|`, `#|`,
+  `_|`, `1|` and `0|` type the following part as text, secret, authenticator,
+  card, unused one-time or used one-time data. A label is optional and one row can
+  combine independently typed parts. Account, Card and One-time codes are presets,
+  not additional field types.
+- Copying an unused one-time value changes it to `0|`; activating a used value
+  restores `1|` without copying, and only used values expose removal. Field adds a
+  typed part to the current row, Row inserts below it and Section inserts after the
+  current section. All mutations retain stale/read-only/capacity guards.
+- Legacy YAML Properties, colon fields and prior Security forms stay exact raw
+  Markdown. They are not rendered, stamped, reordered or automatically migrated.
+  The single source-mode button exposes raw Markdown temporarily for the current
+  note; raw source can reveal visually masked values.
+- The linked-note header shows no created/updated timestamp. VS Code may retain
+  filesystem metadata internally, but it is not projected into the AIC field UI.
+- The shared local `?` guide and canonical blank/account/card/one-time presets use
+  only current grammar. The guide is fixed bundled DOM content with no storage or
+  network access.
 - Shared `save-boundary` reports focus-leave and security mutation intents to the host managers.
   Main and sidebar queues keep target identity, generation and ownership checks; saved colour
   requires acknowledgement. CodeMirror viewport remounts create fresh live widget sessions while
   detached controls, clipboard completions and TOTP timers remain retired.
 
-- Shared `security-password` provides bounded WebCrypto-only unbiased generation (default24,
-  length8–128, every enabled group represented). Only empty recognized hidden password fields
-  can generate; existing values/TOTP/API keys are excluded.
-- Field label and value Copy are independent, with per-field acknowledged feedback; Tab
-  navigates. Paste directly reads current text and is absent on all populated fields;
-  no Replace, history picker or visible panel on success. Empty reads cannot erase.
-  Source Edit is the sole manual value editor. Main/sidebar use an identity-bound native
-  clipboard manager with no polling, history storage or secret diagnostics. Preview mutations
-  request an immediate parent-managed save; Delete only removes empty fields.
-  Both hosts offer inline masked paste-only capture only after clipboard access fails.
-
-- Shared `aic` blocks have one canonical unversioned model with optional section
-  labels; `Label*: value` masks a field, `Label: value` keeps it
-  visible. Edit opens raw Markdown. Explicit Copy block and field actions,
-  safe HTTP(S) Open, Add section, quick fields and New block work without an
-  inline form. Mutating buttons save through the host manager. TOTP derives a current code from a key. Ordinary
-  code preview skips these fences. Raw Markdown and copied blocks still expose
-  plaintext; VS Code has no note synchronization or QR import UI.
+- Shared password generation remains bounded and WebCrypto-only. Authenticator
+  codes derive locally from `#|` parts. Copy/open/mutation actions use the existing
+  identity-bound host clipboard and save managers; VS Code has no note
+  synchronization or QR import UI.
 
 - `DisposableScope` owns provider subscriptions and child surfaces. Closing a surface retires its
   subscriptions and request waiters; provider disposal also retires still-open children.
@@ -151,15 +153,16 @@ production webview browser checks. Artifact publication is verified separately f
   the Markdown surface. Browser regressions cover typing into an inline diagram label afterward.
 - Core distribution is an explicit inventory. Unconnected experiments do not enter the mirror
   automatically, and a working-tree snapshot cannot pass the publication verifier.
-- The retired File Context sphere has no view, command, setting, background indexer or
-  shared runtime. Parent-note relationships and the Notes & Documents tree are independent.
+- The retired File Context sphere and native Notes & Documents tree have no view,
+  command, provider, watcher or scan runtime. Contextual parent-note relationships,
+  Linked Note, source following and ordinary Explorer navigation remain independent.
 
 The VS Code extension is local-only and has no Standard Notes account connection.
 The contracts below describe this coordinated release target, not future sync behavior.
 
-## Shared editor core 5.3.0
+## Shared editor core 6.0.0
 
-These contracts target AIC Notes 43.0.1 and pair with Standard Notes AIC 34.3.1.
+These contracts target AIC Notes 44.4.7 and pair with Standard Notes AIC 35.3.9.
 The exact canonical commit and all shared hashes belong in CORE_SNAPSHOT.json after the
 canonical source is committed and the mirror snapshot is regenerated; a working-tree
 snapshot is not proof of committed release identity.
@@ -169,7 +172,7 @@ Linux desktop smoke checks are not implied.
 | Area / owner                                                | Implemented contract                                                                                                                                          | Explicit limitation                                                                                                   |
 | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Shared templates and native completion                      | Core questions → answers → detail; `/noise`, `/wave`, `/implementation`, `/context`, `/entity-map`; contextual heading levels in `.md` and `.note.md`         | No automatic wave/noise state, dashboards or grouping UI                                                              |
-| New-note bodies (`note-template`, `src/notes/templates.js`) | Shared Noise guidance evolves through `/wave` in the same note; custom overrides and three managed properties retain their contract                           | Existing notes are not rewritten; Standard Notes does not receive VS Code workspace templates                         |
+| New-note bodies (`note-template`, `src/notes/templates.js`) | Shared Noise guidance evolves through `/wave` in the same note; custom template source remains authored and an empty body receives the valid AIC seed         | Existing notes are not rewritten; Standard Notes does not receive VS Code workspace templates                         |
 | Shared diagram model/builder                                | Actual Mermaid SVG provides palette insertion, connection dragging, typed relationships, property editing, draft Copy, Undo/Redo/deletion and zoom/scroll/fit | Bounded flow/class/sequence grammar; no multiselect, subgraph authoring, visual timeline or arbitrary Mermaid support |
 | Shared diagram session                                      | Inline Apply changes only the current block; outside edits preserve the draft; conflicting block edits/read-only retain a Copy-only draft; Ctrl/Cmd+S saves   | Cancel explicitly discards the draft; note identity changes retire the session; no cross-scale links                  |
 | Layout and ordering                                         | Inline editing and read preview use the same Mermaid auto-layout; direction and sequence ordering are source semantics                                        | No arbitrary stored coordinates; legacy coordinates are ignored, and removed only after an actual visual edit         |
@@ -227,10 +230,9 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
   falling back to the owning workspace project note/placeholder. The source need not exist. Pin,
   unsaved drafts and current-tab identity remain authoritative across IO; unchanged parents are
   not reinitialized. Note creation/deletion recomputes context without writing any notes.
-- Generated sidecar frontmatter contains exactly `file`, `created`, and `updated`; `updated` is
-  refreshed only at explicit save. Ordinary Markdown receives no generated properties; existing
-  authored frontmatter is preserved. There is no reliable origin marker for historical keys, so
-  the extension does not automatically remove or rewrite ordinary `.md` frontmatter.
+- Saves persist only the authored Markdown. Legacy YAML Properties and historical
+  generated keys remain exact raw text; the extension does not interpret, stamp,
+  remove, or migrate them. Secondary headers do not display file dates.
 - Context relationships are derived dynamically and displayed only below existing note
   frontmatter. Only actual notes add ancestor folders; project/current navigation can show a
   placeholder. Each row opens the exact `.note.md` target. They are never serialized or edited.
@@ -242,7 +244,6 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 | -------------------------- | ----------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------- |
 | AIC Markdown custom editor | `src/editor/provider.js`, `src/webview/main.js` | explicit VS Code document save                                 | stale generations reset or retain the visible draft                  |
 | Linked Note Secondary pane | `src/secondary/provider.js`                     | explicit local sidecar write/save or local Trash               | never replaces an unsaved draft; reports a compact local error       |
-| Notes & Documents tree     | `src/notes/tree.js`                             | none                                                           | refreshes from workspace files and lazy project placeholders         |
 | Selection-to-note command  | `src/notes/selection.js`                        | inserts into the live local sidebar draft; no implicit save    | rejects unsaved/unbacked/out-of-workspace sources                    |
 | Structured previews        | `vendor/markdown`, `vendor/aic-editor-core`     | exact Markdown transactions only                               | invalid source remains editable instead of being normalized silently |
 | Slash template completion  | shared core plus `src/editor/slash-provider.js` | inserts exact Markdown in AIC, native, and contextual Markdown | inactive in code/read-only contexts                                  |
@@ -250,24 +251,18 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 
 ## Commands
 
-| Command                                 | Contract                                                                                                                 |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `aicNotes.noteForCurrentFile`           | Follow a lazy sidecar for the active local source, or open a note's source; without an active file, report what to focus |
-| `aicNotes.linkSelectionToNote`          | Copy selected source into one deduplicated linked-comment block and focus its comment caret                              |
-| `aicNotes.openInSecondary`              | Route an existing sidecar or placeholder to the Secondary pane                                                           |
-| `aicNotes.noteForExplorerItem`          | Follow a file or folder selected in Explorer, using the same lazy placeholder rule                                       |
-| `aicNotes.openProjectNote`              | Show the selected/current workspace root note or its placeholder                                                         |
-| `aicNotes.refreshTree`                  | Re-index local Markdown and note files                                                                                   |
-| `aicNotes.enableExplorerNesting`        | Add workspace Explorer nesting patterns for sidecars                                                                     |
-| `aicNotes.openSource`                   | Explicitly open the file owner with its sidebar note, or reveal the folder/project owner; reject ambiguous sources       |
-| `aicNotes.openTarget`                   | Open the selected tree note's verified source target through the same explicit source route                              |
-| `aicNotes.copyWikiLink`                 | Copy the local note's wiki-link path                                                                                     |
-| `aicNotes.openNote`                     | Open an existing tree note in the main AIC Markdown editor                                                               |
-| `aicNotes.useNativeForMarkdown`         | Set the user association for plain `*.md` back to the native editor while keeping notes in the AIC main editor           |
-| `aicNotes.deleteNote`                   | Confirm and move one local sidecar to Trash                                                                              |
-| `aicNotes.deleteFolderNotes`            | Confirm and move the indexed local sidecars under one tree node to Trash                                                 |
-| `aicNotes.enableAgentWorkflow`          | Write the thin workspace marker and validate AIC-owned rule status                                                       |
-| `aicNotes.syncAgentInstructions`        | Explicitly verify/update the installed AIC agent-rule contract; this is unrelated to note files or Standard Notes        |
+| Command                          | Contract                                                                                                                 |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `aicNotes.noteForCurrentFile`    | Follow a lazy sidecar for the active local source, or open a note's source; without an active file, report what to focus |
+| `aicNotes.linkSelectionToNote`   | Copy selected source into one deduplicated linked-comment block and focus its comment caret                              |
+| `aicNotes.openInSecondary`       | Route an existing sidecar or placeholder to the Secondary pane                                                           |
+| `aicNotes.noteForExplorerItem`   | Follow a file or folder selected in Explorer, using the same lazy placeholder rule                                       |
+| `aicNotes.openProjectNote`       | Show the selected/current workspace root note or its placeholder                                                         |
+| `aicNotes.enableExplorerNesting` | Add workspace Explorer nesting patterns for sidecars                                                                     |
+| `aicNotes.openSource`            | Explicitly open the file owner with its sidebar note, or reveal the folder/project owner; reject ambiguous sources       |
+| `aicNotes.useNativeForMarkdown`  | Set the user association for plain `*.md` back to the native editor while keeping notes in the AIC main editor           |
+| `aicNotes.enableAgentWorkflow`   | Write the thin workspace marker and validate AIC-owned rule status                                                       |
+| `aicNotes.syncAgentInstructions` | Explicitly verify/update the installed AIC agent-rule contract; this is unrelated to note files or Standard Notes        |
 
 ## Preview interaction contracts
 
@@ -282,11 +277,11 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
   source, including selected slash-snippet fields. Unsupported grammar remains exact source.
 - Tables expose Copy, insertion, drag reorder, content-sized word-wrapped columns, horizontal scroll,
   and one transient popover editor for the selected cell.
-- Properties and security blocks use one shared widget and action lifecycle. Managed metadata
-  is copy-only; custom nested YAML fields support explicit `*` masking, and v2-marked headers
-  also support `#` TOTP and `_` card parts. Empty fields/parts can Paste/Delete; supported
-  siblings can reorder. Add appends an empty map field; changing populated values or unsupported
-  structure requires source Edit. Plain Markdown has no generated properties.
+- One bounded fenced `aic` document owns structured fields and the shared widget
+  lifecycle. Every value begins with `|`, `*|`, `#|`, or `_|` for text, secret,
+  TOTP, or card data; `1|`/`0|` are unused/used one-time values. Types can differ
+  within one field. Legacy YAML Properties
+  stay raw and editable without automatic conversion.
 - Details accordions preserve comments, task-checkbox interaction, collapsed/open state, and links.
 - Action glyphs are CSS SVG masks; no renderer must accept inline SVG button markup.
 - Slash on an otherwise empty Markdown line opens the shared contextual template catalog in AIC
@@ -300,11 +295,11 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 
 ## Paired-editor boundary
 
-- AIC Notes and AIC for Standard Notes consume byte-identical core modules for drafts, managed
-  properties, structured mutations, atomic preview ranges, code-fence cards/extensions, slash
+- AIC Notes and AIC for Standard Notes consume byte-identical core modules for drafts,
+  structured AIC fields, structured mutations, atomic preview ranges, code-fence cards/extensions, slash
   templates, icons, and Mermaid viewport state.
-  Properties reuse the existing YAML parser; shared extensions use the CodeMirror public
-  APIs already pinned identically by both products. Each host keeps only persistence, clipboard,
+  Legacy YAML Properties are outside the active renderer; shared extensions use the
+  CodeMirror public APIs already pinned identically by both products. Each host keeps only persistence, clipboard,
   selection, and theme wiring.
 - Markdown editor interactions in this section are the shared product contract. A release cannot
   replace a preview action with raw-source fallback in only one product.

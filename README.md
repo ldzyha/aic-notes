@@ -5,54 +5,38 @@ preview-first surface, including `*.note.md`, and shows linked notes in the Seco
 The extension is fully local: no Standard Notes sign-in, account requests, note synchronization,
 polling, upload, remote deletion or remote conflict state. Copy blocks manually when needed.
 
-## Shared Properties, group controls and source mode
+## AIC fields and source mode
 
-The main editor and note sidebar consume the same Security/Properties component as Standard Notes.
-Group filters search names and visible values, never hidden secrets or generated codes. Managed
-Properties and related-note navigation stay visible and fixed. A **+** disclosure replaces repeated
-add buttons; `# Group title` names a Security card independently of its `---` sections.
+The main editor and linked-note sidebar consume the same bounded `aic` document
+renderer as Standard Notes. Each separator types the next value: `|` text, `*|`
+secret, `#|` authenticator seed, `_|` card, `1|` unused one-time value and `0|`
+used one-time value. A label before the first separator is optional, and a row can
+combine differently typed parts:
 
-Drag handles move Security fields within or between sections, supported sibling Properties groups,
-Security sections and standalone Security cards. Alt+Up/Down on a handle also reorders.
-Filtering disables list reordering; unsupported Properties YAML layouts stay in
-source editing. Properties moves preserve YAML spelling, types and comments and never move managed
-metadata. Reorder actions use the existing host save/undo contract.
+```aic
+# Account
+Login | person@example.test
+Password *| synthetic-secret
+Card _| 4111111111111111 | 12/30 *| 123
+Recovery codes 1| code-one 0| already-used
+```
 
-The **Show Markdown source / Show preview** icon toggles all AIC previews in-place, separately
-from opening the native editor. Source, Undo, dirty state and save rules do not change. The mode
-is temporary for the current note: a different note opens in preview. Source mode explicitly
-shows the raw Markdown, including starred values; it does not change masking or encrypt the file.
+Account, Card and One-time codes are presets made from these parts, not additional
+types. Copying an unused `1|` value marks it `0|`; activating a used value restores
+`1|` without copying, and only used values expose removal. Field inserts a typed
+part in the current row, Row inserts below it and Section inserts after the current
+section. Mutations use the existing VS Code save/undo contract.
 
-Security uses one unversioned `aic` fence:
-`Name*: value | description | additional secret`, `Name#: seed | description`, or
-`Name_: number | MM/YY | CVV`. Every component copies independently; the third is always masked.
-Only empty components accept Paste. A pipe separates parts only with an ASCII space on
-each side and outside double quotes, as in `value | description`.
-Each of the three value slots can optionally use JSON-style double quotes, for example
-`Password*: "a | b" | "description"`. Every pipe inside those quotes is
-literal; JSON quote, backslash and control escapes work there. Bare or one-sided pipes
-outside quotes are literal, and existing `\|` outside quotes still parses. Pasted and
-imported logical values containing a pipe or quote serialize with double quotes; ordinary
-values need no quotes. Spaces inside quotes belong to the value; outside spaces are formatting.
-Field labels and Security titles do not gain quote syntax.
-`*` marks a masked value, `#` a TOTP seed, and `_` a card; labels alone do not select a kind.
-TOTP codes derive only from `#` fields. Card number (PAN), date and CVV copy separately.
-Use standalone `---` section separators and optional `##` section titles. Field labels are
-optional too (`*: secret`, `#: seed`, `_: number | MM/YY | CVV`). Historical Security fences
-show a repair diagnostic instead of exposing their contents; notes are not rewritten automatically.
-Card previews show only the last four number digits, date and masked CVV in one compact row.
-Escape exits source editing to preview without changing or saving the document.
+The single **Show Markdown source / Show preview** icon toggles AIC previews in
+place. Source, Undo, dirty state and save rules do not change. The mode is temporary
+for the current note, and raw Markdown can expose visually masked values. The local
+**?** guide is shared with the other hosts and works without note, storage or
+network access.
 
-New Properties frontmatter uses `# aic-fields: v2` as the first body line after the opening
-`---`. This YAML comment is hidden in preview. Custom scalar keys then support the same `*`,
-`#` and `_` kinds, independent part Copy and empty-part Paste. Managed `file`, `created` and
-`updated` remain read-only. Existing unmarked Properties retain their legacy meaning: activate
-v2 only by deliberately inserting the marker after reviewing/escaping literal pipes and
-marker-like keys. No blanket automatic migration is performed.
-Properties are still YAML frontmatter: `Password*: '"a | b" | "description"'`
-uses outer YAML single quotes to preserve the inner field-slot double quotes. Outer YAML
-quotes alone do not protect an inner ` | ` separator. Invalid slot quotes, escapes or
-trailing text produce generic, non-secret diagnostics; Security includes exact positions.
+Legacy YAML Properties, colon fields and prior Security forms remain exact raw
+Markdown for manual repair. They are not rendered, stamped, reordered or migrated
+automatically. Filesystem timestamps may still exist as VS Code metadata, but the
+editor and linked-note header do not display created/updated dates.
 
 ## Security field actions
 
@@ -121,21 +105,37 @@ without a duplicate heading row. Use `## Account name` for a custom name or bare
 for the default Security header.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-editor-core 5.3.0 but is a separate product. The coordinated release targets are AIC Notes
-43.0.1 and AIC for Standard Notes 34.3.1. This page describes the release contract;
+editor-core 6.0.0 but is a separate product. The coordinated release targets are AIC Notes
+44.4.7 and AIC for Standard Notes 35.3.9. This page describes the release contract;
 published artifacts are verified separately by the release workflow. Transfer content manually
 between the two applications; VS Code has no Standard Notes account integration.
 
-## Coordinated release — 43.0.1
+## Coordinated release — 44.4.7
 
-This release has no new VS Code feature. It fixes card fields so the optional label,
-masked last four digits, expiry and masked CVV share the compact inline composite row,
-while retaining independent copy targets and the existing empty-field actions.
+This release removes the extension-specific Notes & Documents tree while retaining
+Linked Note, source following, Explorer navigation, and contextual parent links. It
+also adopts the single typed-pipe `aic` document and shared local `?` guide in both
+editor surfaces. Seven presentation and interaction fixes include:
+card/composite labels and first values align with adjacent simple rows without an
+extra card-label colon. Contextual Field/Row/Section actions follow the relevant row;
+empty sections keep Row/Section inline without a dedicated footer. Masking,
+independent copy targets and existing empty-field actions are unchanged. Shared field-add menus also use compact,
+left-aligned items instead of oversized centered rows, retaining the same actions,
+viewport bounds and keyboard behavior.
+The linked-note header no longer repeats file dates, and the main note footer keeps
+one in-place source/preview toggle. Secondary's separate owner-navigation action
+remains available.
 
-Core 5.3.0 also exports shared component IDs, BEM helpers and geometry tokens. Their
-adoption is additive and partial: compatibility selectors and host-specific placement
-remain. This is not a claim of universal selector removal, and it does not alter the
+Core 6.0.0 is a breaking grammar release: colon fields and YAML Properties are no
+longer interpreted. Existing source remains exact and manually editable; no save
+path stamps or migrates it. Typed values use `|`, `*|`, `#|`, `_|`, `1|`, and `0|`.
+Core also retains the shared BEM compatibility contract. Existing
+compatibility selectors and host-specific placement remain. This release does not
+include the separately proposed global Shared/encryption work and does not alter the
 extension's local-only boundary. Release assets require separate verification.
+
+The prior 43.0.1 release fixed the compact inline card row and introduced the additive,
+partially adopted shared component IDs, BEM helpers and geometry tokens.
 
 The prior 42.0.3 release fixed compact generic pipe fields and repeated parsing,
 viewport-bounded Add menus, and caret visibility. Its additive `previewOnly` API
@@ -145,13 +145,14 @@ The previous 41.1.1 release added quoted value slots to Security and opt-in v2 P
 and fixed literal-pipe handling outside the exact spaced separator. Historical Security
 formats require manual source repair; no notes are automatically rewritten.
 
-The shared `/security` template inserts the same `aic` Markdown block
+The shared AIC templates insert the same `aic` Markdown block
 as the Standard Notes plugin. A standalone `---` starts another section;
-`## Main` optionally titles one. `Label*: value`
-masks a field in preview, and `Label: value` keeps it visible. Edit opens raw
-Markdown; there is no inline manual value editor. Add section, quick field actions and New
-block insert independent content and request a save. Preview can copy individual
-values, current one-time codes and the complete fenced block, or open a safe
+`## Main` optionally titles one. Each value starts with `|`, `*|`, `#|`, `_|`,
+`1|`, or `0|` for text, secret, TOTP, card, unused one-time, or used one-time
+data. Add Field targets the current row, Add Row inserts below, and Add Section
+inserts after the current section. Account/Card/One-time codes are presets made
+from those value types; Email and URL remain text. Edit opens raw Markdown.
+Preview can copy individual values, one-time codes and the complete fenced block, or open a safe
 HTTP(S) URL. Save, Ctrl/Cmd+S and leaving the surface share the same persistence manager. This is
 visual masking only: raw Markdown, other editors, local files, exports and
 copied blocks still contain plaintext secrets. There is no QR import UI. It
@@ -167,12 +168,13 @@ filesystem path. Save and Trash revalidate document identity,
 revision, editing ownership and the originating view after asynchronous work. Provider-owned
 scopes retire subscriptions and pending requests when a surface closes.
 
-The File Context sphere, its toggle/setting and its background graph analysis have been
-removed. Linked Note, the Notes & Documents tree and parent-note relationships remain.
+The File Context sphere and the native Notes & Documents tree have been removed.
+Linked Note, source following, Explorer commands and contextual parent-note
+relationships remain; existing Markdown and sidecar files are not migrated or deleted.
 
-## Editor features — shared editor core 5.3.0
+## Editor features — shared editor core 6.0.0
 
-This release target pairs with AIC for Standard Notes 34.3.1. The release gate must
+This release target pairs with AIC for Standard Notes 35.3.9. The release gate must
 byte-verify their shared core and run automated tests and production builds. Prior Windows
 browser checks cover the shared controls but do not replace final package verification;
 Linux desktop smoke checks are not implied.
@@ -189,8 +191,8 @@ Linux desktop smoke checks are not implied.
   An unpinned sidebar follows the main note's nearest existing ancestor folder note, otherwise
   its workspace project note or lazy project placeholder. Folders without their own note are skipped.
   Unsaved sidebar drafts are preserved; repeated events for the same parent do not reset its editor.
-- The note pane starts directly at its content/properties, without a duplicate name, folder or
-  save-status header. Saved notes are neutral; unsaved notes have a soft amber tint and a small
+- The note pane starts directly at its content, without a duplicate name, folder,
+  created/updated date or save-status header. Saved notes are neutral; unsaved notes have a soft amber tint and a small
   change marker; placeholders are gray. Save, Ctrl/Cmd+S and leaving the surface commit the draft.
 - Context ancestors require existing `.note.md` notes. Project navigation always remains,
   opening its note or placeholder; the actual current target can also be a placeholder.
@@ -199,8 +201,9 @@ Linux desktop smoke checks are not implied.
   `/class-diagram`; native VS Code text editors offer snippets but not the embedded canvas.
 - `/noise` captures uncertainty; `/wave` develops a result and executable path in the same note.
   New default file/folder/project notes start with compact Noise guidance. Existing notes and
-  accepted `.aic/templates/*.md` overrides are preserved; generated note properties remain exactly
-  `file`, `created` and `updated`. There is no automatic noise/wave classification or grouping UI.
+  accepted `.aic/templates/*.md` overrides are preserved exactly. Default empty notes use the
+  current AIC template; no generated file/date Properties are added. There is no automatic
+  noise/wave classification or grouping UI.
 - Insert `/flowchart`, `/class-diagram`, `/sequence` or `/entity-map` in AIC Markdown, then choose
   **Edit diagram visually** on its Mermaid preview. Controls open inside that same block, not in
   a dialog. Drag an element from the semantic palette onto the preview (or click its button),
@@ -240,25 +243,25 @@ this section does not assert that all clients or operating systems have complete
 
 ## Install
 
-After publication, download `aic-notes-43.0.1.vsix` and its
-`aic-notes-43.0.1.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+After publication, download `aic-notes-44.4.7.vsix` and its
+`aic-notes-44.4.7.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-43.0.1.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-43.0.1.vsix.sha256
-code --install-extension .\aic-notes-43.0.1.vsix --force
+(Get-FileHash .\aic-notes-44.4.7.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-44.4.7.vsix.sha256
+code --install-extension .\aic-notes-44.4.7.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-43.0.1.vsix.sha256
-code --install-extension ./aic-notes-43.0.1.vsix --force
-# or: code-server --install-extension ./aic-notes-43.0.1.vsix --force
+sha256sum -c aic-notes-44.4.7.vsix.sha256
+code --install-extension ./aic-notes-44.4.7.vsix --force
+# or: code-server --install-extension ./aic-notes-44.4.7.vsix --force
 ```
 
 Reload the VS Code window after installation. Local editing requires no
@@ -274,10 +277,11 @@ additional executable; the optional agent workflow uses AIC only when explicitly
 - Closing every file buffer follows the current workspace project note. If it does not exist, an
   editable gray placeholder appears; the file is created only after content changes and
   `Ctrl/Cmd+S`.
-- The Notes & Documents tree indexes existing workspace Markdown files, project-global notes
-  under `.aic/notes/`, and lazy project-note placeholders. There is no separate search surface.
+- There is no extension-specific Notes & Documents activity-bar tree or background
+  workspace scan. Use the ordinary Explorer, editor commands and Linked Note pane;
+  existing project-global and sidecar files remain available at their filesystem paths.
 
-Pin affects only automatic following. Explicitly opening a file, folder, project, tree item, or
+Pin affects only automatic following. Explicitly opening a file, folder, project, or
 note always routes to the requested context. An unsaved note stays visible until it is saved, so a
 tab event cannot silently discard its draft.
 
@@ -289,9 +293,9 @@ saved state before terminating the app; an interrupted process cannot guarantee 
 The pane is softly amber while unsaved, neutral after a successful local save, and gray for an
 unmaterialized placeholder. Ordinary Markdown documents use the same explicit VS Code save action.
 
-Trash is local and recoverable. The footer Trash action and tree delete commands ask for
-confirmation, then use the operating-system Trash where VS Code supports it. They never contact or
-modify another application.
+Trash is local and recoverable. The Linked Note footer Trash action asks for confirmation,
+then uses the operating-system Trash where VS Code supports it. It never contacts or modifies
+another application.
 
 When upgrading from a synchronization-capable release, AIC Notes removes only its retired local
 session key, encrypted session directory, and workspace bindings. Existing `*.md` and `*.note.md`
@@ -323,18 +327,15 @@ and in read-only documents.
 - Tables use content-sized columns, word-level wrapping, a dedicated horizontal scroller, Copy,
   row/column insertion, and drag reordering. A transient popover textarea appears only for the
   selected cell.
-- Frontmatter uses the shared Security-card renderer: read-only creation and update dates
-  appear above the dependency tree, without repeating the filename. Custom root and nested
-  fields appear in the card below the tree.
-  A key ending in `*` (for example `Password*`) masks its value; marking a group masks its
-  descendants. Click a label to copy the label, or a value to copy the value; only empty fields offer Paste, Delete, or password
-  generation. Filled values and YAML structure are edited through the block's Edit button.
-  Quick-add controls append empty custom fields. Secrets remain plaintext in Markdown/source
-  and whole-block Copy; masking is not encryption. Existing standalone security blocks remain
-  supported with the same clipboard, recovery-code, and generation behavior.
-  New `*.note.md` sidecars receive exactly the three managed keys; saves refresh `updated`.
-  Ordinary `*.md` documents receive no generated properties; existing authored frontmatter
-  renders without automatic metadata insertion or cleanup.
+- One bounded fenced `aic` document owns structured fields. Each value begins with
+  `|`, `*|`, `#|`, or `_|` to identify that value as text,
+  secret, TOTP, or card data; a field can mix independently typed values. Click a
+  label or value to copy it; supported empty values expose their local actions.
+  `1|` marks an unused one-time value and `0|` its used state; successful Copy
+  changes `1|` to `0|`, while reactivation does not copy.
+  Masking is visual only: source Markdown and whole-block Copy can expose plaintext.
+  Legacy YAML Properties remain exact raw Markdown for manual editing and are never
+  interpreted, stamped, cleaned up, or migrated automatically.
 - A read-only dependency tree appears before custom note properties when frontmatter exists. It
   is derived from actual workspace notes and shows project, note-bearing parents, current target,
   children, and nearby notes; it is not stored in the Markdown and cannot be edited. Project and
@@ -352,8 +353,6 @@ renderer.
   `Ctrl/Cmd+Shift+/` as an alias)
 - **AIC Notes: Open Project Note**
 - **AIC Notes: Open Note in Secondary Side Bar**
-- **AIC Notes: Open Target**
-- **AIC Notes: Copy Wiki Link**
 - **AIC Notes: Refresh**
 - **AIC Notes: Enable Explorer Nesting for Notes**
 - **AIC Notes: Use Native Editor for Plain Markdown**
@@ -387,8 +386,8 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-The coordinated version `43.0.1` records sequence 43, no feature outcome and one fixed-bug
-outcome; it is not a publication marker by itself.
+The coordinated version `44.4.7` records sequence 44, four feature outcomes and seven fixed-bug
+outcomes; it is not a publication marker by itself.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and
 [PROVENANCE.md](PROVENANCE.md) for the shared-core snapshot identity.

@@ -1,14 +1,12 @@
 // aic-notes — sidecar *.note.md notes + aic-style markdown editing.
-// activate(): the notes tree, the note commands, explorer nesting, and (P2)
-// the custom markdown editor.
+// activate(): linked-note commands, explorer nesting, the Secondary pane and the
+// custom markdown editor.
 
 import * as vscode from "vscode";
-import { NotesTree } from "./notes/tree.js";
 import {
   noteForCurrentFile,
   noteForExplorerItem,
   openProjectNote,
-  openNoteDocument,
   commandHandler,
 } from "./notes/create.js";
 import { enableExplorerNesting, hintIfShadowed } from "./notes/nesting.js";
@@ -18,7 +16,6 @@ import { SecondaryNotePane } from "./secondary/provider.js";
 import { activeResource } from "./secondary/model.js";
 import { NoteEditOwnership } from "./notes/edit-ownership.js";
 import { linkSelectionToNote } from "./notes/selection.js";
-import { deleteNotes } from "./notes/delete.js";
 import { AgentWorkflowBootstrap } from "./agents/bootstrap.js";
 import { removeRetiredAuthData } from "./retired-auth-cleanup.js";
 
@@ -37,12 +34,15 @@ async function removeRetiredSyncData(context) {
   ];
   if (context.globalStorageUri) {
     removals.push(
-      vscode.workspace.fs.delete(
-        vscode.Uri.joinPath(context.globalStorageUri, "standard-notes"),
-        { recursive: true, useTrash: false },
-      ).then(undefined, (error) => {
-        if (error?.code !== "FileNotFound" && error?.code !== "ENOENT") throw error;
-      }),
+      vscode.workspace.fs
+        .delete(
+          vscode.Uri.joinPath(context.globalStorageUri, "standard-notes"),
+          { recursive: true, useTrash: false },
+        )
+        .then(undefined, (error) => {
+          if (error?.code !== "FileNotFound" && error?.code !== "ENOENT")
+            throw error;
+        }),
     );
   }
   const results = await Promise.allSettled(removals);
@@ -54,13 +54,10 @@ export async function activate(context) {
   await removeRetiredSyncData(context);
   await removeRetiredAuthData(context);
   AgentWorkflowBootstrap.register(context);
-  const tree = new NotesTree();
   const ownership = new NoteEditOwnership();
   const secondary = SecondaryNotePane.register(context, ownership);
   const markdownEditor = MarkdownEditorProvider.register(context, ownership);
   context.subscriptions.push(
-    tree,
-    vscode.window.registerTreeDataProvider("aicNotes.tree", tree),
     markdownEditor,
     registerMarkdownSlashCompletionProvider(vscode),
 
@@ -85,9 +82,6 @@ export async function activate(context) {
       "aicNotes.openProjectNote",
       commandHandler((uri) => openProjectNote(secondary, uri)),
     ),
-    vscode.commands.registerCommand("aicNotes.refreshTree", () =>
-      tree.refresh(),
-    ),
     vscode.commands.registerCommand(
       "aicNotes.enableExplorerNesting",
       commandHandler(enableExplorerNesting),
@@ -108,51 +102,6 @@ export async function activate(context) {
         return secondary.openSourceForNote(uri);
       }),
     ),
-    vscode.commands.registerCommand(
-      "aicNotes.openTarget",
-      commandHandler((item) => secondary.openSourceForNote(item?.uri)),
-    ),
-    vscode.commands.registerCommand(
-      "aicNotes.copyWikiLink",
-      commandHandler(async (item) => {
-        if (!item?.relPath) return;
-        const stem = item.relPath.replace(/\.note\.md$/, "");
-        await vscode.env.clipboard.writeText(`[[${stem}]]`);
-      }),
-    ),
-    vscode.commands.registerCommand(
-      "aicNotes.openNote",
-      commandHandler(openNoteDocument),
-    ),
-
-    // Delete from the notes tree (owner 2026-07-06). Trash first (reversible);
-    // if the platform has no trash, the user explicitly chooses permanent —
-    // an offered choice, not a silent fallback.
-    vscode.commands.registerCommand(
-      "aicNotes.deleteNote",
-      commandHandler(async (item) => {
-        if (item?.uri) {
-          await deleteNotes([item.uri], `note "${item.relPath}"`, tree);
-        }
-      }),
-    ),
-    vscode.commands.registerCommand(
-      "aicNotes.deleteFolderNotes",
-      commandHandler(async (item) => {
-        const uris = (item?.children ?? [])
-          .filter((child) => child.kind === "note")
-          .map((child) => child.uri)
-          .filter(Boolean);
-        if (uris.length) {
-          await deleteNotes(
-            uris,
-            `${uris.length} note(s) under "${item.label}"`,
-            tree,
-          );
-        }
-      }),
-    ),
-
     // Escape hatch for the *.md default claim: a static customEditors selector
     // cannot be toggled by a setting, so this writes the user-level editor
     // association instead — plain markdown back to native, notes stay ours.

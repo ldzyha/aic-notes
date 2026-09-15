@@ -73,7 +73,7 @@ export function paneCapabilities({
 
 // Navigation requests arrive from several VS Code event streams. Serializing
 // them prevents a slower file-stat/open operation from overtaking the user's
-// latest tab or tree selection. A rejected request never poisons the queue.
+// latest tab or explicit context selection. A rejected request never poisons the queue.
 export class NavigationQueue {
   constructor() {
     this.tail = Promise.resolve();

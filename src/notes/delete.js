@@ -22,29 +22,3 @@ export async function trashNotesLocally(
   }
   return true;
 }
-
-export async function deleteNotes(
-  uris,
-  label,
-  tree,
-  detail = "",
-  beforeDelete,
-  afterDelete,
-) {
-  const paths = uris
-    .map((uri) => vscode.workspace.asRelativePath(uri, false))
-    .join("\n");
-  const confirm = await vscode.window.showWarningMessage(
-    `Delete ${label}?`,
-    { modal: true, detail: [paths, detail].filter(Boolean).join("\n\n") },
-    "Move to Trash",
-  );
-  if (confirm !== "Move to Trash") return false;
-  const deleted = await trashNotesLocally(uris, {
-    beforeDelete,
-    afterDelete,
-    detail,
-  });
-  if (deleted) tree?.refresh();
-  return deleted;
-}

@@ -2,17 +2,43 @@
 // configurationDefaults (package.json), but VS Code shadows an object default
 // WHOLESALE the moment the user defines their own explorer.fileNesting.patterns.
 // This command inspect()s the setting and merges our pairs into the winning
-// scope, with a confirmation prompt. Folder notes cannot nest (nesting is
-// file-to-file only) — the notes tree covers them.
+// scope, with a confirmation prompt. Folder notes cannot nest because Explorer
+// nesting is file-to-file only; contextual Linked Note navigation remains separate.
 
 import * as vscode from "vscode";
 
 // keep in sync with package.json configurationDefaults
 export const NOTE_PATTERNS = Object.fromEntries(
   [
-    "js", "mjs", "cjs", "ts", "jsx", "tsx", "py", "rs", "go", "java", "rb", "php",
-    "css", "scss", "html", "isml", "json", "jsonc", "toml", "yml", "yaml", "md",
-    "sh", "sql", "xml", "svg", "txt", "vue", "svelte",
+    "js",
+    "mjs",
+    "cjs",
+    "ts",
+    "jsx",
+    "tsx",
+    "py",
+    "rs",
+    "go",
+    "java",
+    "rb",
+    "php",
+    "css",
+    "scss",
+    "html",
+    "isml",
+    "json",
+    "jsonc",
+    "toml",
+    "yml",
+    "yaml",
+    "md",
+    "sh",
+    "sql",
+    "xml",
+    "svg",
+    "txt",
+    "vue",
+    "svelte",
   ]
     .map((ext) => [`*.${ext}`, "${capture}.note.md"])
     .concat([
@@ -52,10 +78,18 @@ export async function enableExplorerNesting() {
 
   const missing = Object.entries(NOTE_PATTERNS).filter(([k, v]) => {
     const existing = userValue[k];
-    return !existing || !existing.split(",").map((s) => s.trim()).includes(v);
+    return (
+      !existing ||
+      !existing
+        .split(",")
+        .map((s) => s.trim())
+        .includes(v)
+    );
   });
   if (!missing.length) {
-    vscode.window.showInformationMessage("Your file-nesting patterns already include notes.");
+    vscode.window.showInformationMessage(
+      "Your file-nesting patterns already include notes.",
+    );
     return;
   }
   const pick = await vscode.window.showInformationMessage(
@@ -77,10 +111,14 @@ export async function enableExplorerNesting() {
 // one-time activation hint when a user override exists without our pairs
 export async function hintIfShadowed(context) {
   if (context.globalState.get("aicNotes.nestingHintShown")) return;
-  const info = vscode.workspace.getConfiguration("explorer.fileNesting").inspect("patterns");
+  const info = vscode.workspace
+    .getConfiguration("explorer.fileNesting")
+    .inspect("patterns");
   const userValue = info?.workspaceValue ?? info?.globalValue;
   if (!userValue) return;
-  const covered = Object.values(userValue).some((v) => String(v).includes(".note.md"));
+  const covered = Object.values(userValue).some((v) =>
+    String(v).includes(".note.md"),
+  );
   if (covered) return;
   await context.globalState.update("aicNotes.nestingHintShown", true);
   const pick = await vscode.window.showInformationMessage(

@@ -86,7 +86,10 @@ function harness(withOwnership = false) {
   }
   const vscode = {
     RelativePattern: class {
-      constructor(base, pattern) { this.base = base; this.pattern = pattern; }
+      constructor(base, pattern) {
+        this.base = base;
+        this.pattern = pattern;
+      }
     },
     Uri: {
       joinPath: (base, ...parts) =>
@@ -263,11 +266,25 @@ function harness(withOwnership = false) {
 test("workspace link boundaries reject escaping and scheme paths but preserve internal relative links", () => {
   const h = harness();
   const folder = h.vscode.workspace.workspaceFolders[0];
-  for (const candidate of ["../outside.md", "nested/../../outside.md", "/outside.md", "C:/outside.md", "nested\\..\\outside.md", "https://example.com", "\u0000bad.md"]) {
+  for (const candidate of [
+    "../outside.md",
+    "nested/../../outside.md",
+    "/outside.md",
+    "C:/outside.md",
+    "nested\\..\\outside.md",
+    "https://example.com",
+    "\u0000bad.md",
+  ]) {
     assert.equal(h.workspaceLinkUri(folder, candidate), null, candidate);
   }
-  assert.equal(h.workspaceLinkUri(folder, "nested/../inside.md")?.path, "/workspace/inside.md");
-  assert.equal(h.workspaceLinkUri(folder, "nested/child.md")?.path, "/workspace/nested/child.md");
+  assert.equal(
+    h.workspaceLinkUri(folder, "nested/../inside.md")?.path,
+    "/workspace/inside.md",
+  );
+  assert.equal(
+    h.workspaceLinkUri(folder, "nested/child.md")?.path,
+    "/workspace/nested/child.md",
+  );
 });
 
 test("main and sidebar file-open messages cannot open a path outside their workspace", async () => {
@@ -282,9 +299,17 @@ test("main and sidebar file-open messages cannot open a path outside their works
     statCalls++;
     return stat(...args);
   };
-  await provider._routeBus({ topic: "file.open", payload: { path: "../outside.note.md" } }, h.getDocument(source), folder, "source.md");
+  await provider._routeBus(
+    { topic: "file.open", payload: { path: "../outside.note.md" } },
+    h.getDocument(source),
+    folder,
+    "source.md",
+  );
   h.pane.placeholderUri = note;
-  await h.pane.routeBus({ topic: "file.open", payload: { path: "../outside.note.md" } });
+  await h.pane.routeBus({
+    topic: "file.open",
+    payload: { path: "../outside.note.md" },
+  });
   assert.equal(statCalls, 0);
   assert.deepEqual(h.commands, []);
   assert.deepEqual(h.events.opened, []);
@@ -298,9 +323,19 @@ test("main wiki links may traverse to a sibling within the workspace, never outs
   const source = h.addFile("nested/source.note.md", "source");
   const target = h.addFile("target.note.md", "target");
   const provider = new h.MarkdownEditorProvider(h.context);
-  await provider._routeBus({ topic: "wiki.open", payload: { target: "../../outside" } }, h.getDocument(source), folder, "nested/source.note.md");
+  await provider._routeBus(
+    { topic: "wiki.open", payload: { target: "../../outside" } },
+    h.getDocument(source),
+    folder,
+    "nested/source.note.md",
+  );
   assert.deepEqual(h.commands, []);
-  await provider._routeBus({ topic: "wiki.open", payload: { target: "../target" } }, h.getDocument(source), folder, "nested/source.note.md");
+  await provider._routeBus(
+    { topic: "wiki.open", payload: { target: "../target" } },
+    h.getDocument(source),
+    folder,
+    "nested/source.note.md",
+  );
   assert.equal(h.commands.at(-1)?.[1]?.path, target.path);
   provider.dispose();
 });
@@ -317,7 +352,8 @@ test("Explorer note selection leaves both main tab and an unrelated dirty sideba
   assert.equal(h.pane.draftDirty, true);
   assert.ok(
     h.sent.some(
-      (value) => typeof value === "string" && /^(?:Unsaved|Save failed)/u.test(value),
+      (value) =>
+        typeof value === "string" && /^(?:Unsaved|Save failed)/u.test(value),
     ),
   );
   assert.deepEqual(h.events.closed, []);
@@ -702,14 +738,14 @@ test("legacy note association resolves to the same main provider without disposi
     );
     await panel.send({ type: "ready" });
     assert.equal(panel.disposed, false);
-    assert.match(panel.webview.html, /id="document-source"/u);
+    assert.doesNotMatch(panel.webview.html, /id="document-source"/u);
     assert.equal(panel.messages[0].type, "init");
     assert.deepEqual(h.commands, []);
   }
   provider.dispose();
 });
 
-test("main-note edits stay in TextDocument until Ctrl+S; source action never saves", async () => {
+test("main-note edits stay in TextDocument until Ctrl+S", async () => {
   const h = harness();
   const resource = h.addFile("file.note.md", "body");
   const document = h.getDocument(resource);
@@ -723,16 +759,12 @@ test("main-note edits stay in TextDocument until Ctrl+S; source action never sav
   });
   assert.equal(document.getText(), "body changed");
   assert.equal(h.files.get(resource.path).text, "body");
-  await panel.send({ type: "source.open" });
-  assert.equal(h.commands[0][0], "aicNotes.openSource");
-  assert.deepEqual(h.events.saved, []);
   await panel.send({ type: "save" });
   assert.deepEqual(h.events.saved, [resource.path]);
-  assert.match(document.getText(), /file: file\.note\.md/u);
-  assert.match(document.getText(), /body changed/u);
+  assert.equal(document.getText(), "body changed");
   assert.equal(
     panel.messages.filter((message) => message.type === "external").length,
-    1,
+    0,
   );
   assert.deepEqual(h.events.errors, []);
 });
@@ -744,20 +776,47 @@ test("primary save sends a correlated success only after saving FIFO edits and r
   const provider = new h.MarkdownEditorProvider(h.context);
   const panel = h.panel();
   await provider.resolveCustomTextEditor(document, panel);
-  const edit = panel.send({ type: "edit", generation: 0, changes: [{ from: 4, to: 4, insert: " edited" }] });
-  const save = panel.send({ type: "save", generation: 0, relativePath: "ordinary.md", requestId: 1 });
+  const edit = panel.send({
+    type: "edit",
+    generation: 0,
+    changes: [{ from: 4, to: 4, insert: " edited" }],
+  });
+  const save = panel.send({
+    type: "save",
+    generation: 0,
+    relativePath: "ordinary.md",
+    requestId: 1,
+  });
   await Promise.all([edit, save]);
-  const first = panel.messages.find((message) => message.type === "primary.saved");
+  const first = panel.messages.find(
+    (message) => message.type === "primary.saved",
+  );
   assert.equal(first.requestId, 1);
   assert.equal(first.relativePath, "ordinary.md");
   assert.equal(first.saved, true);
   assert.equal(first.text, "base edited");
   assert.equal(h.files.get(resource.path).text, first.text);
   document.save = async () => false;
-  await panel.send({ type: "save", generation: 0, relativePath: "ordinary.md", requestId: 2 });
-  assert.equal(panel.messages.find((message) => message.requestId === 2).saved, false);
-  await panel.send({ type: "save", generation: 99, relativePath: "ordinary.md", requestId: 3 });
-  assert.equal(panel.messages.find((message) => message.requestId === 3).saved, false);
+  await panel.send({
+    type: "save",
+    generation: 0,
+    relativePath: "ordinary.md",
+    requestId: 2,
+  });
+  assert.equal(
+    panel.messages.find((message) => message.requestId === 2).saved,
+    false,
+  );
+  await panel.send({
+    type: "save",
+    generation: 99,
+    relativePath: "ordinary.md",
+    requestId: 3,
+  });
+  assert.equal(
+    panel.messages.find((message) => message.requestId === 3).saved,
+    false,
+  );
   assert.deepEqual(h.events.saved, [resource.path]);
   provider.dispose();
 });
@@ -770,8 +829,12 @@ test("primary does not acknowledge newer external text as saved while an older s
   const panel = h.panel();
   await provider.resolveCustomTextEditor(document, panel);
   let entered, release;
-  const saving = new Promise((resolve) => { entered = resolve; });
-  const delayed = new Promise((resolve) => { release = resolve; });
+  const saving = new Promise((resolve) => {
+    entered = resolve;
+  });
+  const delayed = new Promise((resolve) => {
+    release = resolve;
+  });
   const originalSave = document.save;
   document.save = async () => {
     const saved = await originalSave();
@@ -779,12 +842,19 @@ test("primary does not acknowledge newer external text as saved while an older s
     await delayed;
     return saved;
   };
-  const request = panel.send({ type: "save", generation: 0, relativePath: "ordinary.md", requestId: 42 });
+  const request = panel.send({
+    type: "save",
+    generation: 0,
+    relativePath: "ordinary.md",
+    requestId: 42,
+  });
   await saving;
   document.replace(4, 4, " external later");
   release();
   await request;
-  const reply = panel.messages.find((message) => message.type === "primary.saved");
+  const reply = panel.messages.find(
+    (message) => message.type === "primary.saved",
+  );
   assert.equal(reply.requestId, 42);
   assert.equal(reply.saved, false);
   assert.equal(document.isDirty, true);
@@ -827,7 +897,7 @@ test("a main edit notifies the sidebar without replacing its dirty draft; stale 
   );
 });
 
-test("manifest defaults target the main editor, retains optional legacy association and exposes source actions", async () => {
+test("manifest retains main/legacy editors and exposes source actions without a tree", async () => {
   const manifest = JSON.parse(
     await readFile(new URL("../package.json", import.meta.url), "utf8"),
   );
@@ -843,12 +913,14 @@ test("manifest defaults target the main editor, retains optional legacy associat
     ).priority,
     "option",
   );
-  for (const menu of ["editor/title", "explorer/context", "view/item/context"])
+  for (const menu of ["editor/title", "explorer/context"])
     assert.ok(
       manifest.contributes.menus[menu].some(
         (entry) => entry.command === "aicNotes.openSource",
       ),
     );
+  assert.equal(manifest.contributes.menus["view/item/context"], undefined);
+  assert.equal(manifest.contributes.views.aicNotes, undefined);
 });
 
 test("dirty sidebar opens main read-only, rejects stale main edits, and unlocks main after explicit sidebar save", async () => {
@@ -862,6 +934,15 @@ test("dirty sidebar opens main read-only, rejects stale main edits, and unlocks 
   const sidebarLease = h.ownership.state(h.pane.editSurface).lease;
   const provider = new h.MarkdownEditorProvider(h.context, h.ownership);
   const panel = h.panel();
+  panel.onPost = (message) => {
+    if (message.type === "editing.probe")
+      panel.send({
+        type: "editing.snapshot",
+        requestId: message.requestId,
+        text: document.getText(),
+        dirty: false,
+      });
+  };
   await provider.resolveCustomTextEditor(document, panel);
   await panel.send({ type: "ready" });
   assert.equal(
@@ -940,7 +1021,7 @@ test("dirty main cannot transfer ownership or open source, and queued sidebar co
   assert.deepEqual(h.events.saved, []);
 });
 
-test("clean ownership transfer probes the old webview and native manual Save stamps once and unlocks waiting sidebar", async () => {
+test("clean native Save preserves exact source and unlocks a waiting sidebar", async () => {
   const h = harness(true);
   const resource = h.addFile("file.note.md", "base");
   const document = h.getDocument(resource);
@@ -967,66 +1048,23 @@ test("clean ownership transfer probes the old webview and native manual Save sta
   h.pane.documentUri = resource;
   h.pane.document = document;
   assert.equal(await h.ownership.activate(h.pane.editSurface), false);
-  const edits = [];
-  for (const listener of h.willSaveListeners)
-    listener({
-      document,
-      reason: h.vscode.TextDocumentSaveReason.Manual,
-      waitUntil: (value) => edits.push(value),
-    });
-  assert.equal(edits.length, 1);
-  const prepared = await edits[0];
-  assert.equal(prepared.length, 0);
-  assert.match(document.getText(), /file: file\.note\.md/u);
+  assert.equal(h.willSaveListeners.size, 0);
+  assert.equal(document.getText(), "base main");
   assert.equal(document.isDirty, true);
   await document.save();
   await h.ownership.queue;
   assert.equal(h.ownership.state(h.pane.editSurface).readOnly, false);
-  assert.ok(panel.messages.some((message) => message.type === "editing.probe"));
-  assert.match(document.getText(), /file: file\.note\.md/u);
+  assert.equal(document.getText(), "base main");
   assert.equal(h.events.saved.length, 1);
-  const sideOwnerEdits = [];
-  for (const listener of h.willSaveListeners)
-    listener({
-      document,
-      reason: h.vscode.TextDocumentSaveReason.Manual,
-      waitUntil: (value) => sideOwnerEdits.push(value),
-    });
-  assert.equal(
-    sideOwnerEdits.length,
-    0,
-    "the inactive main editor must not stamp a sidebar save again",
-  );
 });
 
-test("native manual Save never stamps over optimistic client text still in flight", async () => {
+test("native manual Save has no AIC metadata writer", async () => {
   const h = harness(true);
   const document = h.getDocument(h.addFile("file.note.md", "base"));
   const provider = new h.MarkdownEditorProvider(h.context, h.ownership);
   const panel = h.panel();
-  panel.onPost = (message) => {
-    if (message.type === "editing.probe")
-      panel.send({
-        type: "editing.snapshot",
-        requestId: message.requestId,
-        text: "base + in-flight input",
-        dirty: false,
-      });
-  };
   await provider.resolveCustomTextEditor(document, panel);
   await panel.send({ type: "ready" });
-  const pending = [];
-  for (const listener of h.willSaveListeners)
-    listener({
-      document,
-      reason: h.vscode.TextDocumentSaveReason.Manual,
-      waitUntil: (value) => pending.push(value),
-    });
-  assert.equal((await pending[0]).length, 0);
+  assert.equal(h.willSaveListeners.size, 0);
   assert.equal(document.getText(), "base");
-  assert.equal(
-    panel.messages.filter((message) => message.type === "editingState").at(-1)
-      .readOnly,
-    false,
-  );
 });

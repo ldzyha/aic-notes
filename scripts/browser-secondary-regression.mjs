@@ -45,7 +45,10 @@ async function openPage({
       value: { writeText: async (text) => window.clipboardWrites.push(text) },
     });
   });
-  page.on("pageerror", (error) => { errors.push(error.message); process.stderr.write(`${error.stack}\n`); });
+  page.on("pageerror", (error) => {
+    errors.push(error.message);
+    process.stderr.write(`${error.stack}\n`);
+  });
   await page.route("**/*", async (route) => {
     const url = new URL(route.request().url());
     if (url.origin !== origin) {
@@ -118,7 +121,7 @@ const diagramGeometry = (locator) =>
     })),
   }));
 const source =
-  "---\nfile: Project.note.md\ncreated: 2026-09-02T12:00:00Z\nupdated: 2026-09-10T12:00:00Z\n---\n\n# Project\n\nWrite here.";
+  "# Project\n\n```aic\n# Account\nService | Example\nPassword *| synthetic-secret\n```\n\nWrite here.";
 const relationships = [
   {
     path: "Project.note.md",
@@ -164,27 +167,70 @@ try {
   const insertionPage = await openPage();
   await init(insertionPage, source, true);
   const reference = {
-    label: "file.js:1", href: "file.js#L1", markdown: "[file.js:1](file.js#L1)",
+    label: "file.js:1",
+    href: "file.js#L1",
+    markdown: "[file.js:1](file.js#L1)",
     compactMarkdown: "[file.js · L1](file.js#L1)",
   };
-  await post(insertionPage, { type: "linkedCode.insert", requestId: "test-insert", expiresAt: Date.now() + 5000,
-    relativePath: "Project.note.md", generation: 0, reference, selectedText: "const example = 1;" });
+  await post(insertionPage, {
+    type: "linkedCode.insert",
+    requestId: "test-insert",
+    expiresAt: Date.now() + 5000,
+    relativePath: "Project.note.md",
+    generation: 0,
+    reference,
+    selectedText: "const example = 1;",
+  });
   await state(insertionPage, "dirty");
   assert.equal((await commits(insertionPage)).length, 0);
   const inserted = await sourceSnapshot(insertionPage, "Project.note.md");
   assert.ok(inserted.startsWith(source));
   assert.ok(inserted.includes("const example = 1;"));
   assert.ok(inserted.includes("**Comment**"));
-  assert.equal(await insertionPage.evaluate(() => window.messages.find((message) => message.requestId === "test-insert" && message.type === "linkedCode.result").accepted), true);
-  await post(insertionPage, { type: "linkedCode.insert", requestId: "expired", expiresAt: 1,
-    relativePath: "Project.note.md", generation: 0, reference, selectedText: "MUST NOT INSERT" });
-  assert.equal(await sourceSnapshot(insertionPage, "Project.note.md"), inserted);
+  assert.equal(
+    await insertionPage.evaluate(
+      () =>
+        window.messages.find(
+          (message) =>
+            message.requestId === "test-insert" &&
+            message.type === "linkedCode.result",
+        ).accepted,
+    ),
+    true,
+  );
+  await post(insertionPage, {
+    type: "linkedCode.insert",
+    requestId: "expired",
+    expiresAt: 1,
+    relativePath: "Project.note.md",
+    generation: 0,
+    reference,
+    selectedText: "MUST NOT INSERT",
+  });
+  assert.equal(
+    await sourceSnapshot(insertionPage, "Project.note.md"),
+    inserted,
+  );
   await insertionPage.close();
-  passed.push("linked-code insertion edits the live placeholder without saving; expired intents are rejected");
+  passed.push(
+    "linked-code insertion edits the live placeholder without saving; expired intents are rejected",
+  );
   for (const theme of ["dark", "light"]) {
     const page = await openPage({ theme });
     await init(page);
     await state(page, "saved");
+    const sourceToggle = page.getByRole("button", {
+      name: "Show Markdown source",
+      exact: true,
+    });
+    const linkedSource = page.getByRole("button", {
+      name: "Open linked source file",
+      exact: true,
+    });
+    assert.equal(await sourceToggle.getAttribute("data-aic-icon"), "source");
+    assert.equal(await linkedSource.getAttribute("data-aic-icon"), "open");
+    assert.equal(await sourceToggle.count(), 1);
+    assert.equal(await linkedSource.count(), 1);
     assert.equal(
       await page
         .locator("#secondary-controls, #pane-name, #pane-breadcrumb")
@@ -195,37 +241,55 @@ try {
     const baseColor = await page
       .locator(".cm-editor")
       .evaluate((el) => getComputedStyle(el).backgroundColor);
-    const properties = page.locator(".cm-aic-properties");
-    assert.equal(await properties.count(), 1, "one Properties preview, without duplicate chrome");
+    const properties = page.locator(".cm-aic-security:not(.cm-aic-properties)");
+    assert.equal(
+      await properties.count(),
+      1,
+      "one AIC preview, without duplicate chrome",
+    );
     assert.deepEqual(
       await properties.evaluate((card) => {
         const metadata = card.querySelector(".cm-aic-properties-metadata");
         const tree = card.querySelector(".cm-aic-note-relations");
         const custom = card.querySelector(".cm-aic-security-body");
         return {
-          dates: metadata?.querySelectorAll(".cm-aic-properties-date").length,
-          metadataBeforeTree: Boolean(metadata && tree &&
-            metadata.compareDocumentPosition(tree) & Node.DOCUMENT_POSITION_FOLLOWING),
-          treeBeforeCustom: Boolean(tree && custom &&
-            tree.compareDocumentPosition(custom) & Node.DOCUMENT_POSITION_FOLLOWING),
-          currentProject: tree?.querySelector('[aria-current="true"] .cm-aic-note-relation-label')?.textContent,
-          hasContextHeading: Boolean(card.querySelector(".cm-aic-note-relations-heading")),
+          dates: card.querySelectorAll(".cm-aic-properties-date").length,
+          metadataBeforeTree: Boolean(
+            metadata &&
+            tree &&
+            metadata.compareDocumentPosition(tree) &
+              Node.DOCUMENT_POSITION_FOLLOWING,
+          ),
+          treeBeforeCustom: Boolean(
+            tree &&
+            custom &&
+            tree.compareDocumentPosition(custom) &
+              Node.DOCUMENT_POSITION_FOLLOWING,
+          ),
+          currentProject: tree?.querySelector(
+            '[aria-current="true"] .cm-aic-note-relation-label',
+          )?.textContent,
+          hasContextHeading: Boolean(
+            card.querySelector(".cm-aic-note-relations-heading"),
+          ),
           hasFilename: card.textContent.includes("Project.note.md"),
           customRows: custom?.querySelectorAll(".cm-aic-security-row").length,
-          customFilter: Boolean(custom?.querySelector(".cm-aic-security-filter")),
+          customFilter: Boolean(
+            custom?.querySelector(".cm-aic-security-filter"),
+          ),
         };
       }),
       {
-        dates: 2,
-        metadataBeforeTree: true,
+        dates: 0,
+        metadataBeforeTree: false,
         treeBeforeCustom: true,
         currentProject: "Project",
         hasContextHeading: false,
         hasFilename: false,
-        customRows: 0,
+        customRows: 2,
         customFilter: false,
       },
-      "managed dates and current-note tree precede an empty custom panel",
+      "the current-note tree and AIC rows render without managed dates",
     );
     await page.keyboard.insertText(" Changed.");
     await state(page, "dirty");
@@ -237,10 +301,20 @@ try {
       baseColor,
     );
     await page.locator("#pane-pin").click();
-    assert.equal((await commits(page)).length, 0, "input and focus changes within the editor surface do not save");
+    assert.equal(
+      (await commits(page)).length,
+      0,
+      "input and focus changes within the editor surface do not save",
+    );
     await page.evaluate(() => document.activeElement?.blur());
-    await page.waitForFunction(() => window.messages.some((message) => message.type === "commit"));
-    assert.equal((await commits(page)).length, 1, "leaving the editor surface requests one save");
+    await page.waitForFunction(() =>
+      window.messages.some((message) => message.type === "commit"),
+    );
+    assert.equal(
+      (await commits(page)).length,
+      1,
+      "leaving the editor surface requests one save",
+    );
     await page.keyboard.press("Control+s");
     await page.waitForFunction(() =>
       window.messages.some((m) => m.type === "commit"),
@@ -250,7 +324,7 @@ try {
       ...first,
       type: "committed",
       saved: true,
-      text: first.text.replace("2026-09-10T12:00:00Z", "2026-09-11T12:00:00Z"),
+      text: first.text,
     });
     await state(page, "saved");
     assert.equal(
@@ -332,6 +406,25 @@ try {
     await page.close();
   }
   const page = await openPage({ secondary: false, width: 1180 });
+  await init(page, source, false, "Project.note.md");
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Show Markdown source", exact: true })
+      .count(),
+    1,
+    "the primary surface owns one in-place source toggle",
+  );
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Open linked source file", exact: true })
+      .count(),
+    0,
+    "linked-owner navigation is Secondary-only",
+  );
+  assert.equal(await page.locator(".cm-aic-properties-date").count(), 0);
+  passed.push(
+    "primary/secondary actions: one source toggle, distinct linked-source navigation, no date rows",
+  );
   for (const diagram of [
     "sequenceDiagram\nparticipant A\nparticipant B\nA->>B: Message",
     "classDiagram\nclass Source\nclass Target\nSource --> Target : uses",
@@ -422,11 +515,18 @@ try {
     return a && b && b.y > a.y + a.height;
   });
   await nodeA.click();
-  const labelField = narrow.getByRole("textbox", { name: "Label", exact: true });
+  const labelField = narrow.getByRole("textbox", {
+    name: "Label",
+    exact: true,
+  });
   await labelField.click();
   await narrow.keyboard.press("Control+a");
   await narrow.keyboard.insertText("Initial question");
-  assert.equal(await labelField.inputValue(), "Initial question", "nested Select All belongs to the inspector, not the outer note");
+  assert.equal(
+    await labelField.inputValue(),
+    "Initial question",
+    "nested Select All belongs to the inspector, not the outer note",
+  );
   await narrow
     .getByRole("combobox", { name: "Element type", exact: true })
     .selectOption("diamond");
