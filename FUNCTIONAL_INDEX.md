@@ -1,11 +1,26 @@
 # Functional index
 
-This index records the coordinated AIC Notes 44.4.7 / Standard Notes AIC 35.3.9 /
-shared editor core 6.0.0 release target. Public commands, state boundaries, side effects and
+This index records the coordinated AIC Notes 45.1.0 / Standard Notes AIC 37.2.0 /
+shared editor core 6.1.0 release target. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
 
-## Shared-core changes in release 44.4.7
+## Shared-core changes in release 45.1.0
+
+One feature: Copy section in each AIC section header copies a standalone fenced
+`aic` block containing only that section. It includes masked and filter-hidden rows,
+excludes the card title and sibling sections, and preserves logical labels, value
+text and typed parts through the shared serializer. Authored whitespace/quoting may
+be normalized. Both main and Linked Note surfaces use the same clipboard owner,
+feedback and stale-widget guards; read-only views can copy without source mutation
+or a save request. Core 6.1.0 adds this action without changing the current grammar.
+
+Browser 0.4.0 separately adds one Global Shared record in its encrypted profile
+vault. VS Code does not gain that record, account connections or synchronization.
+The proposed generated-key and VS Code `global.aic` encryption architecture remains
+unimplemented. This release makes no Standard Notes PWA crash-fix claim.
+
+## Prior shared-core changes in release 44.4.7
 
 Four feature outcomes are the retired native Notes & Documents tree, the aic-only
 document format, the shared local guide, and typed-pipe values (including one-time
@@ -109,6 +124,11 @@ production webview browser checks. Artifact publication is verified separately f
 
 ## Current release contracts
 
+- Copy section uses `serializeSecurityBlock` to preserve the selected section's
+  logical typed values in standalone AIC Markdown. Visual filtering never reduces
+  the copied payload; masking does not redact explicitly copied values. The source
+  document, read-only state and save state remain unchanged. Verification belongs
+  to the canonical section-copy UI/model tests and mirrored shared-core checks.
 - One bounded fenced `aic` document owns structured values. `|`, `*|`, `#|`,
   `_|`, `1|` and `0|` type the following part as text, secret, authenticator,
   card, unused one-time or used one-time data. A label is optional and one row can
@@ -160,9 +180,9 @@ production webview browser checks. Artifact publication is verified separately f
 The VS Code extension is local-only and has no Standard Notes account connection.
 The contracts below describe this coordinated release target, not future sync behavior.
 
-## Shared editor core 6.0.0
+## Shared editor core 6.1.0
 
-These contracts target AIC Notes 44.4.7 and pair with Standard Notes AIC 35.3.9.
+These contracts target AIC Notes 45.1.0 and pair with Standard Notes AIC 37.2.0.
 The exact canonical commit and all shared hashes belong in CORE_SNAPSHOT.json after the
 canonical source is committed and the mirror snapshot is regenerated; a working-tree
 snapshot is not proof of committed release identity.

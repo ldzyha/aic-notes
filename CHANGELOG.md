@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+## 45.1.0 — 2026-09-15
+
+Release sequence 45 · 1 feature outcome · 0 fixed-bug outcomes. Shared editor core
+moves to 6.1.0 with an additive section-copy action. Release source target; VSIX
+publication and packaged-runtime acceptance require separate verification.
+
+### Feature
+
+1. Copy section is available in AIC section headers in both the main editor and
+   Linked Note. It copies a standalone fenced `aic` block containing only that
+   section, including masked and filter-hidden rows, without the card title or
+   sibling sections. The shared serializer preserves logical labels, value text
+   and typed parts while normalizing source whitespace/quoting. It uses the
+   existing clipboard owner and feedback, works read-only, guards stale widgets
+   and never mutates or saves the source.
+
+Compatibility: Standard Notes AIC 37.2.0 and browser 0.4.0 consume shared core 6.1.0.
+The browser's new Global Shared record belongs to its own encrypted profile vault;
+VS Code receives no global record, generated-key exchange or `global.aic`
+encryption implementation. Local-only editing remains unchanged, with no account
+connection or synchronization. No Standard Notes PWA crash fix is claimed.
+
 ## 44.4.7 — 2026-09-15
 
 Release sequence 44 · 4 feature outcomes · 7 fixed-bug outcomes. Release source

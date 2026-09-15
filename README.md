@@ -105,34 +105,32 @@ without a duplicate heading row. Use `## Account name` for a custom name or bare
 for the default Security header.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-editor-core 6.0.0 but is a separate product. The coordinated release targets are AIC Notes
-44.4.7 and AIC for Standard Notes 35.3.9. This page describes the release contract;
+editor-core 6.1.0 but is a separate product. The coordinated release targets are AIC Notes
+45.1.0 and AIC for Standard Notes 37.2.0. This page describes the release contract;
 published artifacts are verified separately by the release workflow. Transfer content manually
 between the two applications; VS Code has no Standard Notes account integration.
 
-## Coordinated release — 44.4.7
+## Coordinated release — 45.1.0
 
-This release removes the extension-specific Notes & Documents tree while retaining
-Linked Note, source following, Explorer navigation, and contextual parent links. It
-also adopts the single typed-pipe `aic` document and shared local `?` guide in both
-editor surfaces. Seven presentation and interaction fixes include:
-card/composite labels and first values align with adjacent simple rows without an
-extra card-label colon. Contextual Field/Row/Section actions follow the relevant row;
-empty sections keep Row/Section inline without a dedicated footer. Masking,
-independent copy targets and existing empty-field actions are unchanged. Shared field-add menus also use compact,
-left-aligned items instead of oversized centered rows, retaining the same actions,
-viewport bounds and keyboard behavior.
-The linked-note header no longer repeats file dates, and the main note footer keeps
-one in-place source/preview toggle. Secondary's separate owner-navigation action
-remains available.
+This release adds **Copy section** in each AIC section header in the main editor
+and Linked Note. It copies a standalone fenced `aic` block containing only that
+section, including masked and filter-hidden rows, without the card title or sibling
+sections. The shared serializer preserves logical labels, exact value text and
+typed parts; authored whitespace and quoting may be normalized. Copy works in
+read-only views, guards stale controls and does not edit or save the note.
 
-Core 6.0.0 is a breaking grammar release: colon fields and YAML Properties are no
-longer interpreted. Existing source remains exact and manually editable; no save
-path stamps or migrates it. Typed values use `|`, `*|`, `#|`, `_|`, `1|`, and `0|`.
-Core also retains the shared BEM compatibility contract. Existing
-compatibility selectors and host-specific placement remain. This release does not
-include the separately proposed global Shared/encryption work and does not alter the
-extension's local-only boundary. Release assets require separate verification.
+Core 6.1.0 adds this action without changing the typed-pipe grammar. The separate
+browser 0.4.0 release adds Global Shared inside its encrypted browser-profile vault;
+it is not a VS Code feature or a connection between applications. The proposed
+generated-key and VS Code `global.aic` encryption architecture remains unimplemented.
+The extension remains local-only, with no account connection or synchronization.
+Release assets require separate verification; no Standard Notes PWA crash fix is claimed.
+
+The prior 44.4.7 release retired the native Notes & Documents tree, adopted typed
+`aic` values and the local guide, aligned compact field actions and kept one source
+toggle in the main footer. Core 6.0.0 introduced the breaking grammar: colon fields
+and YAML Properties remain exact raw text for manual repair, without automatic
+stamping or migration. Typed values use `|`, `*|`, `#|`, `_|`, `1|`, and `0|`.
 
 The prior 43.0.1 release fixed the compact inline card row and introduced the additive,
 partially adopted shared component IDs, BEM helpers and geometry tokens.
@@ -172,9 +170,9 @@ The File Context sphere and the native Notes & Documents tree have been removed.
 Linked Note, source following, Explorer commands and contextual parent-note
 relationships remain; existing Markdown and sidecar files are not migrated or deleted.
 
-## Editor features — shared editor core 6.0.0
+## Editor features — shared editor core 6.1.0
 
-This release target pairs with AIC for Standard Notes 35.3.9. The release gate must
+This release target pairs with AIC for Standard Notes 37.2.0. The release gate must
 byte-verify their shared core and run automated tests and production builds. Prior Windows
 browser checks cover the shared controls but do not replace final package verification;
 Linux desktop smoke checks are not implied.
@@ -243,25 +241,25 @@ this section does not assert that all clients or operating systems have complete
 
 ## Install
 
-After publication, download `aic-notes-44.4.7.vsix` and its
-`aic-notes-44.4.7.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+After publication, download `aic-notes-45.1.0.vsix` and its
+`aic-notes-45.1.0.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-44.4.7.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-44.4.7.vsix.sha256
-code --install-extension .\aic-notes-44.4.7.vsix --force
+(Get-FileHash .\aic-notes-45.1.0.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-45.1.0.vsix.sha256
+code --install-extension .\aic-notes-45.1.0.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-44.4.7.vsix.sha256
-code --install-extension ./aic-notes-44.4.7.vsix --force
-# or: code-server --install-extension ./aic-notes-44.4.7.vsix --force
+sha256sum -c aic-notes-45.1.0.vsix.sha256
+code --install-extension ./aic-notes-45.1.0.vsix --force
+# or: code-server --install-extension ./aic-notes-45.1.0.vsix --force
 ```
 
 Reload the VS Code window after installation. Local editing requires no
@@ -386,7 +384,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-The coordinated version `44.4.7` records sequence 44, four feature outcomes and seven fixed-bug
+The coordinated version `45.1.0` records sequence 45, one feature outcome and zero fixed-bug
 outcomes; it is not a publication marker by itself.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and
