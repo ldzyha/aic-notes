@@ -2,6 +2,7 @@
 .github/**
 .gitignore
 .gitattributes
+AGENTS.md
 node_modules/**
 .npm-cache/**
 src/**

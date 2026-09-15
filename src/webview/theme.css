@@ -154,65 +154,8 @@ body[data-save-state="dirty"] #secondary-footer { border-top-color: var(--warn);
   padding: 0.12rem 0.2rem;
 }
 
-/* Every replacement preview uses an explicit caption action. The preview
-   body is not an implicit source-edit target. */
-.cm-editor .cm-content .cm-md-block-preview {
-  box-sizing: border-box;
-  border: 1px solid var(--aic-details-border);
-  border-radius: var(--radius);
-  background: var(--aic-details-surface);
-  color: var(--aic-contrast-fg);
-  overflow: hidden;
-}
-.cm-editor .cm-content .cm-md-preview-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 1.8rem;
-  padding: 0.12rem 0.25rem 0.12rem 0.55rem;
-  border-bottom: 1px solid var(--aic-details-border);
-  color: var(--aic-muted);
-  font: 650 0.76rem/1.2 var(--vscode-font-family, system-ui, sans-serif);
-  letter-spacing: 0.025em;
-  text-transform: uppercase;
-}
-.cm-md-preview-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.15rem;
-}
-.cm-md-edit-source {
-  min-height: 1.45rem;
-  padding: 0 0.42rem;
-  border: 1px solid transparent;
-  border-radius: calc(var(--radius) - 0.1rem);
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  font: 600 0.74rem/1 var(--vscode-font-family, system-ui, sans-serif);
-  text-transform: none;
-}
-.cm-md-edit-source:hover,
-.cm-md-edit-source:focus-visible {
-  border-color: color-mix(in srgb, var(--aic-accent) 60%, var(--aic-details-border));
-  background: color-mix(in srgb, var(--aic-accent) 10%, transparent);
-  outline: none;
-}
 .cm-editor .cm-content .cm-md-table.cm-md-block-preview { padding: 0; }
 .cm-editor .cm-content .cm-md-code-preview.cm-md-block-preview { padding: 0; }
-.cm-md-code-preview > pre {
-  box-sizing: border-box;
-  max-width: 100%;
-  margin: 0;
-  padding: 0.65rem 0.75rem;
-  overflow: auto;
-  background: color-mix(in srgb, var(--aic-bg) 88%, var(--aic-contrast-fg) 12%);
-  color: var(--aic-fg);
-  font: 400 0.86rem/1.5 "JetBrains Mono", var(--vscode-editor-font-family, monospace);
-  tab-size: 2;
-  white-space: pre;
-}
-.cm-md-code-preview > pre > code { font: inherit; }
 .cm-editor .cm-content .cm-md-block-preview > table { margin: 0.35rem; }
 .cm-editor .cm-content .cm-md-mermaid.cm-md-block-preview { padding-top: 0; }
 

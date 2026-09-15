@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+## 43.0.1 — 2026-09-15
+
+Release sequence 43 · 0 feature outcomes · 1 fixed-bug outcome. Release source target;
+VSIX publication requires separate verification. The shared editor core moves to
+5.3.0 with additive UI component exports; no new VS Code user feature is counted.
+
+### Fix
+
+1. Card fields share the compact inline Properties/Security row: optional label,
+   masked last four digits, expiry and masked CVV, with independent copy targets and
+   unchanged empty-field actions.
+
+Compatibility: Standard Notes AIC 34.3.1 mirrors shared core 5.3.0. The additive
+component/BEM contract is only partially adopted and keeps compatibility selectors;
+it does not change VS Code's local-only boundary or claim universal selector removal.
+The separate browser extension remains experimental at 0.2.0. Published VSIX and
+store availability require separate verification.
+
 ## 42.0.3 — 2026-09-14
 
 Release sequence 42 · 0 feature outcomes · 3 fixed-bug outcomes. Release source target;

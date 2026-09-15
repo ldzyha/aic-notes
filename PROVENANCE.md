@@ -1,5 +1,21 @@
 # Release provenance
 
+## Release 43.0.1 — additive shared UI contract and inline cards
+
+AIC Editor Core 5.3.0 pairs with Standard Notes AIC 34.3.1. The explicit inventory
+adds the shared UI component IDs, BEM helpers, declarations and geometry tokens, while
+the canonical preview layout owns common shell, header and code-preview styling. The
+adoption is additive and partial: compatibility selectors and host placement remain;
+no universal legacy-selector removal or duplicate-free stylesheet is claimed.
+
+The VS Code-visible fix places the optional card label, masked last four digits,
+expiry and masked CVV in the shared compact inline composite row without changing
+copy, Paste, deletion or reordering ownership. The canonical source remains
+`standard-notes-aic/src/core`; AIC Notes consumes the explicitly inventoried mirror in
+`vendor/aic-editor-core`. The final canonical commit, exact mirrored hashes and passing
+release gate must be recorded in `CORE_SNAPSHOT.json` before publication. No
+Marketplace publication is implied by this release target.
+
 ## Release 42.0.3 — shared editor presentation corrections
 
 AIC Editor Core 5.2.0 pairs with Standard Notes AIC 33.2.4. Its additive `previewOnly`

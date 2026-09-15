@@ -62,6 +62,7 @@ import {
   slashSnippetExtension,
 } from "../../vendor/aic-editor-core/slash-snippets.js";
 import ICONS_CSS from "../../vendor/aic-editor-core/icons.css";
+import UI_SYSTEM_CSS from "../../vendor/aic-editor-core/ui-system.css";
 import MERMAID_VIEWPORT_CSS from "../../vendor/aic-editor-core/mermaid-viewport.css";
 import SLASH_SNIPPETS_CSS from "../../vendor/aic-editor-core/slash-snippets.css";
 import PREVIEW_LAYOUT_CSS from "../../vendor/aic-editor-core/preview-layout.css";
@@ -182,6 +183,7 @@ const FONT_CSS = [
 for (const css of [
   FONT_CSS,
   THEME_CSS,
+  UI_SYSTEM_CSS,
   MARKDOWN_CSS,
   ICONS_CSS,
   MERMAID_VIEWPORT_CSS,

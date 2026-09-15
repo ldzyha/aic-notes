@@ -1,11 +1,23 @@
 # Functional index
 
-This index records the coordinated AIC Notes 42.0.3 / Standard Notes AIC 33.2.4 /
-shared editor core 5.2.0 release target. Public commands, state boundaries, side effects and
+This index records the coordinated AIC Notes 43.0.1 / Standard Notes AIC 34.3.1 /
+shared editor core 5.3.0 release target. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
 
-## Shared-core changes in release 42.0.3
+## Shared-core changes in release 43.0.1
+
+One fix: card fields display their optional label, masked last four digits, expiry
+and masked CVV in the shared compact inline composite row. Independent copy targets,
+empty-part Paste, empty-field deletion and reordering retain their existing owners.
+
+Core 5.3.0 adds shared component IDs, BEM-class helpers and geometry tokens through
+the explicit distribution inventory. Adoption is additive and partial: registered
+CodeMirror/data compatibility hooks and host placement rules remain. Shared preview
+layout now owns common shell, header and code-preview rules, without claiming that
+all legacy selectors or host-specific styles have been removed.
+
+## Prior shared-core changes in release 42.0.3
 
 Three fixes: generic pipe fields display label, value and description in one compact
 row with independent copying and local overflow; shared parsing avoids repeated
@@ -145,9 +157,9 @@ production webview browser checks. Artifact publication is verified separately f
 The VS Code extension is local-only and has no Standard Notes account connection.
 The contracts below describe this coordinated release target, not future sync behavior.
 
-## Shared editor core 5.1.0
+## Shared editor core 5.3.0
 
-These contracts target AIC Notes 41.1.1 and pair with Standard Notes AIC 32.1.1.
+These contracts target AIC Notes 43.0.1 and pair with Standard Notes AIC 34.3.1.
 The exact canonical commit and all shared hashes belong in CORE_SNAPSHOT.json after the
 canonical source is committed and the mirror snapshot is regenerated; a working-tree
 snapshot is not proof of committed release identity.
