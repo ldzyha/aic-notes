@@ -21,7 +21,7 @@ Card _| 4111111111111111 | 12/30 *| 123
 Recovery codes 1| code-one 0| already-used
 ```
 
-Account, Card and One-time codes are presets made from these parts, not additional
+Blank, Card and One-time codes are presets made from these parts, not additional
 types. Copying an unused `1|` value marks it `0|`; activating a used value restores
 `1|` without copying, and only used values expose removal. Field inserts a typed
 part in the current row, Row inserts below it and Section inserts after the current
@@ -83,7 +83,8 @@ which may show its own permission prompt. AIC cannot bypass platform clipboard p
 and does not read or store clipboard history.
 
 An empty hidden password field (`Password*`, `PWD*`, `Пароль*`, `WebDAV Password*` and
-recognized service-qualified labels) offers **Generate password**. Default: 24 characters,
+recognized service-qualified labels) offers **Generate password** on viewports wider
+than 600px; the control is hidden on narrower layouts. Default: 24 characters,
 uppercase/lowercase/numbers/symbols enabled; length 8–128 and groups are configurable.
 Each enabled group occurs at least once. No existing value is overwritten or automatically
 copied/revealed. Clear through source Edit and return to preview to generate again.
@@ -148,8 +149,9 @@ as the Standard Notes plugin. A standalone `---` starts another section;
 `## Main` optionally titles one. Each value starts with `|`, `*|`, `#|`, `_|`,
 `1|`, or `0|` for text, secret, TOTP, card, unused one-time, or used one-time
 data. Add Field targets the current row, Add Row inserts below, and Add Section
-inserts after the current section. Account/Card/One-time codes are presets made
-from those value types; Email and URL remain text. Edit opens raw Markdown.
+inserts after the current section. Blank/Card/One-time codes are presets made
+from those value types; an unlabeled text row can hold an email or another identifier.
+Email and URL remain text. Edit opens raw Markdown.
 Preview can copy individual values, one-time codes and the complete fenced block, or open a safe
 HTTP(S) URL. Save, Ctrl/Cmd+S and leaving the surface share the same persistence manager. This is
 visual masking only: raw Markdown, other editors, local files, exports and

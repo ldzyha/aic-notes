@@ -132,8 +132,9 @@ production webview browser checks. Artifact publication is verified separately f
 - One bounded fenced `aic` document owns structured values. `|`, `*|`, `#|`,
   `_|`, `1|` and `0|` type the following part as text, secret, authenticator,
   card, unused one-time or used one-time data. A label is optional and one row can
-  combine independently typed parts. Account, Card and One-time codes are presets,
-  not additional field types.
+  combine independently typed parts. Blank, Card and One-time codes are presets,
+  not additional field types. New blocks include an unlabeled text row for an
+  email or another identifier.
 - Copying an unused one-time value changes it to `0|`; activating a used value
   restores `1|` without copying, and only used values expose removal. Field adds a
   typed part to the current row, Row inserts below it and Section inserts after the
@@ -144,7 +145,7 @@ production webview browser checks. Artifact publication is verified separately f
   note; raw source can reveal visually masked values.
 - The linked-note header shows no created/updated timestamp. VS Code may retain
   filesystem metadata internally, but it is not projected into the AIC field UI.
-- The shared local `?` guide and canonical blank/account/card/one-time presets use
+- The shared local `?` guide and canonical blank/card/one-time presets use
   only current grammar. The guide is fixed bundled DOM content with no storage or
   network access.
 - Shared `save-boundary` reports focus-leave and security mutation intents to the host managers.
@@ -152,7 +153,8 @@ production webview browser checks. Artifact publication is verified separately f
   requires acknowledgement. CodeMirror viewport remounts create fresh live widget sessions while
   detached controls, clipboard completions and TOTP timers remain retired.
 
-- Shared password generation remains bounded and WebCrypto-only. Authenticator
+- Shared password generation is available on viewports wider than 600px and remains
+  bounded and WebCrypto-only. Authenticator
   codes derive locally from `#|` parts. Copy/open/mutation actions use the existing
   identity-bound host clipboard and save managers; VS Code has no note
   synchronization or QR import UI.
