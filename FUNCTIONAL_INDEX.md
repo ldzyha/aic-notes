@@ -1,9 +1,13 @@
 # Functional index
 
-This index records the coordinated AIC Notes 46.1.1 / Standard Notes AIC 38.1.1 /
-shared editor core 6.2.0 release target. Public commands, state boundaries, side effects and
+This index records the coordinated AIC Notes 47.0.1 / Standard Notes AIC 39.0.1 /
+shared editor core 6.2.1 release target. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
+
+Release 47.0.1 separates headings, quotes and list starts,
+and draws a 50–100 px centered thematic break with vertical space. Its line
+height stays stable when the caret reveals raw source. Source text is unchanged.
 
 ## Shared-core changes in release 46.1.1
 

@@ -83,9 +83,9 @@ test("VS Code surfaces show no date label and own one in-place source toggle", a
   assert.equal(webview.match(/sourceMode\.createButton\(/gu)?.length, 1);
 });
 
-test("46.1.1 is a universal local editor without account connectivity", () => {
-  assert.equal(packageJson.version, "46.1.1");
-  assert.equal(packageJson.aicEditorCore, "6.2.0");
+test("47.0.1 is a universal local editor without account connectivity", () => {
+  assert.equal(packageJson.version, "47.0.1");
+  assert.equal(packageJson.aicEditorCore, "6.2.1");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
   assert.match(

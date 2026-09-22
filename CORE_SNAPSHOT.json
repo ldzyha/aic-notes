@@ -1,7 +1,7 @@
 {
-  "coreVersion": "6.2.0",
+  "coreVersion": "6.2.1",
   "sourceRepository": "https://github.com/ldzyha/standard-notes-aic",
-  "sourceCommit": "35fa34433192fe3da06de5b02aeea8f9be50d6b2",
+  "sourceCommit": "1b8d2cb44cd00e259788bfb8be771eff1a7da366",
   "files": {
     "agentic-notes.d.ts": "edceb932ecb1e9f54096fd817d48a3d0b557ae4cffc07f787f761012c7d92d4e",
     "agentic-notes.js": "b5369e37724bcabe9673aac12d25a5f9dc7eab1c83d5c0bae3364e80487f2a81",
@@ -50,7 +50,7 @@
     "mermaid-viewport.js": "05e4c7e6e0fcef298aba490fe6f49ed9c6bdc774f5423ecf4d3182455b5ad006",
     "note-template.d.ts": "16d74b7a0fb2a1807083607cba94fb65e0fcacaa68f1c70356b9e67ed1c857f4",
     "note-template.js": "87f8972afb551f2df4fe9947ba82f794170c30619b144f092f859fdaad66a697",
-    "preview-layout.css": "50f8190d86955479cb0c0bb14717762eaaf86e1a83699fa0ba213461e2cce394",
+    "preview-layout.css": "27bb17dc11e96a6c11987281e447d5582e2060f9c55791e831f10c5a50c2f843",
     "preview-ranges.d.ts": "ef057a6c0ea79cdf21d5c4986b08988b92f5246287bc81aea75c90cdd94bdb50",
     "preview-ranges.js": "229efb488073bbd9047e2e75370981df8a43056bbddb5c5a9e012ca52bc94948",
     "preview-reorder.d.ts": "3964c54bb7efefece269611a587d8b742df4f8c2eec6fe8c83bf3698bc8544ba",

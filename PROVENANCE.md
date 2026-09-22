@@ -1,5 +1,14 @@
 # Release provenance
 
+## Release 47.0.1 — Markdown spacing and thematic breaks
+
+AIC Editor Core 6.2.1 pairs with Standard Notes AIC 39.0.1 and experimental
+browser 0.5.1. The shared preview layout measures vertical spacing within
+CodeMirror lines and draws a short centered thematic break. The VS Code
+Markdown adapter keeps the break's line decoration when its source is
+revealed, preserving height. The exact canonical commit and mirrored hashes
+are recorded in `CORE_SNAPSHOT.json`.
+
 ## Release 46.1.1 — blank AIC rows and responsive fields
 
 AIC Editor Core 6.2.0 pairs with Standard Notes AIC 38.1.1 and experimental

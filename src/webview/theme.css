@@ -103,19 +103,6 @@ body[data-save-state="dirty"] #secondary-footer { border-top-color: var(--warn);
 .cm-editor .cm-content .cm-md-strike { color: var(--muted); }
 .cm-editor .cm-content .cm-md-listmark { color: var(--accent); }
 
-/* hr: the dashes hide behind a real full-width rule; the caret on the line
-   swaps back to the raw source (markerRevealed, handler-side) */
-.cm-editor .cm-content .cm-md-hr { color: transparent; }
-.cm-md-hr-line { position: relative; }
-.cm-md-hr-line::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(50% - 1px);
-  border-top: 1px solid var(--border);
-}
-
 /* tables: the grid carries its own surface — header AND content cells get a
    background so the table reads as one object on the page */
 .cm-editor .cm-content .cm-md-table table {

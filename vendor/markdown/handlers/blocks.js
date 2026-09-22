@@ -27,9 +27,8 @@ export const blockquoteHandler = {
   },
 };
 
-// hr renders as a REAL horizontal rule (owner 2026-07-06: "--- is not
-// visible"): the line gets .cm-md-hr-line (CSS draws a full-width rule) and
-// the dashes go transparent; the caret on the line reveals the raw source
+// hr renders as a short centered rule; the line keeps its measured vertical
+// spacing when the caret reveals the raw source instead of the rule.
 export const hrHandler = {
   id: "md.hr",
   nodes: ["HorizontalRule"],
@@ -37,7 +36,10 @@ export const hrHandler = {
   decorate(nodeRef, view, revealed) {
     const line = view.state.doc.lineAt(nodeRef.from);
     if (revealed(line.from, line.to)) {
-      return [{ from: nodeRef.from, to: nodeRef.to, deco: markerRevealed }];
+      return [
+        { from: line.from, to: line.from, deco: hrLine, line: true },
+        { from: nodeRef.from, to: nodeRef.to, deco: markerRevealed },
+      ];
     }
     return [
       { from: line.from, to: line.from, deco: hrLine, line: true },

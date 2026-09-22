@@ -106,10 +106,18 @@ without a duplicate heading row. Use `## Account name` for a custom name or bare
 for the default Security header.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-editor-core 6.2.0 but is a separate product. The coordinated release targets are AIC Notes
-46.1.1 and AIC for Standard Notes 38.1.1. This page describes the release contract;
+editor-core 6.2.1 but is a separate product. The coordinated release targets are AIC Notes
+47.0.1 and AIC for Standard Notes 39.0.1. This page describes the release contract;
 published artifacts are verified separately by the release workflow. Transfer content manually
 between the two applications; VS Code has no Standard Notes account integration.
+
+## Coordinated release — 47.0.1
+
+Markdown headings, quotes and lists have more space between them in both editor
+surfaces. A thematic break appears as a centered 50–100 px line with space
+above and below. Its row retains the same height when the caret reveals the
+raw `---`; authored Markdown is unchanged. Standard Notes AIC 39.0.1 and
+experimental browser 0.5.1 use the same shared core 6.2.1.
 
 ## Coordinated release — 46.1.1
 
@@ -181,9 +189,9 @@ The File Context sphere and the native Notes & Documents tree have been removed.
 Linked Note, source following, Explorer commands and contextual parent-note
 relationships remain; existing Markdown and sidecar files are not migrated or deleted.
 
-## Editor features — shared editor core 6.2.0
+## Editor features — shared editor core 6.2.1
 
-This release target pairs with AIC for Standard Notes 38.1.1. The release gate must
+This release target pairs with AIC for Standard Notes 39.0.1. The release gate must
 byte-verify their shared core and run automated tests and production builds. Prior Windows
 browser checks cover the shared controls but do not replace final package verification;
 Linux desktop smoke checks are not implied.
@@ -252,25 +260,25 @@ this section does not assert that all clients or operating systems have complete
 
 ## Install
 
-After publication, download `aic-notes-46.1.1.vsix` and its
-`aic-notes-46.1.1.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+After publication, download `aic-notes-47.0.1.vsix` and its
+`aic-notes-47.0.1.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-46.1.1.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-46.1.1.vsix.sha256
-code --install-extension .\aic-notes-46.1.1.vsix --force
+(Get-FileHash .\aic-notes-47.0.1.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-47.0.1.vsix.sha256
+code --install-extension .\aic-notes-47.0.1.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-46.1.1.vsix.sha256
-code --install-extension ./aic-notes-46.1.1.vsix --force
-# or: code-server --install-extension ./aic-notes-46.1.1.vsix --force
+sha256sum -c aic-notes-47.0.1.vsix.sha256
+code --install-extension ./aic-notes-47.0.1.vsix --force
+# or: code-server --install-extension ./aic-notes-47.0.1.vsix --force
 ```
 
 Reload the VS Code window after installation. Local editing requires no
@@ -395,7 +403,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-The coordinated version `46.1.1` records sequence 46, one feature outcome and one fixed-bug
+The coordinated version `47.0.1` records sequence 47, zero feature outcomes and one fixed-bug
 outcomes; it is not a publication marker by itself.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and
