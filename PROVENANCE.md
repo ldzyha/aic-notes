@@ -1,5 +1,13 @@
 # Release provenance
 
+## Release 46.1.1 — blank AIC rows and responsive fields
+
+AIC Editor Core 6.2.0 pairs with Standard Notes AIC 38.1.1 and experimental
+browser 0.5.0. The canonical core owns the blank text row, optional typed fields,
+responsive label/value layout and narrow-screen password-generation visibility.
+The exact canonical commit and mirrored file hashes are recorded in
+`CORE_SNAPSHOT.json`; VS Code retains local document and clipboard ownership.
+
 ## Release 44.4.7 — aic-only typed values and a smaller VS Code host
 
 AIC Editor Core 6.0.0 pairs with Standard Notes AIC 35.3.9. The explicit shared

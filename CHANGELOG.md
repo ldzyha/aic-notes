@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+## 46.1.1 — 2026-09-22
+
+Release sequence 46 · 1 feature outcome · 1 fixed-bug outcome. AIC Editor Core
+6.2.0 is mirrored byte-for-byte from Standard Notes AIC 38.1.1.
+
+### Feature
+
+1. New AIC blocks start with an unlabeled text row for an email or username.
+   The Account row preset is removed; Password and TOTP remain separate optional
+   fields. Existing authored notes are not rewritten.
+
+### Fix
+
+1. Narrow Linked Note and main-editor panels keep each field label with its
+   value parts as the row wraps into readable columns. Password generation
+   controls are hidden at viewport widths of 600 px or less. Saved secrets and
+   independent copy actions remain available.
+
+Compatibility: Standard Notes AIC 38.1.1 and experimental browser 0.5.0 use
+the same shared core. No account connection or synchronization is added.
+
 ## 45.1.0 — 2026-09-15
 
 Release sequence 45 · 1 feature outcome · 0 fixed-bug outcomes. Shared editor core

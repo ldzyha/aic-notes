@@ -1,7 +1,7 @@
 {
-  "coreVersion": "6.1.0",
+  "coreVersion": "6.2.0",
   "sourceRepository": "https://github.com/ldzyha/standard-notes-aic",
-  "sourceCommit": "972d2e40780727f6f64c29de0946c5e2ae7e4354",
+  "sourceCommit": "35fa34433192fe3da06de5b02aeea8f9be50d6b2",
   "files": {
     "agentic-notes.d.ts": "edceb932ecb1e9f54096fd817d48a3d0b557ae4cffc07f787f761012c7d92d4e",
     "agentic-notes.js": "b5369e37724bcabe9673aac12d25a5f9dc7eab1c83d5c0bae3364e80487f2a81",

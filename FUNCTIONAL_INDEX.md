@@ -1,9 +1,18 @@
 # Functional index
 
-This index records the coordinated AIC Notes 45.1.0 / Standard Notes AIC 37.2.0 /
-shared editor core 6.1.0 release target. Public commands, state boundaries, side effects and
+This index records the coordinated AIC Notes 46.1.1 / Standard Notes AIC 38.1.1 /
+shared editor core 6.2.0 release target. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
+
+## Shared-core changes in release 46.1.1
+
+New AIC blocks begin with an unlabeled text row instead of the Account preset;
+Password and TOTP remain separate optional fields. Narrow field rows wrap their
+labels and typed values together into readable columns. Password generation is
+hidden at viewport widths of 600 px or less, without hiding saved secrets or
+their copy actions. Existing authored notes are not rewritten. The same core
+rules reach Standard Notes and browser 0.5.0.
 
 ## Shared-core changes in release 45.1.0
 
