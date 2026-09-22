@@ -6,6 +6,18 @@ const root = new URL("../", import.meta.url);
 const read = (relativePath) => readFile(new URL(relativePath, root), "utf8");
 const packageJson = JSON.parse(await read("package.json"));
 
+test("the VS Code editor mounts canonical information, warning and error quotes", async () => {
+  const main = await read("src/webview/main.js");
+  const callouts = await read("vendor/aic-editor-core/callout-decorations.js");
+  assert.match(main, /makeCalloutExtension\(\)/u);
+  assert.match(callouts, /!>>\|!>/u);
+  assert.match(callouts, /FencedCode/u);
+  assert.match(
+    await read("vendor/aic-editor-core/preview-layout.css"),
+    /cm-md-callout-warning/u,
+  );
+});
+
 test("retired graph and native note tree have no contribution or runtime", async () => {
   const manifest = JSON.stringify(packageJson.contributes);
   assert.doesNotMatch(manifest, /contextSphere|File Context/u);
@@ -83,9 +95,9 @@ test("VS Code surfaces show no date label and own one in-place source toggle", a
   assert.equal(webview.match(/sourceMode\.createButton\(/gu)?.length, 1);
 });
 
-test("47.0.1 is a universal local editor without account connectivity", () => {
-  assert.equal(packageJson.version, "47.0.1");
-  assert.equal(packageJson.aicEditorCore, "6.2.1");
+test("48.0.1 is a universal local editor without account connectivity", () => {
+  assert.equal(packageJson.version, "48.0.1");
+  assert.equal(packageJson.aicEditorCore, "6.2.2");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
   assert.match(

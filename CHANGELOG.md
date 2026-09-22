@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 48.0.1 — 2026-09-22
+
+Release sequence 48 · 0 feature outcomes · 1 fixed-bug outcome. Shared editor
+core 6.2.2 is mirrored from Standard Notes AIC 40.0.1; experimental browser
+0.5.2 uses the same quote styling and fence behavior.
+
+### Fix
+
+1. Information (`>`), warning (`!>`) and error (`!>>`) quotes have distinct
+   soft backgrounds and side accents, smaller text, and larger gaps between
+   adjacent blocks. Italic text is smaller. `>>> … <<<` remains the details
+   syntax. An unfinished code fence stays editable; a complete one does not
+   preview while the caret is on either delimiter.
+
 ## 47.0.1 — 2026-09-22
 
 Release sequence 47 · 0 feature outcomes · 1 fixed-bug outcome. Shared editor

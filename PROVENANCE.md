@@ -1,5 +1,15 @@
 # Release provenance
 
+## Release 48.0.1 — quote accents and editable fences
+
+AIC Editor Core 6.2.2 pairs with Standard Notes AIC 40.0.1 and experimental
+browser 0.5.2. The shared callout decoration distinguishes warning and error
+from ordinary information quotes without using the existing `>>> … <<<`
+details syntax. Shared preview CSS owns typography, backgrounds, side rules
+and measured gaps. The shared code-fence preview waits for a closing fence
+and for the caret to leave its delimiters. `CORE_SNAPSHOT.json` records the
+canonical commit and exact mirrored hashes.
+
 ## Release 47.0.1 — Markdown spacing and thematic breaks
 
 AIC Editor Core 6.2.1 pairs with Standard Notes AIC 39.0.1 and experimental

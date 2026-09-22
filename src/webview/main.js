@@ -33,6 +33,7 @@ import { makeLinkActionsExtension } from "../../vendor/markdown/link-actions.js"
 import { listKeymap } from "../../vendor/markdown/handlers/list.js";
 import { makeTableExtension } from "../../vendor/markdown/handlers/table.js";
 import { makeCodeFenceExtension } from "../../vendor/markdown/handlers/code-fence.js";
+import { makeCalloutExtension } from "../../vendor/aic-editor-core/callout-decorations.js";
 import { makeMermaidExtension } from "../../vendor/markdown/mermaid.js";
 import { MARKDOWN_CSS } from "../../vendor/markdown/styles.js";
 import { makeFencedMarkdown } from "./fenced-local.js";
@@ -452,6 +453,7 @@ function makeEditor(text) {
         syntaxHighlighting(darkHighlight, { fallback: true }),
         sourceMode.extension([
           decorationPlugin(HANDLERS),
+          makeCalloutExtension(),
           makeLinkActionsExtension(host),
           makeTableExtension(host),
           makePropertiesBlockExtension({
