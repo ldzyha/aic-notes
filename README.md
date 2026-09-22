@@ -106,10 +106,19 @@ without a duplicate heading row. Use `## Account name` for a custom name or bare
 for the default Security header.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-editor-core 6.2.2 but is a separate product. The coordinated release targets are AIC Notes
-48.0.1 and AIC for Standard Notes 40.0.1. This page describes the release contract;
+editor-core 7.0.0 but is a separate product. The coordinated release targets are AIC Notes
+49.1.1 and AIC for Standard Notes 41.1.1. This page describes the release contract;
 published artifacts are verified separately by the release workflow. Transfer content manually
 between the two applications; VS Code has no Standard Notes account integration.
+
+## Coordinated release — 49.1.1
+
+Mermaid is edited as Markdown source with a live preview. Copy and one shared
+Edit icon appear in the preview, while zoom works only there. The visual
+builder, drag-and-drop and rotation controls are removed. Standard Notes AIC
+41.1.1 and experimental browser 0.6.0 use the same shared core 7.0.0.
+The [single installation guide](https://github.com/ldzyha/standard-notes-aic/blob/v41.1.1/RELEASE_INSTALL.md)
+covers all three products.
 
 ## Coordinated release — 48.0.1
 
@@ -223,39 +232,20 @@ Linux desktop smoke checks are not implied.
   change marker; placeholders are gray. Save, Ctrl/Cmd+S and leaving the surface commit the draft.
 - Context ancestors require existing `.note.md` notes. Project navigation always remains,
   opening its note or placeholder; the actual current target can also be a placeholder.
-- In the AIC editor, Mermaid source now retains its visual-editor button above the fence while
-  the caret or a snippet field is inside it. Raw Markdown remains editable. `/class` finds
-  `/class-diagram`; native VS Code text editors offer snippets but not the embedded canvas.
+- In the AIC editor, Mermaid is edited as raw Markdown with a live preview below the fence.
+  `/class` finds `/class-diagram`; native VS Code text editors offer snippets but not the embedded preview.
 - `/noise` captures uncertainty; `/wave` develops a result and executable path in the same note.
   New default file/folder/project notes start with compact Noise guidance. Existing notes and
   accepted `.aic/templates/*.md` overrides are preserved exactly. Default empty notes use the
   current AIC template; no generated file/date Properties are added. There is no automatic
   noise/wave classification or grouping UI.
-- Insert `/flowchart`, `/class-diagram`, `/sequence` or `/entity-map` in AIC Markdown, then choose
-  **Edit diagram visually** on its Mermaid preview. Controls open inside that same block, not in
-  a dialog. Drag an element from the semantic palette onto the preview (or click its button),
-  select a node to rename/change/delete it in the compact
-  context bar, and drag a connection handle onto another node to create a solid arrow. Click a
-  line to edit its label/type/direction. Mermaid computes the actual layout from the source and
-  direction; palette drop positions are not saved as coordinates. Sequence order remains semantic.
-  Undo/Redo, deletion, zoom, scroll and fit are available. The native source editor still edits Markdown;
-  the visual builder belongs to the AIC preview surface.
-- Diagram controls remain compact independently of the document's font size. The selected
-  element has one short bar; endpoints, entity members and related connections open on demand.
-  Palette and selectors share semantic labels: State/Event/Condition, Entity, Participant/Actor.
-  The entity-map profile uses Entity and Association/Dependency; geometry names stay internal.
-- **Apply diagram changes** updates the block; **Ctrl/Cmd+S** saves the document. Ctrl/Cmd+S inside
-  the builder applies and requests the same explicit save. Cancel discards the builder draft.
-  Changes outside the block preserve it; conflicting block edits disable Apply and retain a
-  copyable draft. Switching notes retires the old session. No per-keystroke autosave is added.
-- The shared builder supports a bounded flow/class/sequence grammar. Unsupported Mermaid remains
-  in source mode with the original intact. Read preview and inline editing use the same renderer
-  and layout configuration. Legacy `%% aic-builder-layout` coordinates do not control layout and
-  are removed only when a supported visual edit rewrites the block; opening or unchanged Apply
-  does not rewrite source.
+- Insert `/flowchart`, `/class-diagram`, `/sequence` or `/entity-map` in AIC Markdown. The Mermaid
+  preview has **Copy** and one **Edit** button matching other code blocks. **Edit** reveals the
+  source and a live preview. Zoom and scrolling work only in the preview. There is no visual
+  builder, drag-and-drop editing or rotation control. **Ctrl/Cmd+S** saves through the host;
+  editing does not rewrite the source automatically.
 - Enter preserves indentation and list continuation; Tab/Shift+Tab indent/outdent unless a
-  snippet field is active. The Mermaid source textarea shares indentation behavior; Escape then
-  Tab leaves that field, while Escape twice closes inline editing.
+  snippet field is active. Mermaid source uses the same Markdown editor behavior.
 - In AIC Markdown (documents and notes), Ctrl/Cmd+Alt+1…6 toggles heading levels;
   Ctrl/Cmd+Shift+7/8/9 toggles numbered, bullet and checkbox lists. Formatting does not save.
 - Agentic Notes has a tested shared scope/section core, not an active universal agent adapter.
@@ -264,34 +254,33 @@ Linux desktop smoke checks are not implied.
   cross-client integration are still required; no standalone disk writer is enabled.
 
 Entity-map composition is separate from the chronological, source-edited `/timeline`. Automatic
-drill-down/cross-scale links, multiselect, subgraph authoring and full arbitrary Mermaid support are
-**not implemented**. Shared popup/session and preview-navigation stability changes are included;
+drill-down/cross-scale links and visual diagram authoring are **not implemented**. Shared popup/session and preview-navigation stability changes are included;
 this section does not assert that all clients or operating systems have completed final smoke tests.
 
 ## Install
 
-The [unified release page](https://github.com/ldzyha/standard-notes-aic/releases/tag/v40.0.1)
+The [unified release page](https://github.com/ldzyha/standard-notes-aic/releases/tag/v41.1.1)
 has installation steps for VS Code, Standard Notes and Chrome/Edge in one place.
 
-After publication, download `aic-notes-48.0.1.vsix` and its
-`aic-notes-48.0.1.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+After publication, download `aic-notes-49.1.1.vsix` and its
+`aic-notes-49.1.1.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-48.0.1.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-48.0.1.vsix.sha256
-code --install-extension .\aic-notes-48.0.1.vsix --force
+(Get-FileHash .\aic-notes-49.1.1.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-49.1.1.vsix.sha256
+code --install-extension .\aic-notes-49.1.1.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-48.0.1.vsix.sha256
-code --install-extension ./aic-notes-48.0.1.vsix --force
-# or: code-server --install-extension ./aic-notes-48.0.1.vsix --force
+sha256sum -c aic-notes-49.1.1.vsix.sha256
+code --install-extension ./aic-notes-49.1.1.vsix --force
+# or: code-server --install-extension ./aic-notes-49.1.1.vsix --force
 ```
 
 Reload the VS Code window after installation. Local editing requires no
@@ -352,8 +341,7 @@ and in read-only documents.
 - Links open on the main click. Their Open, Copy, and Edit icon controls remain visible without a
   hover-only gap.
 - Code blocks render as preview cards with Copy and Edit controls.
-- Mermaid diagrams render in place with Copy, Edit, zoom, two-dimensional scrolling, fit, and 90°
-  rotation controls.
+- Mermaid diagrams render in place with Copy, Edit, preview zoom, and two-dimensional scrolling.
 - Tables use content-sized columns, word-level wrapping, a dedicated horizontal scroller, Copy,
   row/column insertion, and drag reordering. A transient popover textarea appears only for the
   selected cell.
@@ -416,7 +404,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-The coordinated version `48.0.1` records sequence 48, zero feature outcomes and one fixed-bug
+The coordinated version `49.1.1` records sequence 49, one feature outcome and one fixed-bug
 outcomes; it is not a publication marker by itself.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and

@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+## 49.1.1 — 2026-09-22
+
+Release sequence 49 · 1 feature outcome · 1 fixed-bug outcome. Shared editor
+core 7.0.0 is mirrored from Standard Notes AIC 41.1.1; experimental browser
+0.6.0 uses the same Mermaid behavior.
+
+### Feature
+
+1. Mermaid uses direct Markdown source editing with a live preview. The preview
+   has Copy, one consistent Edit icon and zoom. The visual builder,
+   drag-and-drop and rotation controls are removed.
+
+### Fix
+
+1. Flowchart editing no longer relies on Mermaid's internal SVG node and edge
+   identifiers; the live preview keeps its current diagram visible while the
+   next render completes.
+
 ## 48.0.1 — 2026-09-22
 
 Release sequence 48 · 0 feature outcomes · 1 fixed-bug outcome. Shared editor

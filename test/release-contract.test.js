@@ -95,9 +95,9 @@ test("VS Code surfaces show no date label and own one in-place source toggle", a
   assert.equal(webview.match(/sourceMode\.createButton\(/gu)?.length, 1);
 });
 
-test("48.0.1 is a universal local editor without account connectivity", () => {
-  assert.equal(packageJson.version, "48.0.1");
-  assert.equal(packageJson.aicEditorCore, "6.2.2");
+test("49.1.1 is a universal local editor without account connectivity", () => {
+  assert.equal(packageJson.version, "49.1.1");
+  assert.equal(packageJson.aicEditorCore, "7.0.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
   assert.match(
@@ -465,18 +465,18 @@ test("plain Markdown and contextual notes load the same slash-enabled editor", a
   assert.ok(packageJson.activationEvents.includes("onLanguage:markdown"));
 });
 
-test("Mermaid owns zoom, two-dimensional scroll, and quarter-turn rotation", async () => {
+test("Mermaid owns preview zoom and two-dimensional scroll", async () => {
   const [viewport, viewportCss, mermaid] = await Promise.all([
     read("vendor/aic-editor-core/mermaid-viewport.js"),
     read("vendor/aic-editor-core/mermaid-viewport.css"),
     read("vendor/markdown/mermaid.js"),
   ]);
-  assert.match(viewport, /Rotate diagram 90° clockwise/u);
-  assert.match(viewport, /rotation = \(\(nextRotation % 360\) \+ 360\) % 360/u);
-  assert.match(viewport, /stage\.style\.width = pixels\(boundsWidth\)/u);
-  assert.match(viewport, /stage\.style\.height = pixels\(boundsHeight\)/u);
+  assert.match(viewport, /Zoom in/u);
+  assert.doesNotMatch(viewport, /Rotate diagram|rotation/u);
+  assert.match(viewport, /stage\.style\.width = pixels\(fitted\)/u);
+  assert.match(viewport, /stage\.style\.height = pixels\(fitted \/ ratio\)/u);
   assert.match(viewportCss, /overflow: auto/u);
-  assert.match(viewportCss, /--aic-mermaid-rotation/u);
+  assert.doesNotMatch(viewportCss, /--aic-mermaid-rotation/u);
   assert.match(mermaid, /createMermaidViewport/u);
 });
 

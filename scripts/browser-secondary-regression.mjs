@@ -438,495 +438,68 @@ try {
       relativePath: "diagram.md",
       selection: { anchor, head: anchor },
     });
-    const toolbar = page.getByRole("toolbar", {
-      name: "Mermaid source actions",
-    });
-    await toolbar.waitFor();
-    await toolbar
-      .getByRole("button", { name: "Edit diagram visually" })
-      .click();
-    await page.locator(".cm-aic-diagram-inline").waitFor();
-    assert.equal(
-      await page.locator("dialog").count(),
-      0,
-      "visual edits are inline, never a dialog",
-    );
-    if (
-      diagram.startsWith("classDiagram") &&
-      process.env.AIC_REVIEW_SCREENSHOTS
-    ) {
-      await page.screenshot({
-        path: path.join(
-          process.env.AIC_REVIEW_SCREENSHOTS,
-          "2026-09-11-diagram-builder.png",
-        ),
-      });
-    }
-    await page.getByRole("button", { name: "Cancel diagram changes" }).click();
-    assert.equal(
-      await page.evaluate(
-        () => window.messages.filter((m) => m.type === "edit").length,
-      ),
-      0,
-    );
+    await page.locator(".cm-md-mermaid-editing svg").waitFor();
+    assert.equal(await page.locator(".aic-diagram-builder").count(), 0);
     const selection = await page.evaluate(() => window.savedState);
     assert.equal(selection.anchor, anchor);
     assert.equal(selection.head, anchor);
   }
   passed.push(
-    "production AIC Markdown: source-mode class/sequence builder opens without edits or lost selection",
+    "class and sequence source retain live Mermaid previews and selection",
   );
-  // Regression from the actual reported legacy /flowchart, in a narrow pane.
-  // This must edit the actual Mermaid SVG inline, not a separate card layout.
-  const narrow = await openPage({ width: 590 });
+
+  const narrow = await openPage({ width: 300 });
   const legacyFlow = [
     "flowchart LR",
     '    A["Input or central question"] --> B["Owned decision or process"]',
     '    B --> C["Outcome or consumer"]',
     '    B -. "Failure or optional path" .-> D["Recovery or omission"]',
   ].join("\n");
-  await init(narrow, `# Diagram\n\n\`\`\`mermaid\n${legacyFlow}\n\`\`\`\n\n`);
-  await narrow
-    .getByRole("button", { name: "Edit diagram visually", exact: true })
-    .click();
-  await narrow.locator(".aic-db-viewport").waitFor();
-  await narrow.waitForFunction(
-    () =>
-      document.querySelectorAll(".aic-db-viewport [data-node-id]").length === 4,
-  );
-  assert.ok(await narrow.locator(".aic-db-source").isHidden());
-  assert.equal(await narrow.locator("dialog").count(), 0);
+  const flowNote = `# Diagram\n\n\`\`\`mermaid\n${legacyFlow}\n\`\`\`\n\n`;
+  await init(narrow, flowNote);
+  const preview = narrow.locator(".cm-md-mermaid:visible").first();
+  await preview.locator("svg").waitFor();
   assert.equal(
-    await narrow.locator(".cm-content .cm-aic-diagram-inline").count(),
+    await preview.getByRole("button", { name: "Edit Mermaid source" }).count(),
     1,
   );
-  assert.equal(await narrow.locator(".aic-db-viewport svg").count(), 1);
-  await narrow
-    .getByRole("combobox", { name: "Direction", exact: true })
-    .selectOption("TB");
-  const nodeA = narrow.locator('[data-node-id="A"]');
-  await narrow.waitForFunction(() => {
-    const a = document
-      .querySelector('[data-node-id="A"]')
-      ?.getBoundingClientRect();
-    const b = document
-      .querySelector('[data-node-id="B"]')
-      ?.getBoundingClientRect();
-    return a && b && b.y > a.y + a.height;
-  });
-  await nodeA.click();
-  const labelField = narrow.getByRole("textbox", {
-    name: "Label",
-    exact: true,
-  });
-  await labelField.click();
-  await narrow.keyboard.press("Control+a");
-  await narrow.keyboard.insertText("Initial question");
   assert.equal(
-    await labelField.inputValue(),
-    "Initial question",
-    "nested Select All belongs to the inspector, not the outer note",
-  );
-  await narrow
-    .getByRole("combobox", { name: "Element type", exact: true })
-    .selectOption("diamond");
-  await narrow
-    .getByRole("button", {
-      name: "Connect Owned decision or process",
-      exact: true,
-    })
-    .dragTo(nodeA);
-  assert.equal(
-    await narrow
-      .getByRole("combobox", { name: "Relationship type", exact: true })
-      .inputValue(),
-    "-->",
-    "drag-connecting defaults to a solid arrow",
-  );
-  await narrow
-    .getByRole("textbox", { name: "Message / event", exact: true })
-    .fill("Review again");
-  await narrow
-    .getByRole("combobox", { name: "Relationship type", exact: true })
-    .selectOption("-.->");
-  await narrow.waitForFunction(
-    () => document.querySelectorAll(".aic-db-edge-hit").length === 4,
-  );
-  await narrow
-    .getByRole("button", { name: "Add state", exact: true })
-    .dragTo(narrow.locator(".aic-db-viewport"), {
-      targetPosition: { x: 100, y: 100 },
-    });
-  await narrow
-    .getByRole("textbox", { name: "Label", exact: true })
-    .fill("Review result");
-  await narrow.waitForFunction(
-    () =>
-      document.querySelectorAll(".aic-db-viewport [data-node-id]").length === 5,
-  );
-  const canvasBox = await narrow.locator(".aic-db-viewport").boundingBox();
-  const inspectorBox = await narrow.locator(".aic-db-inspector").boundingBox();
-  assert.ok(canvasBox.height >= 100);
-  assert.ok(
-    inspectorBox.y + inspectorBox.height <= canvasBox.y + 2,
-    "compact context bar stays above the canvas",
-  );
-  assert.ok(
-    inspectorBox.width >= canvasBox.width,
-    "no permanent side inspector consumes canvas width",
-  );
-  await narrow
-    .getByRole("button", { name: "Fit diagram", exact: true })
-    .click();
-  const line = narrow.getByRole("button", {
-    name: /^Edit relationship line: B --> C/u,
-  });
-  const linePoint = await line.evaluate((el) => {
-    const matrix = el.getScreenCTM();
-    for (let fraction = 0.1; fraction < 0.95; fraction += 0.05) {
-      const point = el
-        .getPointAtLength(el.getTotalLength() * fraction)
-        .matrixTransform(matrix);
-      if (document.elementFromPoint(point.x, point.y) === el)
-        return { x: point.x, y: point.y };
-    }
-    return null;
-  });
-  if (!linePoint && process.env.AIC_REVIEW_SCREENSHOTS) {
-    await narrow.screenshot({
-      path: path.join(
-        process.env.AIC_REVIEW_SCREENSHOTS,
-        "2026-09-11-line-hit-debug.png",
-      ),
-    });
-    process.stdout.write(
-      JSON.stringify(
-        await line.evaluate((el) => {
-          const rect = el.getBoundingClientRect();
-          const matrix = el.getScreenCTM();
-          const point = el
-            .getPointAtLength(el.getTotalLength() * 0.3)
-            .matrixTransform(matrix);
-          return {
-            rect: rect.toJSON(),
-            point: { x: point.x, y: point.y },
-            hit: document
-              .elementFromPoint(point.x, point.y)
-              ?.outerHTML.slice(0, 500),
-            path: el.outerHTML,
-          };
-        }),
-      ) + "\n",
-    );
-  }
-  assert.ok(linePoint, "relationship line itself is reachable on the canvas");
-  await narrow.mouse.click(linePoint.x, linePoint.y);
-  await narrow
-    .getByRole("button", { name: "Reverse direction", exact: true })
-    .click();
-  await narrow
-    .getByRole("textbox", { name: "Message / event", exact: true })
-    .fill("Return");
-  await narrow.waitForFunction(
-    () =>
-      document.querySelector(".aic-diagram-builder")?.dataset.renderState ===
-      "ready",
-  );
-  const inlineGeometry = await diagramGeometry(
-    narrow.locator(".aic-db-viewport svg"),
-  );
-  await narrow
-    .getByRole("button", { name: "Copy Mermaid source", exact: true })
-    .click();
-  const copiedDraft = await narrow.evaluate(
-    () =>
-      window.messages
-        .filter((message) => message.topic === "clipboard.write")
-        .at(-1)?.payload.text ?? window.clipboardWrites.at(-1),
-  );
-  assert.match(
-    copiedDraft,
-    /C -->\|"Return"\| B/u,
-    "Copy uses the current un-applied diagram draft",
-  );
-  if (process.env.AIC_REVIEW_SCREENSHOTS) {
-    await narrow
-      .getByRole("button", { name: "Fit diagram", exact: true })
-      .click();
-    await narrow.screenshot({
-      path: path.join(
-        process.env.AIC_REVIEW_SCREENSHOTS,
-        "2026-09-11-flowchart-fixed.png",
-      ),
-    });
-  }
-  await narrow
-    .getByRole("button", { name: "Apply diagram changes", exact: true })
-    .click();
-  await state(narrow, "dirty");
-  const readSvg = narrow.locator(".cm-md-mermaid-body:visible svg");
-  await readSvg.waitFor();
-  assert.deepEqual(
-    await diagramGeometry(readSvg),
-    inlineGeometry,
-    "read preview and inline editor use identical Mermaid geometry",
+    await preview.getByRole("button", { name: "Copy Mermaid source" }).count(),
+    1,
   );
   assert.equal(
-    (await commits(narrow)).length,
+    await preview.getByRole("button", { name: /Rotate diagram/u }).count(),
     0,
-    "diagram Apply doesn't save the note",
   );
-  await narrow.keyboard.press("Control+s");
-  const diagramCommit = (await commits(narrow)).at(-1);
-  assert.match(diagramCommit.text, /A\{"Initial question"\}/u);
-  assert.match(diagramCommit.text, /B -\.->\|"Review again"\| A/u);
-  assert.match(diagramCommit.text, /N1\["Review result"\]/u);
-  assert.match(diagramCommit.text, /C -->\|"Return"\| B/u);
-  assert.match(diagramCommit.text, /Failure or optional path/u);
-  assert.match(diagramCommit.text, /flowchart TB/u);
-  assert.doesNotMatch(diagramCommit.text, /%% aic-builder-layout/u);
-  passed.push(
-    "inline Mermaid: legacy flowchart, LR/TB autolayout, palette/connection drag, context bar, line click, reverse, draft Copy, identical read/edit geometry, explicit save without layout metadata",
-  );
-
-  // Source-only diagrams still need normal code indentation, not focus loss.
-  await init(
-    narrow,
-    "```mermaid\nflowchart LR\n  subgraph Group\n    A --> B\n  end\n```\n\n",
-  );
-  await narrow
-    .getByRole("button", { name: "Edit diagram visually", exact: true })
-    .click();
-  const sourceEditor = narrow.getByRole("textbox", {
-    name: "Mermaid diagram source",
-    exact: true,
-  });
-  await sourceEditor.fill("flowchart LR\n    A --> B");
-  await sourceEditor.press("Control+End");
-  await sourceEditor.press("Enter");
-  await narrow.keyboard.insertText("B --> C");
+  await preview.getByRole("button", { name: "Copy Mermaid source" }).click();
   assert.equal(
-    await sourceEditor.inputValue(),
-    "flowchart LR\n    A --> B\n    B --> C",
+    await narrow.evaluate(
+      () =>
+        window.messages
+          .filter((message) => message.topic === "clipboard.write")
+          .at(-1)?.payload.text,
+    ),
+    legacyFlow,
   );
-  await sourceEditor.press("Home");
-  await sourceEditor.press("Tab");
-  assert.match(await sourceEditor.inputValue(), /\n {6}B --> C$/u);
-  await sourceEditor.press("Shift+Tab");
-  assert.match(await sourceEditor.inputValue(), /\n {4}B --> C$/u);
-  assert.ok(await sourceEditor.evaluate((el) => el === document.activeElement));
-  await narrow
-    .getByRole("button", { name: "Cancel diagram changes", exact: true })
-    .click();
+  const stage = preview.locator(".cm-aic-mermaid-stage");
+  const originalWidth = await stage.evaluate(
+    (node) => node.getBoundingClientRect().width,
+  );
+  await preview.getByRole("button", { name: "Zoom in" }).click();
+  const zoomedWidth = await stage.evaluate(
+    (node) => node.getBoundingClientRect().width,
+  );
+  assert.ok(
+    zoomedWidth > originalWidth,
+    "zoom enlarges only the preview diagram",
+  );
+  await preview.getByRole("button", { name: "Edit Mermaid source" }).click();
+  await narrow.locator(".cm-md-mermaid-editing svg").waitFor();
+  assert.equal(await narrow.locator(".aic-diagram-builder").count(), 0);
+  assert.equal(await sourceSnapshot(narrow, "Project.note.md"), flowNote);
   passed.push(
-    "Mermaid source textarea: Enter preserves indentation, Tab/Shift+Tab indent without losing focus",
+    "narrow flowchart: Copy, one Edit, preview zoom, live source preview, no builder or rotation",
   );
-  // The reported sidebar is much narrower in CSS pixels than our old screenshot.
-  // Document font scaling must not inflate control sizes or starve the preview.
-  const compactLayouts = [];
-  for (const width of [300, 360, 590]) {
-    for (const rootFont of [16, 24]) {
-      const compact = await openPage({ width, rootFont });
-      const compactSource =
-        '# Diagram\n\n```mermaid\nflowchart LR\n A["Initial state"] --> B{"Condition"}\n```\n\n';
-      await init(compact, compactSource);
-      await compact
-        .getByRole("button", { name: "Edit diagram visually", exact: true })
-        .click();
-      await compact.waitForFunction(
-        () =>
-          document.querySelector(".aic-diagram-builder")?.dataset
-            .renderState === "ready",
-      );
-      const edgePoint = await compact
-        .locator(".aic-db-edge-hit")
-        .evaluate((edge) => {
-          const point = edge
-            .getPointAtLength(edge.getTotalLength() / 2)
-            .matrixTransform(edge.getScreenCTM());
-          return document.elementFromPoint(point.x, point.y) === edge
-            ? { x: point.x, y: point.y }
-            : null;
-        });
-      assert.ok(
-        edgePoint,
-        "the horizontal relationship has a real clickable stroke",
-      );
-      await compact.mouse.click(edgePoint.x, edgePoint.y);
-      await compact
-        .getByRole("textbox", { name: "Message / event", exact: true })
-        .fill(
-          "A description that remains one compact field even when it is long",
-        );
-      await compact.waitForFunction(
-        () =>
-          document.querySelector(".aic-diagram-builder")?.dataset
-            .renderState === "ready",
-      );
-      const metrics = await compact
-        .locator(".aic-diagram-builder")
-        .evaluate((builder) => {
-          const box = (selector) =>
-            builder.querySelector(selector).getBoundingClientRect().toJSON();
-          return {
-            builder: builder.getBoundingClientRect().toJSON(),
-            toolbar: box(".aic-db-toolbar"),
-            palette: box(".aic-diagram-palette"),
-            bar: box(".aic-db-inspector"),
-            viewport: box(".aic-db-viewport"),
-            copy: box('[aria-label="Copy Mermaid source"]'),
-            undo: box('[aria-label="Undo diagram change"]'),
-            font: getComputedStyle(builder.querySelector(".aic-db-field input"))
-              .fontSize,
-            overflow: builder.scrollWidth - builder.clientWidth,
-          };
-        });
-      assert.ok(
-        metrics.toolbar.height <= 34,
-        JSON.stringify({ width, rootFont, metrics }),
-      );
-      assert.ok(metrics.palette.height <= 32);
-      assert.ok(
-        metrics.bar.height <= 40,
-        "selected relationship is a bar, not a stacked form",
-      );
-      assert.ok(
-        metrics.viewport.height >= 240 &&
-          metrics.viewport.height >= metrics.builder.height / 2,
-      );
-      assert.equal(metrics.font, "12px");
-      assert.equal(metrics.copy.height, metrics.undo.height);
-      assert.ok(metrics.copy.height <= 30 && metrics.overflow <= 1);
-      assert.ok(
-        await compact
-          .getByRole("combobox", { name: "From", exact: true })
-          .isHidden(),
-      );
-      await compact
-        .getByRole("button", { name: "Connection endpoints", exact: true })
-        .click();
-      await compact
-        .getByRole("combobox", { name: "From", exact: true })
-        .selectOption("B");
-      assert.ok(
-        await compact
-          .getByRole("combobox", { name: "To", exact: true })
-          .isVisible(),
-      );
-      await compact.keyboard.press("Escape");
-      assert.ok(
-        await compact
-          .getByRole("combobox", { name: "From", exact: true })
-          .isHidden(),
-      );
-      assert.equal(
-        await compact.locator(".cm-aic-diagram-inline").count(),
-        1,
-        "Escape closes the field popover, not diagram editing",
-      );
-      assert.equal((await commits(compact)).length, 0);
-      if (
-        width === 300 &&
-        rootFont === 24 &&
-        process.env.AIC_REVIEW_SCREENSHOTS
-      ) {
-        await compact.screenshot({
-          path: path.join(
-            process.env.AIC_REVIEW_SCREENSHOTS,
-            "2026-09-11-diagram-compact-sidebar.png",
-          ),
-        });
-      }
-      compactLayouts.push({
-        width,
-        rootFont,
-        bar: metrics.bar.height,
-        viewport: metrics.viewport.height,
-      });
-      await compact
-        .getByRole("button", { name: "Cancel diagram changes", exact: true })
-        .click();
-      // Class members remain on-demand, with the same short Entity label.
-      await init(
-        compact,
-        "```mermaid\nclassDiagram\n class Catalog {\n  +load()\n }\n```\n\n",
-      );
-      await compact
-        .getByRole("button", { name: "Edit diagram visually", exact: true })
-        .click();
-      await compact.waitForFunction(
-        () =>
-          document.querySelector(".aic-diagram-builder")?.dataset
-            .renderState === "ready",
-      );
-      await compact.locator('[data-node-id="Catalog"]').click();
-      assert.equal(
-        await compact
-          .getByRole("combobox", { name: "Element type", exact: true })
-          .locator("option:checked")
-          .textContent(),
-        "Entity",
-      );
-      assert.ok(
-        await compact
-          .getByRole("textbox", {
-            name: "Properties and operations · one per line",
-            exact: true,
-          })
-          .isHidden(),
-      );
-      await compact
-        .getByRole("button", { name: "Entity members", exact: true })
-        .click();
-      await compact
-        .getByRole("textbox", {
-          name: "Properties and operations · one per line",
-          exact: true,
-        })
-        .fill("+load()\n+retry()");
-      assert.ok(
-        (await compact.locator(".aic-db-viewport").boundingBox()).height >= 240,
-      );
-      await compact.keyboard.press("Escape");
-      assert.equal(await compact.locator(".cm-aic-diagram-inline").count(), 1);
-      await compact
-        .getByRole("button", { name: "Cancel diagram changes", exact: true })
-        .click();
-      await init(
-        compact,
-        "```mermaid\nsequenceDiagram\n participant User\n participant Service\n User->>Service: Request\n```\n\n",
-      );
-      await compact
-        .getByRole("button", { name: "Edit diagram visually", exact: true })
-        .click();
-      await compact.waitForFunction(
-        () =>
-          document.querySelector(".aic-diagram-builder")?.dataset
-            .renderState === "ready",
-      );
-      await compact
-        .getByRole("button", {
-          name: "Edit relationship: Request",
-          exact: true,
-        })
-        .click();
-      assert.ok(
-        (await compact.locator(".aic-db-inspector").boundingBox()).height <= 70,
-      );
-      assert.ok(
-        (await compact.locator(".aic-db-viewport").boundingBox()).height >= 240,
-      );
-      assert.ok(
-        (
-          await compact
-            .getByRole("textbox", { name: "Message / event", exact: true })
-            .boundingBox()
-        ).width >= 60,
-      );
-      await compact.close();
-    }
-  }
-  passed.push(`compact semantic controls: ${JSON.stringify(compactLayouts)}`);
   for (const secondary of [true, false]) {
     const formatting = await openPage({ secondary, width: 590 });
     for (const relativePath of ["format.md", "format.note.md"]) {

@@ -71,9 +71,6 @@ import UI_SYSTEM_CSS from "../../vendor/aic-editor-core/ui-system.css";
 import MERMAID_VIEWPORT_CSS from "../../vendor/aic-editor-core/mermaid-viewport.css";
 import SLASH_SNIPPETS_CSS from "../../vendor/aic-editor-core/slash-snippets.css";
 import PREVIEW_LAYOUT_CSS from "../../vendor/aic-editor-core/preview-layout.css";
-import DIAGRAM_BUILDER_CSS from "../../vendor/aic-editor-core/diagram-builder.css";
-import DIAGRAM_PALETTE_CSS from "../../vendor/aic-editor-core/diagram-palette.css";
-import DIAGRAM_SESSION_CSS from "../../vendor/aic-editor-core/diagram-session.css";
 import SECURITY_BLOCK_CSS from "../../vendor/aic-editor-core/security-block.css";
 import SECURITY_IMPORT_CSS from "../../vendor/aic-editor-core/security-import-extension.css";
 import THEME_CSS from "./theme.css";
@@ -197,9 +194,6 @@ for (const css of [
   MERMAID_VIEWPORT_CSS,
   SLASH_SNIPPETS_CSS,
   PREVIEW_LAYOUT_CSS,
-  DIAGRAM_BUILDER_CSS,
-  DIAGRAM_PALETTE_CSS,
-  DIAGRAM_SESSION_CSS,
   SECURITY_BLOCK_CSS,
   SECURITY_IMPORT_CSS,
 ]) {

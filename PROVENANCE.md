@@ -1,5 +1,13 @@
 # Release provenance
 
+## Release 49.1.1 — Mermaid source and live preview
+
+AIC Editor Core 7.0.0 pairs with Standard Notes AIC 41.1.1 and experimental
+browser 0.6.0. The visual builder modules are retired from the shared core.
+The source and live preview use the same strict Mermaid renderer; preview
+zoom remains and rotation is removed. `CORE_SNAPSHOT.json` records the exact
+canonical commit and mirrored hashes.
+
 ## Release 48.0.1 — quote accents and editable fences
 
 AIC Editor Core 6.2.2 pairs with Standard Notes AIC 40.0.1 and experimental

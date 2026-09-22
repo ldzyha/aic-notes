@@ -1,9 +1,13 @@
 # Functional index
 
-This index records the coordinated AIC Notes 48.0.1 / Standard Notes AIC 40.0.1 /
-shared editor core 6.2.2 release target. Public commands, state boundaries, side effects and
+This index records the coordinated AIC Notes 49.1.1 / Standard Notes AIC 41.1.1 /
+shared editor core 7.0.0 release target. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
+
+Release 49.1.1 uses direct Mermaid source editing and a live preview. The
+preview has Copy, one Edit icon and preview-only zoom. The visual builder,
+drag-and-drop and rotation controls are removed.
 
 Release 48.0.1 gives information (`>`), warning (`!>`) and error (`!>>`)
 quotes distinct accents and more spacing. Quote and italic text are smaller.

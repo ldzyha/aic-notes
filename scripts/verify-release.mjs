@@ -111,8 +111,7 @@ for (const control of [
   "cm-aic-mermaid-viewport",
   "Copy code",
   "Edit code source",
-  "Rotate diagram 90",
-  "--aic-mermaid-rotation",
+  "Edit Mermaid source",
   "Type / for templates",
   "page-architecture",
   "Structure",
@@ -125,10 +124,12 @@ for (const control of [
 if (packagedEditor.includes("cm-md-link-tooltip"))
   throw new Error("packaged editor still contains the retired link tooltip");
 
-if (entries.includes("extension/dist/webview/sphere.js") ||
-    packagedManifest.contributes.views.aicNotesSecondary.some(
-      (view) => view.id === "aicNotes.contextSphere",
-    ))
+if (
+  entries.includes("extension/dist/webview/sphere.js") ||
+  packagedManifest.contributes.views.aicNotesSecondary.some(
+    (view) => view.id === "aicNotes.contextSphere",
+  )
+)
   throw new Error("retired File Context sphere remains in the package");
 
 const packagedHostEntry = archive.getEntry("extension/dist/extension.cjs");
@@ -163,7 +164,9 @@ for (const retired of [
   "aicNotes.checkStandardNotesConnection",
 ]) {
   if (JSON.stringify(packagedManifest.contributes).includes(retired))
-    throw new Error(`retired account command remains in the manifest: ${retired}`);
+    throw new Error(
+      `retired account command remains in the manifest: ${retired}`,
+    );
 }
 
 for (const command of [

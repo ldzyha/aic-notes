@@ -25,12 +25,6 @@ import {
 import { providePreviewRanges } from "../aic-editor-core/preview-ranges.js";
 import { sourcePreviewExitHandlers } from "../aic-editor-core/source-mode.js";
 import { createMermaidViewport } from "../aic-editor-core/mermaid-viewport.js";
-import {
-  createDiagramEditButton,
-  registerDiagramEditorHost,
-  releaseDiagramEditorHost,
-  DiagramSourceActionsWidget,
-} from "../aic-editor-core/diagram-session.js";
 import { renderMermaidSvg } from "../aic-editor-core/mermaid-runtime.js";
 
 function mermaidTheme() {
@@ -99,9 +93,7 @@ export async function renderInto(el, source, context = "widget") {
   }
 }
 
-// The shared viewport owns zoom, two-dimensional scrolling, and 90° rotation.
-// Its stage has the transformed diagram's real layout bounds, unlike a bare
-// CSS transform whose overflow area remains unrotated.
+// The shared viewport owns preview zoom and two-dimensional scrolling.
 function diagramShell(className) {
   const el = document.createElement("div");
   el.className = className;
@@ -160,7 +152,7 @@ class MermaidWidget extends WidgetType {
       label: view.state.readOnly
         ? "View Mermaid source"
         : "Edit Mermaid source",
-      icon: "source",
+      icon: "edit",
       className: "cm-md-edit-source",
       onActivate: () => {
         view.dispatch({
@@ -170,41 +162,13 @@ class MermaidWidget extends WidgetType {
         view.focus();
       },
     });
-    actions.append(
-      copy,
-      createDiagramEditButton(
-        view,
-        {
-          from: this.textFrom,
-          to: this.textFrom + this.source.length,
-        },
-        {
-          container: el,
-          theme: mermaidTheme(),
-          onCopy: (text) => {
-            this.host.bus.publish("clipboard.write", {
-              text,
-              label: "Mermaid source",
-            });
-            return true;
-          },
-        },
-      ),
-      edit,
-      controls,
-    );
+    actions.append(copy, edit, controls);
     header.append(title, actions);
     el.prepend(header);
     renderInto(body, this.source);
-    el.__aicDiagramView = view;
-    registerDiagramEditorHost(view, el, {
-      from: this.textFrom,
-      to: this.textFrom + this.source.length,
-    });
     return el;
   }
   destroy(el) {
-    releaseDiagramEditorHost(el.__aicDiagramView);
     const body = el.querySelector(".cm-md-mermaid-body");
     body?.__aicRenderAbort?.abort();
     if (body) body.__rseq = (body.__rseq || 0) + 1;
@@ -297,10 +261,6 @@ export function mermaidFences(state) {
 const refreshMermaid = StateEffect.define();
 
 export function makeMermaidExtension(host) {
-  const copySource = (text) => {
-    host.bus.publish("clipboard.write", { text, label: "Mermaid source" });
-    return true;
-  };
   // Block widgets live in a StateField mapped through changes (pinned:
   // CM6 requires block decorations outside ViewPlugins).
   const field = StateField.define({
@@ -332,20 +292,6 @@ export function makeMermaidExtension(host) {
         ) ||
         selectionRevealsPreview(state.selection.ranges, fence.from, fence.to);
       if (inside) {
-        decorations.push(
-          Decoration.widget({
-            widget: new DiagramSourceActionsWidget({
-              from: fence.textFrom,
-              to: fence.textTo,
-              source: fence.source,
-              readOnly: state.readOnly,
-              theme: mermaidTheme(),
-              onCopy: copySource,
-            }),
-            block: true,
-            side: -1,
-          }).range(fence.from),
-        );
         // editing: raw source stays visible, the live diagram renders below
         decorations.push(
           Decoration.widget({
