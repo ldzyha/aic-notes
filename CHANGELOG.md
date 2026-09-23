@@ -4,6 +4,15 @@
 
 ## Unreleased
 
+### Feature
+
+- Made dense AIC credential rows readable on mobile and narrow sidebars. Labels
+  use only their bounded text width, protected values use a compact
+  lock-and-six-dot copy target, flexible values share the remaining width, and
+  one trailing `+` menu owns Field/Row/Section creation. Subtle lines separate
+  records without alternating background noise. Shared editor core moves to
+  7.2.0.
+
 ## 50.1.0 — 2026-09-23
 
 Release sequence 50 · 1 feature outcome · 0 fixed-bug outcomes. This release

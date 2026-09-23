@@ -7,6 +7,11 @@ release and shared editor core 7.1.0. Public commands, state boundaries, side ef
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
 
+The shared core 7.2.0 development target keeps each credential record connected
+on narrow screens. Its bounded intrinsic label stays beside flexible values,
+protected copy uses a lock and six dots, one trailing `+` menu owns
+Field/Row/Section creation, and a subtle separator replaces noisy row shading.
+
 Release 50.1.0 adds one shared scissors action to table, code-fence,
 Mermaid, AIC/Properties and details previews. Cut copies the complete Markdown
 block before removing its exact source range as one editor operation. Clipboard

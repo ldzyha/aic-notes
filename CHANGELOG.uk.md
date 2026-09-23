@@ -7,6 +7,14 @@
 
 ## Не випущено
 
+### Можливість
+
+- Щільні AIC credential rows стали читабельними на mobile і у вузьких sidebars.
+  Label займає лише bounded text width, protected value має компактну
+  lock-and-six-dot copy target, flexible values ділять решту ширини, а одне
+  trailing-меню `+` містить Field/Row/Section. Записи розділяють легкі лінії без
+  строкатого чергування фону. Shared core — 7.2.0.
+
 ## 50.1.0 — 2026-09-23
 
 Послідовність випуску 50 · 1 нова можливість · 0 виправлених помилок. Випуск

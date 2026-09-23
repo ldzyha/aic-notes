@@ -2,6 +2,13 @@
 
 [English](PROVENANCE.md) · [Українська](PROVENANCE.uk.md)
 
+## Development snapshot — компактні мобільні AIC rows
+
+AIC Editor Core 7.2.0 дзеркально взято з commit `348bade` Standard Notes AIC.
+Bounded labels, flexible values, compact protected copy й одне trailing creation
+menu лишаються в одному responsive row. `CORE_SNAPSHOT.json` фіксує повний
+canonical commit і byte hashes.
+
 ## Випуск 50.1.0 — вирізання всього блоку
 
 AIC Editor Core 7.1.0 додає clipboard-first **Вирізати** для керованих

@@ -15,6 +15,11 @@ remote conflicts. За потреби переносьте блоки вручн
 Випуск узгоджено зі Standard Notes AIC **42.1.0** та експериментальним browser
 **0.7.0** на тому самому shared core.
 
+Development target shared core 7.2.0 ущільнює AIC rows у main editor і Linked
+Note. Label займає лише обмежену ширину свого тексту, protected value має
+copy-кнопку із замком і шістьма крапками, одне меню `+` продовжує останнє
+значення для Field/Row/Section, а записи розділяє легка лінія.
+
 Єдина двомовна інструкція для VS Code, Standard Notes і браузера:
 [`RELEASE_INSTALL.md`](https://github.com/ldzyha/standard-notes-aic/blob/v42.1.0/RELEASE_INSTALL.md).
 

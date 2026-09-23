@@ -2,6 +2,13 @@
 
 [English](PROVENANCE.md) · [Українська](PROVENANCE.uk.md)
 
+## Development snapshot — compact mobile AIC rows
+
+AIC Editor Core 7.2.0 is mirrored from Standard Notes AIC commit `348bade`.
+It keeps bounded labels, flexible values, compact protected copy and one trailing
+creation menu in the same responsive row. `CORE_SNAPSHOT.json` records the full
+canonical commit and byte hashes.
+
 ## Release 50.1.0 — whole-block Cut
 
 AIC Editor Core 7.1.0 adds clipboard-first Cut for managed block previews. The

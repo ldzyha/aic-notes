@@ -12,6 +12,11 @@ Release 50.1.0 uses shared editor core 7.1.0 and adds one
 details previews. It copies the complete Markdown block before removing it as
 one editor operation; a failed clipboard request leaves source unchanged.
 
+The shared core 7.2.0 development target keeps dense AIC rows compact in the
+main editor and Linked Note. Labels use only their bounded text width,
+protected values use a lock-and-six-dot copy button, one `+` menu continues the
+last value for Field/Row/Section creation, and a subtle line separates records.
+
 ## AIC fields and source mode
 
 The main editor and linked-note sidebar consume the same bounded `aic` document
