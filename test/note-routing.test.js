@@ -459,6 +459,25 @@ test("pinned notes do not follow a main note", async () => {
   assert.deepEqual(h.events.opened, []);
 });
 
+test("unpinning immediately follows the active file without a reload", async () => {
+  const h = harness();
+  const pinned = h.addFile("pinned.note.md");
+  const source = h.addFile("current.js");
+  const current = h.addFile("current.note.md");
+  h.pane.documentUri = pinned;
+  h.pane.pinned = true;
+  h.vscode.window.tabGroups.activeTabGroup.activeTab = {
+    input: { uri: source },
+  };
+
+  await h.pane.onMessage({ type: "pane.pin" });
+
+  assert.equal(h.pane.pinned, false);
+  assert.equal(h.pane.documentUri.toString(), current.toString());
+  assert.equal(h.sent.includes("init"), true);
+  assert.deepEqual(h.events.opened, [current.path]);
+});
+
 test("created and deleted parent notes dynamically update main-note context without writes", async () => {
   const h = harness();
   h.addFile("src", undefined, 2);

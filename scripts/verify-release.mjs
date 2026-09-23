@@ -40,12 +40,17 @@ for (const entry of [
   "extension/dist/extension.cjs",
   "extension/dist/webview/main.js",
   "extension/readme.md",
+  "extension/README.uk.md",
   "extension/changelog.md",
+  "extension/CHANGELOG.uk.md",
   "extension/LICENSE.txt",
   "extension/PROVENANCE.md",
+  "extension/PROVENANCE.uk.md",
   "extension/CORE_SNAPSHOT.json",
   "extension/THIRD_PARTY_NOTICES.md",
   "extension/FUNCTIONAL_INDEX.md",
+  "extension/FUNCTIONAL_INDEX.uk.md",
+  "extension/DOCUMENTATION.md",
 ]) {
   if (!entries.includes(entry)) throw new Error(`VSIX is missing ${entry}`);
 }

@@ -1,5 +1,7 @@
 # Vendored from aic
 
+[English](PROVENANCE.md) · [Українська](PROVENANCE.uk.md)
+
 Source: `/home/dev/aic` (private repo), branch `v1`,
 commit `6d988afcd901081608e3839bc71581ef994b8475` (2026-07-03),
 directory `modules/markdown/web/src/`.

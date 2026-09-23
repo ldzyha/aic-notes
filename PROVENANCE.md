@@ -1,5 +1,14 @@
 # Release provenance
 
+[English](PROVENANCE.md) · [Українська](PROVENANCE.uk.md)
+
+## Release 49.1.2 — linked-note unpin and bilingual documentation
+
+AIC Editor Core remains 7.0.0 and pairs with Standard Notes AIC 41.1.2 and
+experimental browser 0.6.1. The VS Code host fixes Linked Note unpin navigation;
+localized product, provenance, functional-index and changelog documents are
+packaged and verified.
+
 ## Release 49.1.1 — Mermaid source and live preview
 
 AIC Editor Core 7.0.0 pairs with Standard Notes AIC 41.1.1 and experimental

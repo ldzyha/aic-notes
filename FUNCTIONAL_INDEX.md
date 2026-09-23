@@ -1,11 +1,14 @@
 # Functional index
 
-This index records the coordinated AIC Notes 49.1.1 / Standard Notes AIC 41.1.1 /
+[English](FUNCTIONAL_INDEX.md) · [Українська](FUNCTIONAL_INDEX.uk.md)
+
+This index records the coordinated AIC Notes 49.1.2 / Standard Notes AIC 41.1.2 /
 shared editor core 7.0.0 release target. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
 
-Release 49.1.1 uses direct Mermaid source editing and a live preview. The
+Release 49.1.2 makes Unpin immediately resume active-file following and packages
+English/Ukrainian documentation. Release 49.1.1 uses direct Mermaid source editing and a live preview. The
 preview has Copy, one Edit icon and preview-only zoom. The visual builder,
 drag-and-drop and rotation controls are removed.
 

@@ -1255,9 +1255,17 @@ export class SecondaryNotePane {
           await vscode.commands.executeCommand(message.type);
           break;
         case "pane.pin":
-          this.pinned = !this.pinned;
-          await this.sendPaneState();
-          if (!this.pinned) await this.followActive();
+          if (!this.pinned) {
+            this.pinned = true;
+            await this.sendPaneState();
+            break;
+          }
+          // Unpinning is one navigation operation: follow the current main
+          // resource before publishing a fallback state for an unchanged pane.
+          // This prevents the old pinned note from remaining visible until the
+          // extension host or window is reloaded.
+          this.pinned = false;
+          if (!(await this.followActive())) await this.sendPaneState();
           break;
         case "pane.clear":
         case "pane.delete":

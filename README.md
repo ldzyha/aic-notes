@@ -1,5 +1,7 @@
 # AIC Notes
 
+[English](README.md) · [Українська](README.uk.md)
+
 AIC Notes is a local Markdown editor for VS Code/Code. It edits every `*.md` document with the AIC
 preview-first surface, including `*.note.md`, and shows linked notes in the Secondary Side Bar.
 The extension is fully local: no Standard Notes sign-in, account requests, note synchronization,
@@ -107,9 +109,18 @@ for the default Security header.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
 editor-core 7.0.0 but is a separate product. The coordinated release targets are AIC Notes
-49.1.1 and AIC for Standard Notes 41.1.1. This page describes the release contract;
+49.1.2 and AIC for Standard Notes 41.1.2. This page describes the release contract;
 published artifacts are verified separately by the release workflow. Transfer content manually
 between the two applications; VS Code has no Standard Notes account integration.
+
+## Coordinated release — 49.1.2
+
+Unpinning Linked Note immediately resumes following the active main file as one
+navigation operation, without a window reload. Product and release documentation
+is available in English and Ukrainian, and localized documents are included in
+the verified VSIX. Standard Notes AIC 41.1.2 and experimental browser 0.6.1 pair
+with this patch on shared core 7.0.0. See the
+[bilingual installation guide](https://github.com/ldzyha/standard-notes-aic/blob/v41.1.2/RELEASE_INSTALL.md).
 
 ## Coordinated release — 49.1.1
 
@@ -259,28 +270,28 @@ this section does not assert that all clients or operating systems have complete
 
 ## Install
 
-The [unified release page](https://github.com/ldzyha/standard-notes-aic/releases/tag/v41.1.1)
+The [unified release page](https://github.com/ldzyha/standard-notes-aic/releases/tag/v41.1.2)
 has installation steps for VS Code, Standard Notes and Chrome/Edge in one place.
 
-After publication, download `aic-notes-49.1.1.vsix` and its
-`aic-notes-49.1.1.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+After publication, download `aic-notes-49.1.2.vsix` and its
+`aic-notes-49.1.2.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-49.1.1.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-49.1.1.vsix.sha256
-code --install-extension .\aic-notes-49.1.1.vsix --force
+(Get-FileHash .\aic-notes-49.1.2.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-49.1.2.vsix.sha256
+code --install-extension .\aic-notes-49.1.2.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-49.1.1.vsix.sha256
-code --install-extension ./aic-notes-49.1.1.vsix --force
-# or: code-server --install-extension ./aic-notes-49.1.1.vsix --force
+sha256sum -c aic-notes-49.1.2.vsix.sha256
+code --install-extension ./aic-notes-49.1.2.vsix --force
+# or: code-server --install-extension ./aic-notes-49.1.2.vsix --force
 ```
 
 Reload the VS Code window after installation. Local editing requires no
@@ -404,7 +415,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-The coordinated version `49.1.1` records sequence 49, one feature outcome and one fixed-bug
+The coordinated version `49.1.2` records sequence 49, one feature outcome and two fixed-bug
 outcomes; it is not a publication marker by itself.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and

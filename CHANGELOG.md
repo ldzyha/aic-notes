@@ -1,6 +1,24 @@
 # Changelog
 
+[English](CHANGELOG.md) · [Українська](CHANGELOG.uk.md)
+
 ## Unreleased
+
+## 49.1.2 — 2026-09-23
+
+This patch pairs with Standard Notes AIC 41.1.2, experimental browser 0.6.1 and
+shared editor core 7.0.0.
+
+### Fix
+
+- Unpinning the Linked Note now immediately resumes following the active main
+  file as one navigation operation, without requiring a window reload.
+
+### Documentation
+
+- Added Ukrainian README, functional index, release provenance, vendored
+  Markdown provenance and changelog documents with direct language links.
+- Included the localized documents in the verified universal VSIX contract.
 
 ## 49.1.1 — 2026-09-22
 
