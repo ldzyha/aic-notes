@@ -96,7 +96,7 @@ test("VS Code surfaces show no date label and own one in-place source toggle", a
 });
 
 test("the current release is a universal local editor without account connectivity", () => {
-  assert.equal(packageJson.version, "50.1.0");
+  assert.equal(packageJson.version, "51.1.0");
   assert.equal(packageJson.aicEditorCore, "7.2.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);

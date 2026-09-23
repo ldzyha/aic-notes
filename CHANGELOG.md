@@ -4,6 +4,12 @@
 
 ## Unreleased
 
+## 51.1.0 — 2026-09-23
+
+Release sequence 51 · 1 feature outcome · 0 fixed-bug outcomes. This release
+pairs with Standard Notes AIC 43.1.0, experimental browser 0.8.0 and shared
+editor core 7.2.0.
+
 ### Feature
 
 - Made dense AIC credential rows readable on mobile and narrow sidebars. Labels

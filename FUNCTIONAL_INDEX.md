@@ -2,20 +2,18 @@
 
 [English](FUNCTIONAL_INDEX.md) · [Українська](FUNCTIONAL_INDEX.uk.md)
 
-This index records the coordinated AIC Notes 50.1.0 / Standard Notes AIC 42.1.0
-release and shared editor core 7.1.0. Public commands, state boundaries, side effects and
+This index records the coordinated AIC Notes 51.1.0 / Standard Notes AIC 43.1.0
+release and shared editor core 7.2.0. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
 
-The shared core 7.2.0 development target keeps each credential record connected
+Shared core 7.2.0 keeps each credential record connected
 on narrow screens. Its bounded intrinsic label stays beside flexible values,
 protected copy uses a lock and six dots, one trailing `+` menu owns
 Field/Row/Section creation, and a subtle separator replaces noisy row shading.
 
-Release 50.1.0 adds one shared scissors action to table, code-fence,
-Mermaid, AIC/Properties and details previews. Cut copies the complete Markdown
-block before removing its exact source range as one editor operation. Clipboard
-failure, stale source and read-only mode preserve the document.
+Release 51.1.0 ships this compact row contract in the main editor and Linked
+Note, paired with Standard Notes AIC 43.1.0 and browser 0.8.0.
 
 Release 49.1.2 makes Unpin immediately resume active-file following and packages
 English/Ukrainian documentation. Release 49.1.1 uses direct Mermaid source editing and a live preview. The

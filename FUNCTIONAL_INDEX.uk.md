@@ -13,16 +13,13 @@ synchronization, polling, upload чи remote conflict model. Shared editor core
 snapshot. VS Code host володіє TextDocument, save/undo, URI navigation, clipboard
 та webview lifecycle.
 
-Development target core 7.2.0 тримає credential record одним connected row на
+Випуск 51.1.0 на core 7.2.0 тримає credential record одним connected row на
 вузьких екранах: bounded label лишається поруч із flexible values, protected
 copy показує замок і шість крапок, одне trailing-меню `+` містить
 Field/Row/Section, а записи розділяє легка лінія без строкатого фону.
 
-Поточний випуск 50.1.0 використовує shared core 7.1.0. Таблиці, code
-fences, Mermaid, AIC/Properties і details мають одну кнопку **Вирізати** з
-іконкою ножиць. Вона копіює повний Markdown-блок перед видаленням його exact
-source range як однієї operation. Помилка clipboard, застарілий source або
-read-only режим залишають документ без змін.
+Однакова компактна поведінка працює у main editor і Linked Note та узгоджена зі
+Standard Notes AIC 43.1.0 і browser 0.8.0.
 
 ## Поточні контракти
 
