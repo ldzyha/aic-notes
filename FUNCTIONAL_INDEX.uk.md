@@ -13,7 +13,7 @@ synchronization, polling, upload чи remote conflict model. Shared editor core
 snapshot. VS Code host володіє TextDocument, save/undo, URI navigation, clipboard
 та webview lifecycle.
 
-Поточний development target використовує shared core 7.1.0. Таблиці, code
+Поточний випуск 50.1.0 використовує shared core 7.1.0. Таблиці, code
 fences, Mermaid, AIC/Properties і details мають одну кнопку **Вирізати** з
 іконкою ножиць. Вона копіює повний Markdown-блок перед видаленням його exact
 source range як однієї operation. Помилка clipboard, застарілий source або

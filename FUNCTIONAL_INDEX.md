@@ -2,12 +2,12 @@
 
 [English](FUNCTIONAL_INDEX.md) · [Українська](FUNCTIONAL_INDEX.uk.md)
 
-This index records the coordinated AIC Notes 49.1.2 / Standard Notes AIC 41.1.2
-release and the current shared editor core 7.1.0 development target. Public commands, state boundaries, side effects and
+This index records the coordinated AIC Notes 50.1.0 / Standard Notes AIC 42.1.0
+release and shared editor core 7.1.0. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
 
-The development target adds one shared scissors action to table, code-fence,
+Release 50.1.0 adds one shared scissors action to table, code-fence,
 Mermaid, AIC/Properties and details previews. Cut copies the complete Markdown
 block before removing its exact source range as one editor operation. Clipboard
 failure, stale source and read-only mode preserve the document.

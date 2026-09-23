@@ -7,7 +7,7 @@ preview-first surface, including `*.note.md`, and shows linked notes in the Seco
 The extension is fully local: no Standard Notes sign-in, account requests, note synchronization,
 polling, upload, remote deletion or remote conflict state. Copy blocks manually when needed.
 
-The current development build uses shared editor core 7.1.0 and adds one
+Release 50.1.0 uses shared editor core 7.1.0 and adds one
 **Cut** scissors action to table, code-fence, Mermaid, AIC/Properties and
 details previews. It copies the complete Markdown block before removing it as
 one editor operation; a failed clipboard request leaves source unchanged.
@@ -113,10 +113,20 @@ without a duplicate heading row. Use `## Account name` for a custom name or bare
 for the default Security header.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-editor-core 7.0.0 but is a separate product. The coordinated release targets are AIC Notes
-49.1.2 and AIC for Standard Notes 41.1.2. This page describes the release contract;
+editor-core 7.1.0 but is a separate product. The coordinated release targets are AIC Notes
+50.1.0 and AIC for Standard Notes 42.1.0. This page describes the release contract;
 published artifacts are verified separately by the release workflow. Transfer content manually
 between the two applications; VS Code has no Standard Notes account integration.
+
+## Coordinated release — 50.1.0
+
+Tables, code fences, Mermaid, AIC/Properties cards and details have the same
+**Cut** scissors action in VS Code, Standard Notes and the experimental browser.
+Cut copies the complete Markdown block before removing its exact source range
+as one undoable edit. Clipboard failure, stale source and read-only mode cannot
+delete the block. Standard Notes AIC 42.1.0 and browser 0.7.0 use the same shared
+core 7.1.0. See the
+[bilingual installation guide](https://github.com/ldzyha/standard-notes-aic/blob/v42.1.0/RELEASE_INSTALL.md).
 
 ## Coordinated release — 49.1.2
 
@@ -275,28 +285,28 @@ this section does not assert that all clients or operating systems have complete
 
 ## Install
 
-The [unified release page](https://github.com/ldzyha/standard-notes-aic/releases/tag/v41.1.2)
+The [unified release page](https://github.com/ldzyha/standard-notes-aic/releases/tag/v42.1.0)
 has installation steps for VS Code, Standard Notes and Chrome/Edge in one place.
 
-After publication, download `aic-notes-49.1.2.vsix` and its
-`aic-notes-49.1.2.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+After publication, download `aic-notes-50.1.0.vsix` and its
+`aic-notes-50.1.0.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-49.1.2.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-49.1.2.vsix.sha256
-code --install-extension .\aic-notes-49.1.2.vsix --force
+(Get-FileHash .\aic-notes-50.1.0.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-50.1.0.vsix.sha256
+code --install-extension .\aic-notes-50.1.0.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-49.1.2.vsix.sha256
-code --install-extension ./aic-notes-49.1.2.vsix --force
-# or: code-server --install-extension ./aic-notes-49.1.2.vsix --force
+sha256sum -c aic-notes-50.1.0.vsix.sha256
+code --install-extension ./aic-notes-50.1.0.vsix --force
+# or: code-server --install-extension ./aic-notes-50.1.0.vsix --force
 ```
 
 Reload the VS Code window after installation. Local editing requires no
@@ -420,7 +430,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-The coordinated version `49.1.2` records sequence 49, one feature outcome and two fixed-bug
+The coordinated version `50.1.0` records sequence 50, one feature outcome and zero fixed-bug
 outcomes; it is not a publication marker by itself.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and

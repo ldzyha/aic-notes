@@ -2,12 +2,12 @@
 
 [English](PROVENANCE.md) · [Українська](PROVENANCE.uk.md)
 
-## Development snapshot — whole-block Cut
+## Release 50.1.0 — whole-block Cut
 
 AIC Editor Core 7.1.0 adds clipboard-first Cut for managed block previews. The
 mirrored core files and VS Code adapters keep the same exact-range and stale
-source checks; `CORE_SNAPSHOT.json` records their hashes. This development
-entry does not change the published 49.1.2 release provenance below.
+source checks; `CORE_SNAPSHOT.json` records their hashes. It pairs with Standard
+Notes AIC 42.1.0 and experimental browser 0.7.0.
 
 ## Release 49.1.2 — linked-note unpin and bilingual documentation
 

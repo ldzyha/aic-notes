@@ -2,12 +2,12 @@
 
 [English](PROVENANCE.md) · [Українська](PROVENANCE.uk.md)
 
-## Development snapshot — вирізання всього блоку
+## Випуск 50.1.0 — вирізання всього блоку
 
 AIC Editor Core 7.1.0 додає clipboard-first **Вирізати** для керованих
 preview-блоків. Mirrored core files і VS Code adapters перевіряють exact source
-range та stale state; їхні hashes записані у `CORE_SNAPSHOT.json`. Цей запис не
-змінює provenance уже опублікованого випуску 49.1.2 нижче.
+range та stale state; їхні hashes записані у `CORE_SNAPSHOT.json`. Випуск
+узгоджено зі Standard Notes AIC 42.1.0 та експериментальним browser 0.7.0.
 
 ## Джерела
 
@@ -23,6 +23,12 @@ CodeMirror, Mermaid та інші залежності перелічені у p
 `THIRD_PARTY_NOTICES.md`.
 
 ## Поточний координований випуск
+
+### 50.1.0
+
+Shared core 7.1.0 додає clipboard-first **Вирізати** для всіх керованих
+preview-блоків. Standard Notes AIC 42.1.0 і browser 0.7.0 використовують ту саму
+поведінку.
 
 ### 49.1.2
 

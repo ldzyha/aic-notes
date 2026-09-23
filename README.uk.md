@@ -8,17 +8,15 @@ AIC Notes — локальний Markdown-редактор для VS Code/code-s
 запитів облікового запису, синхронізації, polling, upload, remote delete чи
 remote conflicts. За потреби переносьте блоки вручну через Copy/Paste.
 
-Поточний випуск **49.1.2** виправляє Unpin у Linked Note: панель одразу
-повертається до активного main file без window reload. Документація продукту й
-випуску доступна англійською та українською.
-
-Поточна development-версія на shared core 7.1.0 додає спільну кнопку
+Поточний випуск **50.1.0** на shared core 7.1.0 додає спільну кнопку
 **Вирізати** для таблиць, code fences, Mermaid, AIC/Properties і details. Вона
 спочатку копіює весь Markdown-блок, а потім видаляє його однією operation;
 помилка clipboard лишає source без змін.
+Випуск узгоджено зі Standard Notes AIC **42.1.0** та експериментальним browser
+**0.7.0** на тому самому shared core.
 
 Єдина двомовна інструкція для VS Code, Standard Notes і браузера:
-[`RELEASE_INSTALL.md`](https://github.com/ldzyha/standard-notes-aic/blob/v41.1.2/RELEASE_INSTALL.md).
+[`RELEASE_INSTALL.md`](https://github.com/ldzyha/standard-notes-aic/blob/v42.1.0/RELEASE_INSTALL.md).
 
 ## AIC-поля і режим джерела
 
@@ -101,13 +99,13 @@ details/accordion. Цитати мають легкий фон і боковий
 
 ## Встановлення
 
-Завантажте `aic-notes-49.1.2.vsix` зі
-[сторінки випуску](https://github.com/ldzyha/aic-notes/releases/tag/v49.1.2).
+Завантажте `aic-notes-50.1.0.vsix` зі
+[сторінки випуску](https://github.com/ldzyha/aic-notes/releases/tag/v50.1.0).
 У VS Code виконайте **Extensions: Install from VSIX…** і перезавантажте вікно.
 Для code-server:
 
 ```bash
-code-server --install-extension ./aic-notes-49.1.2.vsix --force
+code-server --install-extension ./aic-notes-50.1.0.vsix --force
 ```
 
 AIC Notes локальний і не потребує облікового запису Standard Notes.
