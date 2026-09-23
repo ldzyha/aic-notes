@@ -106,7 +106,7 @@ function diagramShell(className) {
 }
 
 class MermaidWidget extends WidgetType {
-  constructor(source, from, to, textFrom, host, readOnly) {
+  constructor(source, from, to, textFrom, host, readOnly, onCopy) {
     super();
     this.source = source;
     this.from = from;
@@ -114,13 +114,15 @@ class MermaidWidget extends WidgetType {
     this.textFrom = textFrom;
     this.host = host;
     this.readOnly = readOnly;
+    this.onCopy = onCopy;
   }
   eq(other) {
     return (
       other.source === this.source &&
       other.readOnly === this.readOnly &&
       other.from === this.from &&
-      other.to === this.to
+      other.to === this.to &&
+      other.onCopy === this.onCopy
     );
   }
   toDOM(view) {
@@ -136,15 +138,29 @@ class MermaidWidget extends WidgetType {
     title.textContent = "Mermaid";
     const actions = document.createElement("span");
     actions.className = "cm-md-preview-actions";
+    const isCurrent = () =>
+      el.isConnected &&
+      mermaidFences(view.state).some(
+        (fence) =>
+          fence.from === this.from &&
+          fence.to === this.to &&
+          fence.source === this.source,
+      );
+    const copyText = async (text, label) => {
+      try {
+        if (this.onCopy) return (await this.onCopy(text)) !== false;
+        this.host.bus.publish("clipboard.write", { text, label });
+        return true;
+      } catch {
+        return false;
+      }
+    };
     const copy = createIconButton(document, {
       label: "Copy Mermaid source",
       icon: "copy",
       className: "cm-md-edit-source",
-      onActivate: (button) => {
-        this.host.bus.publish("clipboard.write", {
-          text: this.source,
-          label: "Mermaid source",
-        });
+      onActivate: async (button) => {
+        if (!(await copyText(this.source, "Mermaid source"))) return;
         showIconFeedback(button, { restoreLabel: "Copy Mermaid source" });
       },
     });
@@ -162,7 +178,25 @@ class MermaidWidget extends WidgetType {
         view.focus();
       },
     });
-    actions.append(copy, edit, controls);
+    const cut = !this.readOnly
+      ? createIconButton(document, {
+          label: "Cut Mermaid block",
+          icon: "cut",
+          className: "cm-md-edit-source cm-md-cut-mermaid",
+          onActivate: async () => {
+            if (!isCurrent() || view.state.readOnly) return;
+            const markdown = view.state.sliceDoc(this.from, this.to);
+            if (!(await copyText(markdown, "Mermaid block"))) return;
+            if (!isCurrent() || view.state.readOnly) return;
+            view.dispatch({
+              changes: { from: this.from, to: this.to },
+              userEvent: "input.cut",
+            });
+            view.focus();
+          },
+        })
+      : null;
+    actions.append(copy, edit, ...(cut ? [cut] : []), controls);
     header.append(title, actions);
     el.prepend(header);
     renderInto(body, this.source);
@@ -260,7 +294,7 @@ export function mermaidFences(state) {
 // scroll, not only on click.
 const refreshMermaid = StateEffect.define();
 
-export function makeMermaidExtension(host) {
+export function makeMermaidExtension(host, { onCopy } = {}) {
   // Block widgets live in a StateField mapped through changes (pinned:
   // CM6 requires block decorations outside ViewPlugins).
   const field = StateField.define({
@@ -310,6 +344,7 @@ export function makeMermaidExtension(host) {
               fence.textFrom,
               host,
               state.readOnly,
+              onCopy,
             ),
             block: true,
           }).range(fence.from, fence.to),

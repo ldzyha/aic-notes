@@ -449,7 +449,9 @@ function makeEditor(text) {
           decorationPlugin(HANDLERS),
           makeCalloutExtension(),
           makeLinkActionsExtension(host),
-          makeTableExtension(host),
+          makeTableExtension(host, {
+            onCopy: (source) => clipboard.writeText(source),
+          }),
           makePropertiesBlockExtension({
             document,
             initialRelationships: () => docState.relationships,
@@ -478,8 +480,12 @@ function makeEditor(text) {
             },
           }),
           makeSecurityImportExtension({ onSave: saveCurrentDraft }),
-          makeMermaidExtension(host),
-          ...detailsExtension(host),
+          makeMermaidExtension(host, {
+            onCopy: (source) => clipboard.writeText(source),
+          }),
+          ...detailsExtension(host, {
+            onCopy: (source) => clipboard.writeText(source),
+          }),
         ]),
         drawSelection(),
         ...(secondarySurface ? [history()] : []),

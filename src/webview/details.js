@@ -66,13 +66,14 @@ const sourceOverrides = StateField.define({
 });
 
 class DetailsSummaryWidget extends WidgetType {
-  constructor(block, headerSource, open, host, readOnly) {
+  constructor(block, headerSource, open, host, readOnly, onCopy) {
     super();
     this.block = block;
     this.headerSource = headerSource;
     this.open = open;
     this.host = host;
     this.readOnly = readOnly;
+    this.onCopy = onCopy;
   }
 
   eq(other) {
@@ -80,7 +81,8 @@ class DetailsSummaryWidget extends WidgetType {
       other.headerSource === this.headerSource &&
       JSON.stringify(other.block) === JSON.stringify(this.block) &&
       other.open === this.open &&
-      other.readOnly === this.readOnly
+      other.readOnly === this.readOnly &&
+      other.onCopy === this.onCopy
     );
   }
 
@@ -203,11 +205,48 @@ class DetailsSummaryWidget extends WidgetType {
       },
     });
     row.appendChild(edit);
+    if (!this.readOnly) {
+      const cut = createIconButton(document, {
+        label: "Cut details block",
+        icon: "cut",
+        className: "cm-md-edit-source cm-aic-details-cut",
+        onActivate: async () => {
+          if (view.state.readOnly || !isCurrent()) return;
+          const source = view.state.sliceDoc(this.block.from, this.block.end);
+          let copied = false;
+          try {
+            if (this.onCopy) copied = (await this.onCopy(source)) !== false;
+            else {
+              this.host.bus.publish("clipboard.write", {
+                text: source,
+                label: "Details block",
+              });
+              copied = true;
+            }
+          } catch {
+            copied = false;
+          }
+          if (
+            !copied ||
+            view.state.readOnly ||
+            !isCurrent() ||
+            view.state.sliceDoc(this.block.from, this.block.end) !== source
+          )
+            return;
+          view.dispatch({
+            changes: { from: this.block.from, to: this.block.end },
+            userEvent: "input.cut",
+          });
+          view.focus();
+        },
+      });
+      row.appendChild(cut);
+    }
     return row;
   }
 }
 
-function previewDecorations(state, host) {
+function previewDecorations(state, host, onCopy) {
   const overrides = state.field(visualOverrides);
   const source = state.field(sourceOverrides);
   const ranges = [];
@@ -224,6 +263,7 @@ function previewDecorations(state, host) {
       open,
       host,
       state.readOnly,
+      onCopy,
     );
     if (!open) {
       ranges.push(
@@ -261,14 +301,14 @@ function previewStateChanged(transaction) {
   );
 }
 
-function detailsDecorations(host) {
+function detailsDecorations(host, onCopy) {
   return StateField.define({
     create(state) {
-      return previewDecorations(state, host);
+      return previewDecorations(state, host, onCopy);
     },
     update(value, transaction) {
       return previewStateChanged(transaction)
-        ? previewDecorations(transaction.state, host)
+        ? previewDecorations(transaction.state, host, onCopy)
         : value;
     },
     provide: providePreviewRanges,
@@ -321,7 +361,7 @@ function buildBodyDecorations(state) {
   return Decoration.set(ranges, true);
 }
 
-export function detailsExtension(host) {
+export function detailsExtension(host, { onCopy } = {}) {
   return [
     visualOverrides,
     sourceOverrides,
@@ -334,6 +374,6 @@ export function detailsExtension(host) {
       );
     }),
     bodyDecorations,
-    detailsDecorations(host),
+    detailsDecorations(host, onCopy),
   ];
 }

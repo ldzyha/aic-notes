@@ -12,6 +12,11 @@ remote conflicts. За потреби переносьте блоки вручн
 повертається до активного main file без window reload. Документація продукту й
 випуску доступна англійською та українською.
 
+Поточна development-версія на shared core 7.1.0 додає спільну кнопку
+**Вирізати** для таблиць, code fences, Mermaid, AIC/Properties і details. Вона
+спочатку копіює весь Markdown-блок, а потім видаляє його однією operation;
+помилка clipboard лишає source без змін.
+
 Єдина двомовна інструкція для VS Code, Standard Notes і браузера:
 [`RELEASE_INSTALL.md`](https://github.com/ldzyha/standard-notes-aic/blob/v41.1.2/RELEASE_INSTALL.md).
 

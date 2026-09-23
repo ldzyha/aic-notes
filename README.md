@@ -7,6 +7,11 @@ preview-first surface, including `*.note.md`, and shows linked notes in the Seco
 The extension is fully local: no Standard Notes sign-in, account requests, note synchronization,
 polling, upload, remote deletion or remote conflict state. Copy blocks manually when needed.
 
+The current development build uses shared editor core 7.1.0 and adds one
+**Cut** scissors action to table, code-fence, Mermaid, AIC/Properties and
+details previews. It copies the complete Markdown block before removing it as
+one editor operation; a failed clipboard request leaves source unchanged.
+
 ## AIC fields and source mode
 
 The main editor and linked-note sidebar consume the same bounded `aic` document

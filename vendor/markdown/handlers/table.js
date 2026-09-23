@@ -118,19 +118,21 @@ function dropTarget(element, kind, index, onMove, readOnly) {
 }
 
 class TableWidget extends WidgetType {
-  constructor(source, from, readOnly, host) {
+  constructor(source, from, readOnly, host, onCopy) {
     super();
     this.source = source;
     this.from = from;
     this.readOnly = readOnly;
     this.host = host;
+    this.onCopy = onCopy;
   }
 
   eq(other) {
     return (
       other.source === this.source &&
       other.from === this.from &&
-      other.readOnly === this.readOnly
+      other.readOnly === this.readOnly &&
+      other.onCopy === this.onCopy
     );
   }
 
@@ -143,16 +145,14 @@ class TableWidget extends WidgetType {
     wrapper.setAttribute("role", "region");
     wrapper.setAttribute("aria-label", "Interactive Markdown table");
     const parsed = parseTable(this.source);
+    const isCurrent = () =>
+      wrapper.isConnected &&
+      this.from >= 0 &&
+      this.from + this.source.length <= view.state.doc.length &&
+      view.state.sliceDoc(this.from, this.from + this.source.length) ===
+        this.source;
     const replace = (model) => {
-      if (
-        view.state.readOnly ||
-        !wrapper.isConnected ||
-        this.from < 0 ||
-        this.from + this.source.length > view.state.doc.length ||
-        view.state.sliceDoc(this.from, this.from + this.source.length) !==
-          this.source
-      )
-        return;
+      if (view.state.readOnly || !isCurrent()) return;
       const lineEnding = this.source.includes("\r\n") ? "\r\n" : "\n";
       const markdown = serializeTable(model, lineEnding);
       if (!markdown || markdown === this.source) return;
@@ -166,6 +166,7 @@ class TableWidget extends WidgetType {
       });
     };
     const reveal = () => {
+      if (!isCurrent()) return;
       view.dispatch({
         selection: { anchor: this.from },
         effects: editSource.of({ from: this.from }),
@@ -173,12 +174,31 @@ class TableWidget extends WidgetType {
       });
       view.focus();
     };
-    const copy = (button) => {
-      this.host?.bus?.publish("clipboard.write", {
-        text: this.source,
-        label: "Markdown table",
-      });
+    const copySource = async () => {
+      if (!isCurrent()) return false;
+      try {
+        if (this.onCopy) return (await this.onCopy(this.source)) !== false;
+        this.host?.bus?.publish("clipboard.write", {
+          text: this.source,
+          label: "Markdown table",
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    const copy = async (button) => {
+      if (!(await copySource()) || !isCurrent()) return;
       showIconFeedback(button, { restoreLabel: "Copy table" });
+    };
+    const cut = async () => {
+      if (this.readOnly || view.state.readOnly || !isCurrent()) return;
+      if (!(await copySource()) || view.state.readOnly || !isCurrent()) return;
+      view.dispatch({
+        changes: { from: this.from, to: this.from + this.source.length },
+        userEvent: "input.cut",
+      });
+      view.focus();
     };
     if (!parsed) {
       const fallback = document.createElement("pre");
@@ -187,6 +207,9 @@ class TableWidget extends WidgetType {
         previewHeader(document, "Table", [
           action(document, "Copy table", "copy", copy),
           action(document, "Edit table source", "edit", reveal),
+          ...(!this.readOnly
+            ? [action(document, "Cut table", "cut", cut)]
+            : []),
         ]),
         fallback,
       );
@@ -215,6 +238,7 @@ class TableWidget extends WidgetType {
           this.readOnly ? "source" : "edit",
           reveal,
         ),
+        ...(!this.readOnly ? [action(document, "Cut table", "cut", cut)] : []),
       ]),
     );
     const table = document.createElement("table");
@@ -329,7 +353,7 @@ export function tableNodes(state) {
   return nodes;
 }
 
-export function makeTableExtension(host) {
+export function makeTableExtension(host, { onCopy } = {}) {
   const sourceOverrides = StateField.define({
     create: () => null,
     update(value, transaction) {
@@ -362,7 +386,13 @@ export function makeTableExtension(host) {
       ) {
         decorations.push(
           Decoration.replace({
-            widget: new TableWidget(markdown, node.from, state.readOnly, host),
+            widget: new TableWidget(
+              markdown,
+              node.from,
+              state.readOnly,
+              host,
+              onCopy,
+            ),
             block: true,
           }).range(node.from, node.to),
         );

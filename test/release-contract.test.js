@@ -95,9 +95,9 @@ test("VS Code surfaces show no date label and own one in-place source toggle", a
   assert.equal(webview.match(/sourceMode\.createButton\(/gu)?.length, 1);
 });
 
-test("49.1.2 is a universal local editor without account connectivity", () => {
+test("the current development build is a universal local editor without account connectivity", () => {
   assert.equal(packageJson.version, "49.1.2");
-  assert.equal(packageJson.aicEditorCore, "7.0.0");
+  assert.equal(packageJson.aicEditorCore, "7.1.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
   assert.match(
@@ -367,10 +367,11 @@ test("structured previews keep explicit icon actions and transient editors", asy
   assert.match(structured, /icon: "copy"/u);
   assert.match(previewRanges, /PREVIEW_RANGES_CORE_VERSION = "1\.0\.0"/u);
   assert.match(previewRanges, /EditorView\.atomicRanges\.of/u);
-  assert.match(codeCore, /CODE_FENCE_PREVIEW_CORE_VERSION = "1\.0\.0"/u);
+  assert.match(codeCore, /CODE_FENCE_PREVIEW_CORE_VERSION = "1\.1\.0"/u);
   assert.match(codeCore, /Copy code/u);
   assert.match(codeCore, /Edit code source/u);
-  assert.match(codeExtension, /CODE_FENCE_EXTENSION_CORE_VERSION = "1\.1\.0"/u);
+  assert.match(codeCore, /Cut .* block/u);
+  assert.match(codeExtension, /CODE_FENCE_EXTENSION_CORE_VERSION = "1\.2\.0"/u);
   assert.match(codeExtension, /class CodeFenceWidget extends WidgetType/u);
   assert.match(codeExtension, /selectionRevealsPreview/u);
   assert.match(codeExtension, /effects: editCodeFenceSource\.of/u);
@@ -378,19 +379,23 @@ test("structured previews keep explicit icon actions and transient editors", asy
     assert.match(adapter, /providePreviewRanges/u);
   }
   assert.match(table, /Copy table/u);
+  assert.match(table, /Cut table/u);
   assert.match(table, /Add row/u);
   assert.match(table, /Add column/u);
   assert.match(frontmatter, /makePropertiesBlockExtension/u);
   assert.match(frontmatter, /Copy properties/u);
+  assert.match(frontmatter, /Cut properties/u);
   assert.match(codeFence, /aic-editor-core\/code-fence-extension\.js/u);
   assert.doesNotMatch(codeFence, /class CodeFenceWidget/u);
   assert.match(mermaid, /icon: "copy"/u);
+  assert.match(mermaid, /Cut Mermaid block/u);
   assert.match(styles, /overflow-x: auto/u);
   assert.match(styles, /word-break: normal/u);
   assert.match(styles, /overflow-wrap: normal/u);
   assert.match(styles, /cm-aic-cell-popover/u);
   assert.match(icons, /mask: var\(--aic-icon\)/u);
   assert.match(icons, /data-aic-icon="copy"/u);
+  assert.match(icons, /data-aic-icon="cut"/u);
   assert.doesNotMatch(
     table + frontmatter + codeFence + mermaid,
     /createElementNS\(/u,
