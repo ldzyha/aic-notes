@@ -2,6 +2,15 @@
 
 [English](PROVENANCE.md) · [Українська](PROVENANCE.uk.md)
 
+## Release 52.1.0 — responsive records and edit-exit ordering
+
+AIC Editor Core 7.3.0 supplies natural-width field wrapping, lock-only password
+copy and stable row sorting when leaving source edit. Main editor and Linked
+Note consume the same mirrored code. `CORE_SNAPSHOT.json` records the canonical
+commit and exact byte hashes. This release pairs with Standard Notes AIC 44.1.0
+and experimental browser 0.9.0. The bilingual `RELEASE_INSTALL.md` is shared by
+both GitHub release pages and included in the VSIX.
+
 ## Release 51.1.0 — compact mobile AIC rows
 
 AIC Editor Core 7.2.0 is mirrored from Standard Notes AIC commit `348bade`.

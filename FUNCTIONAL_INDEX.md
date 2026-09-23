@@ -2,18 +2,26 @@
 
 [English](FUNCTIONAL_INDEX.md) · [Українська](FUNCTIONAL_INDEX.uk.md)
 
-This index records the coordinated AIC Notes 51.1.0 / Standard Notes AIC 43.1.0
-release and shared editor core 7.2.0. Public commands, state boundaries, side effects and
+This index records the coordinated AIC Notes 52.1.0 / Standard Notes AIC 44.1.0
+release and shared editor core 7.3.0. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
 
-Shared core 7.2.0 keeps each credential record connected
-on narrow screens. Its bounded intrinsic label stays beside flexible values,
-protected copy uses a lock and six dots, one trailing `+` menu owns
-Field/Row/Section creation, and a subtle separator replaces noisy row shading.
+Labels, email addresses and logins use their natural width. A complete value moves
+to the next line before its text wraps; only text wider than the full available
+line breaks internally. Passwords use compact lock-only copy buttons, while
+short card values and TOTP codes remain readable. The `+` menu follows the last
+value, and subtle separators distinguish records. Touch controls retain 44 px
+targets.
 
-Release 51.1.0 ships this compact row contract in the main editor and Linked
-Note, paired with Standard Notes AIC 43.1.0 and browser 0.8.0.
+Leaving an AIC block's source edit, or switching the whole note from source to
+preview, sorts rows by label within each section using natural, case-insensitive
+order. Unlabelled rows remain in their original order at the end. Section order,
+value order and exact authored values are preserved. Opening a preview, copying
+and manual reordering do not trigger sorting.
+
+The main editor and Linked Note consume this same shared contract, paired with
+Standard Notes AIC 44.1.0 and browser 0.9.0.
 
 Release 49.1.2 makes Unpin immediately resume active-file following and packages
 English/Ukrainian documentation. Release 49.1.1 uses direct Mermaid source editing and a live preview. The

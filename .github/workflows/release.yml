@@ -58,6 +58,7 @@ jobs:
           ASSETS=(
             "aic-notes-$VERSION.vsix"
             "aic-notes-$VERSION.vsix.sha256"
+            "RELEASE_INSTALL.md"
           )
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" "${ASSETS[@]}" --clobber
@@ -66,5 +67,5 @@ jobs:
               "${ASSETS[@]}" \
               --verify-tag \
               --title "AIC Notes $VERSION" \
-              --generate-notes
+              --notes-file RELEASE_INSTALL.md
           fi

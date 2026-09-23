@@ -7,10 +7,21 @@ preview-first surface, including `*.note.md`, and shows linked notes in the Seco
 The extension is fully local: no Standard Notes sign-in, account requests, note synchronization,
 polling, upload, remote deletion or remote conflict state. Copy blocks manually when needed.
 
-Release 51.1.0 uses shared editor core 7.2.0 to keep dense AIC rows compact in the
-main editor and Linked Note. Labels use only their bounded text width,
-protected values use a lock-and-six-dot copy button, one `+` menu continues the
-last value for Field/Row/Section creation, and a subtle line separates records.
+Release 52.1.0 uses shared editor core 7.3.0 for the same AIC layout and
+edit-exit ordering in the main editor and Linked Note.
+
+Labels, email addresses and logins use their natural width. A complete value moves
+to the next line before its text wraps; only text wider than the full available
+line breaks internally. Passwords use compact lock-only copy buttons, while
+short card values and TOTP codes remain readable. The `+` menu follows the last
+value, and subtle separators distinguish records. Touch controls retain 44 px
+targets.
+
+Leaving an AIC block's source edit, or switching the whole note from source to
+preview, sorts rows by label within each section using natural, case-insensitive
+order. Unlabelled rows remain in their original order at the end. Section order,
+value order and exact authored values are preserved. Opening a preview, copying
+and manual reordering do not trigger sorting.
 
 ## AIC fields and source mode
 
@@ -35,7 +46,8 @@ part in the current row, Row inserts below it and Section inserts after the curr
 section. Mutations use the existing VS Code save/undo contract.
 
 The single **Show Markdown source / Show preview** icon toggles AIC previews in
-place. Source, Undo, dirty state and save rules do not change. The mode is temporary
+place without resetting Undo. Returning to preview applies the AIC row sorting
+described above through the normal document-change lifecycle. The mode is temporary
 for the current note, and raw Markdown can expose visually masked values. The local
 **?** guide is shared with the other hosts and works without note, storage or
 network access.
@@ -113,10 +125,18 @@ without a duplicate heading row. Use `## Account name` for a custom name or bare
 for the default Security header.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-editor-core 7.2.0 but is a separate product. The coordinated release targets are AIC Notes
-51.1.0 and AIC for Standard Notes 43.1.0. This page describes the release contract;
+editor-core 7.3.0 but is a separate product. The coordinated release targets are AIC Notes
+52.1.0 and AIC for Standard Notes 44.1.0. This page describes the release contract;
 published artifacts are verified separately by the release workflow. Transfer content manually
 between the two applications; VS Code has no Standard Notes account integration.
+
+## Coordinated release — 52.1.0
+
+AIC rows use natural-width labels and values, move whole values onto the next
+line, and show passwords as compact lock-only copy targets. Leaving source edit
+sorts rows by label within each section. Standard Notes AIC 44.1.0 and browser
+0.9.0 use the same shared core 7.3.0. See the
+[bilingual installation guide](RELEASE_INSTALL.md).
 
 ## Coordinated release — 51.1.0
 
@@ -285,28 +305,28 @@ this section does not assert that all clients or operating systems have complete
 
 ## Install
 
-The [unified release page](https://github.com/ldzyha/standard-notes-aic/releases/tag/v43.1.0)
+The [unified release page](https://github.com/ldzyha/standard-notes-aic/releases/tag/v44.1.0)
 has installation steps for VS Code, Standard Notes and Chrome/Edge in one place.
 
-After publication, download `aic-notes-51.1.0.vsix` and its
-`aic-notes-51.1.0.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+After publication, download `aic-notes-52.1.0.vsix` and its
+`aic-notes-52.1.0.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-51.1.0.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-51.1.0.vsix.sha256
-code --install-extension .\aic-notes-51.1.0.vsix --force
+(Get-FileHash .\aic-notes-52.1.0.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-52.1.0.vsix.sha256
+code --install-extension .\aic-notes-52.1.0.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-51.1.0.vsix.sha256
-code --install-extension ./aic-notes-51.1.0.vsix --force
-# or: code-server --install-extension ./aic-notes-51.1.0.vsix --force
+sha256sum -c aic-notes-52.1.0.vsix.sha256
+code --install-extension ./aic-notes-52.1.0.vsix --force
+# or: code-server --install-extension ./aic-notes-52.1.0.vsix --force
 ```
 
 Reload the VS Code window after installation. Local editing requires no
@@ -430,7 +450,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-The coordinated version `51.1.0` records sequence 51, one feature outcome and zero fixed-bug
+The coordinated version `52.1.0` records sequence 52, one feature outcome and zero fixed-bug
 outcomes; it is not a publication marker by itself.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and

@@ -6,6 +6,19 @@ const root = new URL("../", import.meta.url);
 const read = (relativePath) => readFile(new URL(relativePath, root), "utf8");
 const packageJson = JSON.parse(await read("package.json"));
 
+test("GitHub releases and the VSIX include the bilingual installation guide", async () => {
+  const [guide, workflow, verifier] = await Promise.all([
+    read("RELEASE_INSTALL.md"),
+    read(".github/workflows/release.yml"),
+    read("scripts/verify-release.mjs"),
+  ]);
+  assert.ok(guide.includes("## English"));
+  assert.ok(guide.includes("## Українська"));
+  assert.ok(guide.includes(`aic-notes-${packageJson.version}.vsix`));
+  assert.ok(workflow.includes("--notes-file RELEASE_INSTALL.md"));
+  assert.ok(verifier.includes('"extension/RELEASE_INSTALL.md"'));
+});
+
 test("the VS Code editor mounts canonical information, warning and error quotes", async () => {
   const main = await read("src/webview/main.js");
   const callouts = await read("vendor/aic-editor-core/callout-decorations.js");
@@ -96,8 +109,8 @@ test("VS Code surfaces show no date label and own one in-place source toggle", a
 });
 
 test("the current release is a universal local editor without account connectivity", () => {
-  assert.equal(packageJson.version, "51.1.0");
-  assert.equal(packageJson.aicEditorCore, "7.2.0");
+  assert.equal(packageJson.version, "52.1.0");
+  assert.equal(packageJson.aicEditorCore, "7.3.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
   assert.match(

@@ -51,6 +51,7 @@ for (const entry of [
   "extension/FUNCTIONAL_INDEX.md",
   "extension/FUNCTIONAL_INDEX.uk.md",
   "extension/DOCUMENTATION.md",
+  "extension/RELEASE_INSTALL.md",
 ]) {
   if (!entries.includes(entry)) throw new Error(`VSIX is missing ${entry}`);
 }
