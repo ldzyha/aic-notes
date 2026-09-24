@@ -7,11 +7,14 @@
 ### Current status — September 24, 2026
 
 [AIC Notes 53.0.1](https://marketplace.visualstudio.com/items?itemName=ldzyha.aic-notes)
-is public under publisher **ldzyha**; this was confirmed in the Marketplace UI.
+is the last confirmed public version under publisher **ldzyha**. The manual
+54.0.2 upload has not completed its CAPTCHA step; publication is not confirmed.
 
 Automatic publishing code is prepared. The repository does **not** yet have the
 `VSCE_PAT` Actions secret, so authenticated automatic publishing is **not fully
 activated or verified**. The existing public version was uploaded manually.
+Credential setup is blocked at new Azure DevOps organization creation: the form
+requires a billing subscription, and none is accessible to the account.
 
 ### Release flow
 
@@ -41,6 +44,13 @@ publish a new version. Record a successful authenticated publication before
 calling automatic publishing operational.
 
 ### Enable the temporary publishing credential
+
+Creating a **new Azure DevOps organization** requires an active Azure
+subscription; existing organizations and free-tier limits are unaffected.
+[Microsoft prerequisites](https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/create-organization?view=azure-devops).
+This is an organization-creation requirement, not a claim that every publisher
+or authentication route needs a subscription. Existing manual Marketplace
+uploads and VS Code client updates do not require this setup.
 
 1. Use the Microsoft account authorized to manage publisher **ldzyha**. In Azure
    DevOps, create a short-lived PAT with **All accessible organizations** and
@@ -80,11 +90,14 @@ installation path. [code-server extension sources](https://coder.com/docs/code-s
 ### Поточний стан — 24 вересня 2026
 
 [AIC Notes 53.0.1](https://marketplace.visualstudio.com/items?itemName=ldzyha.aic-notes)
-публічно доступний від видавця **ldzyha**; це підтверджено в інтерфейсі Marketplace.
+— остання підтверджена публічна версія від видавця **ldzyha**. Ручне завантаження
+54.0.2 ще не завершило крок CAPTCHA; публікацію не підтверджено.
 
 Код автоматичної публікації підготовлений. У репозиторії **ще немає** Actions
 secret `VSCE_PAT`, тому автоматична публікація з авторизацією **ще не повністю
 активована й не перевірена**. Наявну публічну версію завантажено вручну.
+Налаштування доступу зупинилося на створенні нової організації Azure DevOps:
+форма потребує підписки для білінгу, але акаунт не має доступної підписки.
 
 ### Порядок випуску
 
@@ -114,6 +127,13 @@ secret `VSCE_PAT`, тому автоматична публікація з ав�
 з авторизацією.
 
 ### Увімкнення тимчасового доступу для публікації
+
+Створення **нової організації Azure DevOps** потребує активної Azure subscription;
+наявні організації та ліміти безкоштовного рівня не змінюються.
+[Вимоги Microsoft](https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/create-organization?view=azure-devops).
+Це вимога створення організації, а не всіх видавців чи способів авторизації.
+Наявна ручна публікація в Marketplace та оновлення у клієнті VS Code не потребують
+цього налаштування.
 
 1. Використайте Microsoft-акаунт із правом керувати видавцем **ldzyha**. В Azure
    DevOps створіть PAT із коротким терміном дії, **All accessible organizations**
