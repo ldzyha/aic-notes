@@ -237,7 +237,7 @@ try {
         .count(),
       0,
     );
-    assert.ok(await page.locator("#pane-save-indicator").isHidden());
+    assert.ok(await page.locator("#aic-save").isHidden());
     const baseColor = await page
       .locator(".cm-editor")
       .evaluate((el) => getComputedStyle(el).backgroundColor);
@@ -293,13 +293,27 @@ try {
     );
     await page.keyboard.insertText(" Changed.");
     await state(page, "dirty");
-    assert.ok(await page.locator("#pane-save-indicator").isVisible());
-    assert.notEqual(
+    assert.ok(await page.locator("#aic-save.aic-button--unsaved").isVisible());
+    assert.equal(
       await page
         .locator(".cm-editor")
         .evaluate((el) => getComputedStyle(el).backgroundColor),
       baseColor,
     );
+    assert.equal(
+      await page
+        .locator("#aic-save")
+        .evaluate((el) => getComputedStyle(el).animationName),
+      "aic-unsaved-pulse",
+    );
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    assert.equal(
+      await page
+        .locator("#aic-save")
+        .evaluate((el) => getComputedStyle(el).animationName),
+      "none",
+    );
+    await page.emulateMedia({ reducedMotion: "no-preference" });
     await page.locator("#pane-pin").click();
     assert.equal(
       (await commits(page)).length,
@@ -333,7 +347,7 @@ try {
         .evaluate((el) => getComputedStyle(el).backgroundColor),
       baseColor,
     );
-    assert.ok(await page.locator("#pane-save-indicator").isHidden());
+    assert.ok(await page.locator("#aic-save").isHidden());
     if (theme === "dark" && process.env.AIC_REVIEW_SCREENSHOTS) {
       await page.screenshot({
         path: path.join(

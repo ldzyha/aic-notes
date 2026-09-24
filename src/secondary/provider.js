@@ -271,7 +271,6 @@ export class SecondaryNotePane {
         <button id="pane-clear" class="aic-pane-icon cm-aic-icon-button danger" type="button" data-aic-icon="trash" aria-label="Move note to Trash" hidden></button>
         <span class="aic-pane-footer-spacer"></span>
         <span id="editing-status" role="status" aria-live="polite"></span>
-        <span id="pane-save-indicator" class="aic-pane-save-indicator" role="img" aria-label="Unsaved changes" hidden></span>
         <button id="pane-pin" class="aic-pane-icon cm-aic-icon-button" type="button" data-aic-icon="pin" aria-label="Pin note" aria-pressed="false"></button>
       </footer>`,
       "aic-secondary-surface",

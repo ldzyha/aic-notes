@@ -46,7 +46,10 @@ import {
   secondarySaveState,
   minimalTextChange,
 } from "./secondary-draft.js";
-import { wirePreviewSelection } from "../../vendor/aic-editor-core/structured-preview.js";
+import {
+  createIconButton,
+  wirePreviewSelection,
+} from "../../vendor/aic-editor-core/structured-preview.js";
 import { editorIndentation } from "../../vendor/aic-editor-core/indentation.js";
 import { markdownFormatting } from "../../vendor/aic-editor-core/formatting.js";
 import {
@@ -147,11 +150,6 @@ function reflectSaveState() {
         : state === "saved"
           ? "Note saved"
           : "No note selected");
-  const indicator = document.getElementById("pane-save-indicator");
-  if (indicator) {
-    indicator.hidden = state !== "dirty";
-    indicator.setAttribute("aria-label", label);
-  }
   const status = document.getElementById("pane-status");
   if (status && status.textContent !== label) status.textContent = label;
   const save = document.getElementById("aic-save");
@@ -159,6 +157,9 @@ function reflectSaveState() {
     save.hidden = state !== "dirty";
     save.disabled = docState.readOnly || Boolean(active.pending);
     save.title = label;
+    save.classList.toggle("aic-button--unsaved", state === "dirty");
+    save.setAttribute("aria-busy", String(Boolean(active.pending)));
+    save.setAttribute("aria-description", label);
   }
 }
 
@@ -324,14 +325,14 @@ function wirePaneControls() {
     status.setAttribute("role", "status");
     footer.append(status);
   }
-  const save = document.createElement("button");
+  const save = createIconButton(document, {
+    label: "Save note",
+    icon: "save",
+    className: "aic-pane-icon",
+    onActivate: () => commitDraft("explicit"),
+  });
   save.id = "aic-save";
-  save.type = "button";
-  save.className = "cm-aic-icon-button aic-pane-icon";
-  save.dataset.aicIcon = "save";
-  save.setAttribute("aria-label", "Save note");
   save.hidden = true;
-  save.addEventListener("click", () => commitDraft("explicit"));
   footer.prepend(save);
   footer.prepend(
     sourceMode.createButton(document, () => view, "aic-pane-icon"),

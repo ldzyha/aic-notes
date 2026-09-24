@@ -48,10 +48,6 @@ html, body {
 body.aic-main-note-surface { display: grid; grid-template-rows: minmax(0, 1fr) auto; }
 .aic-main-note-surface #editor { min-height: 0; height: 100%; }
 #document-actions { display: flex; align-items: center; gap: 0.3rem; padding: 0.3rem 0.6rem; border-top: 1px solid var(--border); }
-#aic-save { color: var(--warn); }
-body[data-save-state="dirty"] .cm-editor .cm-content { color: var(--warn); }
-body[data-save-state="dirty"] #document-actions,
-body[data-save-state="dirty"] #secondary-footer { border-top-color: var(--warn); }
 #editing-status { font: 0.8rem/1.4 var(--vscode-font-family, sans-serif); color: var(--muted); }
 #editing-status:empty { display: none; }
 
@@ -208,22 +204,6 @@ body.aic-secondary-surface {
   border: 0;
 }
 
-.aic-pane-save-indicator {
-  display: inline-grid;
-  place-items: center;
-  width: 1rem;
-  height: 1rem;
-  color: var(--warn);
-}
-
-.aic-pane-save-indicator::before {
-  content: "";
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 50%;
-  background: currentColor;
-}
-
 #secondary-footer {
   position: relative;
   z-index: 10;
@@ -250,7 +230,7 @@ body.aic-secondary-surface {
   border: 1px solid transparent;
   border-radius: var(--radius);
   background: transparent;
-  color: var(--aic-contrast-fg);
+  color: var(--aic-button-color, var(--aic-contrast-fg));
   cursor: pointer;
 }
 
@@ -280,97 +260,12 @@ body.aic-secondary-surface {
 
 .aic-secondary-surface .cm-editor { font-size: 0.875rem; }
 .aic-secondary-surface .cm-scroller { line-height: 1.42; }
-.aic-secondary-surface[data-save-state="dirty"] .cm-editor {
-  background: color-mix(in srgb, var(--aic-bg) 96%, var(--warn) 4%);
-  box-shadow: inset 2px 0 color-mix(in srgb, var(--warn) 45%, transparent);
-}
 .aic-secondary-surface[data-save-state="placeholder"] .cm-editor {
   background: color-mix(in srgb, var(--aic-bg) 93%, var(--aic-muted) 7%);
   box-shadow: inset 2px 0 color-mix(in srgb, var(--aic-muted) 48%, transparent);
 }
 
 /* AIC details: source remains Markdown; compact summary is the only collapsed surface. */
-.cm-aic-details-summary {
-  box-sizing: border-box;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.35rem;
-  width: 100%;
-  min-height: 1.75rem;
-  padding: 0.16rem 0.28rem;
-  border: 1px solid var(--aic-details-border);
-  border-left: 2px solid var(--aic-accent, var(--vscode-textLink-foreground));
-  border-radius: var(--radius);
-  color: var(--aic-contrast-fg, var(--vscode-foreground));
-  background: var(--aic-details-surface);
-}
-.cm-aic-details-summary[data-open="true"][data-body="true"] {
-  border-bottom: 0;
-  border-radius: var(--radius) var(--radius) 0 0;
-}
-.cm-aic-details-summary button {
-  color: inherit;
-  font: inherit;
-}
-.cm-aic-details-disclosure,
-.cm-aic-details-check,
-.cm-aic-details-link,
-.cm-aic-details-title {
-  border: 0;
-  background: transparent;
-  padding: 0.1rem;
-}
-.cm-aic-details-disclosure {
-  display: inline-grid;
-  flex: 0 0 auto;
-  width: 1.35rem;
-  height: 1.35rem;
-  place-items: center;
-  cursor: pointer;
-}
-.cm-aic-details-check {
-  flex: 0 0 auto;
-  width: 1rem;
-  height: 1rem;
-  border: 1px solid currentColor !important;
-  border-radius: 2px;
-  cursor: pointer;
-}
-.cm-aic-details-check:disabled { opacity: 0.55; cursor: default; }
-.cm-aic-details-link {
-  display: inline-grid;
-  flex: 0 0 auto;
-  width: 1.45rem;
-  height: 1.45rem;
-  place-items: center;
-  color: var(--vscode-textLink-foreground);
-  cursor: pointer;
-}
-.cm-aic-details-title {
-  min-width: 0;
-  flex: 1 1 auto;
-  overflow: hidden;
-  color: inherit;
-  text-align: left;
-  overflow-wrap: anywhere;
-  white-space: normal;
-  cursor: pointer;
-}
-.cm-aic-details-edit { flex: 0 0 auto; }
-.cm-editor .cm-content .cm-line.cm-aic-details-body {
-  box-sizing: border-box;
-  padding-right: 0.55rem;
-  padding-left: 0.55rem;
-  border-right: 1px solid var(--aic-details-border);
-  border-left: 2px solid var(--aic-accent);
-  background: var(--aic-details-surface);
-}
-.cm-editor .cm-content .cm-line.cm-aic-details-body-first { padding-top: 0.28rem; }
-.cm-editor .cm-content .cm-line.cm-aic-details-body-last {
-  padding-bottom: 0.35rem;
-  border-bottom: 1px solid var(--aic-details-border);
-  border-radius: 0 0 var(--radius) var(--radius);
-}
 .aic-secondary-surface .cm-editor .cm-content .cm-md-h1 { font-size: 1.45em; }
 .aic-secondary-surface .cm-editor .cm-content .cm-md-h2 { font-size: 1.25em; }
 .aic-secondary-surface .cm-editor .cm-content .cm-md-h3 { font-size: 1.12em; }

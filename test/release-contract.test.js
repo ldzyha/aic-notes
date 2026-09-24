@@ -109,8 +109,8 @@ test("VS Code surfaces show no date label and own one in-place source toggle", a
 });
 
 test("the current release is a universal local editor without account connectivity", () => {
-  assert.equal(packageJson.version, "53.0.1");
-  assert.equal(packageJson.aicEditorCore, "7.3.1");
+  assert.equal(packageJson.version, "54.0.2");
+  assert.equal(packageJson.aicEditorCore, "7.3.2");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
   assert.match(
@@ -218,9 +218,18 @@ test("Secondary save and Trash paths are deterministic and local", async () => {
     provider,
     /Saved locally|pane-filename|pane-breadcrumb|secondary-controls/u,
   );
-  assert.match(provider, /id="pane-save-indicator"[^>]*role="img"/u);
+  assert.doesNotMatch(provider, /id="pane-save-indicator"/u);
   assert.match(provider, /id="pane-status"[^>]*aria-live="polite"/u);
-  assert.match(theme, /data-save-state="dirty"[\s\S]*var\(--warn\) 4%/u);
+  assert.doesNotMatch(theme, /data-save-state="dirty"/u);
+  assert.match(
+    webview,
+    /classList\.toggle\("aic-button--unsaved", state === "dirty"\)/u,
+  );
+  assert.match(
+    webview,
+    /save\.setAttribute\("aria-busy", String\(Boolean\(active\.pending\)\)\)/u,
+  );
+  assert.match(webview, /save\.setAttribute\("aria-description", label\)/u);
   assert.doesNotMatch(theme, /data-save-state="saved"|#5aa66a/u);
   assert.match(
     provider,
@@ -328,10 +337,11 @@ test("source selections cross both VS Code and custom-editor boundaries", async 
 });
 
 test("preview selection stays native while Ctrl+A reveals source", async () => {
-  const [webview, details, structured] = await Promise.all([
+  const [webview, details, structured, detailsPresentation] = await Promise.all([
     read("src/webview/main.js"),
     read("src/webview/details.js"),
     read("vendor/aic-editor-core/structured-preview.js"),
+    read("vendor/aic-editor-core/details-preview.js"),
   ]);
   assert.match(webview, /wirePreviewSelection\(editor, document\)/u);
   assert.match(structured, /event\.key\.toLowerCase\(\) !== "a"/u);
@@ -346,7 +356,8 @@ test("preview selection stays native while Ctrl+A reveals source", async () => {
   assert.match(details, /selectionRevealsPreview/u);
   assert.doesNotMatch(webview, /paneMode|setPaneMode|@codemirror\/search/u);
   assert.match(details, /EditorView\.decorations\.from\(field\)/u);
-  assert.match(details, /dataset\.aicIcon = "chevron"/u);
+  assert.match(details, /createDetailsSummary\(document/u);
+  assert.match(detailsPresentation, /icon: "chevron"/u);
   assert.match(details, /data\.taskOffset/u);
 });
 

@@ -1,7 +1,7 @@
 {
-  "coreVersion": "7.3.1",
+  "coreVersion": "7.3.2",
   "sourceRepository": "https://github.com/ldzyha/standard-notes-aic",
-  "sourceCommit": "73aa48d22b2c04e5d64ccf5b5daa996f0f2e1ff5",
+  "sourceCommit": "69f40010d068e2f7209ae1ab8cfd101cd91b3815",
   "files": {
     "agentic-notes.d.ts": "edceb932ecb1e9f54096fd817d48a3d0b557ae4cffc07f787f761012c7d92d4e",
     "agentic-notes.js": "b5369e37724bcabe9673aac12d25a5f9dc7eab1c83d5c0bae3364e80487f2a81",
@@ -17,6 +17,8 @@
     "code-languages.js": "277eb657010b4643174b84f8eba3bf298a4e79bb21d1409c97974ba838f1831d",
     "details-model.d.ts": "52681492e6781e4263665bb3de2e929dd91475e80d56b3858ced2d8a6b20a471",
     "details-model.js": "6a0541def49f16a6fd84ec888bf33aa8b8b6a2e701742b4a2eadc7c7ded1883e",
+    "details-preview.d.ts": "03963b61313e83f0c7b9df099c301411f2d08659f68fe9ee651c01ab1b36c1ff",
+    "details-preview.js": "d5bfa9608aa5b2a47ae3469b9012b9888cb0ec3a530260e01901dcf876adde5e",
     "draft-session.d.ts": "43351029016947a597cd1771986fa9cec3fa8b6c78e2bb9bd7230a0db0e7a766",
     "draft-session.js": "2b9a02ead705469b9f85be59662ab124ca2452fa8bdd78c4e8c9615d4e1ad6e4",
     "editor-help.d.ts": "afc3775183a2edda93920f5dbd313502016bebb8c58e5df83151de9c647bb9b3",
@@ -39,7 +41,7 @@
     "mermaid-viewport.js": "c0858eeb0c871c27378e46f91ba7295beb413042b28afbef3bd20b9c180a74cf",
     "note-template.d.ts": "16d74b7a0fb2a1807083607cba94fb65e0fcacaa68f1c70356b9e67ed1c857f4",
     "note-template.js": "87f8972afb551f2df4fe9947ba82f794170c30619b144f092f859fdaad66a697",
-    "preview-layout.css": "37b032b9ef01d417ec980e9ffd5521033629c82613e25df418116d7c6a2e986e",
+    "preview-layout.css": "2a191dc5dd096aa1503843fea773f57dacc2907d42f86f0db82ce623f1c7f63b",
     "preview-ranges.d.ts": "ef057a6c0ea79cdf21d5c4986b08988b92f5246287bc81aea75c90cdd94bdb50",
     "preview-ranges.js": "229efb488073bbd9047e2e75370981df8a43056bbddb5c5a9e012ca52bc94948",
     "preview-reorder.d.ts": "3964c54bb7efefece269611a587d8b742df4f8c2eec6fe8c83bf3698bc8544ba",
@@ -83,8 +85,8 @@
     "structured-preview.js": "14510724bf3336d7334e898dfdd19117bb0b48079c1f1941ea370ea1e312e83c",
     "task-marker.d.ts": "c052c03ec0e45084726954c76fec308d9d7d77415ecb1b89a9d99d03627f58dd",
     "task-marker.js": "50ffab505a9af768a07927f3b9c5ad72e87f79e9d41a09972e3d1b85e337bc31",
-    "ui-system.css": "6b0992f0971ba2d8cb89c6fe3fa1093651ffde68bd0d9e1d488dcd9a292ef3e3",
-    "ui-system.d.ts": "ff0c502c0510dafd8f7ccae29afaeaf6ddd5020221771d1ffda5c98452d2c495",
-    "ui-system.js": "bf74735d35c468c450a3410a94a72654b80cb9ff07df2edb59c5b674e349ae0e"
+    "ui-system.css": "5db655e8976d9194c3e9ec83c6b7e4b71d1f2ffc0d677cfea5b9cc2ee7e10694",
+    "ui-system.d.ts": "45e32102b2d5e38612400bfc7835f5aabfe86a335028b457e4de4908f9dc30b1",
+    "ui-system.js": "93b48ef1fb83006fd1246a1b11b1e14c1714e242e6c297307196bc937075e9be"
   }
 }

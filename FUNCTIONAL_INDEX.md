@@ -2,10 +2,15 @@
 
 [English](FUNCTIONAL_INDEX.md) · [Українська](FUNCTIONAL_INDEX.uk.md)
 
-This index records the coordinated AIC Notes 53.0.1 / Standard Notes AIC 45.0.1
-release and shared editor core 7.3.1. Public commands, state boundaries, side effects and
+This index records the coordinated AIC Notes 54.0.2 / Standard Notes AIC 46.0.2
+release and shared editor core 7.3.2. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
+
+Linked-code comments stay inside their details accordion, with compact headers
+and readable nesting. Unsaved edits keep the editor background unchanged; the
+Save button pulses until changes are saved. Reduced motion uses a static
+indicator, and save acknowledgements remain authoritative.
 
 Empty editable secret (`*|`) parts offer **Generate password** at every panel
 width, regardless of their label. Options wrap to fit narrow screens. Generation
@@ -30,7 +35,7 @@ value order and exact authored values are preserved. Opening a preview, copying
 and manual reordering do not trigger sorting.
 
 The main editor and Linked Note consume this same shared contract, paired with
-Standard Notes AIC 45.0.1 and browser 0.9.1.
+Standard Notes AIC 46.0.2 and browser 0.9.2.
 
 Release 49.1.2 makes Unpin immediately resume active-file following and packages
 English/Ukrainian documentation. Release 49.1.1 uses direct Mermaid source editing and a live preview. The
@@ -200,7 +205,7 @@ production webview browser checks. Artifact publication is verified separately f
   only current grammar. The guide is fixed bundled DOM content with no storage or
   network access.
 - Shared `save-boundary` reports focus-leave and security mutation intents to the host managers.
-  Main and sidebar queues keep target identity, generation and ownership checks; saved colour
+  Main and sidebar queues keep target identity, generation and ownership checks; saved state
   requires acknowledgement. CodeMirror viewport remounts create fresh live widget sessions while
   detached controls, clipboard completions and TOTP timers remain retired.
 
@@ -288,9 +293,10 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
   shared persistence boundaries. Ordinary input does not save. An ACK is required for saved state.
 - Dirty drafts remain in the webview until local save succeeds. A failed or stale save leaves the
   draft dirty and visible.
-- Saved notes are neutral, dirty drafts softly amber with a non-color change marker, and
-  placeholders gray. The duplicate name/folder/save-status header is absent; local state remains
-  accessible through the live status without repeating it visually.
+- Unsaved edits keep the editor canvas unchanged. The Save button pulses while
+  saving is needed; reduced motion uses a static indicator. Placeholders retain
+  their neutral styling. The live status remains accessible, and acknowledgement
+  is required before clearing the unsaved state.
 - The active custom-editor tab is authoritative over a stale native editor. With no active file
   buffer, the last relevant workspace project note is used, then the first workspace.
 - Pinning affects only automatic following. Explicit file/folder/project/note navigation can

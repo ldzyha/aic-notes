@@ -2,6 +2,14 @@
 
 [English](PROVENANCE.md) · [Українська](PROVENANCE.uk.md)
 
+## Release 54.0.2 — accordion layout and save feedback
+
+Shared core 7.3.2 supplies accordion fixes and the shared Save indicator; each
+host retains its persistence and acknowledgement rules. The release pairs with
+Standard Notes AIC 46.0.2 and browser 0.9.2. `CORE_SNAPSHOT.json` must identify
+the canonical commit and exact byte hashes before release verification. The
+bilingual `RELEASE_INSTALL.md` is identical in both repositories.
+
 ## Release 53.0.1 — password generation at narrow widths
 
 Shared core 7.3.1 restores empty-password generation at every viewport width and
