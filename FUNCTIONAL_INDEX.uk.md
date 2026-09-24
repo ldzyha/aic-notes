@@ -13,9 +13,19 @@ synchronization, polling, upload чи remote conflict model. Shared editor core
 snapshot. VS Code host володіє TextDocument, save/undo, URI navigation, clipboard
 та webview lifecycle.
 
-Випуск 52.1.0 на спільному ядрі 7.3.0 узгоджено зі Standard Notes AIC 44.1.0
-і розширенням браузера 0.9.0. Головний редактор і Linked Note використовують
+Випуск 53.0.1 на спільному ядрі 7.3.1 узгоджено зі Standard Notes AIC 45.0.1
+і розширенням браузера 0.9.1. Головний редактор і Linked Note використовують
 однаковий спільний контракт.
+
+Порожні редаговані секретні частини (`*|`) показують **Generate password** на
+будь-якій ширині панелі незалежно від назви. Параметри переносяться на вузьких
+екранах. Генерація працює локально, не перезаписує заповнені значення й недоступна
+в режимі читання.
+
+Кнопка копіювання ненадовго показує галочку після успіху або хрестик після
+помилки, зберігає доступну назву дії та повідомляє стан для читача екрана.
+Більші заголовки секцій, окремий нейтральний фон груп і
+легке чергування сірих рядків допомагають швидше знаходити записи.
 
 Назви, email та логіни займають природну ширину. Спочатку ціле значення
 переходить на наступний рядок; текст переноситься всередині лише тоді, коли
@@ -53,7 +63,8 @@ window reload. Explorer clicks, Open Source і source navigation не перез
 
 Типізовані AIC values: `|`, `*|`, `#|`, `_|`, `1|`, `0|`. Blank/Card/One-time
 є presets. Підтримуються field copy/paste, one-time transitions, password
-creation на екранах ширше 600 px, recovery codes, section copy, Authenticator
+creation для порожніх полів на будь-якій ширині з адаптивними параметрами, recovery
+codes, section copy, Authenticator
 JSON conversion, source/preview, slash templates, details, task controls,
 parser-backed links і Mermaid.
 

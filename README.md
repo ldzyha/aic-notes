@@ -7,8 +7,17 @@ preview-first surface, including `*.note.md`, and shows linked notes in the Seco
 The extension is fully local: no Standard Notes sign-in, account requests, note synchronization,
 polling, upload, remote deletion or remote conflict state. Copy blocks manually when needed.
 
-Release 52.1.0 uses shared editor core 7.3.0 for the same AIC layout and
-edit-exit ordering in the main editor and Linked Note.
+Release 53.0.1 uses shared editor core 7.3.1 to restore password generation in
+narrow main-editor and Linked Note panels.
+
+Empty editable secret (`*|`) parts offer **Generate password** at every panel
+width, regardless of their label. Options wrap to fit narrow screens. Generation
+stays local, never overwrites filled values, and is unavailable in read-only notes.
+
+Icon-only copy buttons briefly show a checkmark on success or a cross on failure,
+with an accessible status announcement and a stable action name. Larger section
+headings, distinct neutral group backgrounds and subtle alternating gray rows
+make records easier to scan.
 
 Labels, email addresses and logins use their natural width. A complete value moves
 to the next line before its text wraps; only text wider than the full available
@@ -101,13 +110,13 @@ Standard Notes uses the [browser API](https://developer.mozilla.org/en-US/docs/W
 which may show its own permission prompt. AIC cannot bypass platform clipboard permissions
 and does not read or store clipboard history.
 
-An empty hidden password field (`Password*`, `PWD*`, `Пароль*`, `WebDAV Password*` and
-recognized service-qualified labels) offers **Generate password** on viewports wider
-than 600px; the control is hidden on narrower layouts. Default: 24 characters,
+Every empty editable secret (`*|`) part offers **Generate password**, regardless
+of its label or viewport width. Options wrap in narrow panels; read-only notes
+omit the control. Default: 24 characters,
 uppercase/lowercase/numbers/symbols enabled; length 8–128 and groups are configurable.
 Each enabled group occurs at least once. No existing value is overwritten or automatically
 copied/revealed. Clear through source Edit and return to preview to generate again.
-TOTP/API keys and arbitrary masked labels are not password-generation targets.
+TOTP and other non-secret part types do not offer password generation.
 
 Both products use the same local [Web Crypto](https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues)
 generator and UI. Options are inspired by [1Password](https://1password.com/blog/how-to-generate-random-password),
@@ -125,10 +134,17 @@ without a duplicate heading row. Use `## Account name` for a custom name or bare
 for the default Security header.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-editor-core 7.3.0 but is a separate product. The coordinated release targets are AIC Notes
-52.1.0 and AIC for Standard Notes 44.1.0. This page describes the release contract;
+editor-core 7.3.1 but is a separate product. The coordinated release targets are AIC Notes
+53.0.1 and AIC for Standard Notes 45.0.1. This page describes the release contract;
 published artifacts are verified separately by the release workflow. Transfer content manually
 between the two applications; VS Code has no Standard Notes account integration.
+
+## Coordinated release — 53.0.1
+
+Empty password fields show the generator at every width, with options that wrap
+inside narrow panels. Existing values and read-only notes cannot be overwritten.
+Standard Notes AIC 45.0.1 and browser 0.9.1 share core 7.3.1. See the
+[bilingual installation guide](RELEASE_INSTALL.md).
 
 ## Coordinated release — 52.1.0
 
@@ -305,28 +321,28 @@ this section does not assert that all clients or operating systems have complete
 
 ## Install
 
-The [unified release page](https://github.com/ldzyha/standard-notes-aic/releases/tag/v44.1.0)
+The [unified release page](https://github.com/ldzyha/standard-notes-aic/releases/tag/v45.0.1)
 has installation steps for VS Code, Standard Notes and Chrome/Edge in one place.
 
-After publication, download `aic-notes-52.1.0.vsix` and its
-`aic-notes-52.1.0.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+After publication, download `aic-notes-53.0.1.vsix` and its
+`aic-notes-53.0.1.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-52.1.0.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-52.1.0.vsix.sha256
-code --install-extension .\aic-notes-52.1.0.vsix --force
+(Get-FileHash .\aic-notes-53.0.1.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-53.0.1.vsix.sha256
+code --install-extension .\aic-notes-53.0.1.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-52.1.0.vsix.sha256
-code --install-extension ./aic-notes-52.1.0.vsix --force
-# or: code-server --install-extension ./aic-notes-52.1.0.vsix --force
+sha256sum -c aic-notes-53.0.1.vsix.sha256
+code --install-extension ./aic-notes-53.0.1.vsix --force
+# or: code-server --install-extension ./aic-notes-53.0.1.vsix --force
 ```
 
 Reload the VS Code window after installation. Local editing requires no
@@ -450,8 +466,8 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-The coordinated version `52.1.0` records sequence 52, one feature outcome and zero fixed-bug
-outcomes; it is not a publication marker by itself.
+The coordinated version `53.0.1` records sequence 53, zero feature outcomes and one fixed-bug
+outcome; it is not a publication marker by itself.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and
 [PROVENANCE.md](PROVENANCE.md) for the shared-core snapshot identity.

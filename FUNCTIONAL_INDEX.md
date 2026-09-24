@@ -2,10 +2,19 @@
 
 [English](FUNCTIONAL_INDEX.md) · [Українська](FUNCTIONAL_INDEX.uk.md)
 
-This index records the coordinated AIC Notes 52.1.0 / Standard Notes AIC 44.1.0
-release and shared editor core 7.3.0. Public commands, state boundaries, side effects and
+This index records the coordinated AIC Notes 53.0.1 / Standard Notes AIC 45.0.1
+release and shared editor core 7.3.1. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
+
+Empty editable secret (`*|`) parts offer **Generate password** at every panel
+width, regardless of their label. Options wrap to fit narrow screens. Generation
+stays local, never overwrites filled values, and is unavailable in read-only notes.
+
+Icon-only copy buttons briefly show a checkmark on success or a cross on failure,
+with an accessible status announcement and a stable action name. Larger section
+headings, distinct neutral group backgrounds and subtle alternating gray rows
+make records easier to scan.
 
 Labels, email addresses and logins use their natural width. A complete value moves
 to the next line before its text wraps; only text wider than the full available
@@ -21,7 +30,7 @@ value order and exact authored values are preserved. Opening a preview, copying
 and manual reordering do not trigger sorting.
 
 The main editor and Linked Note consume this same shared contract, paired with
-Standard Notes AIC 44.1.0 and browser 0.9.0.
+Standard Notes AIC 45.0.1 and browser 0.9.1.
 
 Release 49.1.2 makes Unpin immediately resume active-file following and packages
 English/Ukrainian documentation. Release 49.1.1 uses direct Mermaid source editing and a live preview. The
@@ -195,8 +204,9 @@ production webview browser checks. Artifact publication is verified separately f
   requires acknowledgement. CodeMirror viewport remounts create fresh live widget sessions while
   detached controls, clipboard completions and TOTP timers remain retired.
 
-- Shared password generation is available on viewports wider than 600px and remains
-  bounded and WebCrypto-only. Authenticator
+- Shared password generation is available at every viewport width with wrapping
+  options; it remains empty-field-only, unavailable in read-only notes, bounded
+  and WebCrypto-only. Authenticator
   codes derive locally from `#|` parts. Copy/open/mutation actions use the existing
   identity-bound host clipboard and save managers; VS Code has no note
   synchronization or QR import UI.

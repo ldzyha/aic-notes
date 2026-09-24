@@ -2,6 +2,14 @@
 
 [English](PROVENANCE.md) · [Українська](PROVENANCE.uk.md)
 
+## Release 53.0.1 — password generation at narrow widths
+
+Shared core 7.3.1 restores empty-password generation at every viewport width and
+wraps its options in narrow panels. Main editor and Linked Note share the fix
+with Standard Notes AIC 45.0.1 and browser 0.9.1. `CORE_SNAPSHOT.json` records
+the canonical revision and byte hashes; existing values and read-only notes
+remain protected by the shared controls.
+
 ## Release 52.1.0 — responsive records and edit-exit ordering
 
 AIC Editor Core 7.3.0 supplies natural-width field wrapping, lock-only password
