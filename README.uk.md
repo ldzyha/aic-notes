@@ -121,7 +121,26 @@ details/accordion. Цитати мають легкий фон і боковий
 
 ## Встановлення
 
-Завантажте `aic-notes-53.0.1.vsix` зі
+[AIC Notes доступний у VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=ldzyha.aic-notes)
+як **ldzyha.aic-notes**.
+
+```bash
+code --install-extension ldzyha.aic-notes
+```
+
+Інсталяції з Marketplace дотримуються налаштувань автооновлення VS Code. Для
+попередньої інсталяції через VSIX увімкніть **Auto Update** для AIC Notes у
+Extensions, щоб отримувати магазинні оновлення. [Оновлення у VS Code](https://code.visualstudio.com/docs/configure/extensions/extension-marketplace#extension-auto-update).
+
+Автопублікація наступних GitHub releases підготовлена, але ще потребує secret
+`VSCE_PAT` у репозиторії та успішного запуску з авторизацією. Налаштування,
+повторний запуск і потрібний перехід на Entra описані в
+[інструкції публікації](MARKETPLACE_PUBLISHING.md#українська).
+
+code-server використовує Open VSX; цей Marketplace pipeline туди не публікує.
+До окремого налаштування цього каналу використовуйте ручне встановлення VSIX.
+
+Для ручного встановлення завантажте `aic-notes-53.0.1.vsix` зі
 [сторінки випуску](https://github.com/ldzyha/aic-notes/releases/tag/v53.0.1).
 У VS Code виконайте **Extensions: Install from VSIX…** і перезавантажте вікно.
 Для code-server:
@@ -177,7 +196,9 @@ npm run release:gate
 
 Release gate звіряє канонічне shared core, запускає тести, збирає universal VSIX,
 створює SHA-256 і перевіряє вміст архіву. Успішна локальна збірка не означає
-публікацію в Marketplace. Поточний канал — GitHub Releases.
+публікацію в Marketplace. Версія 53.0.1 вже доступна в Marketplace та GitHub
+Releases; автоматичну публікацію ще потрібно активувати за
+[окремою інструкцією](MARKETPLACE_PUBLISHING.md#українська).
 
 AIC для Standard Notes — окремий продукт зі спільним ядром. Передавання контенту
 між застосунками ручне; інтеграції облікового запису або синхронізації немає.

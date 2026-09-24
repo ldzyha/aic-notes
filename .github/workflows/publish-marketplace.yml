@@ -1,0 +1,85 @@
+name: publish-vscode-marketplace
+
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: Existing stable GitHub release tag
+        required: true
+        type: string
+    secrets:
+      VSCE_PAT:
+        required: false
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing stable GitHub release tag (vN.N.N)
+        required: true
+        type: string
+      verification_only:
+        description: Verify release assets without publishing to Marketplace
+        required: false
+        default: false
+        type: boolean
+
+permissions: {}
+
+concurrency:
+  group: vscode-marketplace-ldzyha-aic-notes
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: >-
+      github.repository == 'ldzyha/aic-notes' &&
+      ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.2
+          cache: npm
+      - run: npm ci
+      - name: Validate release tag
+        run: |
+          node --input-type=module -e 'import { validateReleaseTag } from "./scripts/verify-marketplace-release.mjs"; validateReleaseTag(process.env.RELEASE_TAG);'
+      - name: Download and verify the existing GitHub release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RELEASE_DIRECTORY="$RUNNER_TEMP/marketplace-release"
+          mkdir -p "$RELEASE_DIRECTORY"
+          ASSET_NAME="aic-notes-${RELEASE_TAG#v}.vsix"
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --json tagName,isDraft,isPrerelease,assets > "$RELEASE_DIRECTORY/release.json"
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --dir "$RELEASE_DIRECTORY" --pattern "$ASSET_NAME" --pattern "$ASSET_NAME.sha256"
+          node scripts/verify-marketplace-release.mjs \
+            "$RELEASE_TAG" "$RELEASE_DIRECTORY/release.json" "$RELEASE_DIRECTORY"
+          echo "vsix_path=$RELEASE_DIRECTORY/$ASSET_NAME" >> "$GITHUB_OUTPUT"
+      - name: Verify publisher credential
+        if: ${{ inputs.verification_only != true }}
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          if [[ -z "$VSCE_PAT" ]]; then
+            echo "::error::Configure repository secret VSCE_PAT with a Marketplace Manage credential for publisher ldzyha. No extension was published."
+            exit 1
+          fi
+          npm exec -- vsce verify-pat ldzyha
+      - name: Publish the verified VSIX
+        if: ${{ inputs.verification_only != true }}
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          VSIX_PATH: ${{ steps.release.outputs.vsix_path }}
+        run: npm exec -- vsce publish --packagePath "$VSIX_PATH" --skip-duplicate

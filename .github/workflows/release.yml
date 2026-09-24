@@ -69,3 +69,14 @@ jobs:
               --title "AIC Notes $VERSION" \
               --notes-file RELEASE_INSTALL.md
           fi
+
+  publish-marketplace:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: verify-universal
+    permissions:
+      contents: read
+    uses: ./.github/workflows/publish-marketplace.yml
+    with:
+      release_tag: ${{ github.ref_name }}
+    secrets:
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}

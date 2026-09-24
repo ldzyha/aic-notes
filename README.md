@@ -321,10 +321,29 @@ this section does not assert that all clients or operating systems have complete
 
 ## Install
 
+[AIC Notes is available in VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=ldzyha.aic-notes)
+as **ldzyha.aic-notes**.
+
+```sh
+code --install-extension ldzyha.aic-notes
+```
+
+Marketplace installations follow VS Code's auto-update settings. If you installed
+an earlier VSIX, enable **Auto Update** for AIC Notes in Extensions to receive
+Marketplace updates. [VS Code update behavior](https://code.visualstudio.com/docs/configure/extensions/extension-marketplace#extension-auto-update).
+
+Automatic publication of future GitHub releases is prepared but still needs the
+repository's `VSCE_PAT` secret and a successful authenticated run. Setup, retry
+and the required Entra migration are documented in
+[Marketplace publishing](MARKETPLACE_PUBLISHING.md).
+
+code-server uses Open VSX; this Marketplace pipeline does not publish there.
+Use the manual GitHub VSIX until that separate distribution is set up.
+
 The [unified release page](https://github.com/ldzyha/standard-notes-aic/releases/tag/v45.0.1)
 has installation steps for VS Code, Standard Notes and Chrome/Edge in one place.
 
-After publication, download `aic-notes-53.0.1.vsix` and its
+For manual installation, download `aic-notes-53.0.1.vsix` and its
 `aic-notes-53.0.1.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.

@@ -2,6 +2,9 @@
 
 ## English
 
+[Marketplace publishing](MARKETPLACE_PUBLISHING.md#english) records activation,
+release retries, credential expiry and client update behavior.
+
 All maintained first-party product and release documents are available in English
 and Ukrainian. A document either contains both languages or links directly to its
 `.uk.md` companion at the top. Release packages include the localized documents
@@ -13,6 +16,9 @@ not product documentation, and remains one canonical instruction file. Generated
 copies under `dist*` are rebuilt from the bilingual source documents.
 
 ## Українська
+
+[Публікація в Marketplace](MARKETPLACE_PUBLISHING.md#українська) описує активацію,
+повторні запуски, строк дії доступу та оновлення в користувачів.
 
 Уся підтримувана документація продукту й випуску доступна англійською та
 українською. Документ або містить обидві мови, або на початку прямо посилається
