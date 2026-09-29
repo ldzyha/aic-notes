@@ -1,50 +1,21 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  AGENT_MARKER_PATH,
-  MIN_AIC_RULES_VERSION,
-  agentMarker,
-  classifyRulesStatus,
-  encodeAgentMarker,
-  validateAgentMarker,
-} from "../src/agents/contract.js";
-
-test("portable agent marker points to canonical AIC context without copying rules", () => {
-  assert.deepEqual(AGENT_MARKER_PATH, [".vscode", "aic-agent.json"]);
-  const marker = agentMarker();
-  assert.equal(marker.minimumRulesVersion, MIN_AIC_RULES_VERSION);
-  assert.equal(marker.guideCommand, "aic guide --json");
-  assert.deepEqual(marker.context, {
-    resolver: "aic context resolve --json",
-    instructionEntrypoint: "AGENTS.md",
-    ownerNotes: "*.note.md",
-    taskArtifacts: "*.ai.md",
-  });
-  assert.equal(validateAgentMarker(JSON.parse(encodeAgentMarker())), true);
-  assert.doesNotMatch(encodeAgentMarker(), /instructionPack|English practice|GO.*DONE/su);
+import { createHash } from "node:crypto";
+import { AGENT_GUIDE } from "../vendor/aic-editor-core/agent-guide.js";
+import { AGENT_GUIDE_PATH, agentMarker, encodeAgentMarker, validateAgentMarker } from "../src/agents/contract.js";
+test("marker binds bundled instructions without an executable", () => {
+  const marker = JSON.parse(encodeAgentMarker());
+  assert.equal(marker.guideFile, AGENT_GUIDE_PATH.join("/"));
+  assert.equal(marker.guideSha256, createHash("sha256").update(AGENT_GUIDE).digest("hex"));
+  assert.equal(validateAgentMarker(marker), true);
+  assert.equal(marker.guideCommand, undefined);
 });
-
-test("agent marker rejects foreign and stale contracts", () => {
-  assert.equal(validateAgentMarker({ ...agentMarker(), managedBy: "owner" }), false);
-  assert.equal(validateAgentMarker({ ...agentMarker(), minimumRulesVersion: 7 }), false);
-  assert.equal(validateAgentMarker({ ...agentMarker(), guideCommand: "custom guide" }), false);
+test("only known owned legacy markers allow explicit migration", () => {
+  const marker = { schemaVersion: 1, enabled: true, managedBy: "aic-notes", minimumRulesVersion: 8, guideCommand: "aic guide --json" };
+  assert.equal(validateAgentMarker(marker), true);
+  assert.equal(validateAgentMarker({ ...marker, guideCommand: "custom" }), false);
 });
-
-test("rules status distinguishes current, safe sync, unmanaged, and version skew", () => {
-  const base = {
-    schemaVersion: 1,
-    rulesVersion: MIN_AIC_RULES_VERSION,
-    targets: [{ id: "codex", state: "current" }],
-  };
-  assert.deepEqual(classifyRulesStatus({ ...base, state: "current" }), {
-    state: "current",
-    unmanaged: false,
-    rulesVersion: MIN_AIC_RULES_VERSION,
-    requiresNewSession: false,
-  });
-  assert.equal(
-    classifyRulesStatus({ ...base, state: "needsSync", targets: [{ state: "unmanaged" }] }).unmanaged,
-    true,
-  );
-  assert.equal(classifyRulesStatus({ ...base, rulesVersion: 7, state: "current" }).state, "versionSkew");
+test("foreign markers and unsafe paths are rejected", () => {
+  for (const patch of [{ managedBy: "owner" }, { guideFile: "../../AGENTS.md" }, { guideSha256: "invalid" }, { schemaVersion: 99 }])
+    assert.equal(validateAgentMarker({ ...agentMarker(), ...patch }), false);
 });

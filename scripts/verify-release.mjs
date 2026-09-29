@@ -88,7 +88,7 @@ const packagedManifest = JSON.parse(
 if (packagedManifest.version !== version)
   throw new Error("packaged manifest version mismatch");
 if (
-  Object.keys(packagedManifest.contributes.configuration.properties).some(
+  Object.keys(packagedManifest.contributes.configuration?.properties ?? {}).some(
     (key) => key.startsWith("aicNotes.standardNotes."),
   )
 )

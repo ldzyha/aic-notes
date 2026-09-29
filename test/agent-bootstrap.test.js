@@ -4,103 +4,95 @@ import { build } from "esbuild";
 import { createRequire } from "node:module";
 import { runInNewContext } from "node:vm";
 import { fileURLToPath } from "node:url";
-import { encodeAgentMarker, MIN_AIC_RULES_VERSION } from "../src/agents/contract.js";
-
+import { AGENT_GUIDE } from "../vendor/aic-editor-core/agent-guide.js";
+import { AGENT_GUIDE_PATH, encodeAgentMarker } from "../src/agents/contract.js";
 const require = createRequire(import.meta.url);
 const bundle = await build({
-  stdin: {
-    contents: 'export { AgentWorkflowBootstrap } from "./src/agents/bootstrap.js";',
-    resolveDir: fileURLToPath(new URL("..", import.meta.url)),
-  },
-  bundle: true,
-  platform: "node",
-  format: "cjs",
-  write: false,
-  external: ["vscode"],
-  logLevel: "silent",
+  stdin: { contents: 'export { AgentWorkflowBootstrap } from "./src/agents/bootstrap.js";', resolveDir: fileURLToPath(new URL("..", import.meta.url)) },
+  bundle: true, platform: "node", format: "cjs", write: false, external: ["vscode"], logLevel: "silent",
 });
-
-function harness({ trusted, marker }) {
-  const calls = [];
-  let trustListener;
-  const uri = (value) => ({ scheme: "file", path: value, fsPath: value, toString: () => `file://${value}` });
+function harness({ trusted = true, marker, guide, directoryType = 2, failGuide = false } = {}) {
+  const files = new Map(), writes = [], commands = new Map(), copied = [];
+  const uri = path => ({ path, fsPath: path, scheme: "file" });
+  const guidePath = `/workspace/${AGENT_GUIDE_PATH.join("/")}`;
+  if (marker !== undefined) files.set("/workspace/.vscode/aic-agent.json", marker);
+  if (guide !== undefined) files.set(guidePath, guide);
+  files.set("/workspace/AGENTS.md", "Owner instructions");
   const folder = { name: "workspace", uri: uri("/workspace") };
   const vscode = {
     Uri: { joinPath: (base, ...parts) => uri([base.path, ...parts].join("/")) },
     FileType: { File: 1, Directory: 2, SymbolicLink: 64 },
     workspace: {
-      isTrusted: trusted,
-      workspaceFolders: [folder],
+      isTrusted: trusted, workspaceFolders: [folder], getWorkspaceFolder: () => folder,
       fs: {
-        stat: async () => {
-          if (!marker) throw Object.assign(new Error("missing"), { code: "FileNotFound" });
+        stat: async target => {
+          if (target.path === "/workspace/.vscode") return { type: directoryType };
+          if (!files.has(target.path)) throw Object.assign(new Error("missing"), { code: "FileNotFound" });
           return { type: 1 };
         },
-        readFile: async () => new TextEncoder().encode(encodeAgentMarker()),
-      },
-      getConfiguration: () => ({ get: () => "aic" }),
-      onDidGrantWorkspaceTrust: (listener) => {
-        trustListener = listener;
-        return { dispose() {} };
+        readFile: async target => new TextEncoder().encode(files.get(target.path)),
+        createDirectory: async () => {},
+        writeFile: async (target, value) => { writes.push(target.path); files.set(target.path, new TextDecoder().decode(value)); },
+        rename: async (from, to, options) => {
+          if (failGuide && to.path === guidePath) throw new Error("disk full");
+          if (!options.overwrite && files.has(to.path)) throw new Error("exists");
+          files.set(to.path, files.get(from.path)); files.delete(from.path);
+        },
+        delete: async target => { files.delete(target.path); },
       },
     },
-    commands: { registerCommand: () => ({ dispose() {} }) },
-    window: {
-      showInformationMessage: async () => undefined,
-      showWarningMessage: () => undefined,
-    },
+    commands: { registerCommand: (name, callback) => { commands.set(name, callback); return { dispose() {} }; } },
+    env: { clipboard: { writeText: async text => { copied.push(text); } } },
+    window: { showInformationMessage: async () => undefined, showWarningMessage: () => undefined },
   };
   const module = { exports: {} };
   runInNewContext(bundle.outputFiles[0].text, {
-    module,
-    exports: module.exports,
-    require: (name) => name === "vscode" ? vscode : name === "node:child_process" ? {
-      execFile: (_executable, args, _options, callback) => {
-        calls.push([...args]);
-        callback(null, JSON.stringify({ schemaVersion: 1, rulesVersion: MIN_AIC_RULES_VERSION, state: "current", targets: [] }), "");
-      },
-    } : require(name),
-    TextDecoder,
-    TextEncoder,
-    Buffer,
-    console,
-    queueMicrotask() {},
+    module, exports: module.exports, require: name => {
+      if (name === "vscode") return vscode;
+      if (name.includes("child_process")) throw new Error("No subprocesses permitted");
+      return require(name);
+    }, TextDecoder, TextEncoder, Buffer, console, process: { pid: 42 },
   });
-  const context = {
-    extension: { packageJSON: { version: "99.0.0" } },
-    workspaceState: { get: () => "99.0.0", update: async () => undefined },
-    subscriptions: [],
-  };
-  return { bootstrap: new module.exports.AgentWorkflowBootstrap(context), calls, vscode,
-    register: () => module.exports.AgentWorkflowBootstrap.register(context),
-    grantTrust: () => trustListener?.() };
+  const bootstrap = module.exports.AgentWorkflowBootstrap.register({ subscriptions: [] });
+  return { bootstrap, files, writes, commands, copied, guidePath };
 }
-
-test("untrusted workspace never starts the agent executable, even with an existing marker", async () => {
-  const h = harness({ trusted: false, marker: true });
-  await h.bootstrap.activate();
-  assert.deepEqual(h.calls, []);
-  await assert.rejects(h.bootstrap.sync(), /agent_workspace_untrusted/u);
-  assert.deepEqual(h.calls, []);
+test("registration does not run a CLI or change files", () => {
+  for (const marker of [undefined, encodeAgentMarker()]) assert.deepEqual(harness({ marker }).writes, []);
 });
-
-test("extension upgrade without an opt-in marker does not run or sync AIC rules", async () => {
-  const h = harness({ trusted: true, marker: false });
-  await h.bootstrap.activate();
-  assert.deepEqual(h.calls, []);
+test("fresh setup works without AIC or its config and is idempotent", async () => {
+  const h = harness();
+  await h.bootstrap.enable();
+  assert.equal(h.files.get(h.guidePath), AGENT_GUIDE);
+  assert.equal(h.files.get("/workspace/.vscode/aic-agent.json"), encodeAgentMarker());
+  assert.equal(h.files.get("/workspace/AGENTS.md"), "Owner instructions");
+  const count = h.writes.length;
+  await h.bootstrap.enable();
+  assert.equal(h.writes.length, count);
 });
-
-test("a trusted workspace with a valid marker verifies the AIC rule contract", async () => {
-  const h = harness({ trusted: true, marker: true });
-  await h.bootstrap.activate();
-  assert.deepEqual(h.calls, [["rules", "status", "--json"]]);
+test("untrusted workspaces can copy instructions but cannot write them", async () => {
+  const h = harness({ trusted: false });
+  await assert.rejects(h.bootstrap.enable(), /agent_workspace_untrusted/u);
+  assert.deepEqual(h.writes, []);
+  await h.commands.get("aicNotes.copyAgentInstructions")();
+  assert.deepEqual(h.copied, [AGENT_GUIDE]);
 });
-
-test("granting trust activates an existing opt-in marker", async () => {
-  const h = harness({ trusted: false, marker: true });
-  h.register();
-  assert.deepEqual(h.calls, []);
-  h.vscode.workspace.isTrusted = true;
-  await h.grantTrust();
-  assert.deepEqual(h.calls, [["rules", "status", "--json"]]);
+test("legacy setup migrates only on explicit command", async () => {
+  const legacy = JSON.stringify({ schemaVersion: 1, enabled: true, managedBy: "aic-notes", minimumRulesVersion: 8, guideCommand: "aic guide --json" });
+  const h = harness({ marker: legacy });
+  assert.equal(h.files.get("/workspace/.vscode/aic-agent.json"), legacy);
+  await h.bootstrap.enable();
+  assert.equal(h.files.get("/workspace/.vscode/aic-agent.json"), encodeAgentMarker());
+});
+test("edited instructions, foreign markers and symlink directories stay untouched", async () => {
+  for (const options of [{ guide: "Owner edits" }, { marker: "Owner marker" }, { directoryType: 66 }]) {
+    const h = harness(options);
+    await assert.rejects(h.bootstrap.enable());
+    assert.deepEqual(h.writes, []);
+  }
+});
+test("failed guide writes leave no enabled marker or temporary file", async () => {
+  const h = harness({ failGuide: true });
+  await assert.rejects(h.bootstrap.enable(), /disk full/u);
+  assert.equal(h.files.has("/workspace/.vscode/aic-agent.json"), false);
+  assert.equal([...h.files.keys()].some(path => path.endsWith(".tmp")), false);
 });

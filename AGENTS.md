@@ -16,3 +16,7 @@ changing shared UI or editor behavior.
 - Test both primary and linked-note webviews, light/dark themes and the canonical
   editor after a shared UI change. Do not infer installation/publication from a
   successful local build.
+
+Documentation follows `DOCUMENTATION.md`: state simple answers directly, and keep
+a question heading only when it helps explain a more complex answer. Choose the
+smallest format that preserves the answer and its material conditions.

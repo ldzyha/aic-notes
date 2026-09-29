@@ -1,54 +1,36 @@
-export const AGENT_MARKER_PATH = Object.freeze([".vscode", "aic-agent.json"]);
-export const AGENT_MARKER_SCHEMA = 1;
-export const MIN_AIC_RULES_VERSION = 8;
+import { createHash } from "node:crypto";
+import { AGENT_GUIDE, AGENT_GUIDE_VERSION } from "../../vendor/aic-editor-core/agent-guide.js";
 
-export function agentMarker(rulesVersion = MIN_AIC_RULES_VERSION) {
+export const AGENT_MARKER_PATH = Object.freeze([".vscode", "aic-agent.json"]);
+export const AGENT_MARKER_SCHEMA = 2;
+export const AGENT_GUIDE_HASH = createHash("sha256").update(AGENT_GUIDE).digest("hex");
+export const AGENT_GUIDE_PATH = Object.freeze([".vscode", `aic-agent-${AGENT_GUIDE_HASH.slice(0, 16)}.md`]);
+
+export function agentMarker() {
   return {
     schemaVersion: AGENT_MARKER_SCHEMA,
     enabled: true,
     managedBy: "aic-notes",
-    minimumRulesVersion: rulesVersion,
-    guideCommand: "aic guide --json",
-    context: {
-      resolver: "aic context resolve --json",
-      instructionEntrypoint: "AGENTS.md",
-      ownerNotes: "*.note.md",
-      taskArtifacts: "*.ai.md",
-    },
+    guideVersion: AGENT_GUIDE_VERSION,
+    guideFile: AGENT_GUIDE_PATH.join("/"),
+    guideSha256: AGENT_GUIDE_HASH,
   };
 }
 
-export function encodeAgentMarker(rulesVersion) {
-  return `${JSON.stringify(agentMarker(rulesVersion), null, 2)}\n`;
+export function encodeAgentMarker() {
+  return `${JSON.stringify(agentMarker(), null, 2)}\n`;
 }
 
+// Accept only known owned markers. Old schema-1 workspaces can migrate explicitly;
+// neither marker authorizes running a process or modifying global instructions.
 export function validateAgentMarker(value) {
-  return Boolean(
-    value &&
-      value.schemaVersion === AGENT_MARKER_SCHEMA &&
-      value.enabled === true &&
-      value.managedBy === "aic-notes" &&
-      Number.isSafeInteger(value.minimumRulesVersion) &&
-      value.minimumRulesVersion >= MIN_AIC_RULES_VERSION &&
-      value.guideCommand === "aic guide --json",
-  );
-}
-
-export function classifyRulesStatus(value) {
-  if (
-    !value ||
-    value.schemaVersion !== 1 ||
-    !Number.isSafeInteger(value.rulesVersion) ||
-    value.rulesVersion < MIN_AIC_RULES_VERSION ||
-    !["current", "needsSync"].includes(value.state) ||
-    !Array.isArray(value.targets)
-  ) {
-    return { state: "versionSkew", unmanaged: false };
+  if (!value || value.enabled !== true || value.managedBy !== "aic-notes") return false;
+  if (value.schemaVersion === 1) {
+    return Number.isSafeInteger(value.minimumRulesVersion) && value.minimumRulesVersion >= 8 &&
+      value.guideCommand === "aic guide --json";
   }
-  return {
-    state: value.state,
-    unmanaged: value.targets.some((target) => target?.state === "unmanaged"),
-    rulesVersion: value.rulesVersion,
-    requiresNewSession: Boolean(value.requiresNewSession),
-  };
+  return value.schemaVersion === AGENT_MARKER_SCHEMA &&
+    Number.isSafeInteger(value.guideVersion) && value.guideVersion >= 1 &&
+    typeof value.guideSha256 === "string" && /^[a-f0-9]{64}$/u.test(value.guideSha256) &&
+    value.guideFile === `.vscode/aic-agent-${value.guideSha256.slice(0, 16)}.md`;
 }

@@ -1,55 +1,8 @@
 import * as vscode from "vscode";
-import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { structuredError, formatError } from "../errors.js";
-import {
-  AGENT_MARKER_PATH,
-  MIN_AIC_RULES_VERSION,
-  classifyRulesStatus,
-  encodeAgentMarker,
-  validateAgentMarker,
-} from "./contract.js";
-
-const PROMPTED_VERSION_KEY = "aicNotes.agentWorkflow.promptedVersion";
-const MAX_OUTPUT_BYTES = 1024 * 1024;
-
-function executable() {
-  return vscode.workspace.getConfiguration("aicNotes.agentWorkflow").get("aicPath", "aic").trim() || "aic";
-}
-
-export function runAic(args) {
-  return new Promise((resolve, reject) => {
-    execFile(
-      executable(),
-      args,
-      { encoding: "utf8", maxBuffer: MAX_OUTPUT_BYTES, timeout: 15_000, windowsHide: true },
-      (error, stdout, stderr) => {
-        if (error) {
-          const missing = error.code === "ENOENT";
-          reject(
-            structuredError(
-              missing ? "aic_cli_missing" : "aic_rules_failed",
-              missing ? `AIC executable was not found: ${executable()}` : stderr.trim() || error.message,
-              missing
-                ? ["Install AIC or configure aicNotes.agentWorkflow.aicPath"]
-                : ["Run the same AIC rules command in a terminal and inspect its structured error"],
-            ),
-          );
-          return;
-        }
-        try {
-          resolve(JSON.parse(stdout));
-        } catch {
-          reject(
-            structuredError("aic_rules_protocol", "AIC returned invalid JSON", [
-              "Update AIC and retry with a new agent session",
-            ]),
-          );
-        }
-      },
-    );
-  });
-}
+import { AGENT_GUIDE } from "../../vendor/aic-editor-core/agent-guide.js";
+import { AGENT_MARKER_PATH, AGENT_GUIDE_PATH, encodeAgentMarker, validateAgentMarker } from "./contract.js";
 
 async function stat(uri) {
   try {
@@ -60,25 +13,15 @@ async function stat(uri) {
   }
 }
 
-function markerUri(folder) {
-  return vscode.Uri.joinPath(folder.uri, ...AGENT_MARKER_PATH);
-}
-
-async function readMarker(folder) {
-  const uri = markerUri(folder);
+async function readRegular(uri) {
   const info = await stat(uri);
-  if (!info) return { uri, exists: false, valid: false };
+  if (!info) return null;
   if (info.type & vscode.FileType.SymbolicLink || !(info.type & vscode.FileType.File)) {
-    throw structuredError("agent_marker_unsafe", `${uri.fsPath} is not a regular file`, [
-      "Replace it with a regular .vscode/aic-agent.json file",
+    throw structuredError("agent_file_unsafe", `${uri.fsPath} is not a regular file`, [
+      "Choose a workspace with regular AIC instruction files",
     ]);
   }
-  try {
-    const parsed = JSON.parse(new TextDecoder().decode(await vscode.workspace.fs.readFile(uri)));
-    return { uri, exists: true, valid: validateAgentMarker(parsed), parsed };
-  } catch {
-    return { uri, exists: true, valid: false };
-  }
+  return new TextDecoder().decode(await vscode.workspace.fs.readFile(uri));
 }
 
 async function chooseFolder(uri) {
@@ -92,152 +35,81 @@ async function chooseFolder(uri) {
   return picked?.folder;
 }
 
-async function writeMarker(folder) {
-  const directory = vscode.Uri.joinPath(folder.uri, AGENT_MARKER_PATH[0]);
-  const destination = markerUri(folder);
-  const existing = await readMarker(folder);
-  if (existing.exists && !existing.valid) {
-    throw structuredError("agent_marker_owned", `${destination.fsPath} is not an AIC Notes marker`, [
-      "Review or move the existing file before enabling the AIC agent workflow",
-    ]);
-  }
-  await vscode.workspace.fs.createDirectory(directory);
-  const temporary = vscode.Uri.joinPath(
-    directory,
-    `.aic-agent-${process.pid}-${randomBytes(6).toString("hex")}.tmp`,
-  );
+async function writeAtomic(directory, destination, text, overwrite) {
+  const temporary = vscode.Uri.joinPath(directory, `.aic-agent-${process.pid}-${randomBytes(6).toString("hex")}.tmp`);
   try {
-    await vscode.workspace.fs.writeFile(
-      temporary,
-      new TextEncoder().encode(
-        encodeAgentMarker(
-          Math.max(
-            MIN_AIC_RULES_VERSION,
-            Number(existing.parsed?.minimumRulesVersion) || 0,
-          ),
-        ),
-      ),
-    );
-    await vscode.workspace.fs.rename(temporary, destination, { overwrite: true });
+    await vscode.workspace.fs.writeFile(temporary, new TextEncoder().encode(text));
+    await vscode.workspace.fs.rename(temporary, destination, { overwrite });
   } finally {
-    try {
-      await vscode.workspace.fs.delete(temporary);
-    } catch {
-      // The successful atomic rename already consumed the temporary file.
-    }
+    try { await vscode.workspace.fs.delete(temporary); } catch { /* Consumed by rename. */ }
   }
-  return destination;
 }
 
 export class AgentWorkflowBootstrap {
   static register(context) {
-    const bootstrap = new AgentWorkflowBootstrap(context);
+    const bootstrap = new AgentWorkflowBootstrap();
     context.subscriptions.push(
       vscode.commands.registerCommand("aicNotes.enableAgentWorkflow", (uri) =>
-        bootstrap.enable(uri).catch((error) => bootstrap.report(error)),
-      ),
+        bootstrap.enable(uri).catch((error) => bootstrap.report(error))),
       vscode.commands.registerCommand("aicNotes.syncAgentInstructions", () =>
-        bootstrap.sync(true).catch((error) => bootstrap.report(error)),
-      ),
-      vscode.workspace.onDidGrantWorkspaceTrust(() =>
-        bootstrap.activate().catch((error) => bootstrap.report(error)),
-      ),
+        bootstrap.enable().catch((error) => bootstrap.report(error))),
+      vscode.commands.registerCommand("aicNotes.copyAgentInstructions", () =>
+        vscode.env.clipboard.writeText(AGENT_GUIDE).catch((error) => bootstrap.report(error))),
     );
-    queueMicrotask(() => bootstrap.activate().catch((error) => bootstrap.report(error)));
+    // Installation, upgrade and workspace trust changes never run an executable
+    // or rewrite instructions. Setup is an explicit local command.
     return bootstrap;
-  }
-
-  constructor(context) {
-    this.context = context;
   }
 
   report(error) {
     vscode.window.showWarningMessage(`AIC Notes — ${formatError(error)}`);
   }
 
-  async workspaceHasMarker() {
-    for (const folder of vscode.workspace.workspaceFolders ?? []) {
-      if ((await readMarker(folder)).valid) return true;
-    }
-    return false;
-  }
-
-  async sync(notify = false) {
-    if (!vscode.workspace.isTrusted) {
-      throw structuredError("agent_workspace_untrusted", "Agent instruction synchronization is disabled here", [
-        "Trust the workspace before running Sync Agent Instructions",
-      ]);
-    }
-    const statusPayload = await runAic(["rules", "status", "--json"]);
-    const status = classifyRulesStatus(statusPayload);
-    if (status.state === "versionSkew") {
-      throw structuredError("aic_rules_version_skew", "The installed AIC rule contract is incompatible", [
-        `Install AIC with rules version ${MIN_AIC_RULES_VERSION} or newer`,
-      ]);
-    }
-    if (status.unmanaged) {
-      throw structuredError("aic_rules_unmanaged", "One or more global instruction files are owner-managed", [
-        "Use the official AIC installer or review `aic rules sync --replace-global-instructions --json` before replacing them",
-      ]);
-    }
-    if (status.state === "current") {
-      if (notify) vscode.window.showInformationMessage("AIC Notes: agent instructions are current");
-      return status;
-    }
-    const synced = await runAic(["rules", "sync", "--json"]);
-    const result = classifyRulesStatus(synced?.status);
-    if (result.state !== "current") {
-      throw structuredError("aic_rules_sync_incomplete", "AIC did not report current agent instructions", [
-        "Run `aic rules status --json` and inspect every managed target",
-      ]);
-    }
-    vscode.window.showInformationMessage(
-      "AIC Notes: agent instructions updated. Start a new agent session to load them.",
-    );
-    return result;
-  }
-
   async enable(uri) {
     if (!vscode.workspace.isTrusted) {
-      throw structuredError("agent_workspace_untrusted", "Agent workflow bootstrap is disabled here", [
-        "Trust the workspace, review its files, and run Enable AIC Agent Workflow again",
+      throw structuredError("agent_workspace_untrusted", "Workspace instruction setup is disabled here", [
+        "Trust the workspace or use Copy Agent Instructions without writing files",
       ]);
     }
     const folder = await chooseFolder(uri);
     if (!folder) return;
-    const destination = await writeMarker(folder);
-    await this.sync(false);
-    vscode.window.showInformationMessage(
-      `AIC Notes: enabled portable agent workflow at ${vscode.workspace.asRelativePath(destination, false)}`,
-    );
-  }
-
-  async activate() {
-    if (!vscode.workspace.isTrusted) return;
-    const version = String(this.context.extension?.packageJSON?.version ?? "unknown");
-    const hasMarker = await this.workspaceHasMarker();
-    // A new extension version alone is not consent to run an executable or
-    // update global agent instructions. Only an explicit workspace marker is.
-    if (hasMarker) {
-      try {
-        await this.sync(false);
-      } catch (error) {
-        this.report(error);
+    const directory = vscode.Uri.joinPath(folder.uri, AGENT_MARKER_PATH[0]);
+    const directoryInfo = await stat(directory);
+    if (directoryInfo && (directoryInfo.type & vscode.FileType.SymbolicLink || !(directoryInfo.type & vscode.FileType.Directory))) {
+      throw structuredError("agent_directory_unsafe", `${directory.fsPath} is not a regular directory`, [
+        "Review the workspace .vscode directory before enabling agent instructions",
+      ]);
+    }
+    const marker = vscode.Uri.joinPath(folder.uri, ...AGENT_MARKER_PATH);
+    const previous = await readRegular(marker);
+    if (previous !== null) {
+      let parsed;
+      try { parsed = JSON.parse(previous); } catch { /* Not an owned marker. */ }
+      if (!validateAgentMarker(parsed)) {
+        throw structuredError("agent_marker_owned", `${marker.fsPath} is not an AIC Notes marker`, [
+          "Review or move the existing file before enabling the AIC agent workflow",
+        ]);
       }
     }
-    if (
-      vscode.workspace.isTrusted &&
-      !hasMarker &&
-      this.context.workspaceState.get(PROMPTED_VERSION_KEY, "") !== version &&
-      (vscode.workspace.workspaceFolders?.length ?? 0) > 0
-    ) {
-      await this.context.workspaceState.update(PROMPTED_VERSION_KEY, version);
-      const choice = await vscode.window.showInformationMessage(
-        "Enable the portable AIC agent workflow for this project?",
-        { detail: "Creates only .vscode/aic-agent.json. AIC remains the rule and context authority." },
-        "Enable",
-      );
-      if (choice === "Enable") await this.enable();
+    const guide = vscode.Uri.joinPath(folder.uri, ...AGENT_GUIDE_PATH);
+    const existingGuide = await readRegular(guide);
+    if (existingGuide !== null && existingGuide !== AGENT_GUIDE) {
+      throw structuredError("agent_instructions_modified", "The bundled instruction copy has been edited", [
+        "Keep your edits and use Copy Agent Instructions, or move the edited file before retrying",
+      ]);
     }
+    await vscode.workspace.fs.createDirectory(directory);
+    // Content-addressed files are immutable. Updating never overwrites authored
+    // Markdown, AGENTS.md, provider config, or an older instruction version.
+    if (existingGuide === null) await writeAtomic(directory, guide, AGENT_GUIDE, false);
+    if (previous !== encodeAgentMarker()) await writeAtomic(directory, marker, encodeAgentMarker(), previous !== null);
+    const choice = await vscode.window.showInformationMessage(
+      "AIC Notes: instructions are ready. Give the instruction file to your coding agent.",
+      "Copy handoff",
+    );
+    if (choice === "Copy handoff") {
+      await vscode.env.clipboard.writeText(`Read ${JSON.stringify(guide.fsPath)} for the AIC instructions, then follow my task request.`);
+    }
+    return { state: "current", guide: guide.fsPath };
   }
 }

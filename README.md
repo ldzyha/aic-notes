@@ -7,7 +7,7 @@ preview-first surface, including `*.note.md`, and shows linked notes in the Seco
 The extension is fully local: no Standard Notes sign-in, account requests, note synchronization,
 polling, upload, remote deletion or remote conflict state. Copy blocks manually when needed.
 
-Release 54.0.2 uses shared editor core 7.3.2 in the main editor and Linked Note.
+Release 55.1.0 uses shared editor core 7.4.0 in the main editor and Linked Note.
 
 Linked-code comments stay inside their details accordion, with compact headers
 and readable nesting. Unsaved edits keep the editor background unchanged; the
@@ -138,19 +138,19 @@ without a duplicate heading row. Use `## Account name` for a custom name or bare
 for the default Security header.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-editor-core 7.3.2 but is a separate product. The coordinated release targets are AIC Notes
-54.0.2 and AIC for Standard Notes 46.0.2. This page describes the release contract;
+editor-core 7.4.0 but is a separate product. The coordinated release targets are AIC Notes
+55.1.0 and AIC for Standard Notes 47.1.0. This page describes the release contract;
 published artifacts are verified separately by the release workflow. Transfer content manually
 between the two applications; VS Code has no Standard Notes account integration.
 
-## Coordinated release — 54.0.2
+## Coordinated release — 55.1.0
 
 Linked-code comments stay inside their details accordion, with compact headers
 and readable nesting. Unsaved edits keep the editor background unchanged; the
 Save button pulses until changes are saved. Reduced motion uses a static
 indicator, and save acknowledgements remain authoritative.
 
-Standard Notes AIC 46.0.2 and browser 0.9.2 share core 7.3.2. See the
+Standard Notes AIC 47.1.0 and browser 0.10.0 share core 7.4.0. See the
 [bilingual installation guide](RELEASE_INSTALL.md).
 
 ## Coordinated release — 53.0.1
@@ -354,32 +354,31 @@ and the required Entra migration are documented in
 code-server uses Open VSX; this Marketplace pipeline does not publish there.
 Use the manual GitHub VSIX until that separate distribution is set up.
 
-The [unified release page](https://github.com/ldzyha/standard-notes-aic/releases/tag/v46.0.2)
+The [unified release page](https://github.com/ldzyha/standard-notes-aic/releases/tag/v47.1.0)
 has installation steps for VS Code, Standard Notes and Chrome/Edge in one place.
 
-For manual installation, download `aic-notes-54.0.2.vsix` and its
-`aic-notes-54.0.2.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+For manual installation, download `aic-notes-55.1.0.vsix` and its
+`aic-notes-55.1.0.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-54.0.2.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-54.0.2.vsix.sha256
-code --install-extension .\aic-notes-54.0.2.vsix --force
+(Get-FileHash .\aic-notes-55.1.0.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-55.1.0.vsix.sha256
+code --install-extension .\aic-notes-55.1.0.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-54.0.2.vsix.sha256
-code --install-extension ./aic-notes-54.0.2.vsix --force
-# or: code-server --install-extension ./aic-notes-54.0.2.vsix --force
+sha256sum -c aic-notes-55.1.0.vsix.sha256
+code --install-extension ./aic-notes-55.1.0.vsix --force
+# or: code-server --install-extension ./aic-notes-55.1.0.vsix --force
 ```
 
-Reload the VS Code window after installation. Local editing requires no
-additional executable; the optional agent workflow uses AIC only when explicitly enabled.
+Reload the VS Code window after installation. Local editing and the bundled agent instructions require no additional executable.
 
 ## Local note model
 
@@ -471,6 +470,7 @@ renderer.
 - **AIC Notes: Use Native Editor for Plain Markdown**
 - **AIC Notes: Delete Note** / **Delete All Notes in Folder**
 - **AIC Notes: Enable AIC Agent Workflow** / **Sync Agent Instructions**
+- **AIC Notes: Copy Agent Instructions**
 
 Link Selection requires an already saved source revision. It copies selected lines into one
 deduplicated linked-code details block in the live sidebar draft and opens the comment caret.
@@ -478,11 +478,22 @@ It does not save the source or target implicitly; press Ctrl/Cmd+S in the note t
 
 ## Optional AIC agent workflow
 
-The agent workflow is independent of note persistence. In a trusted workspace, enabling it writes
-a thin `.vscode/aic-agent.json` marker; only an explicitly marked trusted workspace activates
-automatic AIC rule verification/synchronization. The explicit **Sync Agent Instructions** command
-also requires trust. An extension update by itself does not run AIC or change global instructions.
-Configure `aicNotes.agentWorkflow.aicPath` only when `aic` is not on the extension host's `PATH`.
+AIC Notes includes its agent instructions. No separate AIC executable, server,
+account or configuration folder is required. **Copy Agent Instructions** copies
+the bundled Markdown for any coding agent, including in an untrusted workspace.
+The local **?** guide also exposes that same selectable text.
+
+In a trusted workspace, **Enable AIC Agent Workflow** writes an immutable copy
+under `.vscode/aic-agent-<content-hash>.md` and a `.vscode/aic-agent.json` marker
+pointing to it. Choose **Copy handoff** to give that file path to your agent.
+**Sync Agent Instructions** refreshes this local handoff explicitly; it no longer
+runs global AIC rule synchronization. Existing schema-1 markers migrate when you
+run either command. Edited instruction files and unrelated markers are preserved.
+
+Installation, upgrades and workspace trust changes do not run a CLI or modify
+workspace/global instructions. Existing `AGENTS.md` and provider settings are
+unchanged. Agents must receive the instructions through the copied text or file
+handoff; the extension does not claim they discover it automatically.
 
 ## Development and release
 
@@ -499,7 +510,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-The coordinated version `54.0.2` records sequence 54, zero feature outcomes and two fixed-bug
+The coordinated version `55.1.0` records sequence 55, one feature outcome and zero fixed-bug
 outcomes; it is not a publication marker by itself.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and

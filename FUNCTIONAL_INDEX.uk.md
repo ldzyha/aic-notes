@@ -13,7 +13,7 @@ synchronization, polling, upload чи remote conflict model. Shared editor core
 snapshot. VS Code host володіє TextDocument, save/undo, URI navigation, clipboard
 та webview lifecycle.
 
-Випуск 54.0.2 на спільному ядрі 7.3.2 узгоджено зі Standard Notes AIC 46.0.2
+Випуск 55.1.0 на спільному ядрі 7.4.0 узгоджено зі Standard Notes AIC 47.1.0
 і розширенням браузера 0.9.2. Головний редактор і Linked Note використовують
 однаковий спільний контракт.
 

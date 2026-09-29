@@ -109,8 +109,8 @@ test("VS Code surfaces show no date label and own one in-place source toggle", a
 });
 
 test("the current release is a universal local editor without account connectivity", () => {
-  assert.equal(packageJson.version, "54.0.2");
-  assert.equal(packageJson.aicEditorCore, "7.3.2");
+  assert.equal(packageJson.version, "55.1.0");
+  assert.equal(packageJson.aicEditorCore, "7.4.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
   assert.match(
@@ -150,7 +150,7 @@ test("the current release is a universal local editor without account connectivi
   assert.ok(!Object.hasOwn(packageJson.devDependencies, "@noble/hashes"));
   assert.ok(!Object.hasOwn(packageJson.devDependencies, "proper-lockfile"));
   assert.ok(
-    !Object.keys(packageJson.contributes.configuration.properties).some((key) =>
+    !Object.keys(packageJson.contributes.configuration?.properties ?? {}).some((key) =>
       key.startsWith("aicNotes.standardNotes."),
     ),
   );
@@ -557,8 +557,8 @@ test("portable agent workflow remains independent from note persistence", async 
   ]);
   assert.match(bootstrap, /aicNotes\.enableAgentWorkflow/u);
   assert.match(bootstrap, /aicNotes\.syncAgentInstructions/u);
-  assert.match(bootstrap, /aic-agent\.json/u);
-  assert.match(bootstrap, /runAic\(\["rules", "status", "--json"\]\)/u);
-  assert.match(bootstrap, /runAic\(\["rules", "sync", "--json"\]\)/u);
-  assert.doesNotMatch(bootstrap + contract, /standardNotes|Standard Notes/iu);
+  assert.match(contract, /aic-agent\.json/u);
+  assert.match(bootstrap, /aicNotes\.copyAgentInstructions/u);
+  assert.doesNotMatch(bootstrap, /child_process|runAic|rules.*sync/u);
+  assert.match(bootstrap, /AGENT_GUIDE/u);
 });

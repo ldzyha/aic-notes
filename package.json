@@ -2,8 +2,8 @@
   "name": "aic-notes",
   "displayName": "AIC Notes",
   "description": "Local AIC Markdown documents and linked notes, with no account connection or note synchronization.",
-  "version": "54.0.2",
-  "aicEditorCore": "7.3.2",
+  "version": "55.1.0",
+  "aicEditorCore": "7.4.0",
   "publisher": "ldzyha",
   "icon": "media/icon.png",
   "license": "MIT",
@@ -137,6 +137,11 @@
         "title": "Sync Agent Instructions",
         "category": "AIC Notes",
         "icon": "$(sync)"
+      },
+      {
+        "command": "aicNotes.copyAgentInstructions",
+        "title": "Copy Agent Instructions",
+        "category": "AIC Notes"
       }
     ],
     "keybindings": [
@@ -251,17 +256,6 @@
         ".gitignore": ".gitignore.note.md",
         "Makefile": "Makefile.note.md",
         "Dockerfile": "Dockerfile.note.md"
-      }
-    },
-    "configuration": {
-      "title": "AIC Notes",
-      "properties": {
-        "aicNotes.agentWorkflow.aicPath": {
-          "type": "string",
-          "default": "aic",
-          "scope": "machine",
-          "description": "AIC executable used only for typed agent-rule status and sync commands. Use an absolute path when AIC is not on code-server's PATH."
-        }
       }
     }
   },

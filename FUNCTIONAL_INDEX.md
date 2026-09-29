@@ -2,8 +2,8 @@
 
 [English](FUNCTIONAL_INDEX.md) · [Українська](FUNCTIONAL_INDEX.uk.md)
 
-This index records the coordinated AIC Notes 54.0.2 / Standard Notes AIC 46.0.2
-release and shared editor core 7.3.2. Public commands, state boundaries, side effects and
+This index records the coordinated AIC Notes 55.1.0 / Standard Notes AIC 47.1.0
+release and shared editor core 7.4.0. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
 
@@ -35,7 +35,7 @@ value order and exact authored values are preserved. Opening a preview, copying
 and manual reordering do not trigger sorting.
 
 The main editor and Linked Note consume this same shared contract, paired with
-Standard Notes AIC 46.0.2 and browser 0.9.2.
+Standard Notes AIC 47.1.0 and browser 0.10.0.
 
 Release 49.1.2 makes Unpin immediately resume active-file following and packages
 English/Ukrainian documentation. Release 49.1.1 uses direct Mermaid source editing and a live preview. The
@@ -275,7 +275,7 @@ slash catalog supplies `/checklist` there as well, searchable by checkbox/taskli
 Formatting is one local edit, never a save, and protects code/frontmatter/structured blocks.
 
 - The note editor persists only local workspace `*.md` and `*.note.md` files. The optional
-  trusted agent workflow may write its thin workspace marker and run AIC-owned global rule sync;
+  trusted agent workflow writes a bundled instruction copy and a local workspace marker;
   neither path is note synchronization.
 - There is no account sign-in, note synchronization, tag graph, conflict resolver, or remote
   note Trash action in the VS Code host. Saved notes remain local.
@@ -327,7 +327,7 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 | Selection-to-note command  | `src/notes/selection.js`                        | inserts into the live local sidebar draft; no implicit save    | rejects unsaved/unbacked/out-of-workspace sources                    |
 | Structured previews        | `vendor/markdown`, `vendor/aic-editor-core`     | exact Markdown transactions only                               | invalid source remains editable instead of being normalized silently |
 | Slash template completion  | shared core plus `src/editor/slash-provider.js` | inserts exact Markdown in AIC, native, and contextual Markdown | inactive in code/read-only contexts                                  |
-| AIC agent workflow         | `src/agents/bootstrap.js`                       | explicit thin marker, then trusted AIC-owned rule status/sync  | no CLI on untrusted or unmarked automatic activation                 |
+| AIC agent workflow         | `src/agents/bootstrap.js`                       | bundled instructions, explicit local handoff and copy command  | no external CLI or global configuration dependency                 |
 
 ## Commands
 
@@ -341,8 +341,8 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 | `aicNotes.enableExplorerNesting` | Add workspace Explorer nesting patterns for sidecars                                                                     |
 | `aicNotes.openSource`            | Explicitly open the file owner with its sidebar note, or reveal the folder/project owner; reject ambiguous sources       |
 | `aicNotes.useNativeForMarkdown`  | Set the user association for plain `*.md` back to the native editor while keeping notes in the AIC main editor           |
-| `aicNotes.enableAgentWorkflow`   | Write the thin workspace marker and validate AIC-owned rule status                                                       |
-| `aicNotes.syncAgentInstructions` | Explicitly verify/update the installed AIC agent-rule contract; this is unrelated to note files or Standard Notes        |
+| `aicNotes.enableAgentWorkflow`   | Write the bundled instruction file and a content-bound workspace marker                                                       |
+| `aicNotes.syncAgentInstructions` | Explicitly refresh the bundled workspace handoff without a CLI or global writes        |
 
 ## Preview interaction contracts
 
@@ -403,3 +403,5 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 - Tag build and GitHub asset publication: `.github/workflows/release.yml`.
 - These are automated and bounded checks, not proof of exhaustive memory/context recall,
   all remote providers or all desktop platforms.
+
+`aicNotes.copyAgentInstructions` copies the bundled guide without writing files; it also works in untrusted workspaces.
