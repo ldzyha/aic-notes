@@ -1,7 +1,7 @@
 {
   "coreVersion": "7.5.0",
   "sourceRepository": "https://github.com/ldzyha/standard-notes-aic",
-  "sourceCommit": "04cd25247dcdc5897b5f89930e197c679f578259",
+  "sourceCommit": "d332c715d0b74b35d1cb03f3c95b8f5a85111829",
   "files": {
     "agent-guide.d.ts": "d6ffa86047957502482f327954244f9220ba0797e7a00812e88a4bed78d643c5",
     "agent-guide.js": "32e97b2c389b7ae03f65b9641a83dc22d74a9337e9a127fc8ad3d62f9c749178",

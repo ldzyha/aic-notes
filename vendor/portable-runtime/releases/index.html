@@ -8,10 +8,10 @@
 extension for encrypted page notes, or AIC Notes in VS Code. Protected file
 editors share the same <code>.aicnotes</code> data; synchronize exported files through a
 service you manage.</p>
-<h2 id="pwa-and-portable-files-4844-browser-0110">PWA and portable files — 48.4.4 / browser 0.11.0</h2>
+<h2 id="pwa-and-portable-files-4845-browser-0110">PWA and portable files — 48.4.5 / browser 0.11.0</h2>
 <p>This release pairs the installable Notes PWA at <a href="https://aic.dzyha.com/">aic.dzyha.com</a>
-with <a href="https://github.com/ldzyha/standard-notes-aic/releases/tag/v48.4.4">AIC for Standard Notes 48.4.4</a>,
-<a href="https://github.com/ldzyha/aic-notes/releases/tag/v56.4.4">AIC Notes 56.4.4</a>,
+with <a href="https://github.com/ldzyha/standard-notes-aic/releases/tag/v48.4.5">AIC for Standard Notes 48.4.5</a>,
+<a href="https://github.com/ldzyha/aic-notes/releases/tag/v56.4.5">AIC Notes 56.4.5</a>,
 experimental browser 0.11.0 and shared core 7.5.0.</p>
 <ul><li><p>From the start screen, choose <strong>New workspace</strong>, then <strong>New note</strong>, or
   <strong>Open notes</strong> for files, a folder or an encrypted file. Changes autosave
@@ -25,6 +25,8 @@ experimental browser 0.11.0 and shared core 7.5.0.</p>
   file as the return anchor.</p></li>
 <li><p>A confirmed deletion of an existing file rejects a later save instead of
   recreating that file. A deliberate new-note placeholder can still create one.</p></li>
+<li><p>Portable runtime files keep their verified byte hashes on Windows checkouts;
+  Git line-ending conversion cannot change packaged runtime bytes.</p></li>
 <li><p>Protected <code>.aicnotes</code> files open in the PWA, Chrome/Edge file-notes view and
   VS Code. Their cache contains ciphertext; optional entity names do not determine
   keys. Existing non-Markdown bundle files remain intact and are included in
@@ -63,9 +65,9 @@ the suggestion and choose <strong>Apply</strong> to change the note; use Undo to
 AIC does not send the note to a remote AI service. AI availability depends on the
 browser API, device and supported language; ordinary editing remains available
 offline in other browsers. See <a href="https://developer.chrome.com/docs/ai/prompt-api">Chrome&#39;s current Prompt API requirements</a>.</p>
-<h2 id="coordinated-source-release-4844-5644-october-1-2026">Coordinated source release — 48.4.4 / 56.4.4 — October 1, 2026</h2>
-<p>This release pairs <a href="https://github.com/ldzyha/aic-notes/releases/tag/v56.4.4">AIC Notes for VS Code 56.4.4</a>,
-<a href="https://github.com/ldzyha/standard-notes-aic/releases/tag/v48.4.4">AIC for Standard Notes 48.4.4</a>
+<h2 id="coordinated-source-release-4845-5645-october-1-2026">Coordinated source release — 48.4.5 / 56.4.5 — October 1, 2026</h2>
+<p>This release pairs <a href="https://github.com/ldzyha/aic-notes/releases/tag/v56.4.5">AIC Notes for VS Code 56.4.5</a>,
+<a href="https://github.com/ldzyha/standard-notes-aic/releases/tag/v48.4.5">AIC for Standard Notes 48.4.5</a>
 and experimental Chrome/Edge 0.11.0 on core 7.5.0.</p>
 <ul><li><p>Focused <strong>Current</strong>, <strong>Shared</strong> and <strong>Global</strong> tabs follow file, parent-note
   and workspace/project-note relationships without changing the current-file
@@ -75,9 +77,10 @@ and experimental Chrome/Edge 0.11.0 on core 7.5.0.</p>
 <li><p>Local <strong>Grammar</strong> and <strong>Improve</strong> remain optional Chrome capabilities; their
   reviewed edits use normal editor Undo.</p></li>
 <li><p>A deletion guard prevents a late save from recreating a confirmed-deleted
-  existing file, while intentional new placeholders still create files.</p></li></ul>
+  existing file, while intentional new placeholders still create files.</p></li>
+<li><p>Portable runtime files preserve their verified bytes on Windows checkouts.</p></li></ul>
 <h3 id="vs-code-and-code-server">VS Code and code-server</h3>
-<p>Use <a href="https://github.com/ldzyha/aic-notes/releases/tag/v56.4.4">AIC Notes 56.4.4 on GitHub</a>
+<p>Use <a href="https://github.com/ldzyha/aic-notes/releases/tag/v56.4.5">AIC Notes 56.4.5 on GitHub</a>
 for its VSIX and neighboring <code>.sha256</code> file. The
 <a href="https://marketplace.visualstudio.com/items?itemName=ldzyha.aic-notes">VS Code Marketplace</a>
 is a separate channel; check its displayed version.</p>
@@ -94,10 +97,10 @@ updates.</p>
 <p>Select <strong>AIC</strong> in the note editor menu. Existing installations check the same
 manifest for updates; restart Standard Notes if a previous version remains
 visible. Downloadable ZIPs and checksums are on the
-<a href="https://github.com/ldzyha/standard-notes-aic/releases/tag/v48.4.4">AIC 48.4.4 release page</a>.</p>
+<a href="https://github.com/ldzyha/standard-notes-aic/releases/tag/v48.4.5">AIC 48.4.5 release page</a>.</p>
 <h3 id="chrome-and-microsoft-edge-experimental">Chrome and Microsoft Edge — experimental</h3>
 <ol><li><p>Download the <code>aic-browser-chromium-0.11.0.zip</code> and neighboring <code>.sha256</code> file
-   from the <a href="https://github.com/ldzyha/standard-notes-aic/releases/tag/v48.4.4">AIC 48.4.4 release page</a>.</p></li>
+   from the <a href="https://github.com/ldzyha/standard-notes-aic/releases/tag/v48.4.5">AIC 48.4.5 release page</a>.</p></li>
 <li><p>Extract the ZIP into a permanent folder with <code>manifest.json</code> at its root.</p></li>
 <li><p>Open <code>chrome://extensions</code> or <code>edge://extensions</code>, enable <strong>Developer mode</strong>,
    select <strong>Load unpacked</strong>, and choose the folder. Pin AIC and select its icon.</p></li></ol>
@@ -121,9 +124,9 @@ directory, run <code>sha256sum -c FILE.sha256</code> on Linux; on macOS, compare
   · <a href="https://github.com/ldzyha/aic-notes/blob/main/CHANGELOG.uk.md">Українська</a></p></li></ul>
 <h3 id="changelog">Changelog</h3>
 <p><a href="/releases">English</a> · <a href="/releases/uk/">Українська</a></p>
-<h4 id="4844-2026-10-01">48.4.4 — 2026-10-01</h4>
-<p>Release sequence 48 · 4 feature outcomes · 4 fixed-bug outcomes. Coordinates
-AIC Notes for VS Code 56.4.4, experimental browser 0.11.0 and shared core 7.5.0.</p>
+<h4 id="4845-2026-10-01">48.4.5 — 2026-10-01</h4>
+<p>Release sequence 48 · 4 feature outcomes · 5 fixed-bug outcomes. Coordinates
+AIC Notes for VS Code 56.4.5, experimental browser 0.11.0 and shared core 7.5.0.</p>
 <h5 id="f01-portable-local-workspaces-with-optional-encryption">F01 — Portable local workspaces with optional encryption</h5>
 <ul><li><p>The PWA opens local Markdown workspaces and compatible <code>.aicnotes</code> files.
   Device saves remain local; they never update the original folder or Drive.
@@ -155,7 +158,9 @@ actions; this source release does not claim that any store has updated.</p>
 <li><p>Redirect/cache recovery keeps bilingual public pages and offline app loading
    working without clearing note storage.</p></li>
 <li><p>A confirmed deletion of an existing file rejects a later save instead of
-   recreating it; an intentional new-note placeholder can still create its file.</p></li></ol>
+   recreating it; an intentional new-note placeholder can still create its file.</p></li>
+<li><p>Portable runtime files retain their byte hashes on Windows checkouts rather
+   than being changed by Git line-ending conversion.</p></li></ol>
 <h5 id="earlier-unreleased-details">Earlier unreleased details</h5>
 <ul><li><p>Add mobile-first controls and built-in, on-device Grammar / Improve assistance, with protected Markdown, reviewed application and editor Undo.</p></li>
 <li><p>Serve bilingual terms, privacy, release history and installation at

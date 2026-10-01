@@ -2,7 +2,7 @@
   "name": "aic-notes",
   "displayName": "AIC Notes",
   "description": "Local AIC Markdown documents and linked notes, with no account connection or note synchronization.",
-  "version": "56.4.4",
+  "version": "56.4.5",
   "aicEditorCore": "7.5.0",
   "publisher": "ldzyha",
   "icon": "media/icon.png",

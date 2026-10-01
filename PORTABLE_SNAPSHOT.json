@@ -2,7 +2,7 @@
   "format": "aic-portable-runtime",
   "version": 1,
   "sourceRepository": "https://github.com/ldzyha/standard-notes-aic",
-  "sourceCommit": "04cd25247dcdc5897b5f89930e197c679f578259",
+  "sourceCommit": "d332c715d0b74b35d1cb03f3c95b8f5a85111829",
   "hashes": {
     "EXTENSION_UPDATES.md": "d62de25da1003f8e228ca6062c87d023d6b7e09e66518c6572ad90f7f5b68a10",
     "EXTENSION_UPDATES.uk.md": "6429fb9feeca0a53f414d0611dec4881430adf500b939b0691610552e9fbed20",
@@ -121,10 +121,10 @@
     "icon-512.png": "16e36d89c0b818e29b4e8179f4bee44a39eadc6a23795cfc05d430b546a02d48",
     "index.html": "84173680c79f4a3300aa0172245476bbc38ad7d9a8bfb1d99cfb449967ed9f57",
     "manifest.webmanifest": "59db4850241d59523e6af6ed508b28e431d03e947a9ee57039691a3a140a28db",
-    "releases/index.html": "bbbede42526f35058302d7742a785084d447a47660b36d0bb095debe3d634bad",
-    "releases/uk/index.html": "58adb83adce2375dc0181e625c45d49194c7a7bd1cceb65434ebb4d160072693",
+    "releases/index.html": "1f935ad7f02df1ffb5f27dcec5c92f981e7370a45663961ea95bf473bd75f5f9",
+    "releases/uk/index.html": "c5505c5c29056ca1d5141987d10047712d629daa9311b55de3bd34cf3f964ea1",
     "site.css": "a6e1219460ef57f29f4bd5176721cdfe663183d5f56b18c2b5c14af76760f42d",
-    "sw.js": "f560cf34d6fa31bf889a797482a5eacf88e07fba1b1b454d1e828492cf3313e5",
+    "sw.js": "1e51ca92210dfdd3fa267da8002770907aa5ce82e80d4b989eee431cbaef89fd",
     "terms/index.html": "ed50de4f83c5bd75223c444abc874f3577a0ae417daacdf1b3b5ab29b83b0697",
     "terms/uk/index.html": "4e09babfc3c00dc8542a32e943e584f2ee69cd069ce5fd78bba46e2b8b9cc0d8"
   }

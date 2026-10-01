@@ -7,7 +7,7 @@ preview-first surface, including `*.note.md`, and shows linked notes in the Seco
 The extension is fully local: no Standard Notes sign-in, account requests, note synchronization,
 polling, upload, remote deletion or remote conflict state. Copy blocks manually when needed.
 
-Release 56.4.4 uses shared editor core 7.5.0 in the main editor and Linked Note.
+Release 56.4.5 uses shared editor core 7.5.0 in the main editor and Linked Note.
 
 The new local-file PWA opens Markdown files and folders, keeps device-local copies,
 and offers optional encrypted exports. Current, Shared and Global tabs focus on
@@ -142,11 +142,11 @@ for the default Security header.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
 editor-core 7.5.0 but is a separate product. The coordinated release targets are AIC Notes
-56.4.4 and AIC for Standard Notes 48.4.4. This page describes the release contract;
+56.4.5 and AIC for Standard Notes 48.4.5. This page describes the release contract;
 published artifacts are verified separately by the release workflow. Transfer content manually
 between the two applications; VS Code has no Standard Notes account integration.
 
-## Coordinated release — 56.4.4
+## Coordinated release — 56.4.5
 
 The new local-file PWA opens Markdown files and folders, keeps device-local copies,
 and offers optional encrypted exports. Current, Shared and Global tabs focus on
@@ -359,28 +359,28 @@ and the required Entra migration are documented in
 code-server uses Open VSX; this Marketplace pipeline does not publish there.
 Use the manual GitHub VSIX until that separate distribution is set up.
 
-The [unified release page](https://github.com/ldzyha/standard-notes-aic/releases/tag/v48.4.4)
+The [unified release page](https://github.com/ldzyha/standard-notes-aic/releases/tag/v48.4.5)
 has installation steps for VS Code, Standard Notes and Chrome/Edge in one place.
 
-For manual installation, download `aic-notes-56.4.4.vsix` and its
-`aic-notes-56.4.4.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+For manual installation, download `aic-notes-56.4.5.vsix` and its
+`aic-notes-56.4.5.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-56.4.4.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-56.4.4.vsix.sha256
-code --install-extension .\aic-notes-56.4.4.vsix --force
+(Get-FileHash .\aic-notes-56.4.5.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-56.4.5.vsix.sha256
+code --install-extension .\aic-notes-56.4.5.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-56.4.4.vsix.sha256
-code --install-extension ./aic-notes-56.4.4.vsix --force
-# or: code-server --install-extension ./aic-notes-56.4.4.vsix --force
+sha256sum -c aic-notes-56.4.5.vsix.sha256
+code --install-extension ./aic-notes-56.4.5.vsix --force
+# or: code-server --install-extension ./aic-notes-56.4.5.vsix --force
 ```
 
 Reload the VS Code window after installation. Local editing and the bundled agent instructions require no additional executable.
@@ -515,7 +515,7 @@ retired synchronization commands/settings, incomplete editor controls, secrets, 
 mismatches.
 
 Release versions use `R.F.B`: release sequence, shipped feature outcomes, and fixed-bug outcomes.
-The coordinated version `56.4.4` records sequence 56, four feature outcomes and four fixed-bug
+The coordinated version `56.4.5` records sequence 56, four feature outcomes and five fixed-bug
 outcomes; it is not a publication marker by itself.
 
 See [FUNCTIONAL_INDEX.md](FUNCTIONAL_INDEX.md) for the release-critical behavior map and

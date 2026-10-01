@@ -2,10 +2,10 @@
 
 [English](CHANGELOG.md) · [Українська](CHANGELOG.uk.md)
 
-## 56.4.4 — 2026-10-01
+## 56.4.5 — 2026-10-01
 
-Release sequence 56 · 4 feature outcomes · 4 fixed-bug outcomes. Coordinates
-AIC for Standard Notes 48.4.4, experimental browser 0.11.0 and shared core 7.5.0.
+Release sequence 56 · 4 feature outcomes · 5 fixed-bug outcomes. Coordinates
+AIC for Standard Notes 48.4.5, experimental browser 0.11.0 and shared core 7.5.0.
 
 ### F01 — Portable local workspaces with optional encryption
 
@@ -41,6 +41,8 @@ steps.
 3. Redirect/cache recovery preserves offline public pages and local notes.
 4. A confirmed deletion of an existing file rejects a later save instead of
    recreating it; an intentional new-note placeholder can still create its file.
+5. Portable runtime files retain their byte hashes on Windows checkouts rather
+   than being changed by Git line-ending conversion.
 
 ### Earlier unreleased details
 

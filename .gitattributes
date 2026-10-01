@@ -1,3 +1,7 @@
 # Shared core hashes must stay identical on Windows and Linux checkouts.
 vendor/aic-editor-core/* text eol=lf
 CORE_SNAPSHOT.json text eol=lf
+
+# Portable runtime inventories hash exact build bytes, including Markdown and assets.
+vendor/portable-runtime/** -text
+PORTABLE_SNAPSHOT.json text eol=lf

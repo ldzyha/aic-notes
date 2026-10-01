@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import {
   mkdtemp,
   mkdir,
@@ -32,7 +33,7 @@ const metadata = (entries = files()) => ({
   sourceCommit: "a".repeat(40),
   hashes: Object.fromEntries(
     [...entries]
-      .sort(([a], [b]) => a.localeCompare(b))
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
       .map(([name, data]) => [
         name,
         createHash("sha256").update(data).digest("hex"),
@@ -174,4 +175,81 @@ test("VS Code build and release use the snapshot-owned portable runtime", async 
     );
     assert.ok(check >= 0 && check < build);
   }
+});
+
+test("Git checkout with autocrlf preserves portable build bytes and verifies its snapshot", async (t) => {
+  const f = await fixture(t);
+  f.entries.set(
+    "EXTENSION_UPDATES.md",
+    Buffer.from("# Synthetic release updates\n\nKeep exact build bytes.\n"),
+  );
+  f.entries.set(
+    "assets/opaque.bin",
+    Buffer.from([0x89, 0x00, 0x0d, 0x0a, 0x0a, 0xff]),
+  );
+  for (const [name, bytes] of f.entries)
+    await writeFile(path.join(f.directory, name), bytes);
+  const snapshotBytes = Buffer.from(
+    JSON.stringify(metadata(f.entries), null, 2) + "\n",
+  );
+  await writeFile(f.snapshotPath, snapshotBytes);
+  const attributes = await readFile(
+    new URL("../.gitattributes", import.meta.url),
+  );
+  await writeFile(path.join(f.root, ".gitattributes"), attributes);
+  await writeFile(
+    path.join(f.root, "conversion-control.txt"),
+    "Synthetic control\nSecond line\n",
+  );
+  const git = (cwd, ...args) =>
+    execFileSync("git", args, {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  git(f.root, "init", "--quiet");
+  git(f.root, "config", "user.name", "Synthetic checkout test");
+  git(f.root, "config", "user.email", "synthetic@example.invalid");
+  git(f.root, "config", "core.autocrlf", "false");
+  git(
+    f.root,
+    "add",
+    "--",
+    ".gitattributes",
+    "PORTABLE_SNAPSHOT.json",
+    "vendor/portable-runtime",
+    "conversion-control.txt",
+  );
+  git(
+    f.root,
+    "-c",
+    "core.hooksPath=" + path.join(f.root, "empty-hooks"),
+    "-c",
+    "commit.gpgSign=false",
+    "commit",
+    "--quiet",
+    "-m",
+    "Synthetic portable snapshot",
+  );
+  const checkout = path.join(f.root, "autocrlf-checkout");
+  git(f.root, "clone", "--quiet", "--no-checkout", f.root, checkout);
+  git(checkout, "config", "core.autocrlf", "true");
+  git(checkout, "checkout", "--force", "HEAD");
+  assert.equal(
+    await readFile(path.join(checkout, "conversion-control.txt"), "utf8"),
+    "Synthetic control\r\nSecond line\r\n",
+  );
+  for (const [name, bytes] of f.entries)
+    assert.deepEqual(
+      await readFile(path.join(checkout, "vendor/portable-runtime", name)),
+      bytes,
+    );
+  assert.deepEqual(
+    await readFile(path.join(checkout, "PORTABLE_SNAPSHOT.json")),
+    snapshotBytes,
+  );
+  assert.equal(
+    (await verifyPortableSnapshot(checkout, { release: true })).files,
+    f.entries.size,
+  );
 });
