@@ -9,18 +9,41 @@
   --aic-muted: var(--vscode-descriptionForeground, #68717d);
   --aic-border: var(--vscode-panel-border, #d8dde5);
   --aic-contrast: var(--vscode-sideBar-background, #ffffff);
-  --aic-contrast-fg: var(--vscode-sideBar-foreground, var(--vscode-foreground, var(--aic-fg)));
+  --aic-contrast-fg: var(
+    --vscode-sideBar-foreground,
+    var(--vscode-foreground, var(--aic-fg))
+  );
   --aic-accent: var(--vscode-textLink-foreground, #1976d2);
   --aic-accent-contrast: var(--vscode-button-foreground, #ffffff);
   --aic-chip: color-mix(in srgb, var(--aic-fg) 7%, transparent);
   --aic-marker: color-mix(in srgb, var(--aic-muted) 80%, var(--aic-fg));
   --aic-danger: var(--vscode-errorForeground, #c62828);
-  --aic-details-surface: color-mix(in srgb, var(--aic-contrast) 94%, var(--aic-contrast-fg) 6%);
-  --aic-details-border: color-mix(in srgb, var(--aic-border) 72%, var(--aic-contrast-fg) 28%);
-  --aic-agent-shell: var(--vscode-agents-background, var(--vscode-editor-background, #121314));
-  --aic-agent-panel: var(--vscode-agentsPanel-background, var(--vscode-sideBar-background, var(--vscode-editor-background, #191a1b)));
-  --aic-agent-panel-fg: var(--vscode-agentsPanel-foreground, var(--vscode-sideBar-foreground, var(--vscode-editor-foreground, #bfbfbf)));
-  --aic-agent-panel-border: var(--vscode-agentsPanel-border, var(--vscode-sideBar-border, var(--vscode-panel-border, #2a2b2c)));
+  --aic-details-surface: color-mix(
+    in srgb,
+    var(--aic-contrast) 94%,
+    var(--aic-contrast-fg) 6%
+  );
+  --aic-details-border: color-mix(
+    in srgb,
+    var(--aic-border) 72%,
+    var(--aic-contrast-fg) 28%
+  );
+  --aic-agent-shell: var(
+    --vscode-agents-background,
+    var(--vscode-editor-background, #121314)
+  );
+  --aic-agent-panel: var(
+    --vscode-agentsPanel-background,
+    var(--vscode-sideBar-background, var(--vscode-editor-background, #191a1b))
+  );
+  --aic-agent-panel-fg: var(
+    --vscode-agentsPanel-foreground,
+    var(--vscode-sideBar-foreground, var(--vscode-editor-foreground, #bfbfbf))
+  );
+  --aic-agent-panel-border: var(
+    --vscode-agentsPanel-border,
+    var(--vscode-sideBar-border, var(--vscode-panel-border, #2a2b2c))
+  );
   --fg: var(--aic-fg);
   --bg: var(--aic-bg);
   --marker: var(--aic-marker);
@@ -33,7 +56,8 @@
   --radius: 0.4rem;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   height: 100%;
@@ -45,11 +69,42 @@ html, body {
   height: 100vh;
 }
 
-body.aic-main-note-surface { display: grid; grid-template-rows: minmax(0, 1fr) auto; }
-.aic-main-note-surface #editor { min-height: 0; height: 100%; }
-#document-actions { display: flex; align-items: center; gap: 0.3rem; padding: 0.3rem 0.6rem; border-top: 1px solid var(--border); }
-#editing-status { font: 0.8rem/1.4 var(--vscode-font-family, sans-serif); color: var(--muted); }
-#editing-status:empty { display: none; }
+body.aic-main-note-surface {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+.aic-main-note-surface #editor {
+  min-height: 0;
+  height: 100%;
+}
+#scope-current,
+#scope-shared,
+#scope-global {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  grid-row: 2;
+  overflow: hidden;
+}
+#scope-shared:empty,
+#scope-global:empty {
+  color: var(--muted);
+}
+#document-actions {
+  grid-row: 3;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  border-top: 1px solid var(--border);
+}
+#editing-status {
+  font: 0.8rem/1.4 var(--vscode-font-family, sans-serif);
+  color: var(--muted);
+}
+#editing-status:empty {
+  display: none;
+}
 
 .cm-editor {
   height: 100%;
@@ -68,36 +123,80 @@ body.aic-main-note-surface { display: grid; grid-template-rows: minmax(0, 1fr) a
 .cm-editor.cm-focused .cm-selectionBackground {
   background: #264f78 !important;
 }
-.cm-editor .cm-activeLine { background: transparent; }
-.cm-editor.cm-focused { outline: none; }
-.cm-scroller { line-height: 1.6; }
+.cm-editor .cm-activeLine {
+  background: transparent;
+}
+.cm-editor.cm-focused {
+  outline: none;
+}
+.cm-scroller {
+  line-height: 1.6;
+}
 
 /* ── markdown structure overrides ──────────────────────────────────────
    Win over the vendored MARKDOWN_CSS (loaded after this file) via
    specificity. Hierarchy comes from SIZE + one accent color; underline is
    reserved for links; bold carries emphasis. */
-.cm-editor .cm-content .cm-md-marker { color: var(--marker); }
-.cm-editor .cm-content .cm-md-marker-revealed { color: var(--marker); }
+.cm-editor .cm-content .cm-md-marker {
+  color: var(--marker);
+}
+.cm-editor .cm-content .cm-md-marker-revealed {
+  color: var(--marker);
+}
 .cm-editor .cm-content .cm-md-h {
   color: var(--accent);
   font-weight: 700;
   text-decoration: none;
 }
-.cm-editor .cm-content .cm-md-h1 { font-size: 1.8em; }
-.cm-editor .cm-content .cm-md-h2 { font-size: 1.45em; }
-.cm-editor .cm-content .cm-md-h3 { font-size: 1.25em; }
-.cm-editor .cm-content .cm-md-h4 { font-size: 1.1em; }
-.cm-editor .cm-content .cm-md-h5 { font-size: 1em; }
-.cm-editor .cm-content .cm-md-h6 { font-size: 0.9em; color: var(--muted); }
-.cm-editor .cm-content .cm-md-bold { font-weight: 800; color: var(--fg); }
-.cm-editor .cm-content .cm-md-italic { color: color-mix(in srgb, var(--fg) 82%, var(--accent)); }
-.cm-editor .cm-content .cm-md-code { background: var(--chip); color: color-mix(in srgb, var(--fg) 78%, var(--muted)); }
-.cm-editor .cm-content .cm-md-link { text-decoration: underline; text-underline-offset: 3px; }
-.cm-editor .cm-content .cm-md-link-local { color: var(--accent); }
-.cm-editor .cm-content .cm-md-link-external { color: var(--info); }
-.cm-editor .cm-content .cm-md-quote { color: var(--muted); }
-.cm-editor .cm-content .cm-md-strike { color: var(--muted); }
-.cm-editor .cm-content .cm-md-listmark { color: var(--accent); }
+.cm-editor .cm-content .cm-md-h1 {
+  font-size: 1.8em;
+}
+.cm-editor .cm-content .cm-md-h2 {
+  font-size: 1.45em;
+}
+.cm-editor .cm-content .cm-md-h3 {
+  font-size: 1.25em;
+}
+.cm-editor .cm-content .cm-md-h4 {
+  font-size: 1.1em;
+}
+.cm-editor .cm-content .cm-md-h5 {
+  font-size: 1em;
+}
+.cm-editor .cm-content .cm-md-h6 {
+  font-size: 0.9em;
+  color: var(--muted);
+}
+.cm-editor .cm-content .cm-md-bold {
+  font-weight: 800;
+  color: var(--fg);
+}
+.cm-editor .cm-content .cm-md-italic {
+  color: color-mix(in srgb, var(--fg) 82%, var(--accent));
+}
+.cm-editor .cm-content .cm-md-code {
+  background: var(--chip);
+  color: color-mix(in srgb, var(--fg) 78%, var(--muted));
+}
+.cm-editor .cm-content .cm-md-link {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cm-editor .cm-content .cm-md-link-local {
+  color: var(--accent);
+}
+.cm-editor .cm-content .cm-md-link-external {
+  color: var(--info);
+}
+.cm-editor .cm-content .cm-md-quote {
+  color: var(--muted);
+}
+.cm-editor .cm-content .cm-md-strike {
+  color: var(--muted);
+}
+.cm-editor .cm-content .cm-md-listmark {
+  color: var(--accent);
+}
 
 /* tables: the grid carries its own surface — header AND content cells get a
    background so the table reads as one object on the page */
@@ -110,8 +209,12 @@ body.aic-main-note-surface { display: grid; grid-template-rows: minmax(0, 1fr) a
   border-color: var(--border);
   padding: 0.3rem 0.6rem;
 }
-.cm-editor .cm-content .cm-md-table thead th { background: var(--aic-contrast); }
-.cm-editor .cm-content .cm-md-table td { background: color-mix(in srgb, var(--fg) 3%, var(--bg)); }
+.cm-editor .cm-content .cm-md-table thead th {
+  background: var(--aic-contrast);
+}
+.cm-editor .cm-content .cm-md-table td {
+  background: color-mix(in srgb, var(--fg) 3%, var(--bg));
+}
 .cm-editor .cm-content .cm-md-table td code.cm-md-code {
   background: var(--chip);
   color: color-mix(in srgb, var(--fg) 78%, var(--muted));
@@ -119,8 +222,13 @@ body.aic-main-note-surface { display: grid; grid-template-rows: minmax(0, 1fr) a
 }
 
 /* minimal error-state icon used by Mermaid diagnostics */
-.aicn-icon { color: var(--muted); }
-.cm-md-mermaid-loading { color: var(--muted); font-style: italic; }
+.aicn-icon {
+  color: var(--muted);
+}
+.cm-md-mermaid-loading {
+  color: var(--muted);
+  font-style: italic;
+}
 
 /* Diagrams span the whole editor pane. The shared core owns the inner
    two-dimensional viewport and exact transformed stage bounds. */
@@ -129,7 +237,9 @@ body.aic-main-note-surface { display: grid; grid-template-rows: minmax(0, 1fr) a
   margin-right: calc(50% - 50vw + 1rem);
   overflow: hidden;
 }
-.cm-md-mermaid-body { min-height: 6rem; }
+.cm-md-mermaid-body {
+  min-height: 6rem;
+}
 .cm-md-mermaid-editing > .cm-aic-mermaid-controls {
   box-sizing: border-box;
   width: 100%;
@@ -137,10 +247,18 @@ body.aic-main-note-surface { display: grid; grid-template-rows: minmax(0, 1fr) a
   padding: 0.12rem 0.2rem;
 }
 
-.cm-editor .cm-content .cm-md-table.cm-md-block-preview { padding: 0; }
-.cm-editor .cm-content .cm-md-code-preview.cm-md-block-preview { padding: 0; }
-.cm-editor .cm-content .cm-md-block-preview > table { margin: 0.35rem; }
-.cm-editor .cm-content .cm-md-mermaid.cm-md-block-preview { padding-top: 0; }
+.cm-editor .cm-content .cm-md-table.cm-md-block-preview {
+  padding: 0;
+}
+.cm-editor .cm-content .cm-md-code-preview.cm-md-block-preview {
+  padding: 0;
+}
+.cm-editor .cm-content .cm-md-block-preview > table {
+  margin: 0.35rem;
+}
+.cm-editor .cm-content .cm-md-mermaid.cm-md-block-preview {
+  padding-top: 0;
+}
 
 /* inline mermaid editing preview — the live diagram below a fence while its
    source is being edited; flat and compact, a hairline rule ties it to the
@@ -160,9 +278,19 @@ body.aic-main-note-surface { display: grid; grid-template-rows: minmax(0, 1fr) a
   border-radius: var(--radius);
   padding: 0.4rem 0.6rem;
 }
-.aicn-error-head { color: var(--warn); font-weight: 700; }
-.aicn-error-detail { color: var(--fg); white-space: pre-wrap; margin-top: 0.3rem; }
-.aicn-error-fix { color: var(--muted); margin-top: 0.2rem; }
+.aicn-error-head {
+  color: var(--warn);
+  font-weight: 700;
+}
+.aicn-error-detail {
+  color: var(--fg);
+  white-space: pre-wrap;
+  margin-top: 0.3rem;
+}
+.aicn-error-fix {
+  color: var(--muted);
+  margin-top: 0.2rem;
+}
 
 /* Secondary Side Bar chrome stays compact and uses the same controls/tokens
    as the Standard Notes AIC toolbar. The Markdown document remains the only
@@ -182,7 +310,7 @@ body.aic-secondary-surface {
   --border: var(--aic-border);
   box-sizing: border-box;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   width: calc(100% - 10px);
   height: calc(100vh - 10px);
   margin: 5px;
@@ -207,7 +335,7 @@ body.aic-secondary-surface {
 #secondary-footer {
   position: relative;
   z-index: 10;
-  grid-row: 2;
+  grid-row: 3;
   display: flex;
   align-items: center;
   gap: 0.18rem;
@@ -218,7 +346,9 @@ body.aic-secondary-surface {
   color: var(--aic-contrast-fg);
 }
 
-.aic-pane-footer-spacer { flex: 1 1 auto; }
+.aic-pane-footer-spacer {
+  flex: 1 1 auto;
+}
 
 #secondary-footer .aic-pane-icon {
   display: inline-grid;
@@ -242,8 +372,13 @@ body.aic-secondary-surface {
   outline: none;
 }
 
-#secondary-footer .aic-pane-icon:disabled { cursor: not-allowed; opacity: 0.42; }
-#secondary-footer .aic-pane-icon.danger { color: var(--aic-danger); }
+#secondary-footer .aic-pane-icon:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+#secondary-footer .aic-pane-icon.danger {
+  color: var(--aic-danger);
+}
 
 .aic-secondary-surface #editor {
   min-width: 0;
@@ -258,19 +393,31 @@ body.aic-secondary-surface {
   padding: 0.55rem 0.5rem 22vh;
 }
 
-.aic-secondary-surface .cm-editor { font-size: 0.875rem; }
-.aic-secondary-surface .cm-scroller { line-height: 1.42; }
+.aic-secondary-surface .cm-editor {
+  font-size: 0.875rem;
+}
+.aic-secondary-surface .cm-scroller {
+  line-height: 1.42;
+}
 .aic-secondary-surface[data-save-state="placeholder"] .cm-editor {
   background: color-mix(in srgb, var(--aic-bg) 93%, var(--aic-muted) 7%);
   box-shadow: inset 2px 0 color-mix(in srgb, var(--aic-muted) 48%, transparent);
 }
 
 /* AIC details: source remains Markdown; compact summary is the only collapsed surface. */
-.aic-secondary-surface .cm-editor .cm-content .cm-md-h1 { font-size: 1.45em; }
-.aic-secondary-surface .cm-editor .cm-content .cm-md-h2 { font-size: 1.25em; }
-.aic-secondary-surface .cm-editor .cm-content .cm-md-h3 { font-size: 1.12em; }
+.aic-secondary-surface .cm-editor .cm-content .cm-md-h1 {
+  font-size: 1.45em;
+}
+.aic-secondary-surface .cm-editor .cm-content .cm-md-h2 {
+  font-size: 1.25em;
+}
+.aic-secondary-surface .cm-editor .cm-content .cm-md-h3 {
+  font-size: 1.12em;
+}
 .aic-secondary-surface .cm-editor .cm-content .cm-md-table th,
-.aic-secondary-surface .cm-editor .cm-content .cm-md-table td { padding: 0.18rem 0.35rem; }
+.aic-secondary-surface .cm-editor .cm-content .cm-md-table td {
+  padding: 0.18rem 0.35rem;
+}
 
 .aic-pane-empty {
   grid-row: 1;
@@ -284,7 +431,10 @@ body.aic-secondary-surface {
   font-size: 0.875rem;
 }
 
-.aic-pane-empty strong { color: var(--aic-fg); }
+.aic-pane-empty strong {
+  color: var(--aic-fg);
+}
 
-.aic-secondary-surface #editor { grid-row: 1; }
-[hidden] { display: none !important; }
+[hidden] {
+  display: none !important;
+}

@@ -1,0 +1,879 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Releases and installation · AIC</title><link rel="canonical" href="https://aic.dzyha.com/releases"><link rel="alternate" hreflang="uk" href="https://aic.dzyha.com/releases/uk/"><link rel="stylesheet" href="/site.css"></head><body><div class="aic-site"><nav class="aic-site__nav" aria-label="AIC pages"><a href="/">AIC Notes</a>
+<a href="/terms">Terms and privacy</a>
+<a href="/releases" aria-current="page">Releases and installation</a>
+<a href="/how-to">How to</a><a href="/releases/uk/" hreflang="uk">Українська</a></nav><main class="aic-site__content"><h1 id="releases-and-installation">Releases and installation</h1>
+<p><a href="/releases/uk/">Українська</a> · <a href="/">Open AIC Notes</a> · <a href="/terms">Terms and privacy</a></p>
+<p>Use the PWA for local Markdown workspaces with optional encryption, the browser
+extension for encrypted page notes, or AIC Notes in VS Code. Protected file
+editors share the same <code>.aicnotes</code> data; synchronize exported files through a
+service you manage.</p>
+<h2 id="pwa-and-portable-files-4844-browser-0110">PWA and portable files — 48.4.4 / browser 0.11.0</h2>
+<p>This release pairs the installable Notes PWA at <a href="https://aic.dzyha.com/">aic.dzyha.com</a>
+with <a href="https://github.com/ldzyha/standard-notes-aic/releases/tag/v48.4.4">AIC for Standard Notes 48.4.4</a>,
+<a href="https://github.com/ldzyha/aic-notes/releases/tag/v56.4.4">AIC Notes 56.4.4</a>,
+experimental browser 0.11.0 and shared core 7.5.0.</p>
+<ul><li><p>From the start screen, choose <strong>New workspace</strong>, then <strong>New note</strong>, or
+  <strong>Open notes</strong> for files, a folder or an encrypted file. Changes autosave
+  locally; <strong>Save</strong> or Ctrl/Cmd+S retries a pending or failed save. They never
+  update the original folder or Drive.</p></li>
+<li><p>Opening a folder imports a snapshot. <strong>Export Markdown</strong> in the note menu and
+  <strong>Export all notes</strong> in workspace options write readable files explicitly.
+  <strong>Save encrypted copy</strong> makes a separate protected <code>.aicnotes</code> file.</p></li>
+<li><p><strong>Current</strong>, <strong>Shared</strong> and <strong>Global</strong> identify the active file, its nearest
+  parent note and its workspace/project note while retaining the initial current
+  file as the return anchor.</p></li>
+<li><p>A confirmed deletion of an existing file rejects a later save instead of
+  recreating that file. A deliberate new-note placeholder can still create one.</p></li>
+<li><p>Protected <code>.aicnotes</code> files open in the PWA, Chrome/Edge file-notes view and
+  VS Code. Their cache contains ciphertext; optional entity names do not determine
+  keys. Existing non-Markdown bundle files remain intact and are included in
+  folder export. Observed external changes block connected-file overwrites.</p></li>
+<li><p>The PWA caches its interface for offline use. Publisher workflows verify the
+  exact extension package and checksum before submitting it; store approval and
+  account configuration remain separate steps.</p></li>
+<li><p><strong>Grammar</strong> and <strong>Improve</strong> use Chrome&#39;s on-device AI, as in the Core
+  playground. Suggestions are reviewed before <strong>Apply</strong>, and applied edits can
+  be undone.</p></li></ul>
+<h3 id="install-the-pwa-and-use-it-offline">Install the PWA and use it offline</h3>
+<ol><li><p>Open <a href="/">AIC Notes</a> online over HTTPS. Allow the initial interface to finish
+   loading so its offline cache can install.</p></li>
+<li><p>In Chrome or Edge, use <strong>Install app</strong> in the browser menu or address bar. On
+   iPhone or iPad, use Safari&#39;s <strong>Share → Add to Home Screen</strong>. Installation labels
+   can vary by browser.</p></li>
+<li><p>From the start screen, choose <strong>New workspace</strong>, then <strong>New note</strong>, or choose
+   <strong>Open notes</strong> for files, a folder or an encrypted file. Changes autosave
+   locally; <strong>Save</strong> or Ctrl/Cmd+S retries a pending or failed save. Local saves
+   do not update the original folder or Drive.</p></li>
+<li><p>Use <strong>Export Markdown</strong> from the note menu or <strong>Export all notes</strong> from
+   workspace options for readable files. Use <strong>Save encrypted copy</strong> for a
+   protected <code>.aicnotes</code> file in your own sync folder.</p></li>
+<li><p>Reopen the installed app without a connection to edit local notes. Your
+   separate file-sync service needs a connection when transferring exported files.</p></li></ol>
+<p>When <strong>Install app update</strong> appears, AIC saves the current draft before applying
+the update. Keep exported backups: browser data can be cleared or evicted.
+Writable file and folder pickers are available in supported desktop browsers;
+other browsers use file selection and downloads. See <a href="/terms">data handling and
+limits</a>.</p>
+<h3 id="use-built-in-ai-offline">Use built-in AI offline</h3>
+<p>Open a text note and choose <strong>Grammar</strong> or <strong>Improve</strong>. Chrome may first need
+to download its on-device model; that browser-managed step needs a connection
+and compatible hardware. When the model is ready, AI can work offline. Review
+the suggestion and choose <strong>Apply</strong> to change the note; use Undo to revert it.
+AIC does not send the note to a remote AI service. AI availability depends on the
+browser API, device and supported language; ordinary editing remains available
+offline in other browsers. See <a href="https://developer.chrome.com/docs/ai/prompt-api">Chrome&#39;s current Prompt API requirements</a>.</p>
+<h2 id="coordinated-source-release-4844-5644-october-1-2026">Coordinated source release — 48.4.4 / 56.4.4 — October 1, 2026</h2>
+<p>This release pairs <a href="https://github.com/ldzyha/aic-notes/releases/tag/v56.4.4">AIC Notes for VS Code 56.4.4</a>,
+<a href="https://github.com/ldzyha/standard-notes-aic/releases/tag/v48.4.4">AIC for Standard Notes 48.4.4</a>
+and experimental Chrome/Edge 0.11.0 on core 7.5.0.</p>
+<ul><li><p>Focused <strong>Current</strong>, <strong>Shared</strong> and <strong>Global</strong> tabs follow file, parent-note
+  and workspace/project-note relationships without changing the current-file
+  anchor, save owner or native Undo.</p></li>
+<li><p>Folder browsing, the searchable Notes list and compact phone header make
+  local note navigation practical on small screens.</p></li>
+<li><p>Local <strong>Grammar</strong> and <strong>Improve</strong> remain optional Chrome capabilities; their
+  reviewed edits use normal editor Undo.</p></li>
+<li><p>A deletion guard prevents a late save from recreating a confirmed-deleted
+  existing file, while intentional new placeholders still create files.</p></li></ul>
+<h3 id="vs-code-and-code-server">VS Code and code-server</h3>
+<p>Use <a href="https://github.com/ldzyha/aic-notes/releases/tag/v56.4.4">AIC Notes 56.4.4 on GitHub</a>
+for its VSIX and neighboring <code>.sha256</code> file. The
+<a href="https://marketplace.visualstudio.com/items?itemName=ldzyha.aic-notes">VS Code Marketplace</a>
+is a separate channel; check its displayed version.</p>
+<p>For a downloaded VSIX, run <strong>Extensions: Install from VSIX…</strong> in the Command
+Palette, choose the file and reload the window. In code-server, use
+<code>code-server --install-extension ./aic-notes-VERSION.vsix --force</code> with the
+downloaded filename. code-server&#39;s Open VSX distribution is separate.</p>
+<p>Marketplace installations follow VS Code&#39;s automatic-update settings. A VSIX
+installation can enable <strong>Auto Update</strong> for AIC Notes to receive Marketplace
+updates.</p>
+<h3 id="standard-notes">Standard Notes</h3>
+<p>Open <strong>Preferences → Plugins → Install Custom Plugin</strong> and paste:</p>
+<pre><code>https://ldzyha.github.io/standard-notes-aic/ext.json</code></pre>
+<p>Select <strong>AIC</strong> in the note editor menu. Existing installations check the same
+manifest for updates; restart Standard Notes if a previous version remains
+visible. Downloadable ZIPs and checksums are on the
+<a href="https://github.com/ldzyha/standard-notes-aic/releases/tag/v48.4.4">AIC 48.4.4 release page</a>.</p>
+<h3 id="chrome-and-microsoft-edge-experimental">Chrome and Microsoft Edge — experimental</h3>
+<ol><li><p>Download the <code>aic-browser-chromium-0.11.0.zip</code> and neighboring <code>.sha256</code> file
+   from the <a href="https://github.com/ldzyha/standard-notes-aic/releases/tag/v48.4.4">AIC 48.4.4 release page</a>.</p></li>
+<li><p>Extract the ZIP into a permanent folder with <code>manifest.json</code> at its root.</p></li>
+<li><p>Open <code>chrome://extensions</code> or <code>edge://extensions</code>, enable <strong>Developer mode</strong>,
+   select <strong>Load unpacked</strong>, and choose the folder. Pin AIC and select its icon.</p></li></ol>
+<p>Wait for <strong>Note saved</strong> and export an encrypted backup before updating. Replace
+the files in the same folder and select <strong>Reload</strong> on the existing extension
+card. Removing the extension can delete its local notes. Store installations
+receive browser-managed updates after approval; unpacked installations require
+Reload. Chrome Web Store and Microsoft Edge Add-ons are separate store channels.
+The experimental page-notes package still requires
+<a href="https://github.com/ldzyha/standard-notes-aic/blob/main/browser/VERIFICATION.md">Chrome/Edge runtime verification</a>.</p>
+<h3 id="check-a-downloaded-package">Check a downloaded package</h3>
+<p>Each release archive or VSIX has a neighboring <code>.sha256</code> file. In the download
+directory, run <code>sha256sum -c FILE.sha256</code> on Linux; on macOS, compare
+<code>shasum -a 256 FILE</code> with the file&#39;s value. In Windows PowerShell, use
+<code>(Get-FileHash .\FILE -Algorithm SHA256).Hash</code>.</p>
+<h2 id="full-release-history">Full release history</h2>
+<p>The maintained bilingual changelogs preserve earlier changes:</p>
+<ul><li><p><a href="https://github.com/ldzyha/standard-notes-aic/blob/main/CHANGELOG.md">AIC editor and browser — English</a>
+  · <a href="https://github.com/ldzyha/standard-notes-aic/blob/main/CHANGELOG.uk.md">Українська</a></p></li>
+<li><p><a href="https://github.com/ldzyha/aic-notes/blob/main/CHANGELOG.md">AIC Notes for VS Code — English</a>
+  · <a href="https://github.com/ldzyha/aic-notes/blob/main/CHANGELOG.uk.md">Українська</a></p></li></ul>
+<h3 id="changelog">Changelog</h3>
+<p><a href="/releases">English</a> · <a href="/releases/uk/">Українська</a></p>
+<h4 id="4844-2026-10-01">48.4.4 — 2026-10-01</h4>
+<p>Release sequence 48 · 4 feature outcomes · 4 fixed-bug outcomes. Coordinates
+AIC Notes for VS Code 56.4.4, experimental browser 0.11.0 and shared core 7.5.0.</p>
+<h5 id="f01-portable-local-workspaces-with-optional-encryption">F01 — Portable local workspaces with optional encryption</h5>
+<ul><li><p>The PWA opens local Markdown workspaces and compatible <code>.aicnotes</code> files.
+  Device saves remain local; they never update the original folder or Drive.
+  Use <strong>Export Markdown</strong>, <strong>Export all notes</strong>, or <strong>Save encrypted copy</strong> to
+  make a file you manage elsewhere.</p></li>
+<li><p>The browser file-notes view and VS Code retain the same optional passphrase
+  boundary and ciphertext cache behavior.</p></li></ul>
+<h5 id="f02-focused-navigation-for-files-scopes-and-phones">F02 — Focused navigation for files, scopes and phones</h5>
+<ul><li><p><strong>Current</strong>, <strong>Shared</strong> and <strong>Global</strong> lead to the current file, its nearest
+  parent note and its workspace/project note. Each return keeps the original
+  current-file anchor and native editor ownership.</p></li>
+<li><p>Folder browsing, a searchable Notes list, a compact phone header and explicit
+  <strong>New workspace</strong>, <strong>New note</strong> and <strong>Open notes</strong> actions keep list and editor
+  navigation usable on a small screen. The live DDK writing method is linked in
+  the guide; AIC still stores Markdown and its richer syntax rather than DDK JSON.</p></li></ul>
+<h5 id="f03-optional-on-device-grammar-and-improve">F03 — Optional on-device Grammar and Improve</h5>
+<p>Chrome-supported devices can review local suggestions before <strong>Apply</strong>. Protected
+Markdown and regular editor Undo remain authoritative; ordinary offline editing
+works without the optional model.</p>
+<h5 id="f04-release-verification-is-ready-for-opt-in-publishing">F04 — Release verification is ready for opt-in publishing</h5>
+<p>The publishing workflow verifies the exact package and neighboring checksum.
+Repository credentials, GitHub publication, and store approval remain separate
+actions; this source release does not claim that any store has updated.</p>
+<h5 id="fixes">Fixes</h5>
+<ol><li><p>Markdown-folder limits count selected Markdown files rather than unrelated
+   folders, while retaining hierarchy and existing payload limits.</p></li>
+<li><p>Folder reads are bounded and cancellable, preserve the active editor and its
+   unsaved draft, and reject late results or partial imports.</p></li>
+<li><p>Redirect/cache recovery keeps bilingual public pages and offline app loading
+   working without clearing note storage.</p></li>
+<li><p>A confirmed deletion of an existing file rejects a later save instead of
+   recreating it; an intentional new-note placeholder can still create its file.</p></li></ol>
+<h5 id="earlier-unreleased-details">Earlier unreleased details</h5>
+<ul><li><p>Add mobile-first controls and built-in, on-device Grammar / Improve assistance, with protected Markdown, reviewed application and editor Undo.</p></li>
+<li><p>Serve bilingual terms, privacy, release history and installation at
+  <code>aic.dzyha.com/terms</code> and <code>aic.dzyha.com/releases</code>, including offline access.</p></li>
+<li><p>Fix public-page and app navigation after Firebase redirects precached HTML.
+  Repair earlier application caches while preserving note storage and explicit
+  update activation.</p></li>
+<li><p>Fix Markdown folder imports that rejected fewer than 2,000 notes because
+  unrelated folders consumed their quota. Count selected <code>.md</code> files and retain
+  hierarchy through note paths; reconstruct export folders under a separate
+  bound while keeping the existing payload and scan limits.</p></li>
+<li><p>Bound metadata and content I/O to four concurrent reads, check selected-file
+  sizes before byte reads, and yield during scanning/reading. Cancel opening
+  without partial imports or late progress; individual directory/file reads have
+  a 30-second deadline while the human picker remains under user control.</p></li>
+<li><p>Show folder scanning/reading progress with <strong>Cancel opening</strong>. Render the first
+  100 matching Markdown files with filename search and <strong>Show more</strong>, preserving
+  the active note and its unsaved draft while filtering or showing more.</p></li>
+<li><p>Reuse canonical validation for unchanged in-memory file data while continuing
+  metadata/descriptor checks and preserving payload and encryption formats.</p></li></ul>
+<h5 id="portable-file-notes-with-optional-encryption">Portable file notes with optional encryption</h5>
+<ul><li><p>Open local Markdown workspaces through <strong>New workspace</strong>, <strong>Open files</strong> or
+  <strong>Open folder</strong> without a password. <strong>Save</strong> stores an explicitly unencrypted
+  device snapshot; new imports and the file list use <code>.md</code> only and skip <code>.git</code>
+  and <code>node_modules</code> folders.</p></li>
+<li><p><strong>Encrypt workspace</strong> creates a separate protected copy. The unencrypted local
+  source remains until confirmed removal from the app. Browser page notes and
+  the VS Code encrypted-file host retain their passphrase boundary.</p></li>
+<li><p>Opening a folder imports a snapshot; saving locally does not write back to it.
+  Export readable files explicitly or share an encrypted <code>.aicnotes</code> through a
+  file-sync service you manage. Protected entities retain ciphertext caches,
+  byte-preserving bundles and observed external-change guards.</p></li>
+<li><p>Preserve existing non-Markdown bundle files even when hidden from navigation;
+  include them in full folder export. Detect stale cross-tab local saves and
+  removals while retaining prior durable data after a failed save.</p></li>
+<li><p>Checksum-verified browser/VS Code publishing and reviewed shared runtime update
+  PRs are available for the configured release process. Store listings remain
+  separate from the GitHub release.</p></li></ul>
+<h4 id="4710-2026-09-29">47.1.0 — 2026-09-29</h4>
+<p>Release sequence 47 · 1 feature outcome · 0 fixed-bug outcomes.
+Coordinated with Standard Notes AIC 47.1.0, AIC Notes 55.1.0,
+experimental browser 0.10.0 and shared core 7.4.0.</p>
+<h5 id="f01-portable-agent-instructions">F01 — Portable agent instructions</h5>
+<p>Bundle the same provider-neutral Markdown guide in every extension. No separate
+AIC executable or configuration folder is required. VS Code offers Copy Agent
+Instructions and explicit workspace setup; setup preserves owner files and no
+longer runs global rule synchronization. Browser and Standard Notes expose the
+guide locally. Documentation now uses direct statements for simple answers.</p>
+<h5 id="accompanying-browser-0100">Accompanying browser 0.10.0</h5>
+<ul><li><p>Pin a note while browsing; typing adds the active page once under Related links.</p></li>
+<li><p>Preserve the editor while switching tabs, keep failed drafts, and clear the pin
+  on Lock. Related links share the typing transaction and Undo.</p></li>
+<li><p>Use shared outline icons for page capture, file import and file export.</p></li></ul>
+<h4 id="4602-2026-09-24">46.0.2 — 2026-09-24</h4>
+<p>Release sequence 46 · 0 feature outcomes · 2 fixed-bug outcomes. This release
+pairs with AIC Notes 54.0.2, experimental browser 0.9.2 and shared core 7.3.2.</p>
+<h5 id="fixes-1">Fixes</h5>
+<ol><li><p>Keep linked-code comments inside their details accordion, with compact headers
+   and readable nested content.</p></li>
+<li><p>Keep the editor background unchanged for unsaved drafts. The Save button pulses
+   while changes need saving; reduced motion uses a static indicator. Only the
+   host&#39;s acknowledgement marks a draft saved, and failures retain its changes.</p></li></ol>
+<h4 id="4501-2026-09-24">45.0.1 — 2026-09-24</h4>
+<p>Release sequence 45 · 0 feature outcomes · 1 fixed-bug outcome. This release
+pairs with AIC Notes 53.0.1, experimental browser 0.9.1 and shared core 7.3.1.</p>
+<h5 id="fix">Fix</h5>
+<ul><li><p>Restored <strong>Generate password</strong> for every empty editable secret (<code>*|</code>) part
+  regardless of label and panel width. Options wrap within narrow panels;
+  generation remains local, and filled values/read-only notes cannot be overwritten.</p></li>
+<li><p>Icon-only copy targets use a temporary checkmark after success and retain an
+  accessible status announcement.</p></li>
+<li><p>Larger section headings, neutral group backgrounds and subtle alternating
+  gray rows make the credential hierarchy easier to scan.</p></li></ul>
+<h4 id="4410-2026-09-23">44.1.0 — 2026-09-23</h4>
+<p>Release sequence 44 · 1 feature outcome · 0 fixed-bug outcomes. This release
+pairs with AIC Notes 52.1.0, experimental browser 0.9.0 and shared editor core
+7.3.0.</p>
+<h5 id="feature">Feature</h5>
+<ul><li><p>Reworked AIC record reading and ordering: labels and values use natural width,
+  whole values wrap before text breaks, passwords use lock-only copy buttons,
+  and the trailing <code>+</code> stays with the final value. Subtle separators and 44 px
+  touch targets preserve readability in narrow panels.</p></li>
+<li><p>Leaving block source edit or whole-note source mode sorts rows naturally by
+  label within each section. Unlabelled rows stay stable at the end; sections,
+  typed-part order and exact values are preserved. Opening a preview, copying
+  and manual reordering do not sort the document.</p></li></ul>
+<h4 id="4310-2026-09-23">43.1.0 — 2026-09-23</h4>
+<p>Release sequence 43 · 1 feature outcome · 0 fixed-bug outcomes. This release
+pairs with AIC Notes 51.1.0, experimental browser 0.8.0 and shared editor core
+7.2.0.</p>
+<h5 id="feature-1">Feature</h5>
+<ul><li><p>Made dense credential records readable on mobile and narrow side panels.
+  Labels use only their bounded text width, protected values use a compact
+  lock-and-six-dot copy button, one trailing <code>+</code> menu continues the final value,
+  and a single subtle line separates records without alternating visual noise.</p></li></ul>
+<h4 id="4210-2026-09-23">42.1.0 — 2026-09-23</h4>
+<p>Release sequence 42 · 1 feature outcome · 0 fixed-bug outcomes. This release
+pairs with AIC Notes 50.1.0, experimental browser 0.7.0 and shared editor core
+7.1.0.</p>
+<h5 id="feature-2">Feature</h5>
+<ul><li><p>Added one shared scissors action to table, code-fence, Mermaid,
+  AIC/Properties and details previews. Cut writes the complete Markdown block
+  to the clipboard before removing its exact source range as one editor
+  operation; clipboard failure, stale source and read-only mode cannot delete
+  the block.</p></li></ul>
+<h4 id="4112-2026-09-23">41.1.2 — 2026-09-23</h4>
+<p>This patch pairs with AIC Notes 49.1.2, experimental browser 0.6.1 and shared
+editor core 7.0.0. Release and primary product documentation are available in
+English and Ukrainian; generated third-party notices retain their exact
+upstream wording.</p>
+<h5 id="documentation">Documentation</h5>
+<ul><li><p>Added Ukrainian product, browser, privacy, verification, architecture,
+  functional-index and changelog documents with direct language links.</p></li>
+<li><p>Made the unified install/release document and store-submission guide fully
+  bilingual, and included localized documents in release packages.</p></li></ul>
+<h4 id="4111-2026-09-22">41.1.1 — 2026-09-22</h4>
+<p>Release sequence 41 · 1 feature outcome · 1 fixed-bug outcome. Shared editor
+core moves to 7.0.0 because the visual diagram builder API is removed; AIC Notes
+49.1.1 mirrors it, and experimental browser 0.6.0 is packaged with this release.</p>
+<h5 id="feature-3">Feature</h5>
+<ol><li><p>Mermaid uses direct Markdown source editing with a live preview. Copy and one
+   consistent Edit icon appear in the preview; zoom and scrolling affect only
+   the preview. The palette, drag-and-drop, visual builder and rotation control
+   are removed in Standard Notes, the browser and VS Code.</p></li></ol>
+<h5 id="fix-1">Fix</h5>
+<ol><li><p>Flowchart editing no longer depends on Mermaid&#39;s internal SVG node and edge
+   identifiers. The last rendered diagram stays visible during an update, and
+   rapid source changes use the newest render result.</p></li></ol>
+<h4 id="4001-2026-09-22">40.0.1 — 2026-09-22</h4>
+<p>Release sequence 40 · 0 feature outcomes · 1 fixed-bug outcome. Shared editor
+core moves to 6.2.2; AIC Notes 48.0.1 mirrors it, and experimental browser
+0.5.2 is packaged with this release.</p>
+<h5 id="fix-2">Fix</h5>
+<ol><li><p>Quotes and italic text use smaller type. Information (<code>&gt;</code>), warning (<code>!&gt;</code>)
+   and error (<code>!&gt;&gt;</code>) quotes have distinct subtle backgrounds and side rules;
+   neighboring Markdown blocks have larger measured gaps. <code>&gt;&gt;&gt; … &lt;&lt;&lt;</code>
+   remains the details syntax. An unfinished fenced code block stays editable,
+   and a completed block does not turn into a preview while its caret is on
+   either fence delimiter.</p></li></ol>
+<h4 id="3901-2026-09-22">39.0.1 — 2026-09-22</h4>
+<p>Release sequence 39 · 0 feature outcomes · 1 fixed-bug outcome. Shared editor
+core moves to 6.2.1; AIC Notes 47.0.1 uses the same layout, and experimental
+browser 0.5.1 is packaged with this release.</p>
+<h5 id="fix-3">Fix</h5>
+<ol><li><p>Markdown headings, quotes and lists have readable separation, including
+   when authored without blank lines. Thematic breaks appear as short centered
+   50–100 px lines with vertical space. Revealing the raw <code>---</code> under the caret
+   keeps the same measured line height and leaves the Markdown unchanged.</p></li></ol>
+<h4 id="3811-2026-09-22">38.1.1 — 2026-09-22</h4>
+<p>Release sequence 38 · 1 feature outcome · 1 fixed-bug outcome. Shared editor core
+moves to 6.2.0; AIC Notes 46.1.1 uses the same core. Browser 0.5.0 is included as
+an experimental Chrome/Edge package. Store submissions remain separate.</p>
+<h5 id="feature-4">Feature</h5>
+<ol><li><p>New AIC blocks start with an unlabeled text row for an email or username.
+   The confusing Account row preset is removed; Password and TOTP remain separate,
+   optional fields. Existing authored notes are not rewritten.</p></li></ol>
+<h5 id="fix-4">Fix</h5>
+<ol><li><p>Narrow panels keep each field label and its value parts together as the whole
+   row wraps into readable columns. The browser panel and toolbar can shrink
+   without a minimum-width horizontal scroller. Password generation controls are
+   hidden at viewport widths of 600 px or less, while saved secrets and their
+   independent copy controls remain available.</p></li></ol>
+<h4 id="3720-2026-09-15">37.2.0 — 2026-09-15</h4>
+<p>Release sequence 37 · 2 feature outcomes · 0 fixed-bug outcomes. Shared editor core
+moves to 6.1.0 with additive section copying. Release source target; GitHub
+publication, hosted-manifest deployment and packaged-runtime acceptance require
+separate verification. No PWA crash fix is claimed.</p>
+<h5 id="features">Features</h5>
+<ol><li><p>Browser 0.4.0 adds Global Shared in encrypted library v3: one explicit global
+   record in the current browser profile&#39;s vault, above Domain Shared and available
+   without an active web page. It uses independent draft/revision checks. Reading
+   v1/v2 preserves all content; the next write emits v3, which older builds cannot
+   read. Backup merge preserves an existing Global record and reports the skipped
+   imported record, leaving the original encrypted backup intact.</p></li>
+<li><p>Each AIC section has a Copy section action through the shared serializer and
+   clipboard owner. The result is a standalone fenced <code>aic</code> block with only that
+   section, including masked and filter-hidden values. Logical labels, value text
+   and typed parts are preserved; source whitespace/quoting may be normalized.
+   The card title and sibling sections are excluded. Read-only views can copy;
+   stale controls are guarded and source/save state do not change. Unnamed empty
+   sections remain layoutless without a redundant copy action.</p></li></ol>
+<p>Compatibility: AIC Notes 45.1.0 receives section copying through shared core 6.1.0.
+Browser Global Shared does not add VS Code global storage, generated-key exchange,
+<code>global.aic</code> encryption, account connections or synchronization. The browser remains
+experimental; store publication and authenticated Standard Notes PWA behavior are
+separate acceptance boundaries.</p>
+<h4 id="3601-2026-09-15">36.0.1 — 2026-09-15</h4>
+<p>Release sequence 36 · 0 feature outcomes · 1 fixed-bug outcome. AIC Editor Core
+remains 6.0.0 and AIC Notes remains 44.4.7. Release source target; GitHub
+publication and hosted-manifest deployment require separate verification.</p>
+<h5 id="fix-5">Fix</h5>
+<ol><li><p>Standard Notes now uses the same single always-compact editor toolbar as the
+   browser: direct strike, link, bullet-list, ordered-list and task-list actions,
+   plus source mode and the bundled local guide. The retired full-toolbar path and
+   its Style/Insert selectors and Bold/Italic/Inline-code buttons are no longer
+   mounted; those operations remain available through keyboard shortcuts,
+   authored Markdown and slash commands. The toolbar wraps instead of introducing
+   horizontal scrolling, and coarse-pointer actions retain 44 px targets.</p></li></ol>
+<p>Compatibility: Browser 0.3.1 includes the shared host-toolbar and CSS bundle
+change. The encrypted-library format is unchanged. This release does not change
+AIC Editor Core 6.0.0 or AIC Notes 44.4.7. Browser and Standard Notes packaged
+runtime acceptance, GitHub publication, hosted-manifest deployment and store
+publication remain separate verified actions.</p>
+<h4 id="3539-2026-09-15">35.3.9 — 2026-09-15</h4>
+<p>Release sequence 35 · 3 feature outcomes · 9 fixed-bug outcomes. The shared editor
+core moves to 6.0.0 with one breaking AIC field grammar. Release
+source target; GitHub publication and hosted-manifest deployment require separate
+verification.</p>
+<h5 id="features-1">Features</h5>
+<ol><li><p>One complete fenced <code>aic</code> document replaces active colon-field and YAML
+   Properties interpretation. Existing unsupported text remains raw and accessible;
+   no automatic migration or save-time metadata stamping runs.</p></li>
+<li><p>A shared local <code>?</code> guide explains editing, copying, typed values and narrow host
+   differences. Standard Notes mounts it only in the full toolbar; compact browser
+   and VS Code surfaces reuse its content through host-owned popovers.</p></li>
+<li><p>Pipe separators type the following value independently: <code>|</code>, <code>*|</code>, <code>#|</code>, <code>_|</code>,
+   <code>1|</code>, and <code>0|</code> represent text, secret, TOTP, card, unused one-time and used
+   one-time values. Field, Row and Section insertion targets the current row, below
+   it, and after the current section; presets are combinations of these values.</p></li></ol>
+<h5 id="fixes-2">Fixes</h5>
+<ol><li><p>Card and other composite field labels/values align with adjacent simple rows in
+   AIC field previews, using the same grid and label typography. Cards omit
+   the extra label colon; masked parts and independent copy targets are unchanged.</p></li>
+<li><p>Contextual <strong>Field</strong>, <strong>Row</strong>, and <strong>Section</strong> actions follow the relevant row;
+   an empty section keeps <strong>Row</strong> and <strong>Section</strong> inline. No separate New-block or
+   Section footer consumes permanent space.</p></li>
+<li><p>Browser navigation uses bounded, readable display labels instead of exposing a
+   page&#39;s full query or fragment in the visible history title. This is a display-only
+   projection: exact stored source URLs, navigation targets and note identities are
+   preserved.</p></li>
+<li><p>Plain Markdown previews derive link labels through the parser-backed link records
+   instead of a parenthesis-fragile regular expression, so nested-path/query suffixes
+   are not appended to the visible label. Authored Markdown and link targets remain
+   unchanged.</p></li>
+<li><p>The compact browser editor exposes five direct formatting icons—strike, link,
+   bullet list, ordered list and task—without a Format popover or Style/Insert
+   selectors. Standard Notes retains its full formatting controls and adds the
+   shared local <code>?</code> guide.</p></li>
+<li><p>Shared field-add menus use compact, left-aligned options instead of oversized
+   centered rows. Their actions, viewport bounds and keyboard behavior are unchanged.</p></li>
+<li><p>Browser import/export actions are direct and unambiguous: one content-import icon
+   captures the current selection when present and otherwise the visible page, while
+   separate up/down Markdown icons import and download files. Native paste replaces
+   the redundant general clipboard-import button, duplicate Copy actions are removed, and More is
+   limited to note/history deletion plus clearly grouped encrypted backups.</p></li>
+<li><p>The shared card filter sits inside the card header between its title and actions,
+   retaining compact left alignment on narrow Standard Notes and VS Code surfaces.</p></li>
+<li><p>Capacity feedback stays with the relevant Add action and uses fixed bounded
+   guidance without exposing field contents. Preflight uses normalized serialized
+   length, so compact source cannot enable an insertion that serialization rejects;
+   existing over-limit source remains previewable for manual repair.</p></li></ol>
+<p>Compatibility: AIC Notes 44.4.7 consumes core 6.0.0. Browser 0.3.0 receives the
+same grammar and presentation changes without changing the encrypted-library format.
+Unsupported authored text remains exact; masking and local-only host boundaries are unchanged.
+This release does not include the separately proposed global Shared/encryption work.
+GitHub, hosted-manifest and store publication remain separate verified actions.</p>
+<h4 id="3431-2026-09-15">34.3.1 — 2026-09-15</h4>
+<p>Release sequence 34 · 3 feature outcomes · 1 fixed-bug outcome. The shared editor
+core moves to 5.3.0 with additive UI component exports. Release source target;
+GitHub publication and hosted-manifest deployment require separate verification.</p>
+<h5 id="features-2">Features</h5>
+<ol><li><p>The experimental Chrome/Edge sidebar 0.2.0 uses one compact contextual surface:
+   formatting and an empty shared-Properties action stay in the Format toolbar,
+   while existing domain data remains a distinct masked section. It does not add
+   ornamental empty-state panels or duplicate the active page identity.</p></li>
+<li><p>A compact metadata-only chain links saved ancestor pages above the current note.
+   It accepts only exact-origin, path-segment ancestors, never sibling notes or
+   ancestor Markdown/secrets, and uses the existing guarded source navigation.</p></li>
+<li><p>Local page notes can be deleted from their menu or navigation tree after
+   confirmation and revision checks. Deletion removes only the matching note and
+   AIC history entry, preserves other notes and domain-shared Properties, and resets
+   an active page to an unsaved placeholder. Tree/history projections do not render
+   the saved note twice.</p></li></ol>
+<h5 id="fix-6">Fix</h5>
+<ol><li><p>Card fields use the same compact inline row as other composite fields: optional
+   label, masked last four digits, expiry and masked CVV. Each part retains its own
+   copy feedback; empty-part Paste, empty-field deletion and reordering remain.</p></li></ol>
+<p>Compatibility: AIC Notes 43.0.1 consumes core 5.3.0. Existing authored note syntax
+and browser encrypted-library formats are unchanged; masking is not encryption.
+Browser 0.2.0 remains experimental, and its packaged-runtime evidence and open gates
+are recorded separately in browser/VERIFICATION.md. The shared BEM/component layer
+is additive and partially adopted; retained legacy selectors are not claimed removed.
+No browser-store or VS Code Marketplace publication is implied.</p>
+<h4 id="3324-2026-09-14">33.2.4 — 2026-09-14</h4>
+<p>Release sequence 33 · 2 feature outcomes · 4 fixed-bug outcomes. The shared editor
+core moves to 5.2.0 with an additive read-only preview option. Release source target;
+GitHub publication and hosted-manifest deployment require separate verification.</p>
+<h5 id="features-3">Features</h5>
+<ol><li><p>The experimental browser component 0.1.4 for Chrome and Edge adds a compact, local encrypted page notebook using the canonical AIC editor. It supports explicit read-only page/selection imports, clipboard and Markdown import/export, encrypted backups, and immediate memory-only placeholders. It has no account, synchronization, autofill, or outgoing runtime connections. One Chromium ZIP accompanies this release; no browser-store submission is included.</p></li>
+<li><p>Separate exact-origin Properties records provide shared, masked domain information on child pages without duplicating fields into each note. Page/domain drafts use one acknowledged-save coordinator; compact domain/title navigation omits redundant single-child URL paths.</p></li></ol>
+<h5 id="fixes-3">Fixes</h5>
+<ol><li><p>Generic pipe fields render label, value and description in one compact row with independent copy actions and local overflow. Shared Security parsing avoids repeated full-tree scans per block during edits.</p></li>
+<li><p>Properties/Security Add menus stay within the visible viewport, choose space above or below their button, scroll internally, and release their positioning listeners on disposal.</p></li>
+<li><p>CodeMirror&#39;s drawn caret and drop cursor use a visible 2 px, theme-aware stroke, including reduced-motion and forced-color handling.</p></li>
+<li><p>Standard Notes transport cleanup releases the adapter&#39;s completed, failed and timed-out save messages instead of retaining full note snapshots. Persistent context streams and other callers remain intact. Bounded real-transport and editing-memory checks cover this defect; unrelated Standard Notes API failures and all possible PWA crashes are not claimed fixed.</p></li></ol>
+<p>Compatibility: AIC Notes 42.0.3 consumes core 5.2.0. Existing authored note syntax is
+unchanged; Markdown masking is not encryption. Browser 0.1.4 is experimental, with
+Edge packaged smoke evidence and remaining Chrome installed-runtime, clipboard,
+site-permission and cross-panel Lock gates recorded in browser/VERIFICATION.md.
+Use synthetic browser data until those gates are resolved. The marketplace HOWTO
+describes future manual submissions, not completed publications.</p>
+<h4 id="3211-2026-09-14">32.1.1 — 2026-09-14</h4>
+<p>Release sequence 32 · 1 feature outcome · 1 fixed-bug outcome. Release source target;
+publication and hosted-manifest deployment require separate verification. The shared
+editor core moves to 5.1.0.</p>
+<h5 id="feature-5">Feature</h5>
+<ol><li><p>All three Security value slots, and custom Properties slots behind <code># aic-fields: v2</code>, accept optional JSON-style double-quoted strings. Quoted pipes (including <code>|</code>), quotes, backslashes and control escapes retain their logical values. Serialization quotes values containing a pipe or quote, including pasted and imported values; ordinary values need no quotes. YAML outer quoting remains a separate storage layer: <code>Password*: &#39;&quot;a | b&quot; | &quot;description&quot;&#39;</code> preserves the inner slot quotes. Labels and titles have no quote syntax.</p></li></ol>
+<h5 id="fix-7">Fix</h5>
+<ol><li><p>Only the exact spaced <code>|</code> outside quotes separates slots. Bare or one-sided pipes remain literal data, while existing <code>\|</code> outside quotes still parses. Invalid quotes, escapes or trailing text receive generic, non-secret errors; Security errors identify exact source positions.</p></li></ol>
+<p>Compatibility: AIC Notes 41.1.1 mirrors AIC Editor Core 5.1.0. Existing authored values are not automatically rewritten. Masking is visual, not encryption; this release adds no authentication or note synchronization. Publication requires separate verification.</p>
+<h4 id="3156-2026-09-13">31.5.6 — 2026-09-13</h4>
+<p>Release sequence 31 · 5 feature outcomes · 6 fixed-bug outcomes. Release source target;
+publication and hosted-manifest deployment require separate verification. The shared
+editor core moves to 5.0.0 because the Security fence grammar changes to one format.</p>
+<h5 id="features-4">Features</h5>
+<ol><li><p>One unversioned <code>aic</code> fence replaces the versioned Security fence variants for new content. Security sections use the single grammar with optional labels; authored legacy blocks require review when moving to the new format rather than an assumed automatic migration.</p></li>
+<li><p>Compact payment-card rows show only the last four number digits, expiry and masked CVV while preserving independent copying and source Edit.</p></li>
+<li><p>Security fields can be dragged across sections as well as reordered within a section; moves retain exact authored source outside the changed fields.</p></li>
+<li><p>Properties presents managed metadata, the related-note tree and custom fields in the compact shared Security surface, while managed values and navigation stay read-only.</p></li>
+<li><p>Labelled Add controls expose capacity and explain why an action is disabled at a limit instead of leaving an unexplained inactive control.</p></li></ol>
+<h5 id="fixes-4">Fixes</h5>
+<ol><li><p>Escape handling is consistent across source, preview and Mermaid fence boundaries.</p></li>
+<li><p>Target feedback is transient and guarded against stale document or widget state.</p></li>
+<li><p>Field labels and values copy independently, without substituting one for the other.</p></li>
+<li><p>Filtering does not expose a masked card number (PAN).</p></li>
+<li><p>Label and drag controls remain legible and usable across narrow layouts and dark/light themes.</p></li>
+<li><p>Preview filtering and rendering avoid repeated work for unchanged content.</p></li></ol>
+<p>Compatibility: AIC Notes 40.6.6 mirrors AIC Editor Core 5.0.0. This release changes the Security fence grammar; it does not add Standard Notes authentication or note synchronization. Masking is visual, not Markdown encryption; raw source, exports and copied values can contain plaintext.</p>
+<h4 id="3033-2026-09-13">30.3.3 — 2026-09-13</h4>
+<p>Release sequence 30 · 3 feature outcomes · 3 fixed-bug outcomes. Release source target;
+publication and hosted-manifest deployment require separate verification.</p>
+<h5 id="features-5">Features</h5>
+<ol><li><p><code>aic-security v3</code> adds standalone <code>---</code> section boundaries and optional <code>##</code> section headings. New templates use v3; existing unversioned/v2 blocks retain their grammar and are not migrated.</p></li>
+<li><p>Authenticator JSON conversion preserves ordered records and exact string values in grouped v3 blocks, spilling at canonical capacity and splitting oversized accounts only at field boundaries. Invalid input still rejects atomically without partial conversion.</p></li>
+<li><p>Security previews show section, field and text capacity. Add controls that would exceed a limit are disabled, while New block remains available; conversion guidance suggests separate blocks by purpose, such as services, banks, web and social networks.</p></li></ol>
+<h5 id="fixes-5">Fixes</h5>
+<ol><li><p>Security and Properties errors provide safe, precise source line/column diagnostics and Edit navigation without exposing credentials or raw parser messages.</p></li>
+<li><p>New block closes an EOF-terminated previous fence before inserting an independent Security block.</p></li>
+<li><p>Whole-card reordering preserves exact authored source and supports versioned v2/v3 fences without rewriting fields or unrelated Markdown.</p></li></ol>
+<p>Compatibility: AIC Notes 39.3.3 mirrors AIC Editor Core 4.3.0. No authentication or note-synchronization change. Masking is visual, not Markdown encryption; raw source, exports and copied values can contain plaintext.</p>
+<h4 id="2943-2026-09-13">29.4.3 — 2026-09-13</h4>
+<p>Release sequence 29 · 4 feature outcomes · 3 fixed-bug outcomes. Release source target;
+publication and hosted-manifest deployment require separate verification.</p>
+<h5 id="features-6">Features</h5>
+<ol><li><p>Compact, searchable Security and Properties groups provide group menus, one <strong>+</strong> disclosure and independent <code>#</code> Security card titles. Search matches names and visible values, never hidden values, recovery codes or generated one-time codes.</p></li>
+<li><p>Safe drag/drop and Alt+Up/Down handles reorder Security fields, sections and standalone cards, and supported sibling Properties fields/groups. Filtered lists, managed metadata, sequence items and unsupported layouts cannot be reordered; host-managed saves remain undoable.</p></li>
+<li><p>A temporary whole-editor <strong>Show Markdown source / Show preview</strong> toggle exposes the current note&#39;s raw Markdown in place without entering a native editor, persisting mode, changing source, saving or resetting Undo.</p></li>
+<li><p>Opt-in versioned pipe fields use <code>aic-security v2</code> and the first-body-line Properties YAML comment <code># aic-fields: v2</code>. <code>*</code> masks a value, <code>#</code> identifies a TOTP seed, and <code>_</code> identifies a card with separately copyable PAN/date/CVV. The third slot is hidden; Paste targets only empty parts and populated parts require source Edit. New Security templates and newly converted Authenticator records use v2. Existing unversioned blocks/headers retain literal pipes and legacy <code>#</code>/<code>_</code> labels; activating an existing header requires an explicit marker and review/escaping, not automatic migration. Managed <code>file</code>/<code>created</code>/<code>updated</code> stay read-only.</p></li></ol>
+<h5 id="fixes-6">Fixes</h5>
+<ol><li><p>Retire stale code-preview callbacks after source or note changes so detached controls cannot mutate a replacement document.</p></li>
+<li><p>Preserve Mermaid visual drafts and focus across the temporary source toggle; reject Apply when the underlying source has changed.</p></li>
+<li><p>Improve coarse mobile contrast, menu placement and multi-part field layout so controls remain readable without overflow.</p></li></ol>
+<p>Compatibility: AIC Notes 38.4.3 mirrors AIC Editor Core 4.2.0. No authentication or note-synchronization change. Masking is visual, not Markdown encryption; raw source, exports and copied values can contain plaintext.</p>
+<h4 id="2814-2026-09-13">28.1.4 — 2026-09-13</h4>
+<p>Release sequence 28 · 1 feature outcome · 4 fixed-bug outcomes.</p>
+<h5 id="feature-6">Feature</h5>
+<ol><li><p>Properties frontmatter now uses the shared Security-card renderer: copy-only managed metadata, root and nested custom YAML fields, explicit <code>*</code> masking, empty-field actions and source-only editing of filled values. The paired VS Code host places its read-only related-note tree after metadata; no relationship is written into YAML.</p></li></ol>
+<h5 id="fixes-7">Fixes</h5>
+<ol><li><p>Keep nested, quoted and multiline YAML values and their ownership intact during targeted field actions; preserve authored comments, ordering and unrelated Markdown rather than rewriting the whole header.</p></li>
+<li><p>Preserve exact numeric scalars and the original <code>created</code> value type while managed note metadata is stamped. Display formatting never substitutes for the authored value copied from the property.</p></li>
+<li><p>Preserve the unchanged Security block DOM and live actions during Properties cursor/selection changes; detached widget callbacks remain retired.</p></li>
+<li><p>Redact starred Properties from unfinished or truncated plain-text note excerpts, including nested secrets, without claiming to encrypt raw Markdown or exports.</p></li></ol>
+<p>Compatibility: AIC Notes 37.1.4 mirrors AIC Editor Core 4.1.0. No new runtime dependency, note synchronization or authentication change. The 27.4.4 security recovery, title and save-boundary features remain available; they are not new outcomes in this release. Publication and host deployment require separate verification.</p>
+<h4 id="2744-2026-09-12">27.4.4 — 2026-09-12</h4>
+<p>Release sequence 27 · 4 feature outcomes · 4 fixed-bug outcomes.</p>
+<h5 id="features-7">Features</h5>
+<ol><li><p>Hidden recovery-code batches: paste one code per line, copy each code independently, and retain reversible Used flags without deleting values. Whole-block Copy preserves the complete batch and flags.</p></li>
+<li><p>Delete genuinely empty security fields in preview; populated and whitespace-only fields cannot be removed by this action.</p></li>
+<li><p>Optional security titles occupy the existing card header instead of a duplicate row; a bare <code>##</code> section marker keeps the default Security title.</p></li>
+<li><p>Shared Save/Ctrl+S/leave-editor boundaries and immediate security preview saves, owned by the host managers. No per-keystroke autosave; queued requests stay bound to their original note, with acknowledged status and failed-save retry.</p></li></ol>
+<h5 id="fixes-8">Fixes</h5>
+<ol><li><p>Restore working Copy/Paste after conversion, scrolling and CodeMirror viewport remounts. Each live DOM has its own lifetime; detached controls, clipboard completions and TOTP timers stay retired.</p></li>
+<li><p>Remove Paste from filled fields instead of leaving a misleading disabled icon; failed/empty clipboard reads remain non-destructive.</p></li>
+<li><p>Improve light/dark text, controls, cards and status contrast using paired editor-theme colours. Mermaid theme detection follows editor-specific theme overrides too.</p></li>
+<li><p>Remove the retired File Context sphere from shared distribution and the paired extension, including its UI, commands, setting and background analysis. Markdown diagrams and parent-note relationships are unaffected.</p></li></ol>
+<p>Compatibility: AIC Notes 36.4.4 mirrors AIC Editor Core 4.0.0. The core major removes the experimental sphere exports. No new runtime dependency, AIC note synchronization or authentication change. Masking is not encryption; raw Markdown and copied blocks remain plaintext. Host save acknowledgement does not certify cloud synchronization or survival of a forced app termination before acknowledgement.</p>
+<h4 id="2601-2026-09-12">26.0.1 — 2026-09-12</h4>
+<p>Release sequence 26 · 0 feature outcomes · 1 fixed-bug outcome.</p>
+<h5 id="fix-8">Fix</h5>
+<ol><li><p>Persist Authenticator conversion from the explicit Convert and save action, including on mobile. Previously it changed only the draft and reopening could show the original JSON. The normal host save manager now sends converted Markdown immediately, shows success only after acknowledgement, and keeps failed drafts available for retry. A compact toolbar Save action remains available for dirty drafts restored after switching notes. Input/blur autosave remains disabled; raw values, masking and atomic conversion are unchanged.</p></li></ol>
+<p>Compatibility: AIC Notes 35.0.1 mirrors AIC Editor Core 3.7.1. The Standard Notes adapter supplies acknowledged persistence; VS Code retains explicit Ctrl/Cmd+S saving. No authentication, synchronization or sphere changes.</p>
+<h4 id="2510-2026-09-12">25.1.0 — 2026-09-12</h4>
+<p>Release sequence 25 · 1 feature outcome · 0 fixed-bug outcomes.</p>
+<h5 id="feature-7">Feature</h5>
+<ol><li><p>Add a shared, explicit Authenticator JSON converter: one record becomes one security block, with exact-value preservation, hidden TOTP/password fields, bounded all-or-nothing validation and one-step Undo. The contextual action works on the current array or selection without clipboard access, account scanning or automatic saving. Duplicate keys, unrepresentable fields and unsafe nested Markdown contexts reject conversion without partial edits.</p></li></ol>
+<p>Compatibility: AIC Notes 34.1.0 shares AIC Editor Core 3.7.0 with the same converter and contextual controls. Authentication, synchronization, clipboard actions and the file-context sphere are unchanged. Markdown remains plaintext outside host encryption.</p>
+<h4 id="2401-2026-09-12">24.0.1 — 2026-09-12</h4>
+<p>Release sequence 24 · 0 feature outcomes · 1 fixed-bug outcome.</p>
+<h5 id="fix-9">Fix</h5>
+<ol><li><p>Paste is now strictly empty-field-only for every security field. Filled fields keep a disabled Paste icon and can only be copied or changed through full-block Markdown Edit; there is no Replace action. Paste reads the latest clipboard value directly without an AIC picker, intermediate input or visible reading panel. Only clipboard denial/unavailability/timeout offers inline masked paste-only capture. Empty input, stale completion or a field filled in the meantime cannot overwrite a value. The browser may still require its own clipboard permission; no history storage or platform-specific helper is introduced.</p></li></ol>
+<p>Compatibility: AIC Notes 33.0.1 shares AIC Editor Core 3.6.1. Password generation, field Copy and explicit Ctrl/Cmd+S saving are unchanged. Raw Markdown and clipboard values remain plaintext.</p>
+<h4 id="2321-2026-09-12">23.2.1 — 2026-09-12</h4>
+<p>Release sequence 23 · 2 feature outcomes · 1 fixed-bug outcome.</p>
+<h5 id="features-8">Features</h5>
+<ol><li><p>Security fields: tap/click a label or value to copy only its value with local success feedback. The field icon pastes from the clipboard without revealing hidden values. Filled-field replacement requires confirmation; empty clipboard data cannot erase a field. Browser denial or a three-second timeout offers paste-only capture. Late results are rejected after cancellation, document changes, source Edit or disposal. All changes remain drafts until Ctrl/Cmd+S; whole-block Copy remains available.</p></li>
+<li><p>Empty hidden password fields offer a configurable WebCrypto-only generator: default 24 characters, uppercase/lowercase/digits/symbols; length 8–128. Every enabled class is included with unbiased sampling and no weak fallback. It never overwrites a filled field or generates TOTP/API keys. Clear the value through Markdown Edit before generating again.</p></li></ol>
+<h5 id="fix-10">Fix</h5>
+<ol><li><p>Security controls use explicit theme foreground/background colors and 44px coarse-pointer targets. Field label/value activation and keyboard navigation are distinct: Tab navigates, Enter/Space activates, and secrets never appear in feedback.</p></li></ol>
+<p>Compatibility: AIC Notes 32.2.1 consumes the same explicit AIC Editor Core 3.6.0 inventory. No new dependencies, account migration, note synchronization or native Authenticator conversion. Markdown masking is not encryption; source, files, exports and clipboard remain plaintext. Physical mobile client clipboard permissions still depend on the embedding app.</p>
+<h4 id="2218-2026-09-12">22.1.8 — 2026-09-12</h4>
+<p>Release sequence 22 · 1 feature outcome · 8 fixed-bug outcomes.</p>
+<ul><li><p>F01: shared <code>/security</code> blocks use independent sections and <code>Label*: value</code> masking.
+  Preview supports explicit field/block Copy, safe URL Open, source Edit, section/field
+  insertion and New block. TOTP derives current codes locally; legacy YAML stays readable.
+  Masking is not encryption: Markdown, exports and copied blocks contain plaintext secrets.</p></li>
+<li><p>B01: invalidate null host contexts, preserve omitted same-note metadata, block unknown-note
+  text from accidental replacement and clear stale HTML previews on explicit save.</p></li>
+<li><p>B02: retain dirty or pending drafts across delayed acknowledgements; prune only inactive,
+  clean, acknowledged sessions. A save ACK is host acceptance, not a cloud-sync guarantee.</p></li>
+<li><p>B03: centralize task controls, fence languages and details parsing; preserve nested-control
+  selection and reject detached controls instead of stealing focus or editing another note.</p></li>
+<li><p>B04: reject duplicate property names and unrelated drag data; preserve extra authored cells
+  when editing ragged tables, and retire stale table/popover actions.</p></li>
+<li><p>B05: preserve ordinary Markdown frontmatter byte-for-byte. Only <code>.note.md</code> receives managed
+  file/created/updated properties; ambiguous legacy metadata is not deleted automatically.</p></li>
+<li><p>B06: bound and cancel pending Mermaid work, retain the active engine mutex until completion,
+  retire widget timers and prevent overlapping TOTP updates or detached-widget writes.</p></li>
+<li><p>B07: lock Mermaid resource-sensitive configuration against note directives, test the actual
+  renderer, and enforce the visual-model element limit even on the final source line.</p></li>
+<li><p>B08: normalize text checkout line endings across Windows and Linux so the same formatting
+  and release checks apply on both platforms. The blocked <code>v22.1.7</code> tag was not published as a
+  release and is retained unchanged for traceability.</p></li></ul>
+<p>Compatibility: AIC Notes 31.3.8 consumes the same explicit AIC Editor Core 3.5.0 inventory.
+The sphere renderer is shared, but workspace graph collection is VS Code-only. No note
+synchronization transport, QR import UI or encrypted Markdown storage is introduced.
+See FUNCTIONAL_INDEX.md for feature owners, contracts and verification limits.</p>
+<h4 id="2135-2026-09-11">21.3.5 — 2026-09-11</h4>
+<p>Release sequence 21 · 3 feature outcomes · 5 fixed-bug outcomes.</p>
+<ul><li><p>F01: align the shared template catalog with Core questions, early answers, contextual sections,
+  and noise/wave investigation and execution prompts. Add plain <code>/list</code>, <code>/list-numbered</code>,
+  <code>/checklist</code> and <code>/table</code> blocks without compulsory page scaffolding or metadata; checkbox and
+  tasklist searches find the same checklist entry. Keep specialized verification and comparison
+  templates separate. Agentic Notes scope/section utilities are tested core foundations only.</p></li>
+<li><p>F02: edit supported Mermaid flowcharts, class diagrams and sequence diagrams inline on their
+  actual preview. Share palette insertion, connection dragging, line selection, relationship
+  labels/types/direction, deletion and draft history with AIC Notes. Keep controls in compact bars
+  at narrow widths and enlarged document fonts, with semantic entity names and on-demand
+  endpoint/member/connection popovers. Mermaid owns layout; no arbitrary coordinates are stored.
+  Preserve labeled legacy dotted flowchart links and expose visual editing above active source,
+  including selected snippet fields. Apply changes the local draft; Ctrl/Cmd+S explicitly saves.</p></li>
+<li><p>F03: share heading and list formatting commands across AIC editors: Ctrl/Cmd+Alt+1…6 toggles
+  headings, Ctrl/Cmd+Alt+0 restores a paragraph, and Ctrl/Cmd+Shift+7/8/9 toggles numbered, bullet
+  and checkbox lists. Respect protected source structures, selection boundaries and one-step Undo;
+  formatting never saves implicitly.</p></li>
+<li><p>B01: start slash completion without a typing delay and keep narrow-editor menus compact.
+  Section labels flow with results instead of overlapping as stacked sticky headers; each row
+  reserves only its command and one-line description space.</p></li>
+<li><p>B02: preserve indentation on Enter and indent/outdent on Tab/Shift+Tab, including Mermaid source
+  fields, while retaining snippet field navigation and native source Undo.</p></li>
+<li><p>B03: keep preview spacing and source boundaries compatible with CodeMirror cursor geometry.
+  Opening a source block preserves editable fence boundaries and selection; ArrowUp does not
+  jump through hidden source or collapse navigation to the beginning of the note.</p></li>
+<li><p>B04: retire stale popovers and diagram sessions on note identity changes, isolate per-note
+  history, and reject stale edit targets. Outside-block edits preserve a diagram draft; conflicting
+  edits retain it for copying rather than overwriting the changed Markdown.</p></li>
+<li><p>B05: acknowledge only the exact explicit save for its working-note UUID and process metadata-only
+  lock updates without replacing local content. Failed or stale acknowledgments keep the draft
+  dirty; a host acknowledgment confirms local pre-sync acceptance, not cloud synchronization.</p></li></ul>
+<p>Compatibility: Standard Notes custom <code>editor-editor</code> component with interchangeable Markdown
+storage and the supported Code icon. AIC Notes 28.4.5 consumes the same byte-identical AIC Editor
+Core 3.4.0. The stable plugin identifier is unchanged.</p>
+<p>Limitations: visual editing remains experimental and supports a bounded flow/class/sequence
+grammar; unsupported Mermaid stays editable as original source. Multiselect, subgraph authoring,
+visual timeline editing and cross-scale drill-down are not implemented. No universal agent adapter,
+standalone memory writer or cross-application synchronization transport is enabled. Verification
+uses automated suites, production builds and synthetic Windows browser checks; authenticated
+Standard Notes clients and live Linux sessions have not been smoke-tested for this release.</p>
+<h4 id="2011-2026-09-03">20.1.1 — 2026-09-03</h4>
+<p>Release sequence 20 · 1 feature outcome · 1 fixed-bug outcome.</p>
+<ul><li><p>F01: divide the shared slash catalog into seven visible, task-oriented groups: Page templates,
+  Page structure, Risks &amp; verification, References, Tables &amp; lists, Diagrams, and Content blocks.
+  Existing pages rank their structural sections first; empty documents still rank complete page
+  templates first. AIC Notes mounts the same completion in both ordinary Markdown documents and
+  contextual notes.</p></li>
+<li><p>B01: make the slash menu, group headers, detail panel, selection, and snippet fields use the
+  shared editor background/foreground/accent tokens with selectors that override CodeMirror&#39;s
+  light base theme. Dark hosts no longer receive a white completion surface, and the real
+  <code>completion-section</code> elements render as sticky labeled dividers.</p></li></ul>
+<p>Compatibility: Standard Notes custom <code>editor-editor</code> component with interchangeable Markdown
+storage and the supported Code icon. AIC Notes 27.1.1 consumes the same AIC Editor Core 3.3 slash
+catalog, grouping, theme contract, and completion behavior.</p>
+<h4 id="1910-2026-09-03">19.1.0 — 2026-09-03</h4>
+<p>Release sequence 19 · 1 feature outcome · 0 fixed-bug outcomes.</p>
+<ul><li><p>F01: add a byte-identical slash-snippet core to AIC for Standard Notes and AIC Notes. Typing <code>/</code>
+  on an otherwise empty Markdown line opens a contextual catalog of complete documentation pages,
+  page sections, and formatting blocks. Each insertion is a usable example whose perspective
+  questions are editable CodeMirror snippet fields; <code>Tab</code> advances through them. Empty notes rank
+  page templates first, existing pages rank sections first, and code/read-only contexts stay
+  untouched.</p></li></ul>
+<p>Compatibility: Standard Notes custom <code>editor-editor</code> component with interchangeable Markdown
+storage and the supported Code icon. AIC Notes 26.1.0 consumes the same AIC Editor Core 3.2 slash
+catalog, query boundary, insertion behavior, placeholder, and menu styling.</p>
+<h4 id="1804-2026-09-03">18.0.4 — 2026-09-03</h4>
+<p>Release sequence 18 · 0 feature outcomes · 4 fixed-bug outcomes.</p>
+<ul><li><p>B01: expose every replaced preview range through CodeMirror&#39;s public <code>atomicRanges</code> contract.
+  Arrow-key and deletion commands now cross code, Mermaid, table, properties, Details, and link
+  previews as stable units instead of entering hidden Markdown and rebuilding the layout midway.</p></li>
+<li><p>B02: give fenced-code Edit an explicit source-open state in the byte-identical shared core. The
+  opening fence, language label, body, and closing fence remain ordinary editable Markdown while
+  the selection stays in that block, including a cursor or selection at either boundary.</p></li>
+<li><p>B03: keep direct programmatic selections inside a fence source-capable while making normal
+  keyboard navigation skip a closed preview. Leaving the edited fence restores its card without
+  leaking edit state into a neighboring block.</p></li>
+<li><p>B04: add regression coverage for the exact reported boundary: Edit exposes a writable
+  <code>contenteditable</code> editor, the opening backticks can be selected, and every closed block publishes
+  its complete source range as an atomic navigation unit.</p></li></ul>
+<p>Compatibility: Standard Notes custom <code>editor-editor</code> component with interchangeable Markdown
+storage and the supported Code icon. AIC Notes 25.0.3 consumes the same AIC Editor Core 3.1
+navigation contract.</p>
+<h4 id="1803-2026-09-03">18.0.3 — 2026-09-03</h4>
+<p>Release sequence 18 · 0 feature outcomes · 3 fixed-bug outcomes.</p>
+<ul><li><p>B01: stop converting native mouse selection inside a rendered preview into a whole-block
+  CodeMirror selection on <code>pointerup</code>. Preview text now stays selectable for normal copying without
+  destroying its widget or stealing focus; explicit Edit still reveals one source block and
+  <code>Ctrl+A</code>/<code>Cmd+A</code> still reveals the complete Markdown source. The interaction lives in the
+  byte-identical AIC Editor Core 3.0 module consumed by both editors.</p></li>
+<li><p>B02: update a repeated stream for the active Standard Notes UUID as one minimal, non-history
+  CodeMirror change instead of replacing the complete editor state. Cursor, selection, focus, and
+  unaffected preview DOM now survive host refreshes and the managed timestamp update on explicit
+  save.</p></li>
+<li><p>B03: make theme refresh idempotent and limit Details recomputation to document/selection,
+  read-only, and Details-owned effects. Repeated host/theme signals no longer trigger unrelated
+  preview work that could disturb an in-progress interaction.</p></li></ul>
+<p>Compatibility: Standard Notes custom <code>editor-editor</code> component with interchangeable Markdown
+storage and the supported Code icon. AIC Notes 25.0.2 consumes the same preview-selection core.</p>
+<h4 id="1720-2026-09-03">17.2.0 — 2026-09-03</h4>
+<p>Release sequence 17 · 2 feature outcomes · 0 fixed-bug outcomes.</p>
+<ul><li><p>F01: share the complete CodeMirror code-fence extension byte-for-byte with AIC Notes instead of
+  maintaining parallel fence discovery, replacement, selection, read-only, and clipboard logic.
+  Each product supplies only its host clipboard callback; the preview DOM remains in the same
+  dependency-free shared card module. AIC Editor Core advances to 2.9.</p></li>
+<li><p>F02: register AIC under Standard Notes&#39; supported Code note type so the app renders the <code>&gt;_</code>
+  editor icon instead of the Markdown <code>[ ]</code> icon. Storage remains <code>file_type: md</code>, interchangeable,
+  and exact Markdown; the bundled favicon/logo now uses the same <code>&gt;_</code> identity.</p></li></ul>
+<p>Compatibility: Standard Notes custom <code>editor-editor</code> component with the Code icon and
+interchangeable Markdown storage. The hosted manifest and desktop archive keep the stable
+<code>com.dzyha.standard-notes-aic</code> identifier.</p>
+<h4 id="1611-2026-09-03">16.1.1 — 2026-09-03</h4>
+<p>Release sequence 16 · 1 feature outcome · 1 fixed-bug outcome.</p>
+<ul><li><p>F01: move the fenced-code preview card into AIC Editor Core 2.8 and consume the byte-identical
+  module from both the Standard Notes and VS Code adapters. Non-Mermaid fences now render the same
+  language caption, text-safe scrollable body, and permanent icon-only Copy/Edit actions in both
+  products; Copy uses the exact fenced body and Edit focuses its Markdown source.</p></li>
+<li><p>B01: close the editor-parity gap that left Standard Notes code fences as raw decorated source
+  while VS Code exposed a preview card. Selection and <code>Ctrl+A</code>/<code>Cmd+A</code> now reveal code source using
+  the same shared range contract, and locked notes keep Copy plus an explicit source-inspection
+  action.</p></li></ul>
+<p>Compatibility: Standard Notes custom <code>editor-editor</code> component, interchangeable Markdown note/file
+type. The hosted manifest and desktop archive keep the stable
+<code>com.dzyha.standard-notes-aic</code> identifier and AIC Editor Core 2.8.</p>
+<h4 id="1512-2026-09-02">15.1.2 — 2026-09-02</h4>
+<p>Release sequence 15 · 1 feature outcome · 2 fixed-bug outcomes.</p>
+<ul><li><p>F01: add a packaged functional index that maps every editor surface, shared-core module,
+  interaction, state boundary, failure rule, and verification owner. Publication tests now require
+  the index and the versioned desktop archive ships it beside the installation instructions.</p></li>
+<li><p>B01: normalize the complete legacy generated sidecar header to the three managed <code>file</code>,
+  <code>created</code>, and <code>updated</code> fields on explicit save. The migration runs only for the exact old
+  title/level/empty-scope/live/agent signature and preserves every additional authored property.</p></li>
+<li><p>B02: keep Mermaid fit/zoom dimensions independent of rotation. Quarter-turns now swap the stable
+  source bounds instead of fitting the rotated width a second time, preventing wide diagrams from
+  expanding to extreme heights while retaining real horizontal and vertical scrolling.</p></li></ul>
+<p>Compatibility: Standard Notes custom <code>editor-editor</code> component, interchangeable Markdown note/file
+type. The hosted manifest and desktop archive keep the stable
+<code>com.dzyha.standard-notes-aic</code> identifier and AIC Editor Core 2.7.</p>
+<h4 id="1411-2026-09-02">14.1.1 — 2026-09-02</h4>
+<p>Release sequence 14 · 1 feature outcome · 1 fixed-bug outcome.</p>
+<ul><li><p>F01: add permanent icon-only Mermaid zoom, reset, and clockwise quarter-turn controls. Rotation
+  advances through 0°, 90°, 180°, and 270°, while Reset returns both scale and direction to their
+  initial values; controls remain available in preview without opening the Markdown source.</p></li>
+<li><p>B01: replace transform-only Mermaid sizing with a shared two-dimensional viewport whose stage
+  receives the diagram&#39;s real zoomed and rotated bounds. Enlarged diagrams now scroll horizontally
+  and vertically instead of being clipped, including after any 90° direction change.</p></li></ul>
+<p>Compatibility: Standard Notes custom <code>editor-editor</code> component, interchangeable Markdown note/file
+type. The hosted manifest and desktop archive keep the stable
+<code>com.dzyha.standard-notes-aic</code> identifier and AIC Editor Core 2.6.</p>
+<h4 id="1321-2026-09-02">13.2.1 — 2026-09-02</h4>
+<p>Release sequence 13 · 2 feature outcomes · 1 fixed-bug outcome.</p>
+<ul><li><p>F01: move managed <code>file</code>, stable <code>created</code>, and explicit-save <code>updated</code> metadata from ordinary
+  Markdown documents to <code>*.note.md</code> items. Existing authored note frontmatter is merged without
+  loss, dates render in the user&#39;s locale, and an exact legacy three-field document signature is
+  removed without touching unrelated properties.</p></li>
+<li><p>F02: replace permanent table and Properties inputs with static selectable previews and one
+  transient editor popover opened only for the active cell. Columns size to content, wrap only at
+  word boundaries, retain horizontal scrolling for wide values, and use CSS-mask Apply/Cancel
+  actions shared through AIC Editor Core 2.5.</p></li>
+<li><p>B01: require a complete syntax tree before deriving table blocks, preventing a valid table near
+  the end of a busy document from intermittently remaining raw during initial rendering.</p></li></ul>
+<p>Compatibility: Standard Notes custom <code>editor-editor</code> component, interchangeable Markdown note/file
+type. The hosted manifest and desktop archive keep the stable
+<code>com.dzyha.standard-notes-aic</code> identifier and AIC Editor Core 2.5.</p>
+<h4 id="1220-2026-09-01">12.2.0 — 2026-09-01</h4>
+<p>Release sequence 12 · 2 feature outcomes · 0 fixed-bug outcomes.</p>
+<ul><li><p>F01: add a permanent Copy action to parsed and fallback table previews. It copies the exact
+  Markdown table source through the Clipboard API with a restricted-client DOM fallback and
+  reports success by changing only the accessible icon state.</p></li>
+<li><p>F02: replace textual preview, link, details, Mermaid, drag, and formatting-toolbar actions with
+  custom icon-only buttons. AIC Editor Core 2.4 supplies the shared button, clipboard, and feedback
+  contracts; embedded SVG data URIs are painted exclusively through CSS masks, so action rendering
+  does not depend on the host&#39;s inline-SVG support. Every control retains an explicit <code>aria-label</code>.</p></li></ul>
+<p>Compatibility: Standard Notes custom <code>editor-editor</code> component, interchangeable Markdown note/file
+type. The hosted manifest and desktop archive keep the stable
+<code>com.dzyha.standard-notes-aic</code> identifier and AIC Editor Core 2.4.</p>
+<h4 id="1110-2026-09-01">11.1.0 — 2026-09-01</h4>
+<p>Release sequence 11 · 1 feature outcome · 0 fixed-bug outcomes.</p>
+<ul><li><p>F01: reduce managed properties for ordinary Markdown files to <code>file</code>, <code>created</code>, and <code>updated</code>.
+  Ctrl+S/Cmd+S derives the filename and creation time from the active Standard Notes item, preserves
+  the original creation value and Markdown body, and writes a fresh UTC update timestamp before the
+  explicit save. <code>*.note.md</code> sidecars remain unchanged so their hierarchy and synchronization
+  identities stay intact. The dependency-free AIC Editor Core 2.3 owns the same transformation used
+  by the VS Code adapter.</p></li></ul>
+<p>Compatibility: Standard Notes custom <code>editor-editor</code> component, interchangeable Markdown note/file
+type. The hosted manifest and desktop archive keep the stable
+<code>com.dzyha.standard-notes-aic</code> identifier and AIC Editor Core 2.3.</p>
+<h4 id="1020-2026-09-01">10.2.0 — 2026-09-01</h4>
+<p>Release sequence 10 · 2 feature outcomes · 0 fixed-bug outcomes.</p>
+<ul><li><p>F01: make table previews readable at every editor width. Header and body cells use wrapping,
+  auto-height textareas; the grid fills the card without a blank right-hand zone, and a dedicated
+  body scroller provides horizontal navigation when the minimum readable column widths exceed the
+  pane. The action header remains fixed and Properties inputs stay compact and single-line.</p></li>
+<li><p>F02: bridge selection from preview DOM back into CodeMirror. Ctrl+A/Cmd+A now selects the complete
+  Markdown document even when focus is inside a table cell or another preview control, while a real
+  mouse selection over a rendered block opens and selects that block&#39;s source. Browser-only
+  selection can no longer leave the editor visually selected but non-editable.</p></li></ul>
+<p>Compatibility: Standard Notes custom <code>editor-editor</code> component, interchangeable Markdown note/file
+type. The hosted manifest and desktop archive keep the stable
+<code>com.dzyha.standard-notes-aic</code> identifier and AIC Editor Core 2.2.</p>
+<h4 id="910-2026-09-01">9.1.0 — 2026-09-01</h4>
+<p>Release sequence 9 · 1 feature outcome · 0 fixed-bug outcomes.</p>
+<ul><li><p>F01: upgrade the shared AIC Editor Core to 2.2 and make source selection a universal escape from
+  rendered previews. Ctrl+A/Cmd+A selects the complete Markdown document and reveals raw source for
+  every intersected Properties, Table, Details, code, Mermaid, link, and inline-syntax view. A
+  smaller non-empty selection reveals only the blocks it crosses; ordinary clicks and collapsed
+  cursors retain preview behavior, and the visible <strong>Edit</strong> action remains available for focused
+  source editing.</p></li></ul>
+<p>Compatibility: Standard Notes custom <code>editor-editor</code> component, interchangeable Markdown note/file
+type. The hosted manifest and desktop archive keep the stable
+<code>com.dzyha.standard-notes-aic</code> identifier and AIC Editor Core 2.2.</p>
+<h4 id="812-2026-09-01">8.1.2 — 2026-09-01</h4>
+<p>Release sequence 8 · 1 feature outcome · 2 fixed-bug outcomes.</p>
+<ul><li><p>F01: upgrade the shared AIC Editor Core to 2.1 and render nested YAML maps and sequences as a
+  real hierarchical Properties preview. Indentation levels and list items remain visible, leaf
+  values stay directly editable, group nodes cannot be turned into invalid scalars, and
+  drag-and-drop moves a complete branch only among structurally valid siblings. Unsupported YAML
+  stays raw.</p></li>
+<li><p>B01: replace selection-driven Properties/Table source disclosure with explicit source-mode state.
+  Both blocks now open in preview even when the initial cursor is inside their Markdown; ordinary,
+  repeated, and double clicks cannot reveal raw source. Only <strong>Edit</strong> opens source, and moving the
+  cursor outside the block returns to preview.</p></li>
+<li><p>B02: keep link <strong>Copy</strong> and <strong>Edit</strong> controls visible at all times. The control no longer reserves
+  a blank hover-only gap, so link rows stay compact and their available actions are immediately
+  clear on mouse, keyboard, and touch clients.</p></li></ul>
+<p>Compatibility: Standard Notes custom <code>editor-editor</code> component, interchangeable Markdown note/file
+type. Preview inputs, add actions, and drag-and-drop remain interactive; the hosted manifest and
+desktop archive keep the stable <code>com.dzyha.standard-notes-aic</code> identifier and AIC Editor Core 2.1.</p>
+<h4 id="713-2026-08-31">7.1.3 — 2026-08-31</h4>
+<p>Release sequence 7 · 1 feature outcome · 3 fixed-bug outcomes.</p>
+<ul><li><p>F01: make Ctrl+S/Cmd+S the only persistence boundary and expose unobtrusive visual states:
+  unchanged notes are lightly green, dirty notes keep the normal surface, and empty placeholders
+  are gray.</p></li>
+<li><p>B01: isolate in-memory drafts by the Standard Notes working-note UUID and verify that UUID again
+  before writing, so switching notes cannot save an old draft into the new note. Returning to a
+  note restores its unsaved in-memory draft without plaintext persistence or a conflict dialog.</p></li>
+<li><p>B02: keep Details summary controls independent while making the expanded Markdown body directly
+  editable; long titles wrap, and checkbox/disclosure controls no longer collapse into the title.</p></li>
+<li><p>B03: recompute viewport-dependent table previews through a guarded post-update state effect,
+  preventing nested CodeMirror transactions from crashing the block-view plugin.</p></li></ul>
+<p>Compatibility: Standard Notes custom <code>editor-editor</code> component, interchangeable Markdown note/file
+type. The hosted manifest and desktop archive keep the stable
+<code>com.dzyha.standard-notes-aic</code> identifier and the shared AIC Editor Core 2.0 contract.</p>
+<h4 id="641-2026-08-31">6.4.1 — 2026-08-31</h4>
+<p>Release sequence 6 · 4 feature outcomes · 1 fixed-bug outcome.</p>
+<ul><li><p>F01: introduce AIC Editor Core 2.0, shared byte-for-byte with the VS Code extension for
+  structured Markdown mutations and the compact link control.</p></li>
+<li><p>F02: replace the link tooltip with a direct label action plus explicit <strong>Copy</strong> and <strong>Edit</strong>
+  controls; ordinary Markdown links and bare URLs now use the same compact interaction.</p></li>
+<li><p>F03: table previews edit headers/cells in place, add rows or columns, and reorder rows or columns
+  with drag handles while committing one valid Markdown transaction.</p></li>
+<li><p>F04: properties previews edit validated keys and values in place, add uniquely named properties,
+  and reorder them with drag handles while YAML remains plain Markdown source.</p></li>
+<li><p>B01: moving focus among structured controls stays inside the draft boundary, so a note commits
+  only when focus leaves the complete editor or through Ctrl+S/Cmd+S.</p></li></ul>
+<p>Compatibility: Standard Notes custom <code>editor-editor</code> component, interchangeable Markdown note/file
+type. The hosted manifest and desktop archive keep the stable
+<code>com.dzyha.standard-notes-aic</code> identifier.</p>
+<h4 id="522-2026-08-31">5.2.2 — 2026-08-31</h4>
+<p>Release sequence 5 · 2 feature outcomes · 2 fixed-bug outcomes.</p>
+<ul><li><p>F01: add the dependency-free AIC Editor Core draft lifecycle shared byte-for-byte with the VS
+  Code extension; input stays local and commits only on editor blur or Ctrl+S/Cmd+S.</p></li>
+<li><p>F02: remove the note search UI, shortcut, styling, and CodeMirror search dependency.</p></li>
+<li><p>B01: request an immediate CodeMirror measurement after mount and document hydration so previews
+  initialize without requiring an unrelated click or scroll.</p></li>
+<li><p>B02: reject remote refreshes while a local draft is dirty, preserving the exact local Markdown
+  until its explicit commit boundary.</p></li></ul>
+<p>Compatibility: Standard Notes custom <code>editor-editor</code> component, interchangeable Markdown note/file
+type. The hosted manifest and desktop archive keep the stable
+<code>com.dzyha.standard-notes-aic</code> identifier.</p>
+<h4 id="401-2026-08-21">4.0.1 — 2026-08-21</h4>
+<p>Release sequence 4 · 0 feature outcomes · 1 fixed-bug outcome.</p>
+<ul><li><p>B01: raw Space is no longer bound to task toggling. Authors can type <code>- [ ]</code> followed by the
+  required trailing space or task text so the checkbox renders normally; clicking an already
+  rendered checkbox remains the explicit toggle action.</p></li></ul>
+<p>Compatibility: Standard Notes custom <code>editor-editor</code> component, interchangeable Markdown note/file
+type. The hosted manifest and desktop archive keep the stable
+<code>com.dzyha.standard-notes-aic</code> identifier.</p>
+<h4 id="320-2026-08-21">3.2.0 — 2026-08-21</h4>
+<p>Release sequence 3 · 2 feature outcomes · 0 fixed-bug outcomes.</p>
+<ul><li><p>F01: add the exact AIC details grammar with one continuous contrast-surface card, a real rotating
+  SVG chevron, title/chevron disclosure, separate checkbox and link controls, and explicit source
+  inspection. Writable toggles persist the marker; locked-note toggles remain visual only.</p></li>
+<li><p>F02: make <strong>Edit source</strong> the only preview-to-source activation for Details, Mermaid, Table, and
+  Properties. Preview content and container keyboard activation remain inert while links and other
+  explicit controls keep their actions.</p></li></ul>
+<p>Compatibility: Standard Notes custom <code>editor-editor</code> component, interchangeable Markdown note/file
+type. The hosted manifest and desktop archive use the stable
+<code>com.dzyha.standard-notes-aic</code> identifier.</p>
+<h4 id="consumed-release-baseline">Consumed release baseline</h4>
+<ul><li><p><code>0.1.1</code> — public release sequence 2.</p></li>
+<li><p><code>0.1.0</code> — public release sequence 1.</p></li></ul>
+<p>These successful historical publications establish the immutable sequence baseline; their old
+version strings are not retroactively interpreted as <code>R.F.B</code> counts.</p>
+</main></div></body></html>

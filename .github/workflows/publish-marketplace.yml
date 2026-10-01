@@ -37,8 +37,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
     env:
       RELEASE_TAG: ${{ inputs.release_tag }}
+      VSCE_AUTH_MODE: ${{ vars.VSCE_AUTH_MODE || 'pat' }}
+      AZURE_CORE_OUTPUT: none
     steps:
       - uses: actions/checkout@v4
         with:
@@ -67,19 +70,26 @@ jobs:
           node scripts/verify-marketplace-release.mjs \
             "$RELEASE_TAG" "$RELEASE_DIRECTORY/release.json" "$RELEASE_DIRECTORY"
           echo "vsix_path=$RELEASE_DIRECTORY/$ASSET_NAME" >> "$GITHUB_OUTPUT"
-      - name: Verify publisher credential
+      - name: Validate publishing authentication choice
         if: ${{ inputs.verification_only != true }}
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
-          if [[ -z "$VSCE_PAT" ]]; then
-            echo "::error::Configure repository secret VSCE_PAT with a Marketplace Manage credential for publisher ldzyha. No extension was published."
-            exit 1
-          fi
-          npm exec -- vsce verify-pat ldzyha
-      - name: Publish the verified VSIX
+          case "$VSCE_AUTH_MODE" in pat|entra) ;; *)
+            echo "::error::VSCE_AUTH_MODE must be pat or entra."
+            exit 1 ;;
+          esac
+      - name: Login with the authorized Entra federated identity
+        if: ${{ inputs.verification_only != true && vars.VSCE_AUTH_MODE == 'entra' }}
+        uses: Azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.VSCE_AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.VSCE_AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+      - name: Verify publisher access and submit the verified VSIX
         if: ${{ inputs.verification_only != true }}
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
-          VSIX_PATH: ${{ steps.release.outputs.vsix_path }}
-        run: npm exec -- vsce publish --packagePath "$VSIX_PATH" --skip-duplicate
+          AZURE_CLIENT_ID: ${{ vars.VSCE_AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.VSCE_AZURE_TENANT_ID }}
+        run: |
+          node scripts/publish-marketplace.mjs "$RELEASE_TAG" \
+            "$RUNNER_TEMP/marketplace-release/release.json" "$RUNNER_TEMP/marketplace-release"

@@ -109,8 +109,21 @@ function harness(withOwnership = false) {
         this.to = to;
       }
     },
+    Position: class {
+      constructor(line, character) {
+        this.line = line;
+        this.character = character;
+      }
+    },
     WorkspaceEdit: class {
       edits = [];
+      creates = [];
+      createFile(resource) {
+        this.creates.push(resource);
+      }
+      insert(resource, _position, text) {
+        this.edits.push({ resource, range: { from: 0, to: 0 }, text });
+      }
       replace(resource, range, text) {
         this.edits.push({ resource, range, text });
       }
@@ -124,6 +137,7 @@ function harness(withOwnership = false) {
         resource.path.startsWith("/workspace") ? folder : undefined,
       asRelativePath: (resource) =>
         resource.path.replace(/^\/workspace\/?/u, ""),
+      findFiles: async () => [],
       fs: {
         stat: async (resource) => {
           if (!files.has(resource.path)) throw new Error("missing");
@@ -147,6 +161,10 @@ function harness(withOwnership = false) {
         return getDocument(resource);
       },
       applyEdit: async (edit) => {
+        for (const resource of edit.creates ?? []) {
+          if (files.has(resource.path)) return false;
+          files.set(resource.path, { text: "", type: 1 });
+        }
         for (const { resource, range, text } of edit.edits)
           getDocument(resource).replace(range.from, range.to, text);
         return true;
@@ -396,6 +414,107 @@ test("main note follows its nearest existing parent without opening or saving it
   assert.deepEqual(h.events.writes, []);
   assert.deepEqual(h.events.saved, []);
   assert.deepEqual(h.events.opened, [parent.path]);
+});
+
+test("scope tabs retain their originating file through Shared, Global, and Current", async () => {
+  const h = harness();
+  h.addFile("src", undefined, 2);
+  const source = h.addFile("src/file.js");
+  const current = h.addFile("src/file.note.md");
+  const shared = h.addFile("src.note.md");
+  const global = h.addFile("workspace.note.md");
+  h.vscode.workspace.findFiles = async () => [current, shared, global];
+  h.pane.sourceUri = source;
+  h.pane.documentUri = current;
+  h.pane.document = h.getDocument(current);
+  await h.pane.onMessage({
+    type: "scope.select",
+    id: "shared",
+    path: "src.note.md",
+  });
+  assert.equal(h.pane.documentUri.path, shared.path);
+  assert.equal(h.pane.scopeOrigin.path, source.path);
+  assert.equal(h.pane.scopeSelected, "shared");
+  await h.pane.onMessage({
+    type: "scope.select",
+    id: "global",
+    path: "workspace.note.md",
+  });
+  assert.equal(h.pane.documentUri.path, global.path);
+  assert.equal(h.pane.scopeOrigin.path, source.path);
+  await h.pane.onMessage({
+    type: "scope.select",
+    id: "current",
+    path: "src/file.note.md",
+  });
+  assert.equal(h.pane.documentUri.path, current.path);
+  assert.equal(h.pane.scopeSelected, "current");
+  assert.deepEqual(h.events.writes, []);
+});
+
+test("scope selection rejects paths outside the origin relationship map", async () => {
+  const h = harness();
+  const source = h.addFile("file.js");
+  const current = h.addFile("file.note.md");
+  const global = h.addFile("workspace.note.md");
+  h.vscode.workspace.findFiles = async () => [current, global];
+  h.pane.sourceUri = source;
+  h.pane.documentUri = current;
+  h.pane.document = h.getDocument(current);
+  await h.pane.onMessage({
+    type: "scope.select",
+    id: "global",
+    path: "../outside.note.md",
+  });
+  assert.equal(h.pane.documentUri.path, current.path);
+  assert.equal(h.pane.scopeOrigin, undefined);
+  assert.deepEqual(h.events.opened, []);
+  assert.deepEqual(h.events.writes, []);
+});
+
+test("scope selection keeps the current draft when its save barrier refuses", async () => {
+  const h = harness();
+  h.addFile("src", undefined, 2);
+  const source = h.addFile("src/file.js");
+  const current = h.addFile("src/file.note.md");
+  const shared = h.addFile("src.note.md");
+  h.vscode.workspace.findFiles = async () => [current, shared];
+  h.pane.sourceUri = source;
+  h.pane.documentUri = current;
+  h.pane.document = h.getDocument(current);
+  h.pane.draftDirty = true;
+  await h.pane.onMessage({
+    type: "scope.select",
+    id: "shared",
+    path: "src.note.md",
+  });
+  assert.equal(h.pane.documentUri.path, current.path);
+  assert.equal(h.pane.scopeOrigin, undefined);
+  assert.deepEqual(h.events.writes, []);
+});
+
+test("a refused scope change restores the prior Shared anchor", async () => {
+  const h = harness();
+  h.addFile("src", undefined, 2);
+  const source = h.addFile("src/file.js");
+  const shared = h.addFile("src.note.md");
+  const global = h.addFile("workspace.note.md");
+  h.vscode.workspace.findFiles = async () => [shared, global];
+  h.pane.sourceUri = source;
+  h.pane.documentUri = shared;
+  h.pane.document = h.getDocument(shared);
+  h.pane.scopeOrigin = source;
+  h.pane.scopeSelected = "shared";
+  h.pane.draftDirty = true;
+  await h.pane.onMessage({
+    type: "scope.select",
+    id: "global",
+    path: "workspace.note.md",
+  });
+  assert.equal(h.pane.documentUri.path, shared.path);
+  assert.equal(h.pane.scopeOrigin.path, source.path);
+  assert.equal(h.pane.scopeSelected, "shared");
+  assert.deepEqual(h.events.writes, []);
 });
 
 test("folder sidecars skip themselves and folders without notes", async () => {
@@ -764,6 +883,169 @@ test("legacy note association resolves to the same main provider without disposi
   provider.dispose();
 });
 
+test("primary scope routing keeps an origin across reused Shared, Global, and Current editors", async () => {
+  const h = harness();
+  h.addFile("src", undefined, 2);
+  h.addFile("src/file.js");
+  const current = h.addFile("src/file.note.md");
+  const shared = h.addFile("src.note.md");
+  const global = h.addFile("workspace.note.md");
+  h.vscode.workspace.findFiles = async () => [current, shared, global];
+  const provider = new h.MarkdownEditorProvider(h.context);
+  const currentPanel = h.panel();
+  const sharedPanel = h.panel();
+  const globalPanel = h.panel();
+  await provider.resolveCustomTextEditor(h.getDocument(current), currentPanel);
+  await provider.resolveCustomTextEditor(h.getDocument(shared), sharedPanel);
+  await provider.resolveCustomTextEditor(h.getDocument(global), globalPanel);
+  await currentPanel.send({ type: "ready" });
+  await sharedPanel.send({ type: "ready" });
+  await globalPanel.send({ type: "ready" });
+
+  await currentPanel.send({
+    type: "scope.select",
+    id: "shared",
+    path: "src.note.md",
+  });
+  assert.equal(h.commands.at(-1)?.[1]?.path, shared.path);
+  await sharedPanel.send({ type: "ready" });
+  assert.equal(sharedPanel.messages.at(-1)?.selectedScope, "shared");
+  assert.equal(
+    sharedPanel.messages
+      .at(-1)
+      ?.relationships.find((row) => row.relation === "current")?.path,
+    "src/file.note.md",
+  );
+
+  await sharedPanel.send({
+    type: "scope.select",
+    id: "global",
+    path: "workspace.note.md",
+  });
+  assert.equal(h.commands.at(-1)?.[1]?.path, global.path);
+  await globalPanel.send({ type: "ready" });
+  assert.equal(globalPanel.messages.at(-1)?.selectedScope, "global");
+
+  await globalPanel.send({
+    type: "scope.select",
+    id: "current",
+    path: "src/file.note.md",
+  });
+  assert.equal(h.commands.at(-1)?.[1]?.path, current.path);
+  await currentPanel.send({ type: "ready" });
+  assert.equal(currentPanel.messages.at(-1)?.selectedScope, "current");
+  assert.deepEqual(h.events.writes, []);
+  provider.dispose();
+});
+
+test("primary scope routing rejects a relation with the wrong scope id", async () => {
+  const h = harness();
+  h.addFile("src", undefined, 2);
+  h.addFile("src/file.js");
+  const current = h.addFile("src/file.note.md");
+  const shared = h.addFile("src.note.md");
+  h.vscode.workspace.findFiles = async () => [current, shared];
+  const provider = new h.MarkdownEditorProvider(h.context);
+  const panel = h.panel();
+  await provider.resolveCustomTextEditor(h.getDocument(current), panel);
+  await panel.send({ type: "ready" });
+  await panel.send({
+    type: "scope.select",
+    id: "global",
+    path: "src.note.md",
+  });
+  assert.deepEqual(h.commands, []);
+  assert.deepEqual(h.events.writes, []);
+  provider.dispose();
+});
+
+test("primary scope routing rejects stale webview identity before navigation", async () => {
+  const h = harness();
+  h.addFile("src", undefined, 2);
+  h.addFile("src/file.js");
+  const current = h.addFile("src/file.note.md");
+  const shared = h.addFile("src.note.md");
+  h.vscode.workspace.findFiles = async () => [current, shared];
+  const provider = new h.MarkdownEditorProvider(h.context);
+  const panel = h.panel();
+  await provider.resolveCustomTextEditor(h.getDocument(current), panel);
+  await panel.send({ type: "ready" });
+  await panel.send({
+    type: "scope.select",
+    id: "shared",
+    path: "src.note.md",
+    relativePath: "other.note.md",
+    generation: 1,
+  });
+  assert.deepEqual(h.commands, []);
+  assert.deepEqual(h.events.writes, []);
+  provider.dispose();
+});
+
+test("scope routing accepts only the Shared relationship exposed by the tab", async () => {
+  const h = harness();
+  h.addFile("src", undefined, 2);
+  h.addFile("src/feature", undefined, 2);
+  h.addFile("src/feature/file.js");
+  const current = h.addFile("src/feature/file.note.md");
+  const shared = h.addFile("src.note.md");
+  const otherParent = h.addFile("src/feature.note.md");
+  const global = h.addFile("workspace.note.md");
+  h.vscode.workspace.findFiles = async () => [
+    current,
+    shared,
+    otherParent,
+    global,
+  ];
+  const provider = new h.MarkdownEditorProvider(h.context);
+  const panel = h.panel();
+  await provider.resolveCustomTextEditor(h.getDocument(current), panel);
+  await panel.send({ type: "ready" });
+  await panel.send({ type: "scope.select", id: "shared", path: "src.note.md" });
+  assert.deepEqual(h.commands, []);
+  await panel.send({
+    type: "scope.select",
+    id: "shared",
+    path: "src/feature.note.md",
+  });
+  assert.equal(h.commands.at(-1)?.[1]?.path, otherParent.path);
+  assert.deepEqual(h.events.writes, []);
+  provider.dispose();
+});
+
+test("secondary scope routing rejects another ancestor when Shared names one target", async () => {
+  const h = harness();
+  h.addFile("src", undefined, 2);
+  h.addFile("src/feature", undefined, 2);
+  const source = h.addFile("src/feature/file.js");
+  const current = h.addFile("src/feature/file.note.md");
+  const shared = h.addFile("src.note.md");
+  const otherParent = h.addFile("src/feature.note.md");
+  const global = h.addFile("workspace.note.md");
+  h.vscode.workspace.findFiles = async () => [
+    current,
+    shared,
+    otherParent,
+    global,
+  ];
+  h.pane.sourceUri = source;
+  h.pane.documentUri = current;
+  h.pane.document = h.getDocument(current);
+  await h.pane.onMessage({
+    type: "scope.select",
+    id: "shared",
+    path: "src.note.md",
+  });
+  assert.equal(h.pane.documentUri.path, current.path);
+  await h.pane.onMessage({
+    type: "scope.select",
+    id: "shared",
+    path: "src/feature.note.md",
+  });
+  assert.equal(h.pane.documentUri.path, otherParent.path);
+  assert.deepEqual(h.events.writes, []);
+});
+
 test("main-note edits stay in TextDocument until Ctrl+S", async () => {
   const h = harness();
   const resource = h.addFile("file.note.md", "body");
@@ -1086,4 +1368,130 @@ test("native manual Save has no AIC metadata writer", async () => {
   await panel.send({ type: "ready" });
   assert.equal(h.willSaveListeners.size, 0);
   assert.equal(document.getText(), "base");
+});
+
+test("primary save rejects a deleted existing file without recreating it and retains its draft", async () => {
+  const h = harness();
+  const resource = h.addFile("deleted.md", "base");
+  const document = h.getDocument(resource);
+  const provider = new h.MarkdownEditorProvider(h.context);
+  const panel = h.panel();
+  await provider.resolveCustomTextEditor(document, panel);
+  await panel.send({
+    type: "edit",
+    generation: 0,
+    changes: [{ from: 4, to: 4, insert: " recoverable" }],
+  });
+  h.files.delete(resource.path);
+  await panel.send({
+    type: "save",
+    generation: 0,
+    relativePath: "deleted.md",
+    requestId: 123,
+  });
+  assert.equal(h.files.has(resource.path), false);
+  assert.deepEqual(h.events.saved, []);
+  assert.equal(document.getText(), "base recoverable");
+  assert.equal(document.isDirty, true);
+  assert.equal(
+    panel.messages.find(
+      (message) =>
+        message.requestId === 123 && message.type === "primary.saved",
+    ).saved,
+    false,
+  );
+  assert.match(h.events.errors[0], /deleted.*draft remains/u);
+});
+
+test("secondary rejects saving a deleted existing note while preserving a new placeholder creation", async () => {
+  const h = harness();
+  const resource = h.addFile("deleted.note.md", "base");
+  const document = h.getDocument(resource);
+  h.pane.documentUri = resource;
+  h.pane.document = document;
+  h.pane.draftDirty = true;
+  h.files.delete(resource.path);
+  const result = await h.pane.commitDraft(
+    "recoverable draft",
+    h.pane.generation,
+    124,
+    "deleted.note.md",
+  );
+  assert.equal(result.action, "missing");
+  assert.equal(h.files.has(resource.path), false);
+  assert.deepEqual(h.events.writes, []);
+  assert.deepEqual(h.events.saved, []);
+  assert.equal(h.pane.draftDirty, true);
+  assert.equal(
+    h.sent.find((message) => message?.type === "committed").saved,
+    false,
+  );
+  const fresh = harness();
+  const target = fresh.uri("/workspace/new.note.md");
+  fresh.pane.placeholderUri = target;
+  fresh.pane.placeholderText = "placeholder";
+  fresh.pane.draftDirty = true;
+  const created = await fresh.pane.commitDraft(
+    "new authored note",
+    fresh.pane.generation,
+    125,
+    "new.note.md",
+  );
+  assert.equal(created.saved, true);
+  assert.equal(fresh.files.get(target.path).text, "new authored note");
+});
+
+test("primary keeps genuine untitled document creation available", async () => {
+  const h = harness();
+  const resource = h.addFile("new.md", "new authored document");
+  const document = h.getDocument(resource);
+  document.isUntitled = true;
+  h.files.delete(resource.path);
+  document.save = async () => {
+    h.files.set(resource.path, { text: document.getText(), type: 1 });
+    return true;
+  };
+  const provider = new h.MarkdownEditorProvider(h.context);
+  const panel = h.panel();
+  await provider.resolveCustomTextEditor(document, panel);
+  await panel.send({
+    type: "save",
+    generation: 0,
+    relativePath: "new.md",
+    requestId: 126,
+  });
+  assert.equal(
+    panel.messages.find(
+      (message) =>
+        message.requestId === 126 && message.type === "primary.saved",
+    ).saved,
+    true,
+  );
+  assert.equal(h.files.get(resource.path).text, "new authored document");
+});
+
+test("secondary does not save a note deleted while its draft edit is applied", async () => {
+  const h = harness();
+  const resource = h.addFile("removed-during-edit.note.md", "base");
+  const document = h.getDocument(resource);
+  h.pane.documentUri = resource;
+  h.pane.document = document;
+  h.pane.draftDirty = true;
+  const apply = h.vscode.workspace.applyEdit;
+  h.vscode.workspace.applyEdit = async (edit) => {
+    const accepted = await apply(edit);
+    h.files.delete(resource.path);
+    return accepted;
+  };
+  const result = await h.pane.commitDraft(
+    "recoverable changed draft",
+    h.pane.generation,
+    127,
+    "removed-during-edit.note.md",
+  );
+  assert.equal(result.action, "missing");
+  assert.equal(h.files.has(resource.path), false);
+  assert.deepEqual(h.events.saved, []);
+  assert.equal(document.getText(), "recoverable changed draft");
+  assert.equal(h.pane.draftDirty, true);
 });

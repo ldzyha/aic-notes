@@ -1,10 +1,10 @@
 {
-  "coreVersion": "7.4.0",
+  "coreVersion": "7.5.0",
   "sourceRepository": "https://github.com/ldzyha/standard-notes-aic",
-  "sourceCommit": "0c0f8b92f2cb9e48f6293ffb4a9d144abffa775d",
+  "sourceCommit": "04cd25247dcdc5897b5f89930e197c679f578259",
   "files": {
     "agent-guide.d.ts": "d6ffa86047957502482f327954244f9220ba0797e7a00812e88a4bed78d643c5",
-    "agent-guide.js": "96a203de017fc12577cc76eefcac64b0d2a36a500241f92c5ff6aa2c47ff530d",
+    "agent-guide.js": "32e97b2c389b7ae03f65b9641a83dc22d74a9337e9a127fc8ad3d62f9c749178",
     "agentic-notes.d.ts": "edceb932ecb1e9f54096fd817d48a3d0b557ae4cffc07f787f761012c7d92d4e",
     "agentic-notes.js": "b5369e37724bcabe9673aac12d25a5f9dc7eab1c83d5c0bae3364e80487f2a81",
     "block-diagnostic.d.ts": "65d205c7c0a6ef8d4c4a2c34bcfdca10b6f1fc02e5424152a44e309d109cb5ab",
@@ -36,6 +36,8 @@
     "icons.css": "ce9bb2a668c37918de28491bcbd3dfb04fc494bade46a3fa5ded2a7bc5d5e9d4",
     "indentation.d.ts": "275fbe8cc956a06235be572272119077fa55bd62c31fc01b306fe987badc4014",
     "indentation.js": "31c5a18cf762d318687e6f74036dce4ce585806d54cbed9cc220423aa647a141",
+    "local-ai.d.ts": "d1364ed6a41aeaa6366809ba6b7c6f7ac66cc6b8bb9eb36cbbe900ce377f09f6",
+    "local-ai.js": "ea537f04a5f25ec116986abe86dc3091ce9a44885dfee93527bc1ece6cb37171",
     "mermaid-runtime.d.ts": "43b48cf5bc56027884103ecfc94ebed28341ec76c47ef8fbf218fdd1f8237440",
     "mermaid-runtime.js": "18bd2ef0869e22099ad97026146c1295d8c1befaa86c30372e20650897a0f831",
     "mermaid-viewport.css": "35be32bd45d47e34e470ad836a25a20f0422eba785628cfcdb1e466fb68f753a",
@@ -52,6 +54,8 @@
     "render-queue.js": "325274f82320440ee41bedbcd9a96f495ba87302e7e5470c879e5b4ddd5d1f3a",
     "save-boundary.d.ts": "29f564e00aef0000a0c81f9518cba05cf621867734a763a0c73e322da0b80691",
     "save-boundary.js": "d141e3459140c3e5cac27d53d0bf6303c4c3b3100c4422aabe858d8947b9f801",
+    "scope-tabs.d.ts": "49b03ccc52ca7c18b85d24cd9510ff87fdf4d6b44eea7a9d32c3a76293a87452",
+    "scope-tabs.js": "d126731de24b3446294e66c88cc0e71c582a893c05461b12671cb3316576242b",
     "security-block.css": "f1d8f20dbff84181718071ae9abc7086f8afc589212e4db31e77a86bdf960b0e",
     "security-block.d.ts": "14feb1be7d74604e34f6dc1f3620b896f35da484acd3fc966e0cca9f49befd6c",
     "security-block.js": "768a8fc282a0fc155d7f409a0d2a140f5b3dcdf424998c65eb386a2d962a9551",
@@ -87,8 +91,8 @@
     "structured-preview.js": "14510724bf3336d7334e898dfdd19117bb0b48079c1f1941ea370ea1e312e83c",
     "task-marker.d.ts": "c052c03ec0e45084726954c76fec308d9d7d77415ecb1b89a9d99d03627f58dd",
     "task-marker.js": "50ffab505a9af768a07927f3b9c5ad72e87f79e9d41a09972e3d1b85e337bc31",
-    "ui-system.css": "5db655e8976d9194c3e9ec83c6b7e4b71d1f2ffc0d677cfea5b9cc2ee7e10694",
-    "ui-system.d.ts": "45e32102b2d5e38612400bfc7835f5aabfe86a335028b457e4de4908f9dc30b1",
-    "ui-system.js": "93b48ef1fb83006fd1246a1b11b1e14c1714e242e6c297307196bc937075e9be"
+    "ui-system.css": "453f86eb05dd5a8909c0317b3204cc70204253bd74b2cc3670d0d7013b39159d",
+    "ui-system.d.ts": "a547e5a92c1af1b43e90ed3fd9391e46355d2a5661caa6ae172e35de9161ccd3",
+    "ui-system.js": "5cc39ba6bc5889d508f9f89a982ea44f64443811301d1eb7fda05588c58774c8"
   }
 }

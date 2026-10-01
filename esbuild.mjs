@@ -2,14 +2,42 @@
 // browser, code-splitting so mermaid / @codemirror/lang-* land as lazy chunks
 // loaded on first use — the same shape as aic's build).
 import { build, context } from "esbuild";
-import { existsSync, cpSync, rmSync } from "node:fs";
+import { existsSync, cpSync, rmSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { verifyPortableSnapshot } from "./scripts/verify-portable-runtime.mjs";
 
 const watch = process.argv.includes("--watch");
 const distRoot = new URL("./dist/", import.meta.url);
 
+const portableSource = process.env.AIC_PORTABLE_SOURCE
+  ? resolve(process.env.AIC_PORTABLE_SOURCE)
+  : fileURLToPath(new URL("./vendor/portable-runtime/", import.meta.url));
+await verifyPortableSnapshot(fileURLToPath(new URL("./", import.meta.url)), {
+  directory: portableSource,
+});
+const portableEntry = resolve(portableSource, "index.html");
+if (
+  !existsSync(portableEntry) ||
+  !existsSync(resolve(portableSource, "assets"))
+) {
+  throw new Error(
+    "Synchronize the canonical PWA build and PORTABLE_SNAPSHOT.json before building AIC Notes.",
+  );
+}
+const portableHtml = readFileSync(portableEntry, "utf8");
+if (!/<script\b[^>]*type="module"[^>]*src="\.\/assets\//u.test(portableHtml)) {
+  throw new Error(
+    "The canonical portable editor build has no local module entry.",
+  );
+}
+
 // dist is entirely generated. Clearing it prevents content-hashed lazy
 // chunks from earlier builds leaking into a later VSIX.
 rmSync(distRoot, { recursive: true, force: true });
+cpSync(portableSource, new URL("./dist/portable/", import.meta.url), {
+  recursive: true,
+});
 
 const host = {
   entryPoints: ["src/extension.js"],
@@ -42,7 +70,8 @@ const webview = {
 };
 
 const jobs = [host];
-if (existsSync(new URL("./src/webview/main.js", import.meta.url))) jobs.push(webview);
+if (existsSync(new URL("./src/webview/main.js", import.meta.url)))
+  jobs.push(webview);
 
 // bundled JetBrains Mono (OFL) — plain static assets, no loader involved;
 // main.js builds the @font-face URLs against its own import.meta.url

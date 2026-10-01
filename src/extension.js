@@ -11,6 +11,7 @@ import {
 } from "./notes/create.js";
 import { enableExplorerNesting, hintIfShadowed } from "./notes/nesting.js";
 import { MarkdownEditorProvider } from "./editor/provider.js";
+import { PortableEditorProvider } from "./portable/provider.js";
 import { registerMarkdownSlashCompletionProvider } from "./editor/slash-provider.js";
 import { SecondaryNotePane } from "./secondary/provider.js";
 import { activeResource } from "./secondary/model.js";
@@ -59,6 +60,7 @@ export async function activate(context) {
   const markdownEditor = MarkdownEditorProvider.register(context, ownership);
   context.subscriptions.push(
     markdownEditor,
+    PortableEditorProvider.register(context),
     registerMarkdownSlashCompletionProvider(vscode),
 
     vscode.commands.registerCommand(

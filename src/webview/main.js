@@ -76,6 +76,7 @@ import SLASH_SNIPPETS_CSS from "../../vendor/aic-editor-core/slash-snippets.css"
 import PREVIEW_LAYOUT_CSS from "../../vendor/aic-editor-core/preview-layout.css";
 import SECURITY_BLOCK_CSS from "../../vendor/aic-editor-core/security-block.css";
 import SECURITY_IMPORT_CSS from "../../vendor/aic-editor-core/security-import-extension.css";
+import { createScopeTabs } from "../../vendor/aic-editor-core/scope-tabs.js";
 import THEME_CSS from "./theme.css";
 
 const api = acquireVsCodeApi();
@@ -91,6 +92,7 @@ const docState = {
   generation: 0,
   placeholder: false,
   relationships: [],
+  scopes: [],
   hasSurface: false,
   readOnly: false,
   lease: undefined,
@@ -104,6 +106,95 @@ const host = makeHost(api, docState);
 const clipboard = makeClipboardClient(api, docState);
 let paneNotice = "";
 const saveWaiters = new Set();
+let scopeTabs = null;
+
+function wireScopeTabs(scopes, selected = "current") {
+  scopeTabs?.dispose();
+  document.getElementById("aic-scope-tabs")?.remove();
+  docState.scopes = Array.isArray(scopes) ? scopes : [];
+  const current = document.getElementById("scope-current");
+  const shared = document.getElementById("scope-shared");
+  const global = document.getElementById("scope-global");
+  if (!current || !shared || !global) return;
+  const targets = {
+    current: docState.scopes.find((row) => row.relation === "current") ?? {
+      exists: true,
+    },
+    shared: docState.scopes
+      .filter((row) => row.relation === "parent" && row.exists)
+      .sort(
+        (left, right) =>
+          (right.depth ?? right.path.split("/").length) -
+          (left.depth ?? left.path.split("/").length),
+      )[0],
+    global: docState.scopes.find((row) => row.relation === "project"),
+  };
+  const editor = document.getElementById("editor");
+  // Move the live editor out before clearing placeholder panels. Clearing an
+  // active Shared/Global panel must never detach CodeMirror's mounting root.
+  if (editor && editor.parentElement !== current) current.append(editor);
+  shared.textContent = targets.shared
+    ? "Open the nearest shared folder note."
+    : "No shared folder note exists for this file.";
+  global.textContent = targets.global
+    ? "Open the workspace note."
+    : "No workspace note exists for this file.";
+  const selectedPanel = { current, shared, global }[selected] ?? current;
+  if (editor && editor.parentElement !== selectedPanel)
+    selectedPanel.replaceChildren(editor);
+  scopeTabs = createScopeTabs(document, {
+    label: "Note scope",
+    items: [
+      { id: "current", label: "Current", panel: current },
+      {
+        id: "shared",
+        label: "Shared",
+        panel: shared,
+        disabled: !targets.shared?.exists,
+        title: !targets.shared?.exists
+          ? "No shared folder note exists for this file"
+          : undefined,
+      },
+      {
+        id: "global",
+        label: "Global",
+        panel: global,
+        disabled: !targets.global?.exists,
+        title: !targets.global?.exists
+          ? "No workspace note exists for this file"
+          : undefined,
+      },
+    ],
+    selected: ["current", "shared", "global"].includes(selected)
+      ? selected
+      : "current",
+    onSelect: async (id) => {
+      const target = targets[id];
+      if (!target?.exists || !target.path) return false;
+      const priorView = view;
+      const priorPath = docState.relativePath;
+      if (
+        !(await saveCurrentDraft()) ||
+        view !== priorView ||
+        docState.relativePath !== priorPath
+      )
+        return false;
+      api.postMessage({
+        type: "scope.select",
+        id,
+        path: target.path,
+        relativePath: docState.relativePath,
+        generation: docState.generation,
+        lease: docState.lease,
+      });
+      // The host owns the target switch and returns a fresh init. Keep the
+      // current panel visible until that acknowledged identity arrives.
+      return false;
+    },
+  });
+  scopeTabs.element.id = "aic-scope-tabs";
+  current.parentElement?.insertBefore(scopeTabs.element, current);
+}
 
 function finishSaveRequests(saved) {
   const active = secondarySurface ? draft : primarySave;
@@ -204,6 +295,7 @@ for (const css of [
 }
 
 let view = null;
+const documentViews = new Map();
 const accessCompartment = new Compartment();
 const sourceMode = createSourceModeController();
 function accessExtension() {
@@ -412,181 +504,192 @@ function drainRequestedSave() {
   if (active.takeQueued()) commitDraft("explicit");
 }
 
-function makeEditor(text) {
+function makeEditor(text, retainedState = null) {
   const parent = document.getElementById("editor");
   parent.innerHTML = "";
   const editor = new EditorView({
     parent,
-    state: EditorState.create({
-      doc: text,
-      extensions: [
-        ViewPlugin.define((editor) => ({
-          destroy: wirePreviewSelection(editor, document),
-        })),
-        accessCompartment.of(accessExtension()),
-        EditorView.domEventHandlers({
-          focus() {
-            api.postMessage({
-              type: "editing.request",
-              relativePath: docState.relativePath,
-            });
-          },
-          mousedown() {
-            api.postMessage({
-              type: "editing.request",
-              relativePath: docState.relativePath,
-            });
-          },
-        }),
-        editorIndentation({ continueList: listKeymap[0].run }),
-        markdownFormatting(),
-        langCompartment.of(fencedLang()),
-        placeholder(SLASH_SNIPPET_PLACEHOLDER),
-        slashSnippetExtension(),
-        // colors nested fenced-code tokens; markdown structure styling is
-        // owned by the handler classes (theme.css bumps their specificity)
-        syntaxHighlighting(darkHighlight, { fallback: true }),
-        sourceMode.extension([
-          decorationPlugin(HANDLERS),
-          makeCalloutExtension(),
-          makeLinkActionsExtension(host),
-          makeTableExtension(host, {
-            onCopy: (source) => clipboard.writeText(source),
-          }),
-          makePropertiesBlockExtension({
-            document,
-            initialRelationships: () => docState.relationships,
-            onRelationshipOpen: (path) =>
-              host.bus.publish("note.open", { path }),
-            onReadClipboard: () => clipboard.readText(),
-            onCopy: (source) => clipboard.writeText(source),
-            onOpen: (url) => host.bus.publish("link.external", { url }),
-          }),
-          ...makeCodeFenceExtension({
-            document,
-            onCopy: (source, language) => {
-              host.bus.publish("clipboard.write", {
-                text: source,
-                label: `${language || "code"} block`,
+    state:
+      retainedState ??
+      EditorState.create({
+        doc: text,
+        extensions: [
+          ViewPlugin.define((editor) => ({
+            destroy: wirePreviewSelection(editor, document),
+          })),
+          accessCompartment.of(accessExtension()),
+          EditorView.domEventHandlers({
+            focus() {
+              api.postMessage({
+                type: "editing.request",
+                relativePath: docState.relativePath,
               });
-              return true;
             },
-          }),
-          makeSecurityBlockExtension({
-            document,
-            onReadClipboard: () => clipboard.readText(),
-            onCopy: (source) => clipboard.writeText(source),
-            onOpen: (url) => {
-              host.bus.publish("link.external", { url });
-            },
-          }),
-          makeSecurityImportExtension({ onSave: saveCurrentDraft }),
-          makeMermaidExtension(host, {
-            onCopy: (source) => clipboard.writeText(source),
-          }),
-          ...detailsExtension(host, {
-            onCopy: (source) => clipboard.writeText(source),
-          }),
-        ]),
-        drawSelection(),
-        ...(secondarySurface ? [history()] : []),
-        keymap.of([
-          ...(secondarySurface
-            ? historyKeymap
-            : [
-                // Ordinary Markdown still delegates undo to its TextDocument.
-                {
-                  key: "Mod-z",
-                  run: () => {
-                    if (!docState.readOnly)
-                      api.postMessage({ type: "undo", lease: docState.lease });
-                    return true;
-                  },
-                },
-                {
-                  key: "Mod-y",
-                  mac: "Mod-Shift-z",
-                  run: () => {
-                    if (!docState.readOnly)
-                      api.postMessage({ type: "redo", lease: docState.lease });
-                    return true;
-                  },
-                },
-                {
-                  key: "Mod-Shift-z",
-                  run: () => {
-                    if (!docState.readOnly)
-                      api.postMessage({ type: "redo", lease: docState.lease });
-                    return true;
-                  },
-                },
-              ]),
-          {
-            key: "Mod-s",
-            run: () => {
-              commitDraft("explicit");
-              return true;
-            },
-          },
-          ...(!secondarySurface
-            ? [
-                {
-                  key: "Mod-Shift-/",
-                  run: (editor) => {
-                    const { anchor, head } = editor.state.selection.main;
-                    if (anchor === head) return false;
-                    api.postMessage({ type: "selection.link", anchor, head });
-                    return true;
-                  },
-                },
-                {
-                  key: "Mod-Alt-l",
-                  run: (editor) => {
-                    const { anchor, head } = editor.state.selection.main;
-                    if (anchor === head) return false;
-                    api.postMessage({ type: "selection.link", anchor, head });
-                    return true;
-                  },
-                },
-              ]
-            : []),
-          ...defaultKeymap,
-        ]),
-        EditorView.lineWrapping, // a note wraps, never scrolls sideways
-        EditorView.updateListener.of((update) => {
-          if (
-            update.docChanged &&
-            !update.transactions.some((tr) => tr.annotation(remote))
-          ) {
-            if (secondarySurface) {
-              draft.edit(update.state.doc.toString());
-              paneNotice = "";
-              reflectSaveState();
-              postDraftState();
-            } else {
-              primarySave.edit(update.state.doc.toString());
-              paneNotice = "";
-              reflectSaveState();
-              postEdit(update);
-            }
-            if (isSaveAction(update)) {
-              const currentView = update.view;
-              const path = docState.relativePath;
-              queueMicrotask(() => {
-                if (view === currentView && docState.relativePath === path)
-                  commitDraft("explicit");
+            mousedown() {
+              api.postMessage({
+                type: "editing.request",
+                relativePath: docState.relativePath,
               });
+            },
+          }),
+          editorIndentation({ continueList: listKeymap[0].run }),
+          markdownFormatting(),
+          langCompartment.of(fencedLang()),
+          placeholder(SLASH_SNIPPET_PLACEHOLDER),
+          slashSnippetExtension(),
+          // colors nested fenced-code tokens; markdown structure styling is
+          // owned by the handler classes (theme.css bumps their specificity)
+          syntaxHighlighting(darkHighlight, { fallback: true }),
+          sourceMode.extension([
+            decorationPlugin(HANDLERS),
+            makeCalloutExtension(),
+            makeLinkActionsExtension(host),
+            makeTableExtension(host, {
+              onCopy: (source) => clipboard.writeText(source),
+            }),
+            makePropertiesBlockExtension({
+              document,
+              initialRelationships: () => docState.relationships,
+              onRelationshipOpen: (path) =>
+                host.bus.publish("note.open", { path }),
+              onReadClipboard: () => clipboard.readText(),
+              onCopy: (source) => clipboard.writeText(source),
+              onOpen: (url) => host.bus.publish("link.external", { url }),
+            }),
+            ...makeCodeFenceExtension({
+              document,
+              onCopy: (source, language) => {
+                host.bus.publish("clipboard.write", {
+                  text: source,
+                  label: `${language || "code"} block`,
+                });
+                return true;
+              },
+            }),
+            makeSecurityBlockExtension({
+              document,
+              onReadClipboard: () => clipboard.readText(),
+              onCopy: (source) => clipboard.writeText(source),
+              onOpen: (url) => {
+                host.bus.publish("link.external", { url });
+              },
+            }),
+            makeSecurityImportExtension({ onSave: saveCurrentDraft }),
+            makeMermaidExtension(host, {
+              onCopy: (source) => clipboard.writeText(source),
+            }),
+            ...detailsExtension(host, {
+              onCopy: (source) => clipboard.writeText(source),
+            }),
+          ]),
+          drawSelection(),
+          ...(secondarySurface ? [history()] : []),
+          keymap.of([
+            ...(secondarySurface
+              ? historyKeymap
+              : [
+                  // Ordinary Markdown still delegates undo to its TextDocument.
+                  {
+                    key: "Mod-z",
+                    run: () => {
+                      if (!docState.readOnly)
+                        api.postMessage({
+                          type: "undo",
+                          lease: docState.lease,
+                        });
+                      return true;
+                    },
+                  },
+                  {
+                    key: "Mod-y",
+                    mac: "Mod-Shift-z",
+                    run: () => {
+                      if (!docState.readOnly)
+                        api.postMessage({
+                          type: "redo",
+                          lease: docState.lease,
+                        });
+                      return true;
+                    },
+                  },
+                  {
+                    key: "Mod-Shift-z",
+                    run: () => {
+                      if (!docState.readOnly)
+                        api.postMessage({
+                          type: "redo",
+                          lease: docState.lease,
+                        });
+                      return true;
+                    },
+                  },
+                ]),
+            {
+              key: "Mod-s",
+              run: () => {
+                commitDraft("explicit");
+                return true;
+              },
+            },
+            ...(!secondarySurface
+              ? [
+                  {
+                    key: "Mod-Shift-/",
+                    run: (editor) => {
+                      const { anchor, head } = editor.state.selection.main;
+                      if (anchor === head) return false;
+                      api.postMessage({ type: "selection.link", anchor, head });
+                      return true;
+                    },
+                  },
+                  {
+                    key: "Mod-Alt-l",
+                    run: (editor) => {
+                      const { anchor, head } = editor.state.selection.main;
+                      if (anchor === head) return false;
+                      api.postMessage({ type: "selection.link", anchor, head });
+                      return true;
+                    },
+                  },
+                ]
+              : []),
+            ...defaultKeymap,
+          ]),
+          EditorView.lineWrapping, // a note wraps, never scrolls sideways
+          EditorView.updateListener.of((update) => {
+            if (
+              update.docChanged &&
+              !update.transactions.some((tr) => tr.annotation(remote))
+            ) {
+              if (secondarySurface) {
+                draft.edit(update.state.doc.toString());
+                paneNotice = "";
+                reflectSaveState();
+                postDraftState();
+              } else {
+                primarySave.edit(update.state.doc.toString());
+                paneNotice = "";
+                reflectSaveState();
+                postEdit(update);
+              }
+              if (isSaveAction(update)) {
+                const currentView = update.view;
+                const path = docState.relativePath;
+                queueMicrotask(() => {
+                  if (view === currentView && docState.relativePath === path)
+                    commitDraft("explicit");
+                });
+              }
             }
-          }
-          if (update.selectionSet || update.docChanged) {
-            const { anchor, head } = update.state.selection.main;
-            api.setState({ anchor, head, path: docState.relativePath });
-            if (!secondarySurface)
-              api.postMessage({ type: "selection", anchor, head });
-          }
-        }),
-      ],
-    }),
+            if (update.selectionSet || update.docChanged) {
+              const { anchor, head } = update.state.selection.main;
+              api.setState({ anchor, head, path: docState.relativePath });
+              if (!secondarySurface)
+                api.postMessage({ type: "selection", anchor, head });
+            }
+          }),
+        ],
+      }),
   });
   return editor;
 }
@@ -677,9 +780,38 @@ window.addEventListener("message", (event) => {
       break;
     }
     case "init": {
-      finishSaveRequests(false);
-      clipboard.cancel();
-      if (docState.relativePath !== msg.relativePath) sourceMode.reset();
+      const sameIdentity = Boolean(
+        view && docState.relativePath === msg.relativePath,
+      );
+      if (sameIdentity && msg.generation < docState.generation) break;
+      const active = secondarySurface ? draft : primarySave;
+      if (
+        sameIdentity &&
+        (active.dirty || active.pending) &&
+        view.state.doc.toString() !== msg.text
+      ) {
+        paneNotice =
+          "The host changed while this draft was unsaved. Save or export it before reopening.";
+        reflectSaveState();
+        break;
+      }
+      const retainEditor =
+        sameIdentity && view.state.doc.toString() === msg.text;
+      if (!retainEditor) {
+        if (view && docState.relativePath) {
+          documentViews.delete(docState.relativePath);
+          documentViews.set(docState.relativePath, {
+            state: view.state,
+            scrollTop: view.scrollDOM.scrollTop,
+            scrollLeft: view.scrollDOM.scrollLeft,
+          });
+          if (documentViews.size > 8)
+            documentViews.delete(documentViews.keys().next().value);
+        }
+        finishSaveRequests(false);
+        clipboard.cancel();
+      }
+      if (!sameIdentity) sourceMode.reset();
       docState.relativePath = msg.relativePath;
       docState.hasSurface = true;
       docState.editingConflict = false;
@@ -691,21 +823,43 @@ window.addEventListener("message", (event) => {
         secondarySurface && Array.isArray(msg.relationships)
           ? msg.relationships
           : [];
-      draft.hydrate(msg.text, msg.generation, {
-        discardLocal: true,
-        relativePath: msg.relativePath,
-      });
-      primarySave.reset(msg.relativePath, msg.text, msg.dirty);
-      paneNotice = "";
+      wireScopeTabs(msg.scopes ?? msg.relationships, msg.selectedScope);
+      if (!retainEditor) {
+        draft.hydrate(msg.text, msg.generation, {
+          discardLocal: true,
+          relativePath: msg.relativePath,
+        });
+        primarySave.reset(msg.relativePath, msg.text, msg.dirty);
+        paneNotice = "";
+        view?.destroy();
+        const cached = documentViews.get(msg.relativePath);
+        const retainedState =
+          cached?.state.doc.toString() === msg.text ? cached.state : null;
+        view = makeEditor(msg.text, retainedState);
+        if (retainedState) {
+          view.scrollDOM.scrollTop = cached.scrollTop;
+          view.scrollDOM.scrollLeft = cached.scrollLeft;
+        }
+      } else if (!active.dirty && !active.pending) {
+        if (secondarySurface)
+          draft.hydrate(msg.text, msg.generation, {
+            relativePath: msg.relativePath,
+          });
+        else primarySave.reset(msg.relativePath, msg.text, msg.dirty);
+      }
       reflectSaveState();
-      view?.destroy();
-      view = makeEditor(msg.text);
       reflectEditingState();
+      view.dispatch({
+        effects: setPropertyRelationships.of(docState.relationships),
+      });
       const requested = msg.selection;
       const saved = api.getState();
       const selection =
         requested ?? (saved?.path === msg.relativePath ? saved : null);
-      if (selection) {
+      if (
+        selection &&
+        (requested || (!retainEditor && !documentViews.has(msg.relativePath)))
+      ) {
         const len = view.state.doc.length;
         try {
           view.dispatch({
@@ -762,6 +916,7 @@ window.addEventListener("message", (event) => {
       docState.relationships = Array.isArray(msg.relationships)
         ? msg.relationships
         : [];
+      wireScopeTabs(msg.scopes ?? msg.relationships, msg.selectedScope);
       view.dispatch({
         effects: setPropertyRelationships.of(docState.relationships),
       });
@@ -851,5 +1006,18 @@ document.addEventListener("keydown", (event) => {
 const unwireSaveBoundary = wireSaveBoundary(document.body, () =>
   commitDraft("explicit"),
 );
-window.addEventListener("unload", unwireSaveBoundary, { once: true });
+window.addEventListener(
+  "unload",
+  () => {
+    unwireSaveBoundary();
+    scopeTabs?.dispose();
+    scopeTabs = null;
+    documentViews.clear();
+    clipboard.cancel();
+    finishSaveRequests(false);
+    view?.destroy();
+    view = null;
+  },
+  { once: true },
+);
 api.postMessage({ type: "ready" });

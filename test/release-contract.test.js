@@ -109,8 +109,8 @@ test("VS Code surfaces show no date label and own one in-place source toggle", a
 });
 
 test("the current release is a universal local editor without account connectivity", () => {
-  assert.equal(packageJson.version, "55.1.0");
-  assert.equal(packageJson.aicEditorCore, "7.4.0");
+  assert.equal(packageJson.version, "56.4.4");
+  assert.equal(packageJson.aicEditorCore, "7.5.0");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
   assert.match(
@@ -150,8 +150,8 @@ test("the current release is a universal local editor without account connectivi
   assert.ok(!Object.hasOwn(packageJson.devDependencies, "@noble/hashes"));
   assert.ok(!Object.hasOwn(packageJson.devDependencies, "proper-lockfile"));
   assert.ok(
-    !Object.keys(packageJson.contributes.configuration?.properties ?? {}).some((key) =>
-      key.startsWith("aicNotes.standardNotes."),
+    !Object.keys(packageJson.contributes.configuration?.properties ?? {}).some(
+      (key) => key.startsWith("aicNotes.standardNotes."),
     ),
   );
 });
@@ -186,7 +186,7 @@ test("note association, project fallback, and local footer actions are explicit"
   assert.match(provider, /preferredWorkspaceFolder/u);
   assert.match(
     provider,
-    /this\.followTargetNow\(folder\.uri, \{ preserveFocus: true, isCurrent \}\)/u,
+    /this\.followTargetNow\(folder\.uri, \{\s*preserveFocus: true,\s*isCurrent,\s*beforeAdopt: resetScope,?\s*\}\)/u,
   );
   assert.match(
     create,
@@ -337,12 +337,14 @@ test("source selections cross both VS Code and custom-editor boundaries", async 
 });
 
 test("preview selection stays native while Ctrl+A reveals source", async () => {
-  const [webview, details, structured, detailsPresentation] = await Promise.all([
-    read("src/webview/main.js"),
-    read("src/webview/details.js"),
-    read("vendor/aic-editor-core/structured-preview.js"),
-    read("vendor/aic-editor-core/details-preview.js"),
-  ]);
+  const [webview, details, structured, detailsPresentation] = await Promise.all(
+    [
+      read("src/webview/main.js"),
+      read("src/webview/details.js"),
+      read("vendor/aic-editor-core/structured-preview.js"),
+      read("vendor/aic-editor-core/details-preview.js"),
+    ],
+  );
   assert.match(webview, /wirePreviewSelection\(editor, document\)/u);
   assert.match(structured, /event\.key\.toLowerCase\(\) !== "a"/u);
   assert.match(
@@ -485,7 +487,7 @@ test("plain Markdown and contextual notes load the same slash-enabled editor", a
   assert.match(noteProvider, /distRoot,[\s\S]*"main\.js"/u);
   assert.match(
     webview,
-    /function makeEditor\(text\)[\s\S]*placeholder\(SLASH_SNIPPET_PLACEHOLDER\),[\s\S]*slashSnippetExtension\(\)/u,
+    /function makeEditor\(text, retainedState = null\)[\s\S]*placeholder\(SLASH_SNIPPET_PLACEHOLDER\),[\s\S]*slashSnippetExtension\(\)/u,
   );
   assert.match(nativeProvider, /DOCUMENTATION_SNIPPETS/u);
   assert.match(nativeProvider, /registerCompletionItemProvider/u);

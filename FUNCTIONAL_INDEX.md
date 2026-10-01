@@ -327,7 +327,7 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 | Selection-to-note command  | `src/notes/selection.js`                        | inserts into the live local sidebar draft; no implicit save    | rejects unsaved/unbacked/out-of-workspace sources                    |
 | Structured previews        | `vendor/markdown`, `vendor/aic-editor-core`     | exact Markdown transactions only                               | invalid source remains editable instead of being normalized silently |
 | Slash template completion  | shared core plus `src/editor/slash-provider.js` | inserts exact Markdown in AIC, native, and contextual Markdown | inactive in code/read-only contexts                                  |
-| AIC agent workflow         | `src/agents/bootstrap.js`                       | bundled instructions, explicit local handoff and copy command  | no external CLI or global configuration dependency                 |
+| AIC agent workflow         | `src/agents/bootstrap.js`                       | bundled instructions, explicit local handoff and copy command  | no external CLI or global configuration dependency                   |
 
 ## Commands
 
@@ -341,8 +341,8 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 | `aicNotes.enableExplorerNesting` | Add workspace Explorer nesting patterns for sidecars                                                                     |
 | `aicNotes.openSource`            | Explicitly open the file owner with its sidebar note, or reveal the folder/project owner; reject ambiguous sources       |
 | `aicNotes.useNativeForMarkdown`  | Set the user association for plain `*.md` back to the native editor while keeping notes in the AIC main editor           |
-| `aicNotes.enableAgentWorkflow`   | Write the bundled instruction file and a content-bound workspace marker                                                       |
-| `aicNotes.syncAgentInstructions` | Explicitly refresh the bundled workspace handoff without a CLI or global writes        |
+| `aicNotes.enableAgentWorkflow`   | Write the bundled instruction file and a content-bound workspace marker                                                  |
+| `aicNotes.syncAgentInstructions` | Explicitly refresh the bundled workspace handoff without a CLI or global writes                                          |
 
 ## Preview interaction contracts
 
@@ -405,3 +405,49 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
   all remote providers or all desktop platforms.
 
 `aicNotes.copyAgentInstructions` copies the bundled guide without writing files; it also works in untrusted workspaces.
+
+## Shared encrypted files
+
+The `.aicnotes` editor loads the canonical portable Notes runtime and exchanges
+only ciphertext with its owning VS Code TextDocument. Stale writes are rejected;
+external changes require an explicit reopen. Files can live in user-managed sync
+folders. The compiled runtime and its source/hash snapshot are distributed by the
+canonical repository’s update workflow. Ordinary Markdown editor ownership stays
+with the existing Markdown provider.
+
+## Extension update distribution
+
+Exact release archives and checksums are verified before store submission.
+Canonical core and portable builds reach VS Code through a reviewed update PR;
+source commits and complete file hashes remain in separate snapshots. Local
+working-tree previews are permitted, while release proof requires committed
+source. Publisher listings, credentials and explicit enable variables complete
+activation; usage and setup are in [extension updates](../standard-notes-aic/pwa/EXTENSION_UPDATES.md).
+
+## Focused note scopes
+
+**Current**, **Shared**, and **Global** show one note scope at a time. Switching
+waits for the active draft to save; a failed save keeps that scope open. The
+shared tab control supports arrow keys, Home/End and Enter/Space, and hides
+inactive panels from focus and assistive technology. Switching scopes never
+copies inherited text into the Current note.
+
+In the browser, Current belongs to the exact URL, Shared to its origin, and
+Global to the browser profile. In VS Code, Current stays anchored to the
+original file, Shared opens its nearest existing folder note, and Global opens
+the existing project note. Native TextDocument ownership and Undo remain in
+VS Code; scope navigation reuses the owning editor. Missing sidecars are
+disabled and selecting a tab never creates a file.
+
+The PWA explores imported Markdown files as folders. For `app/src/page.md`,
+Shared resolves `app/src.note.md` (or the nearest existing ancestor sidecar),
+and Global resolves `app/app.note.md`. These paths follow the VS Code sidecar
+convention. Loose files without an identifiable project folder have no Global
+file scope. Workspace labels do not determine note identity or encryption.
+Browser-library bundles use their existing URL, origin and Global records,
+including orphan Shared records and Global without a page note. Scope editors
+retain independent Undo until the selected context closes or changes.
+
+PWA saves still update the local workspace or its explicitly connected encrypted
+file. Importing a folder does not grant write-back or background synchronization;
+export copies to your own sync folder when needed.

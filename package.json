@@ -2,8 +2,8 @@
   "name": "aic-notes",
   "displayName": "AIC Notes",
   "description": "Local AIC Markdown documents and linked notes, with no account connection or note synchronization.",
-  "version": "55.1.0",
-  "aicEditorCore": "7.4.0",
+  "version": "56.4.4",
+  "aicEditorCore": "7.5.0",
   "publisher": "ldzyha",
   "icon": "media/icon.png",
   "license": "MIT",
@@ -58,7 +58,8 @@
     "release:checksum": "node scripts/checksum.mjs",
     "core:check": "node scripts/verify-core.mjs",
     "release:verify": "node scripts/verify-release.mjs",
-    "release:gate": "npm run core:check && npm test && npm run package && npm run release:checksum && npm run release:verify"
+    "release:gate": "npm run core:check && npm run portable:check && npm test && npm run package && npm run release:checksum && npm run release:verify",
+    "portable:check": "node scripts/verify-portable-runtime.mjs"
   },
   "contributes": {
     "viewsContainers": {
@@ -196,6 +197,16 @@
       ]
     },
     "customEditors": [
+      {
+        "viewType": "aicNotes.portable",
+        "displayName": "AIC Encrypted Notes",
+        "selector": [
+          {
+            "filenamePattern": "*.aicnotes"
+          }
+        ],
+        "priority": "default"
+      },
       {
         "viewType": "aicNotes.noteRedirect",
         "displayName": "AIC Markdown (Legacy Note Association)",

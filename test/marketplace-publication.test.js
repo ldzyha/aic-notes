@@ -11,6 +11,10 @@ import {
   validateReleaseMetadata,
   verifyMarketplaceRelease,
 } from "../scripts/verify-marketplace-release.mjs";
+import {
+  marketplacePlan,
+  publishVerifiedMarketplaceRelease,
+} from "../scripts/publish-marketplace.mjs";
 
 const tag = "v53.0.1";
 const version = "53.0.1";
@@ -166,7 +170,10 @@ test("Marketplace workflow publishes verified release assets with scoped permiss
   assert.equal(workflow.concurrency["cancel-in-progress"], false);
   assert.deepEqual(workflow.permissions, {});
   const publish = workflow.jobs.publish;
-  assert.deepEqual(publish.permissions, { contents: "read" });
+  assert.deepEqual(publish.permissions, {
+    contents: "read",
+    "id-token": "write",
+  });
   assert.match(publish.if, /github\.repository == 'ldzyha\/aic-notes'/u);
   assert.match(publish.if, /refs\/heads\/main/u);
   assert.match(publish.if, /refs\/tags\//u);
@@ -179,11 +186,12 @@ test("Marketplace workflow publishes verified release assets with scoped permiss
   const verification = runs.findIndex((run) =>
     run.includes("node scripts/verify-marketplace-release.mjs"),
   );
-  const publication = runs.findIndex((run) => run.includes("vsce publish"));
+  const publication = runs.findIndex((run) =>
+    run.includes("node scripts/publish-marketplace.mjs"),
+  );
   assert.ok(verification >= 0 && publication > verification);
-  assert.match(runs.join("\n"), /if \[\[ -z "\$VSCE_PAT" \]\]/u);
   const credentialCheck = runs.findIndex((run) =>
-    run.includes("vsce verify-pat ldzyha"),
+    run.includes('case "$VSCE_AUTH_MODE"'),
   );
   assert.ok(credentialCheck > verification && credentialCheck < publication);
   assert.equal(
@@ -194,9 +202,18 @@ test("Marketplace workflow publishes verified release assets with scoped permiss
     publish.steps[publication].if,
     "${{ inputs.verification_only != true }}",
   );
-  assert.match(
-    runs[publication],
-    /--packagePath "\$VSIX_PATH" --skip-duplicate/u,
+  const login = publish.steps.find((step) =>
+    step.uses?.startsWith("Azure/login@"),
+  );
+  assert.match(login.uses, /^Azure\/login@[a-f0-9]{40}$/u);
+  assert.equal(
+    login.if,
+    "${{ inputs.verification_only != true && vars.VSCE_AUTH_MODE == 'entra' }}",
+  );
+  assert.equal(login.with["allow-no-subscriptions"], true);
+  assert.equal(
+    publish.env.VSCE_AUTH_MODE,
+    "${{ vars.VSCE_AUTH_MODE || 'pat' }}",
   );
   assert.doesNotMatch(
     runs.join("\n"),
@@ -208,9 +225,96 @@ test("Marketplace workflow publishes verified release assets with scoped permiss
       "utf8",
     ),
   );
+  assert.equal(
+    caller.jobs["publish-marketplace"].if,
+    "startsWith(github.ref, 'refs/tags/') && vars.VSCODE_MARKETPLACE_ENABLED == 'true'",
+  );
   assert.equal(caller.jobs["publish-marketplace"].needs, "verify-universal");
   assert.equal(
     caller.jobs["publish-marketplace"].uses,
     "./.github/workflows/publish-marketplace.yml",
   );
+  assert.equal(
+    caller.jobs["publish-marketplace"].permissions["id-token"],
+    "write",
+  );
+});
+
+test("Marketplace publishing keeps exact VSIX bytes and selects authenticated Entra or PAT explicitly", () => {
+  const artifact = {
+    vsixPath: "/fixture/aic-notes-53.0.1.vsix",
+    version,
+    sha256: "1".repeat(64),
+  };
+  assert.throws(() => marketplacePlan(artifact, {}), /Configure VSCE_PAT/u);
+  assert.throws(
+    () => marketplacePlan(artifact, { VSCE_AUTH_MODE: "oidc" }),
+    /pat or entra/u,
+  );
+  assert.throws(
+    () => marketplacePlan(artifact, { VSCE_AUTH_MODE: "entra" }),
+    /federation/u,
+  );
+  const pat = marketplacePlan(artifact, { VSCE_PAT: "fixture-pat" });
+  assert.deepEqual(pat.commands[0], ["verify-pat", "ldzyha"]);
+  assert.deepEqual(pat.commands[1], [
+    "publish",
+    "--packagePath",
+    artifact.vsixPath,
+    "--skip-duplicate",
+  ]);
+  const env = {
+    VSCE_AUTH_MODE: "entra",
+    AZURE_CLIENT_ID: "fixture-client",
+    AZURE_TENANT_ID: "fixture-tenant",
+    VSCE_PAT: "unrelated-pat",
+  };
+  const entra = marketplacePlan(artifact, env);
+  assert.equal(entra.env.VSCE_PAT, undefined);
+  assert.equal(env.VSCE_PAT, "unrelated-pat");
+  assert.deepEqual(entra.commands[0], [
+    "verify-pat",
+    "ldzyha",
+    "--azure-credential",
+  ]);
+  assert.deepEqual(entra.commands[1], [
+    "publish",
+    "--packagePath",
+    artifact.vsixPath,
+    "--skip-duplicate",
+    "--azure-credential",
+  ]);
+  const calls = [];
+  assert.equal(
+    publishVerifiedMarketplaceRelease(artifact, env, (...args) => {
+      calls.push(args);
+      return { status: 0 };
+    }).state,
+    "publication-command-completed",
+  );
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0][2].shell, false);
+  assert.equal(calls[0][2].timeout, 180000);
+  assert.equal(calls[0][2].env.VSCE_PAT, undefined);
+});
+
+test("Marketplace publisher stops on authentication failure and redacts provider output", () => {
+  let calls = 0;
+  assert.throws(
+    () =>
+      publishVerifiedMarketplaceRelease(
+        { vsixPath: "/fixture.vsix" },
+        { VSCE_PAT: "fixture-pat" },
+        () => {
+          calls++;
+          return {
+            status: 1,
+            stderr: "fixture-pat and provider token",
+            stdout: "fixture-pat",
+          };
+        },
+      ),
+    /^Error: Marketplace verify-pat failed; verify publisher authorization and inspect the Marketplace dashboard$/u,
+  );
+  assert.equal(calls, 1);
 });

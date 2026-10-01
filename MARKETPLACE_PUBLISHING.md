@@ -4,6 +4,9 @@
 
 ## English
 
+Public product documentation: [releases and installation](https://aic.dzyha.com/releases),
+[terms and privacy](https://aic.dzyha.com/terms), [AIC Notes](https://aic.dzyha.com/).
+
 ### Current status — September 24, 2026
 
 [AIC Notes 53.0.1](https://marketplace.visualstudio.com/items?itemName=ldzyha.aic-notes)
@@ -16,12 +19,22 @@ activated or verified**. The existing public version was uploaded manually.
 Credential setup is blocked at new Azure DevOps organization creation: the form
 requires a billing subscription, and none is accessible to the account.
 
+Source preparation on September 30 adds an optional Microsoft Entra federation
+route. It verifies the same stable release VSIX and publisher rights before
+submission. Account authorization, federated identity configuration, and a real
+authenticated publication remain unverified. The existing VSCE dependency lock
+resolves to 3.9.2 and supports `--azure-credential` for both authorization checks
+and publication.
+
 ### Release flow
 
 1. Push the intended `v<version>` release tag. `release.yml` keeps its existing
    Node 20 build, test and universal-package checks.
-2. Only a tag run that completes `verify-universal`, including the GitHub release,
-   calls `publish-marketplace.yml`.
+2. A tag run calls `publish-marketplace.yml` only after `verify-universal` and the
+   GitHub release succeed and repository variable `VSCODE_MARKETPLACE_ENABLED` is
+   exactly `true`. Automatic Marketplace submission is disabled by default.
+   GitHub releases work without this flag; setting it requires explicit
+   authorization to resume Marketplace publishing.
 3. The publishing workflow downloads that public stable GitHub release's exact
    `aic-notes-<version>.vsix` and `.sha256`. It checks the checksum, tag/version and
    package identity `ldzyha.aic-notes`, then submits those bytes without rebuilding.
@@ -43,7 +56,18 @@ Verification-only and duplicate-only runs do not prove that the pipeline can
 publish a new version. Record a successful authenticated publication before
 calling automatic publishing operational.
 
-### Enable the temporary publishing credential
+### Select publishing authentication
+
+For Entra publication, set repository variables `VSCE_AUTH_MODE=entra`,
+`VSCE_AZURE_CLIENT_ID`, and `VSCE_AZURE_TENANT_ID`. Authorize that identity as a
+contributor to publisher **ldzyha** and configure Entra workload federation for
+the GitHub repository's publishing refs. The workflow uses Azure Login with
+`allow-no-subscriptions: true`, followed by `vsce --azure-credential`. The source
+route is prepared; it still needs owner account setup and a successful publishing
+run. [Prepared setup](https://github.com/ldzyha/standard-notes-aic/blob/main/pwa/EXTENSION_UPDATES.md#vs-code-publication),
+[Microsoft publishing guidance](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#secure-automated-publishing-to-visual-studio-marketplace).
+
+`VSCE_AUTH_MODE=pat` or an unset mode preserves the existing temporary PAT route:
 
 Creating a **new Azure DevOps organization** requires an active Azure
 subscription; existing organizations and free-tier limits are unaffected.
@@ -66,12 +90,10 @@ This PAT setup is temporary. Microsoft retires global Azure DevOps PATs on
 **December 1, 2026**; rotation cannot extend that deadline. Migrate publishing to
 Microsoft Entra ID authentication before then. [Retirement notice](https://devblogs.microsoft.com/devops/retirement-of-global-personal-access-tokens-in-azure-devops/).
 
-Native GitHub OIDC publishing through `vsce` is not configured here. The
-maintainers hid the unannounced `--oidc` flag from help while keeping its parsing;
-it is not an announced setup contract. [Official vsce change](https://github.com/microsoft/vscode-vsce/pull/1297).
-The inspected publisher UI did not expose a usable OIDC policy setup. Entra
-migration requires its own identity, publisher authorization and verified pipeline
-configuration. [Microsoft's recommended publishing model](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#secure-automated-publishing-to-visual-studio-marketplace).
+The Entra route uses Azure Login's GitHub workload federation and the supported
+`vsce --azure-credential` interface. It does not depend on the unannounced native
+`vsce --oidc` publishing flag. [Azure Login federation](https://github.com/Azure/login#login-with-openid-connect-oidc-recommended),
+[official vsce change](https://github.com/microsoft/vscode-vsce/pull/1297).
 
 ### What users receive
 
@@ -87,6 +109,9 @@ installation path. [code-server extension sources](https://coder.com/docs/code-s
 
 ## Українська
 
+Публічна документація продукту: [випуски та встановлення](https://aic.dzyha.com/releases),
+[умови й приватність](https://aic.dzyha.com/terms), [AIC Notes](https://aic.dzyha.com/).
+
 ### Поточний стан — 24 вересня 2026
 
 [AIC Notes 53.0.1](https://marketplace.visualstudio.com/items?itemName=ldzyha.aic-notes)
@@ -99,12 +124,21 @@ secret `VSCE_PAT`, тому автоматична публікація з ав�
 Налаштування доступу зупинилося на створенні нової організації Azure DevOps:
 форма потребує підписки для білінгу, але акаунт не має доступної підписки.
 
+Підготовка коду 30 вересня додає optional Microsoft Entra federation route.
+Він перевіряє той самий стабільний VSIX і права видавця перед поданням.
+Account authorization, налаштування federation та реальна публікація з
+авторизацією ще не перевірені. Наявний dependency lock VSCE задає 3.9.2 із
+підтримкою `--azure-credential` для перевірки прав і публікації.
+
 ### Порядок випуску
 
 1. Надішліть потрібний тег `v<version>`. `release.yml` зберігає наявні збірку,
    тести й перевірку універсального пакета на Node 20.
-2. Лише запуск за тегом, що завершив `verify-universal` разом із GitHub release,
-   викликає `publish-marketplace.yml`.
+2. Запуск за тегом викликає `publish-marketplace.yml` лише після успішних
+   `verify-universal` і GitHub release, коли змінна репозиторію
+   `VSCODE_MARKETPLACE_ENABLED` дорівнює `true`. Автоматичне подання до Marketplace
+   типово вимкнене. GitHub releases працюють без цього прапорця; його ввімкнення
+   потребує явного дозволу відновити публікацію в Marketplace.
 3. Workflow публікації завантажує точні `aic-notes-<version>.vsix` і `.sha256`
    цього публічного стабільного GitHub release. Він звіряє контрольну суму,
    тег/версію та ідентичність `ldzyha.aic-notes`, потім надсилає ті самі байти без
@@ -126,7 +160,18 @@ secret `VSCE_PAT`, тому автоматична публікація з ав�
 нову версію. Автоматизація вважається робочою після підтвердженої публікації
 з авторизацією.
 
-### Увімкнення тимчасового доступу для публікації
+### Вибір авторизації для публікації
+
+Для Entra задайте repository variables `VSCE_AUTH_MODE=entra`,
+`VSCE_AZURE_CLIENT_ID` і `VSCE_AZURE_TENANT_ID`. Додайте identity до publisher
+**ldzyha** із роллю Contributor та налаштуйте Entra workload federation для
+publishing refs GitHub repository. Workflow використовує Azure Login із
+`allow-no-subscriptions: true`, потім `vsce --azure-credential`. Route у коді
+підготовлено; налаштування акаунта власником і успішний publishing run ще
+потрібні. [Підготовлене налаштування](https://github.com/ldzyha/standard-notes-aic/blob/main/pwa/EXTENSION_UPDATES.uk.md#публікація-vs-code),
+[інструкція Microsoft](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#secure-automated-publishing-to-visual-studio-marketplace).
+
+`VSCE_AUTH_MODE=pat` або незаданий mode зберігає попередній тимчасовий PAT route:
 
 Створення **нової організації Azure DevOps** потребує активної Azure subscription;
 наявні організації та ліміти безкоштовного рівня не змінюються.
@@ -149,12 +194,10 @@ PAT — тимчасовий спосіб. Microsoft вимикає глобал
 **1 грудня 2026 року**; заміна токена не подовжує цей строк. До цієї дати
 перенесіть публікацію на авторизацію Microsoft Entra ID. [Повідомлення про вимкнення](https://devblogs.microsoft.com/devops/retirement-of-global-personal-access-tokens-in-azure-devops/).
 
-Нативна публікація через GitHub OIDC у `vsce` тут не налаштована. Розробники
-приховали неанонсований прапорець `--oidc` із довідки, зберігши його обробку;
-це ще не анонсований спосіб налаштування. [Офіційна зміна vsce](https://github.com/microsoft/vscode-vsce/pull/1297).
-У перевіреному інтерфейсі видавця не було доступного налаштування політики OIDC.
-Перехід на Entra потребує окремої ідентичності, дозволу видавця та перевіреної
-конфігурації pipeline. [Рекомендована модель Microsoft](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#secure-automated-publishing-to-visual-studio-marketplace).
+Entra route використовує GitHub workload federation через Azure Login і
+підтримуваний `vsce --azure-credential`. Він не залежить від неанонсованого
+native publishing flag `vsce --oidc`. [Azure Login federation](https://github.com/Azure/login#login-with-openid-connect-oidc-recommended),
+[офіційна зміна vsce](https://github.com/microsoft/vscode-vsce/pull/1297).
 
 ### Оновлення у користувачів
 

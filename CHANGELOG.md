@@ -2,7 +2,65 @@
 
 [English](CHANGELOG.md) · [Українська](CHANGELOG.uk.md)
 
-## Unreleased
+## 56.4.4 — 2026-10-01
+
+Release sequence 56 · 4 feature outcomes · 4 fixed-bug outcomes. Coordinates
+AIC for Standard Notes 48.4.4, experimental browser 0.11.0 and shared core 7.5.0.
+
+### F01 — Portable local workspaces with optional encryption
+
+Open compatible `.aicnotes` files while keeping the passphrase boundary,
+ciphertext cache and explicit export behavior. Local saves do not update an
+original folder or Drive source.
+
+### F02 — Focused file scopes and phone navigation
+
+**Current**, **Shared** and **Global** open the current file, nearest parent
+note and workspace/project note without losing the originating file anchor or
+native `TextDocument` save and Undo ownership. Folder navigation, the compact
+phone header and the linked DDK writing method are part of this focused workflow;
+AIC remains a Markdown editor with its richer supported syntax.
+
+### F03 — Optional on-device Grammar and Improve
+
+Review Chrome-supported local suggestions before applying them. Protected
+Markdown, regular editing and Undo work without the optional model.
+
+### F04 — Checksum-verified publishing is ready for opt-in use
+
+Publishing verifies the exact VSIX/package and checksum. GitHub release creation,
+Marketplace/Open VSX publication and credentials remain separate, unverified
+steps.
+
+### Fixes
+
+1. Markdown-folder limits count selected Markdown files rather than unrelated
+   folders.
+2. Folder loading is bounded and cancellable without replacing the active editor
+   or accepting late/partial imports.
+3. Redirect/cache recovery preserves offline public pages and local notes.
+4. A confirmed deletion of an existing file rejects a later save instead of
+   recreating it; an intentional new-note placeholder can still create its file.
+
+### Earlier unreleased details
+
+- Add mobile-first controls and built-in, on-device Grammar / Improve assistance, with protected Markdown, reviewed application and editor Undo.
+- Serve bilingual terms, privacy, release history and installation at
+  `aic.dzyha.com/terms` and `aic.dzyha.com/releases`, including offline access.
+
+### Portable encrypted file notes
+
+- Add an installable, offline Notes PWA prepared for `aic.dzyha.com`. Each
+  password entity holds a single file or project folders; optional names stay
+  inside the encrypted payload and never determine its key.
+- Open the same `.aicnotes` data in the PWA, Chrome/Edge file view, and VS Code.
+  The selected file is authoritative; device caches contain ciphertext only.
+  Users handle synchronization through Drive or another file service.
+- Preserve binary files, folder paths, failed-save drafts and encrypted recovery
+  exports. Detect observed external file changes before overwriting them.
+- Checksum-verified browser/VS Code publishing and reviewed shared runtime update
+  PRs are available for the configured release process. Store listings remain
+  separate from the GitHub release.
 
 ## 55.1.0 — 2026-09-29
 
@@ -17,7 +75,6 @@ AIC executable or configuration folder is required. VS Code offers Copy Agent
 Instructions and explicit workspace setup; setup preserves owner files and no
 longer runs global rule synchronization. Browser and Standard Notes expose the
 guide locally. Documentation now uses direct statements for simple answers.
-
 
 ## 54.0.2 — 2026-09-24
 
