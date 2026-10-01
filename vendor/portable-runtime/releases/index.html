@@ -3,6 +3,7 @@
 <a href="/terms">Terms and privacy</a>
 <a href="/releases" aria-current="page">Releases and installation</a>
 <a href="/how-to">How to</a><a href="/releases/uk/" hreflang="uk">Українська</a></nav><main class="aic-site__content"><h1 id="releases-and-installation">Releases and installation</h1>
+<blockquote><p><strong>Public releases and installation:</strong> <a href="https://aic.dzyha.com/releases">https://aic.dzyha.com/releases</a></p></blockquote>
 <p><a href="/releases/uk/">Українська</a> · <a href="/">Open AIC Notes</a> · <a href="/terms">Terms and privacy</a></p>
 <p>Use the PWA for local Markdown workspaces with optional encryption, the browser
 extension for encrypted page notes, or AIC Notes in VS Code. Protected file
@@ -124,6 +125,26 @@ directory, run <code>sha256sum -c FILE.sha256</code> on Linux; on macOS, compare
   · <a href="https://github.com/ldzyha/aic-notes/blob/main/CHANGELOG.uk.md">Українська</a></p></li></ul>
 <h3 id="changelog">Changelog</h3>
 <p><a href="/releases">English</a> · <a href="/releases/uk/">Українська</a></p>
+<h4 id="4912-2026-10-01">49.1.2 — 2026-10-01</h4>
+<p>Release sequence 49 · 1 feature outcome · 2 fixed-bug outcomes. Coordinates
+AIC Notes for VS Code 57.1.2, experimental browser 0.11.1 and shared core 7.5.1.</p>
+<h5 id="f01-a-shorter-mobile-writing-workflow">F01 — A shorter mobile writing workflow</h5>
+<p>The PWA starts a local note directly from <strong>New note</strong>. <strong>Open files</strong> and
+<strong>Open folder</strong> are direct actions. A mobile Notes drawer reuses the existing
+list and editor, keeping text, selection and Undo while browsing. The title
+opens Rename; compact header actions expose browsing, a new note and note options.
+VS Code bundles the coordinated shared UI and portable runtime changes.</p>
+<h5 id="b01-compact-controls-and-bounded-menus">B01 — Compact controls and bounded menus</h5>
+<p>Shared outline icons and touch targets keep mobile controls readable. Primary
+writing actions stay visible; secondary workspace actions use a contextual menu.
+The editor shows a concise save state with the full destination in accessible
+text and retains a recoverable draft when saving fails.</p>
+<h5 id="b02-terms-routes-reach-the-canonical-public-page">B02 — Terms routes reach the canonical public page</h5>
+<p>Terms links use <strong>aic.dzyha.com/terms</strong>. Redirects preserve the public terms entry
+point across release hosting, without changing the document storage contract.</p>
+<p>These are prepared release inputs. GitHub assets, checksums, hosted manifests
+and deployment need independent verification. Store submissions and approval
+are separate; this changelog does not claim a new Marketplace or browser-store approval.</p>
 <h4 id="4845-2026-10-01">48.4.5 — 2026-10-01</h4>
 <p>Release sequence 48 · 4 feature outcomes · 5 fixed-bug outcomes. Coordinates
 AIC Notes for VS Code 56.4.5, experimental browser 0.11.0 and shared core 7.5.0.</p>
