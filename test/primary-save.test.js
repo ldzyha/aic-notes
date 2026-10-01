@@ -45,3 +45,25 @@ test("primary raw input never queues a save, failure retains retry, and note cha
   state.externallySaved("first");
   assert.equal(state.dirty, false);
 });
+
+test("confirmed external save clears failed-save feedback only for the same current idle draft", () => {
+  const state = new PrimarySave();
+  state.reset("one.md", "base");
+  state.edit("draft");
+  state.acknowledge({ ...state.request(), text: "draft", saved: false });
+  assert.equal(state.dirty, true);
+  assert.equal(state.externallySaved("older text"), false);
+  assert.equal(state.dirty, true);
+  assert.equal(state.externallySaved("draft"), true);
+  assert.equal(state.dirty, false);
+
+  state.edit("new draft");
+  const pending = state.request();
+  assert.equal(state.externallySaved("new draft"), false);
+  assert.equal(state.pending, pending);
+  assert.equal(state.dirty, true);
+  state.edit("newer draft");
+  state.acknowledge({ ...pending, text: "new draft", saved: false });
+  assert.equal(state.externallySaved("new draft"), false);
+  assert.equal(state.dirty, true);
+});

@@ -50,7 +50,9 @@ export class PrimarySave {
   }
 
   externallySaved(text) {
-    if (this.current === text && !this.pending) this.dirty = false;
+    if (this.current !== text || this.pending) return false;
+    this.dirty = false;
+    return true;
   }
 
   takeQueued() {

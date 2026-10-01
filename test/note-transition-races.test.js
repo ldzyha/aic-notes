@@ -153,6 +153,7 @@ function harness() {
     module,
     exports: module.exports,
     require: (name) => (name === "vscode" ? vscode : require(name)),
+    crypto,
     TextEncoder,
     TextDecoder,
     URL,

@@ -39,7 +39,7 @@ function harness({
   let disposePanel;
   let editCount = 0;
   let saveCount = 0;
-  const uri = (path) => ({ toString: () => path });
+  const uri = (path) => ({ scheme: path.split(":")[0], toString: () => path });
   const document = {
     uri: uri("file:///workspace/notes.aicnotes"),
     isClosed: false,
@@ -110,7 +110,9 @@ function harness({
     module,
     exports: module.exports,
     require: (name) => (name === "vscode" ? api : require(name)),
-    Buffer,
+    TextEncoder,
+    TextDecoder,
+    crypto,
     Error,
     console,
   });

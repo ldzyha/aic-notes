@@ -952,7 +952,7 @@ window.addEventListener("message", (event) => {
     }
     case "primary.saveState": {
       if (secondarySurface || msg.relativePath !== docState.relativePath) break;
-      primarySave.externallySaved(msg.text);
+      if (primarySave.externallySaved(msg.text)) paneNotice = "";
       reflectSaveState();
       break;
     }

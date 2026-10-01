@@ -1,13 +1,14 @@
+import { utf8Length, randomHex } from "../host-runtime.js";
 /** The shared PWA owns cryptography. This adapter owns one encrypted TextDocument. */
 import * as vscode from "vscode";
-import { randomBytes } from "node:crypto";
 import { DisposableScope } from "../lifecycle.js";
+import { assertWritableResource } from "../notes/resources.js";
 
 const MAX_BYTES = 9 * 1024 * 1024;
 const boundedText = (value) =>
   typeof value === "string" &&
   value.length <= MAX_BYTES &&
-  Buffer.byteLength(value, "utf8") <= MAX_BYTES;
+  utf8Length(value) <= MAX_BYTES;
 
 function ciphertextTransport(value) {
   if (!boundedText(value)) return false;
@@ -36,7 +37,7 @@ function attribute(value) {
 }
 
 export function portableHtml(webview, distRoot, html, api = vscode) {
-  const nonce = randomBytes(24).toString("base64");
+  const nonce = randomHex(24);
   const policy = `default-src 'none'; script-src 'nonce-${nonce}' ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} data: blob:; font-src ${webview.cspSource} data:; connect-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'`;
   let result = html
     .replace(/<meta\b[^>]*http-equiv="Content-Security-Policy"[^>]*>/giu, "")
@@ -129,6 +130,7 @@ export class PortableEditorProvider {
           await reply(message.requestId, { ok: true, text: current });
           return;
         }
+        assertWritableResource(document.uri, this.api);
         if (
           !ciphertextTransport(message.text) ||
           (message.expected !== null && !boundedText(message.expected))
@@ -245,7 +247,7 @@ export class PortableEditorProvider {
         webview.html = portableHtml(
           webview,
           root,
-          Buffer.from(bytes).toString("utf8"),
+          new TextDecoder().decode(bytes),
           this.api,
         );
     } catch (error) {

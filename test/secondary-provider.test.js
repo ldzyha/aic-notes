@@ -20,6 +20,7 @@ const bundled = await build({
 
 function harness(failure) {
   const uri = {
+    scheme: "file",
     fsPath: "D:/workspace/project.note.md",
     toString: () => "file:///D:/workspace/project.note.md",
   };
@@ -77,6 +78,7 @@ function harness(failure) {
     module,
     exports: module.exports,
     require: (name) => (name === "vscode" ? vscode : require(name)),
+    crypto,
     TextEncoder,
     TextDecoder,
     URL,

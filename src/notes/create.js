@@ -1,10 +1,11 @@
+import { isFileResource, resourceLabel } from "./resources.js";
 // Quick note creation/opening — the ctrl+alt+m path. Mirrors aic's Mod-m
 // feel: on a source file it creates/opens the sidecar note beside; on a note
 // it jumps back to the target. Fresh notes keep the selected template bytes;
 // an empty template receives the shared valid AIC document seed.
 
 import * as vscode from "vscode";
-import * as path from "node:path";
+import * as path from "./uri-path.js";
 import { notePathFor, folderNotePathFor } from "./paths.js";
 import { loadTemplate, fillTemplate } from "./templates.js";
 import { structuredError, formatError } from "../errors.js";
@@ -21,7 +22,7 @@ async function exists(uri) {
 }
 
 export async function noteDescriptorForUri(uri) {
-  if (!uri || uri.scheme !== "file" || uri.path.endsWith(".note.md")) {
+  if (!uri || !isFileResource(uri) || uri.path.endsWith(".note.md")) {
     throw structuredError(
       "notes_no_target",
       "no file-backed source or folder is available",
@@ -32,7 +33,7 @@ export async function noteDescriptorForUri(uri) {
   if (!folder) {
     throw structuredError(
       "notes_outside_workspace",
-      `${uri.fsPath} is not inside the workspace`,
+      `${resourceLabel(uri)} is not inside the workspace`,
       ["Open the file's folder as a workspace first"],
     );
   }
@@ -42,7 +43,7 @@ export async function noteDescriptorForUri(uri) {
   } catch (error) {
     throw structuredError(
       "notes_source_missing",
-      `${uri.fsPath} no longer exists`,
+      `${resourceLabel(uri)} no longer exists`,
       ["Restore the source or choose another workspace item"],
     );
   }
@@ -66,7 +67,7 @@ export async function noteDescriptorForUri(uri) {
   if (!notePath) {
     throw structuredError(
       "notes_target_invalid",
-      `${uri.fsPath} cannot have a linked note`,
+      `${resourceLabel(uri)} cannot have a linked note`,
       ["Choose a workspace file or folder"],
     );
   }
@@ -135,7 +136,7 @@ export async function fileNotePlaceholderForUri(uri) {
   if (descriptor.level !== "file-note") {
     throw structuredError(
       "notes_source_not_file",
-      `${uri.fsPath} is not a file`,
+      `${resourceLabel(uri)} is not a file`,
       ["Choose a source file"],
     );
   }
@@ -168,7 +169,7 @@ export async function notePlaceholderForUri(uri) {
 
 export async function noteForCurrentFile(secondary) {
   const uri = activeWindowResource(vscode.window);
-  if (!uri || uri.scheme !== "file") {
+  if (!uri || !isFileResource(uri)) {
     throw structuredError(
       "notes_no_active_file",
       "no file-backed editor is active",
@@ -189,7 +190,7 @@ export async function noteForExplorerItem(uri, secondary) {
   if (!folder) {
     throw structuredError(
       "notes_outside_workspace",
-      `${uri.fsPath} is not inside the workspace`,
+      `${resourceLabel(uri)} is not inside the workspace`,
       ["Open the item's folder as a workspace first"],
     );
   }

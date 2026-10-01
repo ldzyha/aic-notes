@@ -1,19 +1,28 @@
 import * as vscode from "vscode";
-import * as path from "node:path";
+import * as path from "./uri-path.js";
 import { sourceLocationFromHref } from "./selection-model.js";
 
 // Webview links are document content, not trusted filesystem capabilities.
 // Allow relative wiki traversal only when its normalized destination remains
 // inside the originating workspace folder.
 export function workspaceLinkUri(folder, value) {
-  if (typeof value !== "string" || !value || value.includes("\\") ||
-      /[\u0000-\u001f]/u.test(value) || path.posix.isAbsolute(value) ||
-      /^[a-zA-Z][a-zA-Z0-9+.-]*:/u.test(value)) return null;
+  if (
+    typeof value !== "string" ||
+    !value ||
+    value.includes("\\") ||
+    /[\u0000-\u001f]/u.test(value) ||
+    path.posix.isAbsolute(value) ||
+    /^[a-zA-Z][a-zA-Z0-9+.-]*:/u.test(value)
+  )
+    return null;
   const relative = path.posix.normalize(value);
   if (relative === "." || relative === ".." || relative.startsWith("../"))
     return null;
   const uri = vscode.Uri.joinPath(folder.uri, relative);
-  if (uri.scheme !== folder.uri.scheme || uri.authority !== folder.uri.authority)
+  if (
+    uri.scheme !== folder.uri.scheme ||
+    uri.authority !== folder.uri.authority
+  )
     return null;
   const folderPath = folder.uri.path.replace(/\/$/u, "");
   const actual = uri.path;

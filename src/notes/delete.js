@@ -1,3 +1,4 @@
+import { assertWritableResource } from "./resources.js";
 import * as vscode from "vscode";
 
 export async function trashNotesLocally(
@@ -5,6 +6,7 @@ export async function trashNotesLocally(
   { beforeDelete, afterDelete, detail = "" } = {},
 ) {
   for (const uri of uris) {
+    assertWritableResource(uri);
     if ((await beforeDelete?.(uri)) === false) return false;
     try {
       await vscode.workspace.fs.delete(uri, { useTrash: true });

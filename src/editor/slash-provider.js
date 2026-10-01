@@ -88,10 +88,7 @@ export function createMarkdownSlashCompletionProvider(vscode) {
 
 export function registerMarkdownSlashCompletionProvider(vscode) {
   return vscode.languages.registerCompletionItemProvider(
-    [
-      { language: "markdown", scheme: "file" },
-      { language: "markdown", scheme: "untitled" },
-    ],
+    [{ language: "markdown" }],
     createMarkdownSlashCompletionProvider(vscode),
     "/",
   );

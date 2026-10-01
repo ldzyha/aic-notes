@@ -1,5 +1,10 @@
+import {
+  isFileResource,
+  resourceLabel,
+  assertWritableResource,
+} from "./resources.js";
 import * as vscode from "vscode";
-import * as path from "node:path";
+import * as path from "./uri-path.js";
 import { folderNotePathFor } from "./paths.js";
 import { activeWindowResource } from "../secondary/model.js";
 import { documentSnapshot } from "./operation.js";
@@ -52,7 +57,7 @@ export async function linkSelectionToNote(secondary, markdownEditor) {
   const nativeEditor = vscode.window.activeTextEditor;
   const active = activeWindowResource(vscode.window);
   const editor =
-    nativeEditor?.document?.uri?.scheme === "file" &&
+    isFileResource(nativeEditor?.document?.uri) &&
     nativeEditor.document.uri.toString() === active?.toString() &&
     !nativeEditor.selection.isEmpty
       ? nativeEditor
@@ -61,7 +66,7 @@ export async function linkSelectionToNote(secondary, markdownEditor) {
   if (
     !editor ||
     !document ||
-    document.uri.scheme !== "file" ||
+    !isFileResource(document.uri) ||
     document.uri.toString() !== active?.toString()
   ) {
     throw structuredError(
@@ -93,7 +98,7 @@ export async function linkSelectionToNote(secondary, markdownEditor) {
   if (!folder) {
     throw structuredError(
       "notes_outside_workspace",
-      `${document.uri.fsPath} is outside the workspace`,
+      `${resourceLabel(document.uri)} is outside the workspace`,
       ["Open the source folder as a workspace first"],
     );
   }
@@ -134,6 +139,7 @@ export async function linkSelectionToNote(secondary, markdownEditor) {
     );
   }
   const noteUri = vscode.Uri.joinPath(folder.uri, target.notePath);
+  assertWritableResource(noteUri);
   const result = await secondary.insertLinkedCode(noteUri, {
     sourceUri: target.ownerUri ?? document.uri,
     reference,

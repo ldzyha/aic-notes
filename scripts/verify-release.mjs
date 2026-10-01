@@ -47,6 +47,7 @@ if (entries.some((entry) => /\.(?:exe|dll|node|wasm)$/iu.test(entry)))
 for (const entry of [
   "extension/package.json",
   "extension/dist/extension.cjs",
+  "extension/dist/extension-browser.cjs",
   "extension/dist/webview/main.js",
   "extension/readme.md",
   "extension/README.uk.md",
@@ -127,6 +128,17 @@ const packagedManifest = JSON.parse(
 );
 if (packagedManifest.version !== version)
   throw new Error("packaged manifest version mismatch");
+if (packagedManifest.browser !== "./dist/extension-browser.cjs")
+  throw new Error(
+    "packaged manifest is missing the browser extension host entry",
+  );
+if (
+  !archive
+    .getEntry("extension/dist/extension-browser.cjs")
+    .getData()
+    .equals(await readFile(path.join(root, "dist/extension-browser.cjs")))
+)
+  throw new Error("Packaged browser host differs from the verified build");
 if (
   Object.keys(
     packagedManifest.contributes.configuration?.properties ?? {},

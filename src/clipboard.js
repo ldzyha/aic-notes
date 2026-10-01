@@ -1,3 +1,4 @@
+import { utf8Length } from "./host-runtime.js";
 // Explicit, request-scoped clipboard operations for security fields. Clipboard
 // contents are never included in diagnostics or exception messages.
 const READ_LIMIT = 16 * 1024; // UTF-16 code units, matching the security model.
@@ -37,7 +38,9 @@ export class ClipboardHost {
       if (error) response.error = error;
       if (action === "read" && ok) response.text = text;
       try {
-        void Promise.resolve(sourceWebview.postMessage(response)).catch(() => {});
+        void Promise.resolve(sourceWebview.postMessage(response)).catch(
+          () => {},
+        );
       } catch {
         // A closed webview must not surface clipboard contents elsewhere.
       }
@@ -65,7 +68,11 @@ export class ClipboardHost {
       reply(false, "invalid_request");
       return;
     }
-    if (action === "write" && Buffer.byteLength(message.text, "utf8") > WRITE_LIMIT) {
+    if (
+      action === "write" &&
+      (message.text.length > WRITE_LIMIT ||
+        utf8Length(message.text) > WRITE_LIMIT)
+    ) {
       reply(false, "oversize");
       return;
     }
@@ -73,16 +80,20 @@ export class ClipboardHost {
     this.pending.add(requestId);
     let timer;
     try {
-      const operation = action === "read"
-        ? this.clipboard.readText()
-        : this.clipboard.writeText(message.text);
+      const operation =
+        action === "read"
+          ? this.clipboard.readText()
+          : this.clipboard.writeText(message.text);
       const outcome = await Promise.race([
         Promise.resolve(operation).then(
           (value) => ({ ok: true, value }),
           () => ({ ok: false, error: "unavailable" }),
         ),
         new Promise((resolve) => {
-          timer = setTimeout(() => resolve({ ok: false, error: "timeout" }), this.timeoutMs);
+          timer = setTimeout(
+            () => resolve({ ok: false, error: "timeout" }),
+            this.timeoutMs,
+          );
         }),
       ]);
       if (!current()) {

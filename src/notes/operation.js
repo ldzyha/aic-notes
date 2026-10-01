@@ -1,3 +1,4 @@
+import { assertWritableResource } from "./resources.js";
 import * as vscode from "vscode";
 
 /** Capture before async preparation; validate again at the mutation boundary.
@@ -15,6 +16,7 @@ export function documentSnapshot(document) {
 
 export async function createNoteDocument(uri, text, isCurrent) {
   if (!isCurrent()) return undefined;
+  assertWritableResource(uri);
   const edit = new vscode.WorkspaceEdit();
   // A create edit refuses an intervening file; a stat/writeFile pair cannot.
   edit.createFile(uri, { overwrite: false, ignoreIfExists: false });

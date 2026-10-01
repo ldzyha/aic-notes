@@ -2,6 +2,27 @@
 
 [English](#english) · [Українська](#українська)
 
+## AIC Notes 58.1.1 — VS Code desktop and web
+
+This release adds the browser extension host and clears stale save-failure status.
+It keeps shared core 7.5.1 and the existing data format. Standard Notes 49.1.2 and
+browser 0.11.1 retain their existing packages.
+
+Download [58.1.1 VSIX](https://github.com/ldzyha/aic-notes/releases/download/v58.1.1/aic-notes-58.1.1.vsix)
+and [SHA-256](https://github.com/ldzyha/aic-notes/releases/download/v58.1.1/aic-notes-58.1.1.vsix.sha256).
+In VS Code or vscode.dev, run **Extensions: Install from VSIX…**, choose the file,
+and reload the window. Confirm **58.1.1** in Extensions. Store availability follows
+successful Marketplace publication; a local build or GitHub tag does not prove it.
+In a read-only remote repository, AIC can display notes but cannot save changes.
+
+Цей випуск додає браузерний хост розширення й прибирає застарілу помилку збереження.
+У VS Code або vscode.dev запустіть **Extensions: Install from VSIX…**, виберіть
+[VSIX 58.1.1](https://github.com/ldzyha/aic-notes/releases/download/v58.1.1/aic-notes-58.1.1.vsix)
+та перезавантажте вікно. Перевірте **58.1.1** у списку розширень. У репозиторії
+лише для читання нотатки доступні для перегляду, а збереження потребує прав запису.
+
+The coordinated 57.1.2 installation record below remains historical context.
+
 ## English
 
 The public [release notes and installation](https://aic.dzyha.com/releases) URL is

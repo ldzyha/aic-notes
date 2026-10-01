@@ -2,6 +2,25 @@
 
 [English](CHANGELOG.md) · [Українська](CHANGELOG.uk.md)
 
+## 58.1.1 — 2026-10-01
+
+Release sequence 58 · 1 feature outcome · 1 fixed-bug outcome. Shared core stays
+7.5.1; Standard Notes and browser-extension store versions are unchanged.
+
+### F01 — AIC Notes in VS Code for the Web
+
+The extension now includes desktop and browser host bundles from the same source.
+Markdown, linked notes and encrypted `.aicnotes` use VS Code's filesystem and
+native document/save/undo ownership, including workspace-backed virtual URIs.
+Browser hosts use Web Crypto and UTF-8 APIs without Node.js globals. Read-only
+providers allow viewing and reject writes explicitly. Optional watcher/search
+failures do not prevent direct notes from opening.
+
+### B01 — Saved notes clear stale failure status
+
+A matching successful save clears an earlier failure notice after rapid Undo/Redo
+and Save. A newer unsaved draft retains its failure/retry state.
+
 ## 57.1.2 — 2026-10-01
 
 Release sequence 57 · 1 feature outcome · 2 fixed-bug outcomes. Coordinates

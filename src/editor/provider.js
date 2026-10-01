@@ -1,3 +1,5 @@
+import { resourceReadOnly } from "../notes/resources.js";
+import { utf8Length } from "../host-runtime.js";
 // CustomTextEditorProvider for aicNotes.markdown — hosts the CM6 webview and
 // owns document sync.
 //
@@ -178,6 +180,7 @@ export class MarkdownEditorProvider {
         hasSurface: !document.isClosed,
         ready: session.ready,
         readOnly:
+          resourceReadOnly(document.uri) ||
           session.saving ||
           Boolean(
             session.editSurface &&
@@ -201,7 +204,10 @@ export class MarkdownEditorProvider {
             type: "editingState",
             relativePath,
             ...editing,
-            readOnly: editing.readOnly || session.saving,
+            readOnly:
+              resourceReadOnly(document.uri) ||
+              editing.readOnly ||
+              session.saving,
           }),
       });
     }
@@ -246,6 +252,12 @@ export class MarkdownEditorProvider {
         ...(session.editSurface
           ? this.ownership.state(session.editSurface)
           : {}),
+        readOnly:
+          resourceReadOnly(document.uri) ||
+          Boolean(
+            session.editSurface &&
+            this.ownership.state(session.editSurface).readOnly,
+          ),
         relationships,
         scopes: relationships,
         selectedScope: activeScope?.selected ?? "current",
@@ -308,6 +320,10 @@ export class MarkdownEditorProvider {
                 await this.ownership.activate(session.editSurface);
               break;
             case "edit": {
+              if (resourceReadOnly(document.uri)) {
+                sendReset();
+                return;
+              }
               if (
                 session.editSurface &&
                 !this.ownership.accepts(session.editSurface, msg.lease)
@@ -374,6 +390,10 @@ export class MarkdownEditorProvider {
                     saved,
                   });
               };
+              if (resourceReadOnly(document.uri)) {
+                acknowledge();
+                break;
+              }
               if (
                 (msg.relativePath && msg.relativePath !== relativePath) ||
                 (msg.generation != null && msg.generation !== state.generation)
@@ -447,7 +467,7 @@ export class MarkdownEditorProvider {
                   webview.postMessage({
                     type: "editingState",
                     relativePath,
-                    readOnly: false,
+                    readOnly: resourceReadOnly(document.uri),
                   });
               }
               break;
@@ -642,7 +662,7 @@ export class MarkdownEditorProvider {
     const { topic, payload } = msg;
     if (topic === "clipboard.write") {
       const text = typeof payload?.text === "string" ? payload.text : "";
-      if (Buffer.byteLength(text, "utf8") > 2 * 1024 * 1024) {
+      if (text.length > 2 * 1024 * 1024 || utf8Length(text) > 2 * 1024 * 1024) {
         vscode.window.showWarningMessage(
           "AIC Notes — clipboard payload exceeds 2 MiB",
         );

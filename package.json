@@ -2,7 +2,7 @@
   "name": "aic-notes",
   "displayName": "AIC Notes",
   "description": "Local AIC Markdown documents and linked notes, with no account connection or note synchronization.",
-  "version": "57.1.2",
+  "version": "58.1.1",
   "aicEditorCore": "7.5.1",
   "publisher": "ldzyha",
   "icon": "media/icon.png",
@@ -46,7 +46,7 @@
     },
     "virtualWorkspaces": {
       "supported": "limited",
-      "description": "The editor and linked-note pane use workspace.fs; wiki-link resolution needs stat support on the virtual filesystem."
+      "description": "Markdown and encrypted notes use workspace.fs and VS Code documents. Linked-note writes require a writable provider; virtual providers must support stat and directory operations."
     }
   },
   "scripts": {
@@ -155,43 +155,44 @@
         "command": "aicNotes.linkSelectionToNote",
         "key": "ctrl+alt+l",
         "mac": "cmd+alt+l",
-        "when": "editorTextFocus && editorHasSelection && resourceScheme == file && resourceFilename not =~ /\\.note\\.md$/"
+        "when": "editorTextFocus && editorHasSelection && isFileSystemResource && resourceFilename not =~ /\\.note\\.md$/"
       },
       {
         "command": "aicNotes.linkSelectionToNote",
         "key": "ctrl+shift+/",
         "mac": "cmd+shift+/",
-        "when": "editorTextFocus && editorHasSelection && resourceScheme == file && resourceFilename not =~ /\\.note\\.md$/"
+        "when": "editorTextFocus && editorHasSelection && isFileSystemResource && resourceFilename not =~ /\\.note\\.md$/"
       }
     ],
     "menus": {
       "editor/title": [
         {
           "command": "aicNotes.openSource",
-          "when": "resourceScheme == file && resourceFilename =~ /\\.note\\.md$/",
+          "when": "isFileSystemResource && resourceFilename =~ /\\.note\\.md$/",
           "group": "navigation"
         },
         {
           "command": "aicNotes.noteForCurrentFile",
-          "when": "resourceScheme == file && resourceFilename not =~ /\\.note\\.md$/",
+          "when": "isFileSystemResource && resourceFilename not =~ /\\.note\\.md$/",
           "group": "navigation"
         }
       ],
       "explorer/context": [
         {
           "command": "aicNotes.openSource",
-          "when": "resourceScheme == file && resourceFilename =~ /\\.note\\.md$/",
+          "when": "isFileSystemResource && resourceFilename =~ /\\.note\\.md$/",
           "group": "navigation@1"
         },
         {
           "command": "aicNotes.noteForExplorerItem",
-          "group": "2_workspace"
+          "group": "2_workspace",
+          "when": "isFileSystemResource"
         }
       ],
       "editor/context": [
         {
           "command": "aicNotes.linkSelectionToNote",
-          "when": "editorHasSelection && resourceScheme == file && resourceFilename not =~ /\\.note\\.md$/",
+          "when": "editorHasSelection && isFileSystemResource && resourceFilename not =~ /\\.note\\.md$/",
           "group": "navigation@10"
         }
       ]
@@ -298,5 +299,6 @@
   },
   "dependencies": {
     "jsqr": "1.4.0"
-  }
+  },
+  "browser": "./dist/extension-browser.cjs"
 }

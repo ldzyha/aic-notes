@@ -2,14 +2,22 @@
 
 [English](README.md) · [Українська](README.uk.md)
 
-AIC Notes — локальний Markdown-редактор для VS Code/code-server. Він відкриває
+AIC Notes — Markdown-редактор для VS Code desktop та Web. Він відкриває
 кожний `*.md`, включно з `*.note.md`, у preview-first редакторі AIC і показує
-пов’язані нотатки в Secondary Side Bar. Розширення не має входу в Standard Notes,
-запитів облікового запису, синхронізації, polling, upload, remote delete чи
-remote conflicts. За потреби переносьте блоки вручну через Copy/Paste.
+пов’язані нотатки в Secondary Side Bar. Розширення не додає входу в Standard Notes,
+запитів облікового запису чи синхронізації нотаток. Файлові операції виконує
+обраний у VS Code провайдер. За потреби переносьте блоки вручну через Copy/Paste.
 
-Випуск **56.4.5** на спільному ядрі **7.5.0** узгоджено зі Standard Notes AIC
-**48.4.5** та експериментальним розширенням браузера **0.11.0**.
+Те саме розширення працює у VS Code for the Web (`vscode.dev` і `github.dev`).
+Відкрийте папку або репозиторій, потім Markdown-файл через **AIC Markdown**.
+Редактор, пов’язані нотатки та `.aicnotes` використовують файлову систему
+відкритого середовища та Save/Undo VS Code. Репозиторії лише для читання можна
+переглядати; запис нотаток та налаштування інструкцій агента потребують підтримки
+запису. AIC не синхронізує файли: запис у репозиторій або хмару визначає провайдер,
+який ви обрали у VS Code.
+
+Випуск **58.1.1** використовує спільне ядро **7.5.1**. Standard Notes AIC
+**49.1.2** та експериментальне розширення браузера **0.11.1** зберігають свої пакети.
 
 Новий PWA відкриває Markdown-файли й папки, зберігає локальні копії на пристрої
 та пропонує необов’язковий зашифрований експорт. Вкладки Current, Shared і Global
@@ -147,13 +155,13 @@ Extensions, щоб отримувати магазинні оновлення. [
 code-server використовує Open VSX; цей Marketplace pipeline туди не публікує.
 До окремого налаштування цього каналу використовуйте ручне встановлення VSIX.
 
-Для ручного встановлення завантажте `aic-notes-56.4.5.vsix` зі
-[сторінки випуску](https://github.com/ldzyha/aic-notes/releases/tag/v56.4.5).
+Для ручного встановлення завантажте `aic-notes-58.1.1.vsix` зі
+[сторінки випуску](https://github.com/ldzyha/aic-notes/releases/tag/v58.1.1).
 У VS Code виконайте **Extensions: Install from VSIX…** і перезавантажте вікно.
 Для code-server:
 
 ```bash
-code-server --install-extension ./aic-notes-56.4.5.vsix --force
+code-server --install-extension ./aic-notes-58.1.1.vsix --force
 ```
 
 AIC Notes локальний і не потребує облікового запису Standard Notes.

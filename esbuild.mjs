@@ -1,4 +1,4 @@
-// Two bundles: the extension host (CJS, node) and the webview editor (ESM,
+// Desktop and browser extension hosts share one source; the webview editor (ESM,
 // browser, code-splitting so mermaid / @codemirror/lang-* land as lazy chunks
 // loaded on first use — the same shape as aic's build).
 import { build, context } from "esbuild";
@@ -69,7 +69,14 @@ const webview = {
   logLevel: "info",
 };
 
-const jobs = [host];
+const browserHost = {
+  ...host,
+  outfile: "dist/extension-browser.cjs",
+  platform: "browser",
+  target: "es2022",
+};
+
+const jobs = [host, browserHost];
 if (existsSync(new URL("./src/webview/main.js", import.meta.url)))
   jobs.push(webview);
 

@@ -2,12 +2,20 @@
 
 [English](README.md) · [Українська](README.uk.md)
 
-AIC Notes is a local Markdown editor for VS Code/Code. It edits every `*.md` document with the AIC
+AIC Notes is a Markdown editor for VS Code desktop and the Web. It edits every `*.md` document with the AIC
 preview-first surface, including `*.note.md`, and shows linked notes in the Secondary Side Bar.
-The extension is fully local: no Standard Notes sign-in, account requests, note synchronization,
-polling, upload, remote deletion or remote conflict state. Copy blocks manually when needed.
+The extension adds no Standard Notes sign-in, account requests or note synchronization.
+File operations use the filesystem provider selected in VS Code. Copy blocks manually when needed.
 
-Release 56.4.5 uses shared editor core 7.5.0 in the main editor and Linked Note.
+The same extension also runs in VS Code for the Web (`vscode.dev` and
+`github.dev`). Open a folder or repository, then open a Markdown file with
+**AIC Markdown**. Markdown editing, linked notes and `.aicnotes` files use the
+workspace's filesystem provider and VS Code's Save/Undo. Read-only repositories
+remain readable; saving notes or setting up agent instructions requires a writable
+provider. AIC does not synchronize the workspace; any repository or cloud writes
+follow the provider you selected in VS Code.
+
+Release 58.1.1 uses shared editor core 7.5.1 in the main editor and Linked Note.
 
 The new local-file PWA opens Markdown files and folders, keeps device-local copies,
 and offers optional encrypted exports. Current, Shared and Global tabs focus on
@@ -141,8 +149,8 @@ without a duplicate heading row. Use `## Account name` for a custom name or bare
 for the default Security header.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-editor-core 7.5.0 but is a separate product. The coordinated release targets are AIC Notes
-56.4.5 and AIC for Standard Notes 48.4.5. This page describes the release contract;
+editor-core 7.5.1 but is a separate product. Current release targets are AIC Notes
+58.1.1 and AIC for Standard Notes 49.1.2. This page describes the release contract;
 published artifacts are verified separately by the release workflow. Transfer content manually
 between the two applications; VS Code has no Standard Notes account integration.
 
@@ -362,25 +370,25 @@ Use the manual GitHub VSIX until that separate distribution is set up.
 The [unified release page](https://github.com/ldzyha/standard-notes-aic/releases/tag/v48.4.5)
 has installation steps for VS Code, Standard Notes and Chrome/Edge in one place.
 
-For manual installation, download `aic-notes-56.4.5.vsix` and its
-`aic-notes-56.4.5.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+For manual installation, download `aic-notes-58.1.1.vsix` and its
+`aic-notes-58.1.1.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-56.4.5.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-56.4.5.vsix.sha256
-code --install-extension .\aic-notes-56.4.5.vsix --force
+(Get-FileHash .\aic-notes-58.1.1.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-58.1.1.vsix.sha256
+code --install-extension .\aic-notes-58.1.1.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-56.4.5.vsix.sha256
-code --install-extension ./aic-notes-56.4.5.vsix --force
-# or: code-server --install-extension ./aic-notes-56.4.5.vsix --force
+sha256sum -c aic-notes-58.1.1.vsix.sha256
+code --install-extension ./aic-notes-58.1.1.vsix --force
+# or: code-server --install-extension ./aic-notes-58.1.1.vsix --force
 ```
 
 Reload the VS Code window after installation. Local editing and the bundled agent instructions require no additional executable.

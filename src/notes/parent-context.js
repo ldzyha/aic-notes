@@ -1,4 +1,5 @@
-import * as path from "node:path";
+import { isFileResource } from "./resources.js";
+import * as path from "./uri-path.js";
 import * as vscode from "vscode";
 import { folderNotePathFor } from "./paths.js";
 
@@ -6,7 +7,7 @@ import { folderNotePathFor } from "./paths.js";
 // while a/b.note.md → a.note.md. The source file need not exist or be unique.
 // Yield lazily, nearest first; only the project is allowed to be a placeholder.
 export async function* parentNoteCandidates(noteUri) {
-  if (noteUri?.scheme !== "file" || !noteUri.path.endsWith(".note.md")) return;
+  if (!isFileResource(noteUri) || !noteUri.path.endsWith(".note.md")) return;
   const folder = vscode.workspace.getWorkspaceFolder(noteUri);
   if (!folder) return;
   const relative = vscode.workspace

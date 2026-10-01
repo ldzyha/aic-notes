@@ -13,8 +13,27 @@ synchronization, polling, upload чи remote conflict model. Shared editor core
 snapshot. VS Code host володіє TextDocument, save/undo, URI navigation, clipboard
 та webview lifecycle.
 
-Випуск 55.1.0 на спільному ядрі 7.4.0 узгоджено зі Standard Notes AIC 47.1.0
-і розширенням браузера 0.9.2. Головний редактор і Linked Note використовують
+`src/extension.js` збирається для desktop і браузерного worker у
+`dist/extension.cjs` та `dist/extension-browser.cjs`. Браузерна збірка має один
+файл і лише зовнішню залежність `vscode`; `src/host-runtime.js` використовує
+WebCrypto та UTF-8 без Node globals. Асинхронний digest інструкцій зберігає той
+самий формат маркера агента.
+
+`src/notes/resources.js` перевіряє межі workspace, authority та ревізію
+віртуального URI; `src/notes/uri-path.js` обробляє URI-шляхи. Читання належить
+`workspace.fs`, редагування та Save/Undo — TextDocument VS Code. Провайдери лише
+для читання показують документи, але не дозволяють запис, створення/видалення
+нотаток чи інструкцій. Невідомі віртуальні провайдери також не отримують запис.
+Нотатки desktop залишаються сумісними; синхронізація та доступ до репозиторію
+належать обраному користувачем провайдеру. Меню використовує файловий контекст
+VS Code, slash-команди доступні в Markdown різних схем.
+
+`test/web-host.test.js` запускає справжню браузерну збірку без Node globals і
+перевіряє віртуальні Markdown, пов’язані нотатки, інструкції та шифротекст;
+`test/web-resources.test.js` — межі URI, POSIX-шляхи, UTF-8 та WebCrypto.
+Пакування і перевірка архіву вимагають браузерний entry та точний зібраний файл.
+
+Випуск AIC Notes 58.1.1 використовує спільне ядро 7.5.1. Головний редактор і Linked Note використовують
 однаковий спільний контракт.
 
 Коментарі до пов’язаного коду лишаються всередині свого акордеона з компактним

@@ -1,5 +1,12 @@
+import { utf8Length } from "../host-runtime.js";
+import {
+  isFileResource,
+  resourceReadOnly,
+  assertWritableResource,
+  resourceLabel,
+} from "../notes/resources.js";
 import * as vscode from "vscode";
-import * as path from "node:path";
+import * as path from "../notes/uri-path.js";
 import { webviewHtml } from "../editor/webview-html.js";
 import { formatError, structuredError } from "../errors.js";
 import {
@@ -106,7 +113,10 @@ export class SecondaryNotePane {
         this.view?.webview.postMessage({
           type: "editingState",
           ...state,
-          readOnly: state.readOnly || this.navigationPaused,
+          readOnly:
+            resourceReadOnly(this.documentUri ?? this.placeholderUri) ||
+            state.readOnly ||
+            this.navigationPaused,
           relativePath: this.editingPath(),
         }),
     });
@@ -218,6 +228,7 @@ export class SecondaryNotePane {
         hasSurface: Boolean(this.documentUri || this.placeholderUri),
         ready: this.ready,
         readOnly:
+          resourceReadOnly(this.documentUri ?? this.placeholderUri) ||
           this.navigationPaused ||
           Boolean(
             this.editSurface && this.ownership.state(this.editSurface).readOnly,
@@ -394,7 +405,7 @@ export class SecondaryNotePane {
         void this.view?.webview.postMessage({
           type: "editingState",
           relativePath: this.editingPath(),
-          readOnly: false,
+          readOnly: resourceReadOnly(this.documentUri ?? this.placeholderUri),
         });
     };
     this.navigationPaused = true;
@@ -445,9 +456,11 @@ export class SecondaryNotePane {
     const target =
       sourceUri ?? (folder ? await resolveTarget(folder, relativePath) : null);
     if (!target)
-      throw structuredError("notes_missing", `${uri.fsPath} no longer exists`, [
-        "Restore its source or select another workspace item",
-      ]);
+      throw structuredError(
+        "notes_missing",
+        `${resourceLabel(uri)} no longer exists`,
+        ["Restore its source or select another workspace item"],
+      );
     const placeholder = await notePlaceholderForUri(target);
     return {
       sourceUri: sourceUri ?? target,
@@ -469,10 +482,10 @@ export class SecondaryNotePane {
 
   async openNow(uri, { pin, reveal = true, sourceUri, selection } = {}) {
     if (this.scope.disposed || this.actionPending) return false;
-    if (!uri || uri.scheme !== "file" || !isNotePath(uri.path)) {
+    if (!uri || !isFileResource(uri) || !isNotePath(uri.path)) {
       throw structuredError(
         "notes_not_sidecar",
-        `${uri?.fsPath ?? "resource"} is not a *.note.md sidecar`,
+        `${resourceLabel(uri)} is not a *.note.md sidecar`,
         ["Choose a sidecar note"],
       );
     }
@@ -523,7 +536,7 @@ export class SecondaryNotePane {
   // open. Rebuild the preview from the still-existing owner instead of asking
   // VS Code's text-document service to open a nonexistent file.
   async recoverPlaceholder(uri, sourceUri = this.sourceUri) {
-    if (!uri || uri.scheme !== "file" || !isNotePath(uri.path)) return false;
+    if (!uri || !isFileResource(uri) || !isNotePath(uri.path)) return false;
     const folder = vscode.workspace.getWorkspaceFolder(uri);
     const relativePath = folder
       ? vscode.workspace.asRelativePath(uri, false).replaceAll("\\", "/")
@@ -588,7 +601,7 @@ export class SecondaryNotePane {
   ) {
     if (
       !uri ||
-      uri.scheme !== "file" ||
+      !isFileResource(uri) ||
       isNotePath(uri.path) ||
       (this.pinned && !force) ||
       !isCurrent()
@@ -799,6 +812,7 @@ export class SecondaryNotePane {
       selection: viewState?.selection,
       ...(this.editSurface ? this.ownership.state(this.editSurface) : {}),
       readOnly:
+        resourceReadOnly(this.documentUri ?? this.placeholderUri) ||
         this.navigationPaused ||
         (this.editSurface && this.ownership.state(this.editSurface).readOnly),
     });
@@ -878,7 +892,7 @@ export class SecondaryNotePane {
       hasPlaceholder: Boolean(this.placeholderUri),
       hasSurface: capabilities.hasSurface,
       canOpenTarget: capabilities.canOpenTarget,
-      canTrash: capabilities.canTrash,
+      canTrash: capabilities.canTrash && !resourceReadOnly(this.documentUri),
       canPin: capabilities.canPin,
       candidatePath,
       status,
@@ -912,6 +926,7 @@ export class SecondaryNotePane {
     try {
       const submittedRevision = this.draftRevision;
       const noteUri = this.documentUri ?? this.placeholderUri;
+      assertWritableResource(noteUri);
       const unchanged = documentSnapshot(this.document);
       const current = () =>
         !this.scope.disposed &&
@@ -1164,7 +1179,7 @@ export class SecondaryNotePane {
 
   openSourceForNote(noteUri) {
     return this.navigation.enqueue(async () => {
-      if (!noteUri || noteUri.scheme !== "file" || !isNotePath(noteUri.path)) {
+      if (!noteUri || !isFileResource(noteUri) || !isNotePath(noteUri.path)) {
         throw structuredError(
           "notes_not_sidecar",
           "Open source requires a file-backed .note.md note",
@@ -1183,7 +1198,7 @@ export class SecondaryNotePane {
       if (!target)
         throw structuredError(
           "notes_orphan",
-          `${relativePath || noteUri.fsPath} has no existing source`,
+          `${relativePath || resourceLabel(noteUri)} has no existing source`,
           ["Restore the source or keep editing the standalone note"],
         );
       const stat = await vscode.workspace.fs.stat(target);
@@ -1409,7 +1424,7 @@ export class SecondaryNotePane {
     const { topic, payload } = message;
     if (topic === "clipboard.write") {
       const text = typeof payload?.text === "string" ? payload.text : "";
-      if (Buffer.byteLength(text, "utf8") > 2 * 1024 * 1024) {
+      if (text.length > 2 * 1024 * 1024 || utf8Length(text) > 2 * 1024 * 1024) {
         vscode.window.showWarningMessage(
           "AIC Notes — clipboard payload exceeds 2 MiB",
         );

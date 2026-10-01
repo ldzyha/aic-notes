@@ -152,10 +152,7 @@ test("native provider registers for file and untitled Markdown with slash trigge
     },
   };
   registerMarkdownSlashCompletionProvider(vscode);
-  assert.deepEqual(registration.selector, [
-    { language: "markdown", scheme: "file" },
-    { language: "markdown", scheme: "untitled" },
-  ]);
+  assert.deepEqual(registration.selector, [{ language: "markdown" }]);
   assert.equal(registration.trigger, "/");
 });
 

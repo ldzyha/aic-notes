@@ -4,13 +4,10 @@
 // resource-origin for the lazy chunks).
 
 import * as vscode from "vscode";
+import { randomHex } from "../host-runtime.js";
 
 export function nonce() {
-  return Array.from({ length: 32 }, () =>
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".charAt(
-      Math.floor(Math.random() * 62),
-    ),
-  ).join("");
+  return randomHex(24);
 }
 
 export function webviewHtml(webview, distRoot, entry, body, bodyClass = "") {

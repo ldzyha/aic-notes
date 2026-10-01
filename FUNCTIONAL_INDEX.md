@@ -2,8 +2,7 @@
 
 [English](FUNCTIONAL_INDEX.md) · [Українська](FUNCTIONAL_INDEX.uk.md)
 
-This index records the coordinated AIC Notes 55.1.0 / Standard Notes AIC 47.1.0
-release and shared editor core 7.4.0. Public commands, state boundaries, side effects and
+This index records AIC Notes 58.1.1 with shared editor core 7.5.1. Public commands, state boundaries, side effects and
 failure rules are checked by tests and the release archive verifier; this is not a claim of
 exhaustive runtime coverage or that publication has already completed.
 
@@ -405,6 +404,31 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
   all remote providers or all desktop platforms.
 
 `aicNotes.copyAgentInstructions` copies the bundled guide without writing files; it also works in untrusted workspaces.
+
+## Desktop and browser extension hosts
+
+`package.json` declares both `dist/extension.cjs` and
+`dist/extension-browser.cjs`, built from the same `src/extension.js`. The browser
+bundle is one CommonJS worker script whose only external dependency is the VS Code
+API. `src/host-runtime.js` owns WebCrypto randomness/digests and UTF-8 byte counts;
+the agent guide identity is resolved asynchronously without changing marker bytes.
+There are no Node globals, filesystem modules or subprocesses in the browser host.
+
+`src/notes/uri-path.js` operates on URI paths, and `src/notes/resources.js`
+checks virtual resource workspace boundaries, authority and revision. All reads
+use `workspace.fs`, while editing, undo and saves retain the existing TextDocument
+owners. Native desktop file notes remain compatible. Read-only providers can show
+Markdown and linked notes; writes, sidecar creation, deletion and agent setup are
+rejected before mutation. Unknown virtual providers cannot write. Trash failures
+still require explicit permanent-delete confirmation.
+
+Menu visibility uses VS Code's filesystem-resource context, and slash completions
+support Markdown across filesystem schemes. No account, sync or repository provider
+is added. Coverage: `test/web-host.test.js` activates the actual browser bundle with
+no Node globals and exercises writable/read-only virtual files, linked notes, agent
+setup and ciphertext transport; `test/web-resources.test.js` verifies URI boundaries,
+POSIX-compatible path handling and WebCrypto/Unicode behavior. Packaging and archive
+verification require the browser entry and matching built asset.
 
 ## Shared encrypted files
 

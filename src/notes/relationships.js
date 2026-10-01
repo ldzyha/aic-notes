@@ -1,4 +1,5 @@
-import * as path from "node:path";
+import { isFileResource } from "./resources.js";
+import * as path from "./uri-path.js";
 import * as vscode from "vscode";
 import { noteDescriptorForUri } from "./create.js";
 import { folderNotePathFor } from "./paths.js";
@@ -53,7 +54,7 @@ function relationRank(value) {
 // current target remain available as placeholders; neither creates a note
 // (or a sync/tag identity). Nothing here mutates Markdown or disk.
 export async function noteRelationshipsForTarget(uri) {
-  if (!uri || uri.scheme !== "file" || uri.path.endsWith(".note.md")) return [];
+  if (!uri || !isFileResource(uri) || uri.path.endsWith(".note.md")) return [];
   const current = await noteDescriptorForUri(uri);
   const folder = current.folder;
   const rows = new Map();

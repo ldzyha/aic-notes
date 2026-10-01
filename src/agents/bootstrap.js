@@ -1,8 +1,14 @@
 import * as vscode from "vscode";
-import { randomBytes } from "node:crypto";
+import { randomHex } from "../host-runtime.js";
+import { assertWritableResource, resourceLabel } from "../notes/resources.js";
 import { structuredError, formatError } from "../errors.js";
 import { AGENT_GUIDE } from "../../vendor/aic-editor-core/agent-guide.js";
-import { AGENT_MARKER_PATH, AGENT_GUIDE_PATH, encodeAgentMarker, validateAgentMarker } from "./contract.js";
+import {
+  AGENT_MARKER_PATH,
+  agentGuideIdentity,
+  encodeAgentMarker,
+  validateAgentMarker,
+} from "./contract.js";
 
 async function stat(uri) {
   try {
@@ -16,10 +22,15 @@ async function stat(uri) {
 async function readRegular(uri) {
   const info = await stat(uri);
   if (!info) return null;
-  if (info.type & vscode.FileType.SymbolicLink || !(info.type & vscode.FileType.File)) {
-    throw structuredError("agent_file_unsafe", `${uri.fsPath} is not a regular file`, [
-      "Choose a workspace with regular AIC instruction files",
-    ]);
+  if (
+    info.type & vscode.FileType.SymbolicLink ||
+    !(info.type & vscode.FileType.File)
+  ) {
+    throw structuredError(
+      "agent_file_unsafe",
+      `${resourceLabel(uri)} is not a regular file`,
+      ["Choose a workspace with regular AIC instruction files"],
+    );
   }
   return new TextDecoder().decode(await vscode.workspace.fs.readFile(uri));
 }
@@ -29,19 +40,36 @@ async function chooseFolder(uri) {
   const folders = vscode.workspace.workspaceFolders ?? [];
   if (folders.length <= 1) return folders[0];
   const picked = await vscode.window.showQuickPick(
-    folders.map((folder) => ({ label: folder.name, description: folder.uri.fsPath, folder })),
-    { title: "Enable the AIC agent workflow", placeHolder: "Choose a workspace folder" },
+    folders.map((folder) => ({
+      label: folder.name,
+      description: resourceLabel(folder.uri),
+      folder,
+    })),
+    {
+      title: "Enable the AIC agent workflow",
+      placeHolder: "Choose a workspace folder",
+    },
   );
   return picked?.folder;
 }
 
 async function writeAtomic(directory, destination, text, overwrite) {
-  const temporary = vscode.Uri.joinPath(directory, `.aic-agent-${process.pid}-${randomBytes(6).toString("hex")}.tmp`);
+  const temporary = vscode.Uri.joinPath(
+    directory,
+    `.aic-agent-${randomHex(16)}.tmp`,
+  );
   try {
-    await vscode.workspace.fs.writeFile(temporary, new TextEncoder().encode(text));
+    await vscode.workspace.fs.writeFile(
+      temporary,
+      new TextEncoder().encode(text),
+    );
     await vscode.workspace.fs.rename(temporary, destination, { overwrite });
   } finally {
-    try { await vscode.workspace.fs.delete(temporary); } catch { /* Consumed by rename. */ }
+    try {
+      await vscode.workspace.fs.delete(temporary);
+    } catch {
+      /* Consumed by rename. */
+    }
   }
 }
 
@@ -50,11 +78,16 @@ export class AgentWorkflowBootstrap {
     const bootstrap = new AgentWorkflowBootstrap();
     context.subscriptions.push(
       vscode.commands.registerCommand("aicNotes.enableAgentWorkflow", (uri) =>
-        bootstrap.enable(uri).catch((error) => bootstrap.report(error))),
+        bootstrap.enable(uri).catch((error) => bootstrap.report(error)),
+      ),
       vscode.commands.registerCommand("aicNotes.syncAgentInstructions", () =>
-        bootstrap.enable().catch((error) => bootstrap.report(error))),
+        bootstrap.enable().catch((error) => bootstrap.report(error)),
+      ),
       vscode.commands.registerCommand("aicNotes.copyAgentInstructions", () =>
-        vscode.env.clipboard.writeText(AGENT_GUIDE).catch((error) => bootstrap.report(error))),
+        vscode.env.clipboard
+          .writeText(AGENT_GUIDE)
+          .catch((error) => bootstrap.report(error)),
+      ),
     );
     // Installation, upgrade and workspace trust changes never run an executable
     // or rewrite instructions. Setup is an explicit local command.
@@ -67,49 +100,80 @@ export class AgentWorkflowBootstrap {
 
   async enable(uri) {
     if (!vscode.workspace.isTrusted) {
-      throw structuredError("agent_workspace_untrusted", "Workspace instruction setup is disabled here", [
-        "Trust the workspace or use Copy Agent Instructions without writing files",
-      ]);
+      throw structuredError(
+        "agent_workspace_untrusted",
+        "Workspace instruction setup is disabled here",
+        [
+          "Trust the workspace or use Copy Agent Instructions without writing files",
+        ],
+      );
     }
     const folder = await chooseFolder(uri);
     if (!folder) return;
+    assertWritableResource(folder.uri);
     const directory = vscode.Uri.joinPath(folder.uri, AGENT_MARKER_PATH[0]);
     const directoryInfo = await stat(directory);
-    if (directoryInfo && (directoryInfo.type & vscode.FileType.SymbolicLink || !(directoryInfo.type & vscode.FileType.Directory))) {
-      throw structuredError("agent_directory_unsafe", `${directory.fsPath} is not a regular directory`, [
-        "Review the workspace .vscode directory before enabling agent instructions",
-      ]);
+    if (
+      directoryInfo &&
+      (directoryInfo.type & vscode.FileType.SymbolicLink ||
+        !(directoryInfo.type & vscode.FileType.Directory))
+    ) {
+      throw structuredError(
+        "agent_directory_unsafe",
+        `${resourceLabel(directory)} is not a regular directory`,
+        [
+          "Review the workspace .vscode directory before enabling agent instructions",
+        ],
+      );
     }
     const marker = vscode.Uri.joinPath(folder.uri, ...AGENT_MARKER_PATH);
     const previous = await readRegular(marker);
     if (previous !== null) {
       let parsed;
-      try { parsed = JSON.parse(previous); } catch { /* Not an owned marker. */ }
+      try {
+        parsed = JSON.parse(previous);
+      } catch {
+        /* Not an owned marker. */
+      }
       if (!validateAgentMarker(parsed)) {
-        throw structuredError("agent_marker_owned", `${marker.fsPath} is not an AIC Notes marker`, [
-          "Review or move the existing file before enabling the AIC agent workflow",
-        ]);
+        throw structuredError(
+          "agent_marker_owned",
+          `${resourceLabel(marker)} is not an AIC Notes marker`,
+          [
+            "Review or move the existing file before enabling the AIC agent workflow",
+          ],
+        );
       }
     }
-    const guide = vscode.Uri.joinPath(folder.uri, ...AGENT_GUIDE_PATH);
+    const identity = await agentGuideIdentity();
+    const guide = vscode.Uri.joinPath(folder.uri, ...identity.path);
     const existingGuide = await readRegular(guide);
     if (existingGuide !== null && existingGuide !== AGENT_GUIDE) {
-      throw structuredError("agent_instructions_modified", "The bundled instruction copy has been edited", [
-        "Keep your edits and use Copy Agent Instructions, or move the edited file before retrying",
-      ]);
+      throw structuredError(
+        "agent_instructions_modified",
+        "The bundled instruction copy has been edited",
+        [
+          "Keep your edits and use Copy Agent Instructions, or move the edited file before retrying",
+        ],
+      );
     }
     await vscode.workspace.fs.createDirectory(directory);
     // Content-addressed files are immutable. Updating never overwrites authored
     // Markdown, AGENTS.md, provider config, or an older instruction version.
-    if (existingGuide === null) await writeAtomic(directory, guide, AGENT_GUIDE, false);
-    if (previous !== encodeAgentMarker()) await writeAtomic(directory, marker, encodeAgentMarker(), previous !== null);
+    if (existingGuide === null)
+      await writeAtomic(directory, guide, AGENT_GUIDE, false);
+    const markerText = await encodeAgentMarker();
+    if (previous !== markerText)
+      await writeAtomic(directory, marker, markerText, previous !== null);
     const choice = await vscode.window.showInformationMessage(
       "AIC Notes: instructions are ready. Give the instruction file to your coding agent.",
       "Copy handoff",
     );
     if (choice === "Copy handoff") {
-      await vscode.env.clipboard.writeText(`Read ${JSON.stringify(guide.fsPath)} for the AIC instructions, then follow my task request.`);
+      await vscode.env.clipboard.writeText(
+        `Read ${JSON.stringify(resourceLabel(guide))} for the AIC instructions, then follow my task request.`,
+      );
     }
-    return { state: "current", guide: guide.fsPath };
+    return { state: "current", guide: resourceLabel(guide) };
   }
 }
