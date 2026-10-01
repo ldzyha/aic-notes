@@ -7,17 +7,27 @@
 Public product documentation: [releases and installation](https://aic.dzyha.com/releases),
 [terms and privacy](https://aic.dzyha.com/terms), [AIC Notes](https://aic.dzyha.com/).
 
-### Current status — September 24, 2026
+### Current status — October 1, 2026
 
-[AIC Notes 53.0.1](https://marketplace.visualstudio.com/items?itemName=ldzyha.aic-notes)
-is the last confirmed public version under publisher **ldzyha**. The manual
-54.0.2 upload has not completed its CAPTCHA step; publication is not confirmed.
+The existing [AIC Notes listing](https://marketplace.visualstudio.com/items?itemName=ldzyha.aic-notes)
+under publisher **ldzyha** has accepted **57.1.2** and shows **Verifying**.
+The CAPTCHA step is complete. The published baseline remains **53.0.1** until
+Microsoft completes verification; acceptance of the upload is not publication.
+The uploaded file is the exact universal VSIX from the
+[57.1.2 GitHub release](https://github.com/ldzyha/aic-notes/releases/tag/v57.1.2),
+verified against SHA-256
+`8e5a244709eb61ed40677e4ac75b80eed1d462d74e80ec41dc761e23c319c805`.
+
+The [verification-only publishing run](https://github.com/ldzyha/aic-notes/actions/runs/36847214736)
+passed for that release. It downloaded and verified the published package;
+credential checks and submission were deliberately skipped.
 
 Automatic publishing code is prepared. The repository does **not** yet have the
 `VSCE_PAT` Actions secret, so authenticated automatic publishing is **not fully
 activated or verified**. The existing public version was uploaded manually.
-Credential setup is blocked at new Azure DevOps organization creation: the form
-requires a billing subscription, and none is accessible to the account.
+An earlier PAT setup attempt stopped at new Azure DevOps organization creation
+because that form required a billing subscription. The current upload used the
+existing Marketplace publisher dashboard and did not require that setup.
 
 Source preparation on September 30 adds an optional Microsoft Entra federation
 route. It verifies the same stable release VSIX and publisher rights before
@@ -112,17 +122,27 @@ installation path. [code-server extension sources](https://coder.com/docs/code-s
 Публічна документація продукту: [випуски та встановлення](https://aic.dzyha.com/releases),
 [умови й приватність](https://aic.dzyha.com/terms), [AIC Notes](https://aic.dzyha.com/).
 
-### Поточний стан — 24 вересня 2026
+### Поточний стан — 1 жовтня 2026
 
-[AIC Notes 53.0.1](https://marketplace.visualstudio.com/items?itemName=ldzyha.aic-notes)
-— остання підтверджена публічна версія від видавця **ldzyha**. Ручне завантаження
-54.0.2 ще не завершило крок CAPTCHA; публікацію не підтверджено.
+Наявний [запис AIC Notes](https://marketplace.visualstudio.com/items?itemName=ldzyha.aic-notes)
+від видавця **ldzyha** прийняв **57.1.2** і показує **Verifying**.
+CAPTCHA пройдено. Публічною версією залишається **53.0.1**, доки Microsoft не
+завершить перевірку; прийняття завантаження ще не означає публікації.
+Завантажено точний універсальний VSIX із
+[GitHub release 57.1.2](https://github.com/ldzyha/aic-notes/releases/tag/v57.1.2),
+перевірений за SHA-256
+`8e5a244709eb61ed40677e4ac75b80eed1d462d74e80ec41dc761e23c319c805`.
+
+[Запуск автоматизації лише для перевірки](https://github.com/ldzyha/aic-notes/actions/runs/36847214736)
+цього релізу пройшов успішно. Він завантажив і звірив опублікований пакет;
+перевірку облікових даних та подання до магазину було пропущено.
 
 Код автоматичної публікації підготовлений. У репозиторії **ще немає** Actions
 secret `VSCE_PAT`, тому автоматична публікація з авторизацією **ще не повністю
 активована й не перевірена**. Наявну публічну версію завантажено вручну.
-Налаштування доступу зупинилося на створенні нової організації Azure DevOps:
-форма потребує підписки для білінгу, але акаунт не має доступної підписки.
+Попередня спроба налаштувати PAT зупинилася на створенні нової організації
+Azure DevOps через вимогу підписки для білінгу. Поточне завантаження виконано
+через наявну панель видавця Marketplace без цього налаштування.
 
 Підготовка коду 30 вересня додає optional Microsoft Entra federation route.
 Він перевіряє той самий стабільний VSIX і права видавця перед поданням.
