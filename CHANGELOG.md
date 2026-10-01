@@ -2,6 +2,27 @@
 
 [English](CHANGELOG.md) · [Українська](CHANGELOG.uk.md)
 
+## 59.0.2 — 2026-10-01
+
+Release sequence 59 · 0 feature outcomes · 2 fixed-bug outcomes.
+Coordinates Standard Notes AIC 50.0.1, AIC Notes 59.0.2, experimental browser
+0.11.2 and shared core 7.5.2. Prepared release; publication is verified separately.
+
+### B01 — Readable Mermaid previews
+
+The preview canvas fills the available width while the diagram keeps its natural
+size, centered without enlargement. Wider diagrams shrink proportionally; height
+follows the complete content without internal scrollbars. Long flowchart labels
+wrap in bounded nodes. Copy and Edit remain available; redundant zoom controls
+are removed. Layout observation avoids repeated work, and Mermaid loads only
+when a diagram needs rendering. Authored source, Save and Undo remain unchanged.
+
+### B02 — Diagrams follow the active VS Code theme
+
+Changing the VS Code theme refreshes Mermaid colors in both the main editor and
+Linked Note without reopening the document. Theme refresh preserves Markdown,
+Save and Undo ownership and retires observers when the view closes.
+
 ## 58.1.1 — 2026-10-01
 
 Release sequence 58 · 1 feature outcome · 1 fixed-bug outcome. Shared core stays

@@ -230,21 +230,16 @@ body.aic-main-note-surface {
   font-style: italic;
 }
 
-/* Diagrams span the whole editor pane. The shared core owns the inner
-   two-dimensional viewport and exact transformed stage bounds. */
+/* The shared core fits diagrams to their intrinsic size within editor content. */
 .cm-editor .cm-content .cm-md-mermaid {
-  margin-left: calc(50% - 50vw + 1rem);
-  margin-right: calc(50% - 50vw + 1rem);
-  overflow: hidden;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin-inline: 0;
 }
 .cm-md-mermaid-body {
   min-height: 6rem;
-}
-.cm-md-mermaid-editing > .cm-aic-mermaid-controls {
-  box-sizing: border-box;
-  width: 100%;
-  justify-content: flex-end;
-  padding: 0.12rem 0.2rem;
 }
 
 .cm-editor .cm-content .cm-md-table.cm-md-block-preview {
@@ -263,7 +258,7 @@ body.aic-main-note-surface {
 /* inline mermaid editing preview — the live diagram below a fence while its
    source is being edited; flat and compact, a hairline rule ties it to the
    fence above (no shadows/animation — layout-only, Crostini-safe).
-   Top/bottom margins only — the side margins carry the full-bleed calc. */
+   The preview stays within the same content width as its source. */
 .cm-md-mermaid-editing {
   border-left: 2px solid var(--border);
   padding: 0.2rem 0 0.2rem 0.5rem;

@@ -5,6 +5,15 @@
 Це українська карта функцій VS Code extension. Повна машинно перевірена деталізація
 модулів і тестів міститься у [`FUNCTIONAL_INDEX.md`](FUNCTIONAL_INDEX.md).
 
+## Підготовлений контракт Mermaid — core 7.5.2
+
+Полотно має 100% ширини, діаграма центрована у природному розмірі й за потреби
+пропорційно зменшується. Довгі підписи flowchart переносяться в обмежених вузлах;
+висота відповідає всьому вмісту без внутрішніх скролів чи кнопок масштабу.
+Спостереження за геометрією уникає повторної роботи; Mermaid завантажується лише
+за потреби. У VS Code зміна теми оновлює кольори в обох редакторах без повторного
+відкриття. Перевірки: `mermaid-viewport`, `mermaid`, `diagram-core`, `mermaid-theme`.
+
 ## Межа продукту
 
 AIC Notes — локальний VS Code Markdown editor без Standard Notes account,
@@ -92,7 +101,7 @@ codes, section copy, Authenticator
 JSON conversion, source/preview, slash templates, details, task controls,
 parser-backed links і Mermaid.
 
-Mermaid — source + live preview з Copy, однією Edit icon та preview-only zoom.
+Mermaid — source + live preview з Copy, Edit і Cut. Полотно займає всю ширину; діаграма зберігає природний розмір, зменшується лише для вузького редактора й займає всю потрібну висоту без внутрішніх скролів.
 Builder, drag-and-drop і rotate відсутні. Quotes: `>`, `!>`, `!>>`; details:
 `>>> … <<<`.
 

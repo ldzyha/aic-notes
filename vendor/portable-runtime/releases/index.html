@@ -9,6 +9,18 @@
 extension for encrypted page notes, or AIC Notes in VS Code. Protected file
 editors share the same <code>.aicnotes</code> data; synchronize exported files through a
 service you manage.</p>
+<h2 id="prepared-standard-notes-5001-vs-code-5902-browser-0112">Prepared: Standard Notes 50.0.1 / VS Code 59.0.2 / browser 0.11.2</h2>
+<p>Shared core 7.5.2 centers Mermaid diagrams at their natural size within a full-width
+canvas. Wider diagrams shrink to fit, long labels wrap, and height follows all
+content without internal scrollbars. Copy and Edit remain; zoom controls are
+removed. Mermaid loads only when needed. VS Code also refreshes diagram colors
+when its theme changes, without reopening the note.</p>
+<p>After publication: <a href="https://github.com/ldzyha/aic-notes/releases/download/v59.0.2/aic-notes-59.0.2.vsix">59.0.2 VSIX</a>
+and <a href="https://github.com/ldzyha/aic-notes/releases/download/v59.0.2/aic-notes-59.0.2.vsix.sha256">SHA-256</a>,
+<a href="https://github.com/ldzyha/standard-notes-aic/releases/tag/v50.0.1">Standard Notes 50.0.1</a>.
+Package verification, PWA deployment and store approval are separate steps.
+The confirmed Marketplace version is 58.1.1. Chrome publishes 0.9.3 while 0.11.1
+remains pending review; uploading 0.11.2 is currently unavailable.</p>
 <h2 id="aic-notes-5811-vs-code-desktop-and-web">AIC Notes 58.1.1 — VS Code desktop and web</h2>
 <p>AIC Notes now includes a browser host for vscode.dev and github.dev alongside
 its desktop host. Both use the same editor, files, linked notes and encrypted
@@ -153,6 +165,17 @@ directory, run <code>sha256sum -c FILE.sha256</code> on Linux; on macOS, compare
   · <a href="https://github.com/ldzyha/aic-notes/blob/main/CHANGELOG.uk.md">Українська</a></p></li></ul>
 <h3 id="changelog">Changelog</h3>
 <p><a href="/releases">English</a> · <a href="/releases/uk/">Українська</a></p>
+<h4 id="5001-2026-10-01">50.0.1 — 2026-10-01</h4>
+<p>Release sequence 50 · 0 feature outcomes · 1 fixed-bug outcome.
+Coordinates Standard Notes AIC 50.0.1, AIC Notes 59.0.2, experimental browser
+0.11.2 and shared core 7.5.2. Prepared release; publication is verified separately.</p>
+<h5 id="b01-readable-mermaid-previews">B01 — Readable Mermaid previews</h5>
+<p>The preview canvas fills the available width while the diagram keeps its natural
+size, centered without enlargement. Wider diagrams shrink proportionally; height
+follows the complete content without internal scrollbars. Long flowchart labels
+wrap in bounded nodes. Copy and Edit remain available; redundant zoom controls
+are removed. Layout observation avoids repeated work, and Mermaid loads only
+when a diagram needs rendering. Authored source, Save and Undo remain unchanged.</p>
 <h4 id="4912-2026-10-01">49.1.2 — 2026-10-01</h4>
 <p>Release sequence 49 · 1 feature outcome · 2 fixed-bug outcomes. Coordinates
 AIC Notes for VS Code 57.1.2, experimental browser 0.11.1 and shared core 7.5.1.</p>

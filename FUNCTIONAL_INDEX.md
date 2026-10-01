@@ -51,6 +51,15 @@ Release 47.0.1 separated headings, quotes and list starts,
 and draws a 50–100 px centered thematic break with vertical space. Its line
 height stays stable when the caret reveals raw source. Source text is unchanged.
 
+## Prepared Mermaid contract — core 7.5.2
+
+The canvas spans 100% width; the diagram is centered at its natural size and
+shrinks proportionally when needed. Long flowchart labels wrap within bounded
+nodes. Height follows all content without internal scrolling or zoom buttons.
+Geometry observation avoids repeated work; Mermaid loads only when required.
+VS Code theme changes refresh both editor previews without reopening the note.
+Checks: `mermaid-viewport`, `mermaid`, `diagram-core`, `mermaid-theme`.
+
 ## Shared-core changes in release 46.1.1
 
 New AIC blocks begin with an unlabeled text row instead of the Account preset;
@@ -351,9 +360,7 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
   Edit pins one source block while its cursor or selection remains inside, including fence edges.
 - Link main-click opens; Open, Copy, and Edit icon controls remain visible.
 - Code fences expose Copy and Edit controls.
-- Mermaid exposes Copy, Edit, zoom, fit, focusable two-dimensional scroll, and 90° rotation.
-- The shared flowchart/class/sequence visual builder remains accessible above active Mermaid
-  source, including selected slash-snippet fields. Unsupported grammar remains exact source.
+- Mermaid exposes Copy, Edit and Cut. The full-width preview centers a natural-size diagram, shrinks it only when necessary, and preserves its full height without internal scrollbars. Flowchart labels wrap before layout; no manual zoom or visual builder is added.
 - Tables expose Copy, insertion, drag reorder, content-sized word-wrapped columns, horizontal scroll,
   and one transient popover editor for the selected cell.
 - One bounded fenced `aic` document owns structured fields and the shared widget

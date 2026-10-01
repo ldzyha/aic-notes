@@ -1,7 +1,7 @@
 {
-  "coreVersion": "7.5.1",
+  "coreVersion": "7.5.2",
   "sourceRepository": "https://github.com/ldzyha/standard-notes-aic",
-  "sourceCommit": "2fec5b69941883b11001cc439d54499361dce45c",
+  "sourceCommit": "68645a92a5c1b809424ab33095d5b6dadcfe40f0",
   "files": {
     "agent-guide.d.ts": "d6ffa86047957502482f327954244f9220ba0797e7a00812e88a4bed78d643c5",
     "agent-guide.js": "32e97b2c389b7ae03f65b9641a83dc22d74a9337e9a127fc8ad3d62f9c749178",
@@ -40,9 +40,9 @@
     "local-ai.js": "ea537f04a5f25ec116986abe86dc3091ce9a44885dfee93527bc1ece6cb37171",
     "mermaid-runtime.d.ts": "43b48cf5bc56027884103ecfc94ebed28341ec76c47ef8fbf218fdd1f8237440",
     "mermaid-runtime.js": "18bd2ef0869e22099ad97026146c1295d8c1befaa86c30372e20650897a0f831",
-    "mermaid-viewport.css": "35be32bd45d47e34e470ad836a25a20f0422eba785628cfcdb1e466fb68f753a",
-    "mermaid-viewport.d.ts": "a1884c3ae2d2bc2223f5c3900c5c4211541b2ff1277cd4b5668afe60709b5b66",
-    "mermaid-viewport.js": "c0858eeb0c871c27378e46f91ba7295beb413042b28afbef3bd20b9c180a74cf",
+    "mermaid-viewport.css": "cae70f2f8d23d15ca5dbbcaa6977bd229ac22e2276cca414f05a97ea7e813252",
+    "mermaid-viewport.d.ts": "fa383c5cad3084311a1070d70da85578769ca39a05e4797ab9594be95001caa2",
+    "mermaid-viewport.js": "f80b46605752cc194f259805a71cdcd053df1b8424fa1b03cea03a8e003a6a39",
     "note-template.d.ts": "16d74b7a0fb2a1807083607cba94fb65e0fcacaa68f1c70356b9e67ed1c857f4",
     "note-template.js": "87f8972afb551f2df4fe9947ba82f794170c30619b144f092f859fdaad66a697",
     "preview-layout.css": "2a191dc5dd096aa1503843fea773f57dacc2907d42f86f0db82ce623f1c7f63b",

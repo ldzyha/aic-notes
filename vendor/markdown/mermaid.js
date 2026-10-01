@@ -27,8 +27,8 @@ import { sourcePreviewExitHandlers } from "../aic-editor-core/source-mode.js";
 import { createMermaidViewport } from "../aic-editor-core/mermaid-viewport.js";
 import { renderMermaidSvg } from "../aic-editor-core/mermaid-runtime.js";
 
-function mermaidTheme() {
-  const cls = document.body?.classList;
+function mermaidTheme(document = globalThis.document) {
+  const cls = document?.body?.classList;
   if (cls?.contains("vscode-light")) return "default";
   if (cls?.contains("vscode-high-contrast-light")) return "default";
   return "dark";
@@ -93,7 +93,7 @@ export async function renderInto(el, source, context = "widget") {
   }
 }
 
-// The shared viewport owns preview zoom and two-dimensional scrolling.
+// The shared viewport fits intrinsic diagram bounds within the editor content.
 function diagramShell(className) {
   const el = document.createElement("div");
   el.className = className;
@@ -101,8 +101,8 @@ function diagramShell(className) {
   const body = controller.viewport;
   body.classList.add("cm-md-mermaid-body");
   body.__aicMermaidViewport = controller;
-  el.append(controller.controls, body);
-  return { el, body, controls: controller.controls, controller };
+  el.append(body);
+  return { el, body, controller };
 }
 
 class MermaidWidget extends WidgetType {
@@ -115,10 +115,12 @@ class MermaidWidget extends WidgetType {
     this.host = host;
     this.readOnly = readOnly;
     this.onCopy = onCopy;
+    this.theme = mermaidTheme();
   }
   eq(other) {
     return (
       other.source === this.source &&
+      other.theme === this.theme &&
       other.readOnly === this.readOnly &&
       other.from === this.from &&
       other.to === this.to &&
@@ -126,7 +128,7 @@ class MermaidWidget extends WidgetType {
     );
   }
   toDOM(view) {
-    const { el, body, controls } = diagramShell("cm-md-mermaid");
+    const { el, body } = diagramShell("cm-md-mermaid");
     el.classList.add("cm-md-block-preview");
     el.dataset.aicSourceFrom = String(this.from);
     el.dataset.aicSourceTo = String(this.to);
@@ -196,7 +198,7 @@ class MermaidWidget extends WidgetType {
           },
         })
       : null;
-    actions.append(copy, edit, ...(cut ? [cut] : []), controls);
+    actions.append(copy, edit, ...(cut ? [cut] : []));
     header.append(title, actions);
     el.prepend(header);
     renderInto(body, this.source);
@@ -225,24 +227,36 @@ class EditingPreviewWidget extends WidgetType {
     super();
     this.source = source;
     this.textFrom = textFrom;
+    this.theme = mermaidTheme();
   }
   eq(other) {
-    return other.source === this.source && other.textFrom === this.textFrom;
+    return (
+      other.source === this.source &&
+      other.textFrom === this.textFrom &&
+      other.theme === this.theme
+    );
   }
   toDOM() {
     const { el, body } = diagramShell("cm-md-mermaid cm-md-mermaid-editing");
     el.setAttribute("aria-label", "live mermaid preview");
     el.dataset.aicDiagramLiveFrom = String(this.textFrom);
+    el.__aicMermaidTheme = this.theme;
     renderInto(body, this.source, "float");
     return el;
   }
   updateDOM(el) {
     el.dataset.aicDiagramLiveFrom = String(this.textFrom);
     clearTimeout(el.__aicnTimer);
-    el.__aicnTimer = setTimeout(() => {
+    const repaint = () => {
       const body = el.querySelector(".cm-md-mermaid-body") ?? el;
       renderInto(body, this.source, "float");
-    }, 300);
+    };
+    if (el.__aicMermaidTheme !== this.theme) {
+      el.__aicMermaidTheme = this.theme;
+      repaint();
+    } else {
+      el.__aicnTimer = setTimeout(repaint, 300);
+    }
     return true;
   }
   destroy(el) {
@@ -357,11 +371,32 @@ export function makeMermaidExtension(host, { onCopy } = {}) {
   // re-decorate when the viewport scrolls so newly-visible (newly-parsed)
   // fences render without a click. Effect-only transaction (no doc/viewport
   // change) so it can't loop; dispatched after the update settles.
-  const onScroll = ViewPlugin.fromClass(
+  const onRefresh = ViewPlugin.fromClass(
     class {
+      constructor(view) {
+        this.disposed = false;
+        const document = view.dom.ownerDocument;
+        let theme = mermaidTheme(document);
+        const Observer = document.defaultView?.MutationObserver;
+        if (Observer && document.body) {
+          this.themeObserver = new Observer(() => {
+            if (this.disposed) return;
+            const next = mermaidTheme(document);
+            if (next === theme) return;
+            theme = next;
+            // Only decorations change: the host still owns edits and undo.
+            view.dispatch({ effects: refreshMermaid.of(null) });
+          });
+          this.themeObserver.observe(document.body, {
+            attributes: true,
+            attributeFilter: ["class"],
+          });
+        }
+      }
       update(u) {
         if (u.viewportChanged && !u.docChanged && !u.selectionSet) {
           Promise.resolve().then(() => {
+            if (this.disposed) return;
             try {
               u.view.dispatch({ effects: refreshMermaid.of(null) });
             } catch {
@@ -369,6 +404,10 @@ export function makeMermaidExtension(host, { onCopy } = {}) {
             }
           });
         }
+      }
+      destroy() {
+        this.disposed = true;
+        this.themeObserver?.disconnect();
       }
     },
   );
@@ -384,6 +423,6 @@ export function makeMermaidExtension(host, { onCopy } = {}) {
         ) ?? null,
     ),
     field,
-    onScroll,
+    onRefresh,
   ];
 }

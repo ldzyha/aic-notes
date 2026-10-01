@@ -109,8 +109,8 @@ test("VS Code surfaces show no date label and own one in-place source toggle", a
 });
 
 test("the current release is a universal local editor without account connectivity", () => {
-  assert.equal(packageJson.version, "58.1.1");
-  assert.equal(packageJson.aicEditorCore, "7.5.1");
+  assert.equal(packageJson.version, "59.0.2");
+  assert.equal(packageJson.aicEditorCore, "7.5.2");
   assert.equal(packageJson.engines.vscode, "^1.106.0");
   assert.match(packageJson.description, /Local AIC Markdown/u);
   assert.match(
@@ -496,19 +496,18 @@ test("plain Markdown and contextual notes load the same slash-enabled editor", a
   assert.ok(packageJson.activationEvents.includes("onLanguage:markdown"));
 });
 
-test("Mermaid owns preview zoom and two-dimensional scroll", async () => {
-  const [viewport, viewportCss, mermaid] = await Promise.all([
-    read("vendor/aic-editor-core/mermaid-viewport.js"),
+test("Mermaid uses shared automatic sizing without diagram scrollbars or zoom controls", async () => {
+  const [viewportCss, mermaid, theme] = await Promise.all([
     read("vendor/aic-editor-core/mermaid-viewport.css"),
     read("vendor/markdown/mermaid.js"),
+    read("src/webview/theme.css"),
   ]);
-  assert.match(viewport, /Zoom in/u);
-  assert.doesNotMatch(viewport, /Rotate diagram|rotation/u);
-  assert.match(viewport, /stage\.style\.width = pixels\(fitted\)/u);
-  assert.match(viewport, /stage\.style\.height = pixels\(fitted \/ ratio\)/u);
-  assert.match(viewportCss, /overflow: auto/u);
-  assert.doesNotMatch(viewportCss, /--aic-mermaid-rotation/u);
+  assert.match(viewportCss, /max-height: none/u);
+  assert.match(viewportCss, /overflow: visible/u);
+  assert.doesNotMatch(viewportCss, /overflow: auto|max-height: min/u);
   assert.match(mermaid, /createMermaidViewport/u);
+  assert.doesNotMatch(mermaid, /controller\.controls/u);
+  assert.doesNotMatch(theme, /margin-(?:left|right): calc\(50% - 50vw/u);
 });
 
 test("saves do not synthesize or rewrite legacy YAML Properties", async () => {

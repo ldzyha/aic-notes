@@ -10,17 +10,14 @@ Public product documentation: [releases and installation](https://aic.dzyha.com/
 ### Current status — October 1, 2026
 
 The existing [AIC Notes listing](https://marketplace.visualstudio.com/items?itemName=ldzyha.aic-notes)
-under publisher **ldzyha** has accepted **57.1.2** and shows **Verifying**.
-The CAPTCHA step is complete. The published baseline remains **53.0.1** until
-Microsoft completes verification; acceptance of the upload is not publication.
-The uploaded file is the exact universal VSIX from the
-[57.1.2 GitHub release](https://github.com/ldzyha/aic-notes/releases/tag/v57.1.2),
-verified against SHA-256
-`8e5a244709eb61ed40677e4ac75b80eed1d462d74e80ec41dc761e23c319c805`.
+under publisher **ldzyha** publicly exposes **58.1.1**, verified in the current
+publisher dashboard. **59.0.2 is prepared**, with shared core 7.5.2, natural
+Mermaid sizing and live theme refresh. Its GitHub assets, upload acceptance and
+public Marketplace availability still require separate verification.
 
-The [verification-only publishing run](https://github.com/ldzyha/aic-notes/actions/runs/36847214736)
-passed for that release. It downloaded and verified the published package;
-credential checks and submission were deliberately skipped.
+The earlier [verification-only publishing run](https://github.com/ldzyha/aic-notes/actions/runs/36847214736)
+checked 57.1.2 release bytes without authenticating or submitting them. It is
+historical verification evidence, not proof of a 59.0.2 publication.
 
 Automatic publishing code is prepared. The repository does **not** yet have the
 `VSCE_PAT` Actions secret, so authenticated automatic publishing is **not fully
@@ -125,17 +122,14 @@ installation path. [code-server extension sources](https://coder.com/docs/code-s
 ### Поточний стан — 1 жовтня 2026
 
 Наявний [запис AIC Notes](https://marketplace.visualstudio.com/items?itemName=ldzyha.aic-notes)
-від видавця **ldzyha** прийняв **57.1.2** і показує **Verifying**.
-CAPTCHA пройдено. Публічною версією залишається **53.0.1**, доки Microsoft не
-завершить перевірку; прийняття завантаження ще не означає публікації.
-Завантажено точний універсальний VSIX із
-[GitHub release 57.1.2](https://github.com/ldzyha/aic-notes/releases/tag/v57.1.2),
-перевірений за SHA-256
-`8e5a244709eb61ed40677e4ac75b80eed1d462d74e80ec41dc761e23c319c805`.
+від видавця **ldzyha** публічно надає **58.1.1**; це перевірено в поточній панелі
+видавця. **59.0.2 підготовлено** зі спільним ядром 7.5.2, природними розмірами
+Mermaid та оновленням кольорів при зміні теми. Файли GitHub, прийняття завантаження
+та доступність 59.0.2 у Marketplace ще перевіряються окремо.
 
-[Запуск автоматизації лише для перевірки](https://github.com/ldzyha/aic-notes/actions/runs/36847214736)
-цього релізу пройшов успішно. Він завантажив і звірив опублікований пакет;
-перевірку облікових даних та подання до магазину було пропущено.
+Попередній [запуск лише для перевірки](https://github.com/ldzyha/aic-notes/actions/runs/36847214736)
+звірив файли 57.1.2 без авторизації та подання. Це історичний результат,
+а не підтвердження публікації 59.0.2.
 
 Код автоматичної публікації підготовлений. У репозиторії **ще немає** Actions
 secret `VSCE_PAT`, тому автоматична публікація з авторизацією **ще не повністю
