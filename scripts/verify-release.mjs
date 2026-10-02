@@ -3,18 +3,9 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import AdmZip from "adm-zip";
 import { verifyCoreSnapshot } from "./verify-core.mjs";
-import {
-  verifyPortableContent,
-  verifyPortableSnapshot,
-} from "./verify-portable-runtime.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 const core = await verifyCoreSnapshot(root);
-await verifyPortableSnapshot(root, { release: true });
-await verifyPortableSnapshot(root, {
-  directory: path.join(root, "dist", "portable"),
-  release: true,
-});
 if (core.sourceState === "working-tree")
   throw new Error(
     "Commit canonical core and regenerate its snapshot before publishing a release",
@@ -57,8 +48,6 @@ for (const entry of [
   "extension/PROVENANCE.md",
   "extension/PROVENANCE.uk.md",
   "extension/CORE_SNAPSHOT.json",
-  "extension/PORTABLE_SNAPSHOT.json",
-  "extension/dist/portable/index.html",
   "extension/THIRD_PARTY_NOTICES.md",
   "extension/FUNCTIONAL_INDEX.md",
   "extension/FUNCTIONAL_INDEX.uk.md",
@@ -74,36 +63,9 @@ if (
     .equals(await readFile(path.join(root, "CORE_SNAPSHOT.json")))
 )
   throw new Error("Packaged shared core snapshot differs from verified source");
-const portableSnapshotBytes = await readFile(
-  path.join(root, "PORTABLE_SNAPSHOT.json"),
-);
-if (
-  !archive
-    .getEntry("extension/PORTABLE_SNAPSHOT.json")
-    .getData()
-    .equals(portableSnapshotBytes)
-)
-  throw new Error(
-    "Packaged portable runtime snapshot differs from verified source",
-  );
-const portablePrefix = "extension/dist/portable/";
-const portableEntries = zipEntries.filter(
-  (entry) => !entry.isDirectory && entry.entryName.startsWith(portablePrefix),
-);
-const portableFiles = new Map(
-  portableEntries.map((entry) => [
-    entry.entryName.slice(portablePrefix.length),
-    entry.getData(),
-  ]),
-);
-if (portableFiles.size !== portableEntries.length)
-  throw new Error("Packaged portable runtime has duplicate paths");
-verifyPortableContent(
-  JSON.parse(portableSnapshotBytes.toString("utf8")),
-  portableFiles,
-  { release: true },
-);
 for (const pattern of [
+  "extension/PORTABLE_SNAPSHOT.json",
+  "extension/dist/portable/",
   "extension/bin/",
   "extension/bridge/",
   "extension/src/",
@@ -194,6 +156,8 @@ const packagedHostEntry = archive.getEntry("extension/dist/extension.cjs");
 if (!packagedHostEntry) throw new Error("packaged extension host is missing");
 const packagedHost = packagedHostEntry.getData().toString("utf8");
 for (const retired of [
+  "aicNotes.portable",
+  "portable.write",
   "/v1/items",
   "aic-notes-sn-bridge",
   "sn_remote_ambiguous",
@@ -216,6 +180,7 @@ if (!packagedHost.includes("aicNotes.snAuth.session.v1"))
 if (packagedEditor.includes("aicNotes.snAuth.session.v1"))
   throw new Error("retired session cleanup leaked into the editor webview");
 for (const retired of [
+  "aicNotes.portable",
   "aicNotes.standardNotesAccount",
   "aicNotes.signInStandardNotes",
   "aicNotes.signOutStandardNotes",

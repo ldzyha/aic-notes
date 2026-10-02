@@ -66,6 +66,10 @@ import { createSourceModeController } from "../../vendor/aic-editor-core/source-
 import { createEditorHelp } from "../../vendor/aic-editor-core/editor-help.js";
 import { PrimarySave } from "./primary-save.js";
 import {
+  applyUiComponent,
+  createUiButton,
+} from "../../vendor/aic-editor-core/ui-system.js";
+import {
   SLASH_SNIPPET_PLACEHOLDER,
   slashSnippetExtension,
 } from "../../vendor/aic-editor-core/slash-snippets.js";
@@ -89,6 +93,7 @@ if (secondarySurface)
 
 const docState = {
   relativePath: "",
+  resourceUri: "",
   generation: 0,
   placeholder: false,
   relationships: [],
@@ -235,14 +240,33 @@ function reflectSaveState() {
     (state === "dirty"
       ? active.pending
         ? "Saving note"
-        : "Unsaved changes. Save or leave the editor to save."
+        : "Unsaved changes"
       : state === "placeholder"
         ? "Note placeholder. Edit and press Ctrl+S to create."
         : state === "saved"
-          ? "Note saved"
+          ? "Saved to file"
           : "No note selected");
   const status = document.getElementById("pane-status");
   if (status && status.textContent !== label) status.textContent = label;
+  const context = document.getElementById("document-location");
+  if (context) {
+    context.hidden = !docState.hasSurface;
+    context.dataset.state = active.pending
+      ? "saving"
+      : docState.editingConflict || docState.readOnly
+        ? "failed"
+        : active.dirty
+          ? "dirty"
+          : "saved";
+    if (status) status.dataset.state = context.dataset.state;
+  }
+  const location = document.getElementById("document-path");
+  if (location) {
+    const scheme = docState.resourceUri.split(":", 1)[0];
+    const provider = scheme && scheme !== "file" ? `${scheme} · ` : "";
+    location.textContent = `${provider}${docState.relativePath}`;
+    location.title = docState.resourceUri || docState.relativePath;
+  }
   const save = document.getElementById("aic-save");
   if (save) {
     save.hidden = state !== "dirty";
@@ -337,12 +361,14 @@ function setEditingState(readOnly, lease = docState.lease) {
 }
 
 function wireEditorHelp(actionBar) {
-  const trigger = document.createElement("button");
-  trigger.type = "button";
-  trigger.className = "cm-aic-icon-button aic-pane-icon";
-  trigger.textContent = "?";
-  trigger.title = "Editor guide";
-  trigger.setAttribute("aria-label", "Open editor guide");
+  const trigger = createUiButton(document, {
+    label: "Open editor guide",
+    icon: "help",
+    iconOnly: true,
+    size: "compact",
+    variant: "ghost",
+  });
+  trigger.classList.add("aic-pane-icon");
   trigger.setAttribute("aria-controls", "aic-editor-help");
   trigger.setAttribute("aria-expanded", "false");
 
@@ -411,12 +437,23 @@ function wirePaneControls() {
   }
   if (!secondarySurface) {
     document.body.classList.add("aic-main-note-surface");
-    const status = document.createElement("span");
-    status.id = "pane-status";
-    status.className = "aic-visually-hidden";
-    status.setAttribute("role", "status");
-    footer.append(status);
   }
+  const context = document.createElement("div");
+  context.id = "document-location";
+  context.hidden = true;
+  applyUiComponent(context, "context", ["document"]);
+  const location = document.createElement("span");
+  location.id = "document-path";
+  applyUiComponent(location, "context", [], "path");
+  const status =
+    document.getElementById("pane-status") ?? document.createElement("span");
+  status.id = "pane-status";
+  status.classList.remove("aic-visually-hidden");
+  applyUiComponent(status, "context", [], "status");
+  status.setAttribute("role", "status");
+  status.setAttribute("aria-live", "polite");
+  context.append(location, status);
+  footer.prepend(context);
   const save = createIconButton(document, {
     label: "Save note",
     icon: "save",
@@ -813,6 +850,8 @@ window.addEventListener("message", (event) => {
       }
       if (!sameIdentity) sourceMode.reset();
       docState.relativePath = msg.relativePath;
+      docState.resourceUri =
+        typeof msg.resourceUri === "string" ? msg.resourceUri : "";
       docState.hasSurface = true;
       docState.editingConflict = false;
       docState.readOnly = Boolean(msg.readOnly);

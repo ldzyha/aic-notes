@@ -22,8 +22,6 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 const disposable = () => ({ dispose() {} });
 const event = () => disposable();
-const portableHtml =
-  '<html><head></head><body><script type="module" src="./assets/main.js"></script></body></html>';
 const sealed = JSON.stringify({
   format: "aic-browser-vault",
   version: 1,
@@ -55,7 +53,6 @@ async function harness({ writable = true } = {}) {
     ["/workspace/docs.note.md", { type: 1, text: "# Shared\n" }],
     ["/workspace/workspace.note.md", { type: 1, text: "# Global\n" }],
     ["/workspace/notes.aicnotes", { type: 1, text: sealed }],
-    ["/extension/dist/portable/index.html", { type: 1, text: portableHtml }],
   ]);
   const providers = new Map(),
     commands = new Map(),
@@ -342,7 +339,7 @@ test("browser entry activates real providers and saves a virtual Markdown TextDo
   const h = await harness();
   try {
     assert.ok(h.providers.has("aicNotes.secondary"));
-    assert.ok(h.providers.has("aicNotes.portable"));
+    assert.equal(h.providers.has("aicNotes.portable"), false);
     const document = h.getDocument(h.uri("/workspace/docs/readme.md"));
     const panel = h.panel();
     await h.providers
@@ -445,24 +442,23 @@ test("read-only virtual providers render notes and reject edits or instruction w
   }
 });
 
-test("portable browser provider reads and writes through its virtual TextDocument", async () => {
+test("activation leaves legacy encrypted files untouched and registers only Markdown editors", async () => {
   const h = await harness();
   try {
-    const document = h.getDocument(h.uri("/workspace/notes.aicnotes"));
-    const panel = h.panel();
-    await h.providers
-      .get("aicNotes.portable")
-      .resolveCustomTextEditor(document, panel);
-    assert.match(panel.webview.html, /nonce="[a-f0-9]{48}"/u);
-    await panel.receive({ type: "portable.read", requestId: "read-1" });
-    assert.equal(panel.messages.at(-1).text, sealed);
-    await panel.receive({
-      type: "portable.write",
-      requestId: "write-1",
-      expected: sealed,
-      text: sealed,
-    });
-    assert.equal(panel.messages.at(-1).ok, true);
+    assert.equal(h.providers.has("aicNotes.portable"), false);
+    assert.ok(h.providers.has("aicNotes.markdown"));
+    assert.equal(h.files.get("/workspace/notes.aicnotes").text, sealed);
+    const manifest = JSON.parse(
+      await readFile(new URL("../package.json", import.meta.url), "utf8"),
+    );
+    assert.equal(
+      manifest.contributes.customEditors.some((editor) =>
+        editor.selector.some(
+          (selector) => selector.filenamePattern === "*.aicnotes",
+        ),
+      ),
+      false,
+    );
   } finally {
     h.dispose();
   }

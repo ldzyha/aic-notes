@@ -1,8 +1,7 @@
 import { DEFAULT_NOTE_BODY_TEMPLATE } from "../../vendor/aic-editor-core/note-template.js";
 
-// Core-guided new notes start with noise research and evolve in place into
-// wave instructions. Existing note bodies and project template overrides
-// remain owned by the user; this module supplies defaults only.
+// New notes start blank. Explicit project template overrides remain owned by
+// the user; /noise and /wave insert guidance only when requested.
 
 export const TEMPLATE_PATHS = {
   "file-note": ".aic/templates/file-note.md",

@@ -93,6 +93,7 @@ body.aic-main-note-surface {
 #document-actions {
   grid-row: 3;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.3rem;
   padding: 0.3rem 0.6rem;
@@ -332,6 +333,7 @@ body.aic-secondary-surface {
   z-index: 10;
   grid-row: 3;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.18rem;
   min-height: 34px;
@@ -341,15 +343,29 @@ body.aic-secondary-surface {
   color: var(--aic-contrast-fg);
 }
 
+/* Keep the same source/status strip in both document and linked-note footers. */
+#document-location {
+  order: -1;
+  flex: 1 0 100%;
+  padding-inline: 0;
+  border: 0;
+  background: transparent;
+}
+#document-location .aic-context__status {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .aic-pane-footer-spacer {
   flex: 1 1 auto;
 }
 
 #secondary-footer .aic-pane-icon {
   display: inline-grid;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
+  width: var(--aic-control-size);
+  height: var(--aic-control-size);
+  flex: 0 0 var(--aic-control-size);
   padding: 0;
   place-items: center;
   border: 1px solid transparent;
@@ -373,6 +389,14 @@ body.aic-secondary-surface {
 }
 #secondary-footer .aic-pane-icon.danger {
   color: var(--aic-danger);
+}
+
+@media (pointer: coarse) {
+  #secondary-footer .aic-pane-icon {
+    width: var(--aic-control-size-touch);
+    height: var(--aic-control-size-touch);
+    flex-basis: var(--aic-control-size-touch);
+  }
 }
 
 .aic-secondary-surface #editor {

@@ -433,24 +433,23 @@ Menu visibility uses VS Code's filesystem-resource context, and slash completion
 support Markdown across filesystem schemes. No account, sync or repository provider
 is added. Coverage: `test/web-host.test.js` activates the actual browser bundle with
 no Node globals and exercises writable/read-only virtual files, linked notes, agent
-setup and ciphertext transport; `test/web-resources.test.js` verifies URI boundaries,
+setup and plain-file editor registration; `test/web-resources.test.js` verifies URI boundaries,
 POSIX-compatible path handling and WebCrypto/Unicode behavior. Packaging and archive
 verification require the browser entry and matching built asset.
 
-## Shared encrypted files
+## Plain Markdown files
 
-The `.aicnotes` editor loads the canonical portable Notes runtime and exchanges
-only ciphertext with its owning VS Code TextDocument. Stale writes are rejected;
-external changes require an explicit reopen. Files can live in user-managed sync
-folders. The compiled runtime and its source/hash snapshot are distributed by the
-canonical repository’s update workflow. Ordinary Markdown editor ownership stays
-with the existing Markdown provider.
+The main editor and Linked Note use the workspace filesystem provider and native
+TextDocument Save/Undo on desktop and the Web. There is no app password, encrypted
+workspace, or `.aicnotes` editor/importer. Existing files are untouched when the
+extension updates or is removed. Secret-field masking and password generation are
+editor features; Markdown bytes remain plain text on disk.
 
 ## Extension update distribution
 
 Exact release archives and checksums are verified before store submission.
-Canonical core and portable builds reach VS Code through a reviewed update PR;
-source commits and complete file hashes remain in separate snapshots. Local
+Canonical core changes reach VS Code through a reviewed update PR;
+source commits and complete file hashes remain in the core snapshot. Local
 working-tree previews are permitted, while release proof requires committed
 source. Publisher listings, credentials and explicit enable variables complete
 activation; usage and setup are in [extension updates](../standard-notes-aic/pwa/EXTENSION_UPDATES.md).
@@ -474,11 +473,11 @@ The PWA explores imported Markdown files as folders. For `app/src/page.md`,
 Shared resolves `app/src.note.md` (or the nearest existing ancestor sidecar),
 and Global resolves `app/app.note.md`. These paths follow the VS Code sidecar
 convention. Loose files without an identifiable project folder have no Global
-file scope. Workspace labels do not determine note identity or encryption.
+file scope. Workspace labels do not determine note identity.
 Browser-library bundles use their existing URL, origin and Global records,
 including orphan Shared records and Global without a page note. Scope editors
 retain independent Undo until the selected context closes or changes.
 
-PWA saves still update the local workspace or its explicitly connected encrypted
-file. Importing a folder does not grant write-back or background synchronization;
-export copies to your own sync folder when needed.
+PWA saves write to explicitly connected Markdown originals. Cached copies remain
+read-only until a file destination is selected. Synchronization remains under the
+user’s control, through the chosen filesystem or sync folder.

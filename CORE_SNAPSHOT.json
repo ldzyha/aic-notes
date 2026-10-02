@@ -1,10 +1,10 @@
 {
   "coreVersion": "7.5.3",
   "sourceRepository": "https://github.com/ldzyha/standard-notes-aic",
-  "sourceCommit": "bbbcbcb4a474a98afa9259c7ea24bf2da20c0ba2",
+  "sourceCommit": "280a6ac22036e943f8bbf2011f47e453c3af7f60",
   "files": {
     "agent-guide.d.ts": "d6ffa86047957502482f327954244f9220ba0797e7a00812e88a4bed78d643c5",
-    "agent-guide.js": "32e97b2c389b7ae03f65b9641a83dc22d74a9337e9a127fc8ad3d62f9c749178",
+    "agent-guide.js": "6e33b835cadfc64472cb12e909100d32c460b8c9e9cb3874fe7d34ca5e20f6cd",
     "agentic-notes.d.ts": "edceb932ecb1e9f54096fd817d48a3d0b557ae4cffc07f787f761012c7d92d4e",
     "agentic-notes.js": "b5369e37724bcabe9673aac12d25a5f9dc7eab1c83d5c0bae3364e80487f2a81",
     "block-diagnostic.d.ts": "65d205c7c0a6ef8d4c4a2c34bcfdca10b6f1fc02e5424152a44e309d109cb5ab",
@@ -24,7 +24,7 @@
     "draft-session.d.ts": "43351029016947a597cd1771986fa9cec3fa8b6c78e2bb9bd7230a0db0e7a766",
     "draft-session.js": "2b9a02ead705469b9f85be59662ab124ca2452fa8bdd78c4e8c9615d4e1ad6e4",
     "editor-help.d.ts": "afc3775183a2edda93920f5dbd313502016bebb8c58e5df83151de9c647bb9b3",
-    "editor-help.js": "fd454cf21bb7b31009fb7f4a502b5c222bf4c89c3754a835f0c0f0e4f06c8418",
+    "editor-help.js": "3b729b92a9b53e2cfbb2168b4cd94238720de75d7b93272b43f878fde377cb92",
     "field-label.d.ts": "c91bcd2ec47ab31e6be5b5ca229443473fd5cf25ca853c0c36db33ccb380a82c",
     "field-label.js": "b81d70236cb542be7649e3e82588ec703cae86fe8579f850a606ec96bcae8034",
     "field-parts.d.ts": "4d23d10968f4faca0cd295b45ab66273a9b3042fce6826ce02f8e96f048082e7",
@@ -44,7 +44,7 @@
     "mermaid-viewport.d.ts": "fa383c5cad3084311a1070d70da85578769ca39a05e4797ab9594be95001caa2",
     "mermaid-viewport.js": "f80b46605752cc194f259805a71cdcd053df1b8424fa1b03cea03a8e003a6a39",
     "note-template.d.ts": "16d74b7a0fb2a1807083607cba94fb65e0fcacaa68f1c70356b9e67ed1c857f4",
-    "note-template.js": "87f8972afb551f2df4fe9947ba82f794170c30619b144f092f859fdaad66a697",
+    "note-template.js": "ec48cf80536e95dd1b372081f3e583ef71dd1a41d277ea96ec056e280b9234fb",
     "preview-layout.css": "0dfa3ff798aa4fb99fe47826bb9c471b5ce27bbec2e126d7b52c7015ca7ccc37",
     "preview-ranges.d.ts": "ef057a6c0ea79cdf21d5c4986b08988b92f5246287bc81aea75c90cdd94bdb50",
     "preview-ranges.js": "229efb488073bbd9047e2e75370981df8a43056bbddb5c5a9e012ca52bc94948",
@@ -70,8 +70,8 @@
     "security-import-extension.js": "42794f462680aaf322fe9a9232a5f9be32ecde1caaffef3e9221e0487b295e37",
     "security-import.d.ts": "9110cf050842910f073129cbcce9d0d9befff7c95e73a9a3c66a47d6e4dfb23f",
     "security-import.js": "1869597cf33e0389ac33bf374a2486b62a17231c72eb84636c67298e330d7b77",
-    "security-model.d.ts": "758dd7baa2c73b6d36ce1e1c089211a7dbc6721961cbb26a6710babe62c836bd",
-    "security-model.js": "0f0f60fafc1cb717facc0ab97649fccafdae857c7b4bde72d95edcaf9c4e3f7c",
+    "security-model.d.ts": "2d397ffee8789576a3e9a62b3d5bb615a2c391e5f4bfae14fc9835684dd822d3",
+    "security-model.js": "f0df6d762923e9c04c730bc4f6e5b00c5c022ebf0cacec4e4f4e3863cb3fa674",
     "security-otp.d.ts": "f9988dd1397c049f4c76d9d50c86744096917bbe005d6378ad59fce7a1f3196d",
     "security-otp.js": "e58d8c2c532b3aebcf5ac4dd82782a5c87f59365d48876690964974db7f8b63a",
     "security-password.d.ts": "57180e05162b9643cb2ad91c00872fc1be61aa970f094fac418ef27bd46f91e4",
@@ -91,8 +91,8 @@
     "structured-preview.js": "14510724bf3336d7334e898dfdd19117bb0b48079c1f1941ea370ea1e312e83c",
     "task-marker.d.ts": "c052c03ec0e45084726954c76fec308d9d7d77415ecb1b89a9d99d03627f58dd",
     "task-marker.js": "50ffab505a9af768a07927f3b9c5ad72e87f79e9d41a09972e3d1b85e337bc31",
-    "ui-system.css": "39600d76bf56b6e46213848e29d2f5b47d3d5e3dde1b97c8f2d434ab648a38b0",
-    "ui-system.d.ts": "be2bee07f2b9f7fce53bdba958441458476740ab37ace9ab4c9a892ee0b3f332",
-    "ui-system.js": "21e8bd4dd8505da22d9862c1d4b88ef3250a7c2e6af2d6e2c35fef9fd408ec32"
+    "ui-system.css": "82484a75c8131f0b215435d1717241f81c6eb756c1ae94aa174b5f8cee7eaafc",
+    "ui-system.d.ts": "59b1f17771fb447e0331308a8fc4244308d4ef4583de76ce0625728269fcc8d7",
+    "ui-system.js": "e95acb498aa28bd046b5fd9eaa439d1711a61e8427a09e813ae624e75fd6edc8"
   }
 }

@@ -248,6 +248,7 @@ export class MarkdownEditorProvider {
         text: document.getText(),
         generation: state.generation,
         relativePath,
+        resourceUri: document.uri.toString(),
         dirty: Boolean(document.isDirty),
         ...(session.editSurface
           ? this.ownership.state(session.editSurface)

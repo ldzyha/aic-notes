@@ -804,6 +804,7 @@ export class SecondaryNotePane {
       text,
       generation: this.generation,
       relativePath,
+      resourceUri: (this.documentUri ?? this.placeholderUri)?.toString() ?? "",
       surface: "secondary",
       placeholder: !document,
       relationships,

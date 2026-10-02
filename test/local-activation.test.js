@@ -15,8 +15,6 @@ const stubs = {
     export const hintIfShadowed = () => {};`,
   "./editor/provider.js":
     "export const MarkdownEditorProvider = { register: () => ({}) };",
-  "./portable/provider.js":
-    "export const PortableEditorProvider = { register: () => ({}) };",
   "./editor/slash-provider.js":
     "export const registerMarkdownSlashCompletionProvider = () => ({});",
   "./secondary/provider.js":

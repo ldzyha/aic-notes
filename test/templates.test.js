@@ -1,9 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  DEFAULT_NOTE_BODY_TEMPLATE,
-  NOTE_PROMPTS,
-} from "../vendor/aic-editor-core/note-template.js";
+import { DEFAULT_NOTE_BODY_TEMPLATE } from "../vendor/aic-editor-core/note-template.js";
 import {
   fillTemplate,
   loadTemplate,
@@ -51,19 +48,25 @@ test("loadTemplate: override wins only when it contains a token", () => {
   ]);
 });
 
-test("new file, folder and project notes use shared noise-to-wave guidance without metadata", async () => {
+test("new file, folder and project notes start completely blank by default", async () => {
   for (const level of Object.keys(TEMPLATE_PATHS)) {
     const body = fillTemplate(
       await loadTemplate(level, async () => null),
       "Subject",
     );
-    assert.match(body, /^# Subject\n/u);
-    assert.match(body, /## Noise/u);
-    assert.ok(body.includes(NOTE_PROMPTS.noiseQuestion));
-    assert.ok(body.includes(NOTE_PROMPTS.noiseContext));
-    assert.match(body, /\/wave in this same note/u);
-    assert.doesNotMatch(body, /^---|## Purpose|## Todo|\{\{/mu);
+    assert.equal(body, "");
   }
+});
+
+test("explicit templates keep their authored AIC blocks", async () => {
+  const template = "# {{name}}\n\n```aic\n# Properties\nStatus | draft\n```\n";
+  assert.equal(
+    fillTemplate(
+      await loadTemplate("file-note", async () => template),
+      "Subject",
+    ),
+    template.replace("{{name}}", "Subject"),
+  );
 });
 
 test("template paths cover the three levels", () => {

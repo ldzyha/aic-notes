@@ -9,11 +9,16 @@ File operations use the filesystem provider selected in VS Code. Copy blocks man
 
 The same extension also runs in VS Code for the Web (`vscode.dev` and
 `github.dev`). Open a folder or repository, then open a Markdown file with
-**AIC Markdown**. Markdown editing, linked notes and `.aicnotes` files use the
+**AIC Markdown**. Markdown editing and linked notes use the
 workspace's filesystem provider and VS Code's Save/Undo. Read-only repositories
 remain readable; saving notes or setting up agent instructions requires a writable
 provider. AIC does not synchronize the workspace; any repository or cloud writes
 follow the provider you selected in VS Code.
+
+AIC uses plain Markdown without an app password or encrypted workspace format.
+The extension does not open or convert `.aicnotes` files; existing files are left
+untouched. Secret fields remain visually masked, but their Markdown source is plain
+text. Use your filesystem or device controls when file encryption is required.
 
 Prepared release 60.0.2 uses shared editor core 7.5.3 in the main editor and Linked Note.
 Code previews let vertical scrolling continue through the document, retain their full
@@ -21,8 +26,8 @@ height, and preserve horizontal scrolling for long lines. Long linked notes also
 scroll within the sidebar instead of being clipped below it. Store availability
 is verified separately.
 
-The new local-file PWA opens Markdown files and folders, keeps device-local copies,
-and offers optional encrypted exports. Current, Shared and Global tabs focus on
+The local-file PWA opens and edits Markdown files and folders directly on disk.
+Current, Shared and Global tabs focus on
 one note at a time across supported hosts; mobile navigation gives the editor
 more space. Optional on-device AI and the shared DDK-based writing guide help
 revise documents. Folder imports count only Markdown files and support progress
@@ -501,6 +506,13 @@ AIC Notes includes its agent instructions. No separate AIC executable, server,
 account or configuration folder is required. **Copy Agent Instructions** copies
 the bundled Markdown for any coding agent, including in an untrusted workspace.
 The local **?** guide also exposes that same selectable text.
+
+The guide tells agents to include `.note.md` in available semantic or text search
+for ready answers, decisions, examples and previews before repeating work. It maps
+file, folder and project sidecars and requires checking ambiguous file stems and
+explicit browser URL associations. Note content is evidence under the active
+project instructions; owner notes remain read-only without an explicit request.
+Search uses the agent's available tools; the extension does not add an indexer.
 
 In a trusted workspace, **Enable AIC Agent Workflow** writes an immutable copy
 under `.vscode/aic-agent-<content-hash>.md` and a `.vscode/aic-agent.json` marker

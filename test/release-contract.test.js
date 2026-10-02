@@ -80,7 +80,10 @@ test("both VS Code editor surfaces mount the shared local guide", async () => {
   );
   assert.match(main, /createEditorHelp\(document, \{ host: "vscode" \}\)/u);
   assert.match(main, /setAttribute\("popover", "auto"\)/u);
-  assert.match(main, /aria-label", "Open editor guide"/u);
+  assert.match(
+    main,
+    /createUiButton\(document, \{\s*label: "Open editor guide"/u,
+  );
   assert.doesNotMatch(main, /innerHTML.*editor guide/iu);
 });
 
@@ -521,7 +524,7 @@ test("saves do not synthesize or rewrite legacy YAML Properties", async () => {
   assert.doesNotMatch(secondary, /stampNoteProperties|stampFileProperties/u);
   assert.doesNotMatch(editor, /stampNoteProperties|stampFileProperties/u);
   assert.doesNotMatch(create, /stampNoteProperties|stampFileProperties/u);
-  assert.match(create, /AIC_EMPTY_DOCUMENT/u);
+  assert.doesNotMatch(create, /AIC_EMPTY_DOCUMENT/u);
   for (const file of [
     "src/notes/properties.js",
     "vendor/aic-editor-core/file-properties.js",

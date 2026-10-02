@@ -1,8 +1,8 @@
 import { isFileResource, resourceLabel } from "./resources.js";
 // Quick note creation/opening — the ctrl+alt+m path. Mirrors aic's Mod-m
 // feel: on a source file it creates/opens the sidecar note beside; on a note
-// it jumps back to the target. Fresh notes keep the selected template bytes;
-// an empty template receives the shared valid AIC document seed.
+// it jumps back to the target. Fresh notes keep explicitly selected template
+// bytes and otherwise start blank.
 
 import * as vscode from "vscode";
 import * as path from "./uri-path.js";
@@ -10,7 +10,6 @@ import { notePathFor, folderNotePathFor } from "./paths.js";
 import { loadTemplate, fillTemplate } from "./templates.js";
 import { structuredError, formatError } from "../errors.js";
 import { activeWindowResource } from "../secondary/model.js";
-import { AIC_EMPTY_DOCUMENT } from "../../vendor/aic-editor-core/security-model.js";
 
 async function exists(uri) {
   try {
@@ -94,10 +93,6 @@ function workspaceReader(folder) {
   };
 }
 
-function freshNoteText(body) {
-  return String(body).trim() ? body : AIC_EMPTY_DOCUMENT;
-}
-
 export async function openNoteDocument(uri, options = {}) {
   if (uri.path.endsWith(".note.md")) {
     await vscode.commands.executeCommand(
@@ -114,7 +109,7 @@ export async function openNoteDocument(uri, options = {}) {
   await vscode.commands.executeCommand("vscode.open", uri);
 }
 
-// Create <notePath> with header+template if missing. Keeping creation separate
+// Create <notePath> with its selected template (blank by default) if missing. Keeping creation separate
 // from navigation lets the Secondary placeholder and selection-link action use
 // the same deterministic seed without opening an intermediate editor.
 export async function ensureNoteFile(folder, relNotePath, level, titleName) {
@@ -122,7 +117,7 @@ export async function ensureNoteFile(folder, relNotePath, level, titleName) {
   if (!(await exists(uri))) {
     const template = await loadTemplate(level, workspaceReader(folder));
     const body = fillTemplate(template, titleName);
-    const text = freshNoteText(body);
+    const text = body;
     await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(text));
   }
   return uri;
@@ -147,7 +142,7 @@ export async function fileNotePlaceholderForUri(uri) {
   const body = fillTemplate(template, descriptor.title);
   return {
     ...descriptor,
-    text: freshNoteText(body),
+    text: body,
   };
 }
 
@@ -163,7 +158,7 @@ export async function notePlaceholderForUri(uri) {
   const body = fillTemplate(template, descriptor.title);
   return {
     ...descriptor,
-    text: freshNoteText(body),
+    text: body,
   };
 }
 

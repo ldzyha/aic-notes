@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { build } from "esbuild";
 import { createRequire } from "node:module";
+import { createHash } from "node:crypto";
 import { runInNewContext } from "node:vm";
 import { fileURLToPath } from "node:url";
 import { AGENT_GUIDE } from "../vendor/aic-editor-core/agent-guide.js";
@@ -128,6 +129,38 @@ test("fresh setup works without AIC or its config and is idempotent", async () =
   const count = h.writes.length;
   await h.bootstrap.enable();
   assert.equal(h.writes.length, count);
+});
+test("refresh exports sidecar discovery without rewriting owner context or the previous guide", async () => {
+  const previousGuide = "Previous bundled instructions";
+  const previousHash = createHash("sha256").update(previousGuide).digest("hex");
+  const previousPath = `.vscode/aic-agent-${previousHash.slice(0, 16)}.md`;
+  const h = harness({
+    marker: JSON.stringify({
+      schemaVersion: 2,
+      enabled: true,
+      managedBy: "aic-notes",
+      guideVersion: 2,
+      guideFile: previousPath,
+      guideSha256: previousHash,
+    }),
+  });
+  const protectedFiles = new Map([
+    [`/workspace/${previousPath}`, previousGuide],
+    ["/workspace/src/parser.note.md", "Owner decisions and ready answers"],
+    ["/workspace/.ai/session.json", "Runtime-owned session state"],
+  ]);
+  for (const [path, text] of protectedFiles) h.files.set(path, text);
+  await h.bootstrap.enable();
+  assert.equal(h.files.get(h.guidePath), AGENT_GUIDE);
+  assert.match(h.files.get(h.guidePath), /Include \*\*\/\*\.note\.md/u);
+  assert.match(h.files.get(h.guidePath), /not higher-priority instructions/u);
+  assert.equal(h.files.get("/workspace/.vscode/aic-agent.json"), markerText);
+  for (const [path, text] of protectedFiles)
+    assert.equal(h.files.get(path), text);
+  assert.equal(h.files.get("/workspace/AGENTS.md"), "Owner instructions");
+  assert.ok(
+    h.writes.every((path) => path.startsWith("/workspace/.vscode/.aic-agent-")),
+  );
 });
 test("untrusted workspaces can copy instructions but cannot write them", async () => {
   const h = harness({ trusted: false });
