@@ -2,6 +2,28 @@
 
 [English](CHANGELOG.md) · [Українська](CHANGELOG.uk.md)
 
+## 60.0.2 — 2026-10-02
+
+Release sequence 60 · 0 feature outcomes · 2 fixed-bug outcomes.
+Coordinates Standard Notes AIC 51.0.1, AIC Notes 60.0.2, experimental browser
+0.11.3 and shared core 7.5.3. Prepared release; publication is verified separately.
+
+### B01 — Document scrolling over code previews
+
+Vertical scrolling over a code preview continues through the document instead
+of getting trapped inside the block. Code previews retain their complete height
+and horizontal scrolling for long lines. The same behavior applies to Standard
+Notes, PWA, browser notes, and VS Code main and linked-note editors. Authored
+Markdown, editing, Copy and Save/Undo ownership remain unchanged.
+
+### B02 — Scroll long linked notes inside the sidebar
+
+The active linked-note pane now passes its available height to the editor's
+scrolling container. Long notes remain reachable instead of being clipped below
+the sidebar when the editor grows to its full document height. The fix applies
+to the Current, Shared and Global panes without changing the main editor's
+layout or document editing and Save/Undo ownership.
+
 ## 59.0.2 — 2026-10-01
 
 Release sequence 59 · 0 feature outcomes · 2 fixed-bug outcomes.

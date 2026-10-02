@@ -15,10 +15,11 @@ remain readable; saving notes or setting up agent instructions requires a writab
 provider. AIC does not synchronize the workspace; any repository or cloud writes
 follow the provider you selected in VS Code.
 
-Prepared release 59.0.2 uses shared editor core 7.5.2 in the main editor and Linked Note.
-Mermaid diagrams keep their natural size, shrink to fit narrow panels and use full content
-height without internal scrollbars. Changing the VS Code theme refreshes diagram colors
-without reopening notes. Store availability is verified separately.
+Prepared release 60.0.2 uses shared editor core 7.5.3 in the main editor and Linked Note.
+Code previews let vertical scrolling continue through the document, retain their full
+height, and preserve horizontal scrolling for long lines. Long linked notes also
+scroll within the sidebar instead of being clipped below it. Store availability
+is verified separately.
 
 The new local-file PWA opens Markdown files and folders, keeps device-local copies,
 and offers optional encrypted exports. Current, Shared and Global tabs focus on
@@ -152,8 +153,8 @@ without a duplicate heading row. Use `## Account name` for a custom name or bare
 for the default Security header.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-editor-core 7.5.2 but is a separate product. Current release targets are AIC Notes
-59.0.2 and AIC for Standard Notes 50.0.1. This page describes the release contract;
+editor-core 7.5.3 but is a separate product. Current release targets are AIC Notes
+60.0.2 and AIC for Standard Notes 51.0.1. This page describes the release contract;
 published artifacts are verified separately by the release workflow. Transfer content manually
 between the two applications; VS Code has no Standard Notes account integration.
 
@@ -374,25 +375,25 @@ Use the manual GitHub VSIX until that separate distribution is set up.
 The [unified release page](https://github.com/ldzyha/standard-notes-aic/releases/tag/v48.4.5)
 has installation steps for VS Code, Standard Notes and Chrome/Edge in one place.
 
-For manual installation, download `aic-notes-59.0.2.vsix` and its
-`aic-notes-59.0.2.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+For manual installation, download `aic-notes-60.0.2.vsix` and its
+`aic-notes-60.0.2.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-59.0.2.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-59.0.2.vsix.sha256
-code --install-extension .\aic-notes-59.0.2.vsix --force
+(Get-FileHash .\aic-notes-60.0.2.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-60.0.2.vsix.sha256
+code --install-extension .\aic-notes-60.0.2.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-59.0.2.vsix.sha256
-code --install-extension ./aic-notes-59.0.2.vsix --force
-# or: code-server --install-extension ./aic-notes-59.0.2.vsix --force
+sha256sum -c aic-notes-60.0.2.vsix.sha256
+code --install-extension ./aic-notes-60.0.2.vsix --force
+# or: code-server --install-extension ./aic-notes-60.0.2.vsix --force
 ```
 
 Reload the VS Code window after installation. Local editing and the bundled agent instructions require no additional executable.

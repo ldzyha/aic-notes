@@ -9,18 +9,36 @@
 extension for encrypted page notes, or AIC Notes in VS Code. Protected file
 editors share the same <code>.aicnotes</code> data; synchronize exported files through a
 service you manage.</p>
-<h2 id="prepared-standard-notes-5001-vs-code-5902-browser-0112">Prepared: Standard Notes 50.0.1 / VS Code 59.0.2 / browser 0.11.2</h2>
+<h2 id="prepared-update-standard-notes-5101-vs-code-6002-browser-0113">Prepared update: Standard Notes 51.0.1 / VS Code 60.0.2 / browser 0.11.3</h2>
+<p>Shared core 7.5.3 lets vertical scrolling over code previews continue through
+the document. Code previews retain their full height and horizontal scrolling
+for long lines across all editor hosts. VS Code also restores scrolling in long
+linked notes by keeping their editor within the available sidebar height.</p>
+<p>Publication of these versions is pending verification. After publication, use
+<a href="https://github.com/ldzyha/aic-notes/releases/download/v60.0.2/aic-notes-60.0.2.vsix">VSIX 60.0.2</a>
+and its <a href="https://github.com/ldzyha/aic-notes/releases/download/v60.0.2/aic-notes-60.0.2.vsix.sha256">SHA-256</a>,
+<a href="https://github.com/ldzyha/standard-notes-aic/releases/tag/v51.0.1">Standard Notes 51.0.1</a>,
+and <a href="https://github.com/ldzyha/standard-notes-aic/releases/download/v51.0.1/aic-browser-chromium-0.11.3.zip">Chromium 0.11.3 ZIP</a>
+with <a href="https://github.com/ldzyha/standard-notes-aic/releases/download/v51.0.1/aic-browser-chromium-0.11.3.zip.sha256">SHA-256</a>.
+PWA deployment and store submission or approval are verified separately.
+The October 2 store check confirmed Marketplace <strong>59.0.2</strong> public and Chrome
+<strong>0.9.3</strong> public, with <strong>0.11.1 pending review</strong> and new Chrome uploads disabled.</p>
+<h2 id="available-releases-standard-notes-5001-vs-code-5902-browser-0112">Available releases: Standard Notes 50.0.1 / VS Code 59.0.2 / browser 0.11.2</h2>
 <p>Shared core 7.5.2 centers Mermaid diagrams at their natural size within a full-width
 canvas. Wider diagrams shrink to fit, long labels wrap, and height follows all
 content without internal scrollbars. Copy and Edit remain; zoom controls are
 removed. Mermaid loads only when needed. VS Code also refreshes diagram colors
 when its theme changes, without reopening the note.</p>
-<p>After publication: <a href="https://github.com/ldzyha/aic-notes/releases/download/v59.0.2/aic-notes-59.0.2.vsix">59.0.2 VSIX</a>
+<p>Download <a href="https://github.com/ldzyha/aic-notes/releases/download/v59.0.2/aic-notes-59.0.2.vsix">59.0.2 VSIX</a>
 and <a href="https://github.com/ldzyha/aic-notes/releases/download/v59.0.2/aic-notes-59.0.2.vsix.sha256">SHA-256</a>,
 <a href="https://github.com/ldzyha/standard-notes-aic/releases/tag/v50.0.1">Standard Notes 50.0.1</a>.
-Package verification, PWA deployment and store approval are separate steps.
-The confirmed Marketplace version is 58.1.1. Chrome publishes 0.9.3 while 0.11.1
-remains pending review; uploading 0.11.2 is currently unavailable.</p>
+The PWA is deployed. GitHub packages are published and their SHA-256 checksums
+are verified. <a href="https://github.com/ldzyha/standard-notes-aic/releases/download/v50.0.1/aic-browser-chromium-0.11.2.zip">Chromium 0.11.2 ZIP</a>
+and <a href="https://github.com/ldzyha/standard-notes-aic/releases/download/v50.0.1/aic-browser-chromium-0.11.2.zip.sha256">SHA-256</a>
+are available for manual installation in Chrome or Edge.
+The October 1 store check recorded Marketplace 58.1.1 public and Chrome 0.9.3
+public, with Chrome 0.11.1 pending review and new uploads disabled. Store status
+must be checked again for a later update.</p>
 <h2 id="aic-notes-5811-vs-code-desktop-and-web">AIC Notes 58.1.1 — VS Code desktop and web</h2>
 <p>AIC Notes now includes a browser host for vscode.dev and github.dev alongside
 its desktop host. Both use the same editor, files, linked notes and encrypted
@@ -165,6 +183,16 @@ directory, run <code>sha256sum -c FILE.sha256</code> on Linux; on macOS, compare
   · <a href="https://github.com/ldzyha/aic-notes/blob/main/CHANGELOG.uk.md">Українська</a></p></li></ul>
 <h3 id="changelog">Changelog</h3>
 <p><a href="/releases">English</a> · <a href="/releases/uk/">Українська</a></p>
+<h4 id="5101-2026-10-02">51.0.1 — 2026-10-02</h4>
+<p>Release sequence 51 · 0 feature outcomes · 1 fixed-bug outcome.
+Coordinates Standard Notes AIC 51.0.1, AIC Notes 60.0.2, experimental browser
+0.11.3 and shared core 7.5.3. Prepared release; publication is verified separately.</p>
+<h5 id="b01-document-scrolling-over-code-previews">B01 — Document scrolling over code previews</h5>
+<p>Vertical scrolling over a code preview continues through the document instead
+of getting trapped inside the block. Code previews retain their complete height
+and horizontal scrolling for long lines. The same behavior applies to Standard
+Notes, PWA, browser notes, and VS Code main and linked-note editors. Authored
+Markdown, editing, Copy and Save/Undo ownership remain unchanged.</p>
 <h4 id="5001-2026-10-01">50.0.1 — 2026-10-01</h4>
 <p>Release sequence 50 · 0 feature outcomes · 1 fixed-bug outcome.
 Coordinates Standard Notes AIC 50.0.1, AIC Notes 59.0.2, experimental browser

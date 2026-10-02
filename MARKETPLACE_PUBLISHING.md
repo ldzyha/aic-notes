@@ -7,23 +7,25 @@
 Public product documentation: [releases and installation](https://aic.dzyha.com/releases),
 [terms and privacy](https://aic.dzyha.com/terms), [AIC Notes](https://aic.dzyha.com/).
 
-### Current status — October 1, 2026
+### Prepared release — October 2, 2026
 
 The existing [AIC Notes listing](https://marketplace.visualstudio.com/items?itemName=ldzyha.aic-notes)
-under publisher **ldzyha** publicly exposes **58.1.1**, verified in the current
-publisher dashboard. **59.0.2 is prepared**, with shared core 7.5.2, natural
-Mermaid sizing and live theme refresh. Its GitHub assets, upload acceptance and
-public Marketplace availability still require separate verification.
+under publisher **ldzyha** is the update destination. **60.0.2 is prepared**, with
+shared core 7.5.3, document scrolling over code previews and restored scrolling
+inside long linked notes. Its GitHub assets,
+upload acceptance and public Marketplace availability require separate verification.
+The authenticated publisher dashboard confirmed **59.0.2 public** on October 2.
+This does not establish publication of the prepared 60.0.2 update.
 
 The earlier [verification-only publishing run](https://github.com/ldzyha/aic-notes/actions/runs/36847214736)
 checked 57.1.2 release bytes without authenticating or submitting them. It is
-historical verification evidence, not proof of a 59.0.2 publication.
+historical verification evidence, not proof of a 60.0.2 publication.
 
 Automatic publishing code is prepared. The repository does **not** yet have the
 `VSCE_PAT` Actions secret, so authenticated automatic publishing is **not fully
 activated or verified**. The existing public version was uploaded manually.
 An earlier PAT setup attempt stopped at new Azure DevOps organization creation
-because that form required a billing subscription. The current upload used the
+because that form required a billing subscription. The 59.0.2 upload used the
 existing Marketplace publisher dashboard and did not require that setup.
 
 Source preparation on September 30 adds an optional Microsoft Entra federation
@@ -119,23 +121,25 @@ installation path. [code-server extension sources](https://coder.com/docs/code-s
 Публічна документація продукту: [випуски та встановлення](https://aic.dzyha.com/releases),
 [умови й приватність](https://aic.dzyha.com/terms), [AIC Notes](https://aic.dzyha.com/).
 
-### Поточний стан — 1 жовтня 2026
+### Підготовлений випуск — 2 жовтня 2026
 
 Наявний [запис AIC Notes](https://marketplace.visualstudio.com/items?itemName=ldzyha.aic-notes)
-від видавця **ldzyha** публічно надає **58.1.1**; це перевірено в поточній панелі
-видавця. **59.0.2 підготовлено** зі спільним ядром 7.5.2, природними розмірами
-Mermaid та оновленням кольорів при зміні теми. Файли GitHub, прийняття завантаження
-та доступність 59.0.2 у Marketplace ще перевіряються окремо.
+від видавця **ldzyha** є призначенням оновлення. **60.0.2 підготовлено** зі
+спільним ядром 7.5.3, прокручуванням документа над прев’ю коду та відновленим
+прокручуванням довгих пов’язаних нотаток. Файли GitHub,
+прийняття завантаження та публічна доступність у Marketplace перевіряються окремо.
+Авторизована панель видавця 2 жовтня підтвердила **59.0.2 у публічному доступі**.
+Це не означає публікації підготовленого оновлення 60.0.2.
 
 Попередній [запуск лише для перевірки](https://github.com/ldzyha/aic-notes/actions/runs/36847214736)
 звірив файли 57.1.2 без авторизації та подання. Це історичний результат,
-а не підтвердження публікації 59.0.2.
+а не підтвердження публікації 60.0.2.
 
 Код автоматичної публікації підготовлений. У репозиторії **ще немає** Actions
 secret `VSCE_PAT`, тому автоматична публікація з авторизацією **ще не повністю
 активована й не перевірена**. Наявну публічну версію завантажено вручну.
 Попередня спроба налаштувати PAT зупинилася на створенні нової організації
-Azure DevOps через вимогу підписки для білінгу. Поточне завантаження виконано
+Azure DevOps через вимогу підписки для білінгу. Завантаження 59.0.2 виконано
 через наявну панель видавця Marketplace без цього налаштування.
 
 Підготовка коду 30 вересня додає optional Microsoft Entra federation route.

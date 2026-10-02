@@ -378,7 +378,8 @@ body.aic-secondary-surface {
 .aic-secondary-surface #editor {
   min-width: 0;
   min-height: 0;
-  height: auto;
+  /* Keep CodeMirror bounded by the active scope panel so it owns scrolling. */
+  height: 100%;
   overflow: hidden;
 }
 

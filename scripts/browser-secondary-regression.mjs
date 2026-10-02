@@ -164,6 +164,76 @@ async function init(
   );
 }
 try {
+  // Real layout and native wheel input catch a height:auto linked editor that
+  // grows beyond its clipped scope panel, leaving no document scroll owner.
+  const wideCode = [
+    "# Linked scroll regression",
+    "",
+    "```js",
+    `const value = "${"native-scroll-".repeat(45)}";`,
+    "console.log(value);",
+    "```",
+    "",
+    ...Array.from(
+      { length: 60 },
+      (_, index) => `Paragraph ${index + 1}: the linked document continues.\n`,
+    ),
+  ].join("\n");
+  for (const theme of ["light", "dark"]) {
+    for (const width of [390, 760]) {
+      const page = await openPage({ theme, width });
+      await init(page, wideCode, false, "Scroll.note.md");
+      await page.keyboard.press("Control+Home");
+      const scroller = page.locator("#scope-current .cm-scroller");
+      const pre = page.locator("#scope-current .cm-md-code-preview > pre");
+      await pre.waitFor();
+      await scroller.evaluate((element) => {
+        element.scrollTop = 0;
+      });
+      await pre.hover();
+      const geometry = await scroller.evaluate((element) => ({
+        height: element.clientHeight,
+        contentHeight: element.scrollHeight,
+        panelHeight: element.closest("#scope-current").clientHeight,
+      }));
+      assert.ok(geometry.height > 0, "linked editor remains visible");
+      assert.ok(
+        geometry.height <= geometry.panelHeight + 1,
+        "linked document scroller fits the active scope panel",
+      );
+      assert.ok(
+        geometry.contentHeight > geometry.height + 100,
+        "long linked note has a real document scroll range",
+      );
+      await page.mouse.wheel(0, 100);
+      await page.waitForFunction(
+        () =>
+          document.querySelector("#scope-current .cm-scroller").scrollTop > 10,
+      );
+      assert.equal(await pre.evaluate((element) => element.scrollTop), 0);
+      await scroller.evaluate((element) => {
+        element.scrollTop = 0;
+      });
+      await pre.hover();
+      await page.mouse.wheel(140, 0);
+      await page.waitForFunction(
+        () =>
+          document.querySelector("#scope-current .cm-md-code-preview > pre")
+            .scrollLeft > 10,
+      );
+      assert.equal(await scroller.evaluate((element) => element.scrollTop), 0);
+      const footer = await page.locator("#secondary-footer").boundingBox();
+      assert.ok(
+        footer && footer.y + footer.height <= 790,
+        "linked actions remain visible below the scroller",
+      );
+      assert.equal(await sourceSnapshot(page, "Scroll.note.md"), wideCode);
+      await page.close();
+    }
+  }
+  passed.push(
+    "long linked notes retain a bounded document scroller; vertical wheel crosses code and horizontal wheel stays local in light/dark and narrow/wide panes",
+  );
   const insertionPage = await openPage();
   await init(insertionPage, source, true);
   const reference = {
