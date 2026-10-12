@@ -428,8 +428,9 @@ Unpinned Linked Note opens the active file's sidecar, on the page bound to that
 file if it has one. Without a sidecar it opens the note in the same workspace
 folder whose bound page matches the file most specifically (a bound folder
 covers the files beneath it) and saves edits to that note; otherwise it shows
-the sidecar placeholder. That lookup runs on demand over at most 500
-`*.note.md` files and is cached until a note changes.
+the sidecar placeholder. That lookup is best-effort: it runs on demand
+over at most 500 `*.note.md` files (notes beyond that may not be found), matches
+paths case-insensitively, and is cached until a note changes.
 
 Pin affects only automatic following. Explicitly opening a file, folder, project, or
 note always routes to the requested context. An unsaved note stays visible until it is saved, so a

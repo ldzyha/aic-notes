@@ -216,16 +216,32 @@ async function scanBoundNotes(folder, relPath) {
   return best?.uri;
 }
 
-/** The note with the most specific page bound to `relPath`, or undefined. */
-export async function boundNoteForTarget(folder, relPath) {
+/**
+ * The note with the most specific page bound to `relPath`, or undefined.
+ * When the scan outlives the timeout and later finds a note, `onLate` is
+ * called once with it; the caches are warm by then.
+ */
+export async function boundNoteForTarget(
+  folder,
+  relPath,
+  { onLate, timeoutMs = BOUND_SCAN_MS } = {},
+) {
+  const timedOut = {};
   let timer;
   try {
-    return await Promise.race([
-      scanBoundNotes(folder, relPath),
+    const scan = scanBoundNotes(folder, relPath);
+    const found = await Promise.race([
+      scan,
       new Promise((resolve) => {
-        timer = setTimeout(resolve, BOUND_SCAN_MS);
+        timer = setTimeout(resolve, timeoutMs, timedOut);
       }),
     ]);
+    if (found !== timedOut) return found;
+    scan.then(
+      (late) => late && onLate?.(late),
+      () => {},
+    );
+    return undefined;
   } catch {
     return undefined;
   } finally {

@@ -475,10 +475,14 @@ on the page bound to that file if it has one; without a sidecar, the note in the
 same workspace folder whose bound page is most specific for the file (then the
 nearest note above it, then alphabetical order); otherwise the sidecar
 placeholder. A note opened through a bound page saves to its own file. The
-second step lists at most 500 `*.note.md` files on demand, skips `node_modules`,
-`.git` and `dist`, keeps each note's bound targets in memory until that note
-changes, and falls back to the placeholder when the lookup fails or exceeds 1.5
-seconds. URL targets are ignored in VS Code.
+second step is best-effort: it lists at most 500 `*.note.md` files on demand
+(notes beyond that may not be found), skips `node_modules`, `.git` and `dist`,
+matches paths case-insensitively, keeps each note's bound targets in memory
+until that note changes or its document closes, and falls back to the
+placeholder when the lookup fails or exceeds 1.5 seconds. A lookup that finishes
+later replaces that placeholder once, only while the pane is unpinned, still
+follows the same file and the placeholder has no unsaved text. URL targets are
+ignored in VS Code.
 
 Folder notes (`<folder>.note.md`) and the project note
 (`<workspace>.note.md`) are ordinary Markdown files. Open them like any other

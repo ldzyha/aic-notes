@@ -92,6 +92,7 @@ export class SecondaryNotePane {
     this.placeholderText = undefined;
     this.pageSource = undefined;
     this.pinned = false;
+    this.boundScanMs = undefined;
     this.ready = false;
     this.generation = 0;
     this.relationshipRequest = 0;
@@ -584,6 +585,8 @@ export class SecondaryNotePane {
   }
 
   onDocumentClosed(document) {
+    // Closing discards unsaved edits, so targets cached from them are stale.
+    if (isNotePath(document.uri.path)) invalidateBoundNotes(document.uri);
     if (this.documentUri?.toString() !== document.uri.toString()) return;
     this.document = undefined;
   }
@@ -604,6 +607,7 @@ export class SecondaryNotePane {
       isCurrent = () => true,
       allowPlaceholder = true,
       bound = false,
+      lateBound = bound,
     } = {},
   ) {
     if (
@@ -622,7 +626,12 @@ export class SecondaryNotePane {
     // to it. That note is staged as itself, so saving never creates a sidecar.
     const boundUri =
       bound && descriptor.relPath && !(await exists(descriptor.noteUri))
-        ? await boundNoteForTarget(folder, descriptor.relPath)
+        ? await boundNoteForTarget(folder, descriptor.relPath, {
+            timeoutMs: this.boundScanMs,
+            onLate: lateBound
+              ? () => this.followLateBound(uri, descriptor.noteUri)
+              : undefined,
+          })
         : undefined;
     if (!isCurrent() || (this.pinned && !force)) return false;
     const noteUri = boundUri ?? descriptor.noteUri;
@@ -635,7 +644,12 @@ export class SecondaryNotePane {
     if (!transition) return false;
     try {
       let next;
-      if (boundUri && (await exists(boundUri))) {
+      // A draft flushed by beginNavigation may just have created the sidecar.
+      if (
+        boundUri &&
+        !(await exists(descriptor.noteUri)) &&
+        (await exists(boundUri))
+      ) {
         const boundPath = vscode.workspace
           .asRelativePath(boundUri, false)
           .replaceAll("\\", "/");
@@ -676,6 +690,32 @@ export class SecondaryNotePane {
     } finally {
       transition.release();
     }
+  }
+
+  // The bound-note scan outlived its timeout and then found a note. Follow
+  // once more, only while the pane still shows that file's untouched
+  // placeholder; the retry never schedules another one.
+  followLateBound(uri, placeholderUri) {
+    const isCurrent = () =>
+      !this.scope.disposed &&
+      this.suppressFollowing === 0 &&
+      !this.pinned &&
+      !this.draftDirty &&
+      !this.documentUri &&
+      this.placeholderUri?.toString() === placeholderUri.toString() &&
+      this.activeMainResource()?.toString() === uri.toString();
+    this.lateBound = this.navigation
+      .enqueue(() =>
+        isCurrent()
+          ? this.followTargetNow(uri, {
+              isCurrent,
+              bound: true,
+              lateBound: false,
+            })
+          : false,
+      )
+      .catch(() => false);
+    return this.lateBound;
   }
 
   followActive() {

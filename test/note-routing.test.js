@@ -290,6 +290,7 @@ function harness(withOwnership = false) {
     addFile,
     getDocument,
     files,
+    documents,
     pane,
     sent,
     commands,
@@ -1362,6 +1363,78 @@ test("bound targets are cached per note and invalidated by file and document cha
   assert.equal(await h.pane.followActive(), true);
   assert.equal(h.pane.placeholderUri.path, "/workspace/x.note.md");
   assert.deepEqual(h.events.scans, [500]);
+
+  // Closing the note discards those edits; its saved targets apply again.
+  h.documents.delete(note.path);
+  h.pane.onDocumentClosed(document);
+  assert.equal(await h.pane.followActive(), true);
+  assert.equal(h.pane.documentUri.toString(), note.toString());
+  assert.equal(h.pane.pendingViewState.page, 1);
+  assert.deepEqual(h.events.scans, [500]);
+});
+
+const slowScan = async (h) => {
+  const file = h.addFile("x.ts");
+  const note = h.addFile("book.note.md", "start\n\n--- x.ts\npage\n");
+  const findFiles = h.vscode.workspace.findFiles;
+  let finish;
+  h.vscode.workspace.findFiles = (...args) =>
+    new Promise((resolve) => {
+      finish = () => resolve(findFiles(...args));
+    });
+  h.pane.boundScanMs = 1;
+  assert.equal(await activate(h, file), true);
+  assert.equal(h.pane.placeholderUri.path, "/workspace/x.note.md");
+  assert.equal(h.pane.documentUri, undefined);
+  assert.equal(h.pane.lateBound, undefined);
+  const settle = async () => {
+    finish();
+    for (let turn = 0; turn < 5 && !h.pane.lateBound; turn++)
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    return h.pane.lateBound;
+  };
+  return { file, note, settle };
+};
+
+test("a bound-note scan that outlives its timeout replaces the untouched placeholder once", async () => {
+  const h = harness();
+  const { note, settle } = await slowScan(h);
+  assert.equal(await settle(), true);
+  assert.equal(h.pane.documentUri.toString(), note.toString());
+  assert.equal(h.pane.placeholderUri, undefined);
+  assert.equal(h.pane.pendingViewState.page, 1);
+  assert.deepEqual(h.events.scans, [500]);
+  assert.deepEqual(h.events.reads, [note.path]);
+  assert.deepEqual(
+    h.sent.filter((value) => value?.focus !== undefined),
+    [{ focus: true }, { focus: true }],
+  );
+  assert.deepEqual(h.events.writes, []);
+  assert.deepEqual(h.events.saved, []);
+});
+
+test("a late bound-note scan never replaces a typed-in placeholder, another file, or a pinned pane", async () => {
+  for (const change of [
+    (h) => (h.pane.draftDirty = true),
+    (h) => (h.pane.pinned = true),
+    (h) =>
+      (h.vscode.window.tabGroups.activeTabGroup.activeTab = {
+        input: { uri: h.addFile("y.ts") },
+      }),
+  ]) {
+    const h = harness();
+    const { settle } = await slowScan(h);
+    change(h);
+    const inits = h.sent.filter((value) => value === "init").length;
+    assert.equal(await settle(), false);
+    assert.equal(h.pane.placeholderUri.path, "/workspace/x.note.md");
+    assert.equal(h.pane.documentUri, undefined);
+    assert.equal(h.sent.filter((value) => value === "init").length, inits);
+    assert.equal(h.files.has("/workspace/x.note.md"), false);
+    assert.deepEqual(h.events.scans, [500]);
+    assert.deepEqual(h.events.writes, []);
+    assert.deepEqual(h.events.saved, []);
+  }
 });
 
 test("a pinned pane neither scans for nor follows a bound page", async () => {
