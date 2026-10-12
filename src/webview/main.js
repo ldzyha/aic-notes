@@ -64,6 +64,10 @@ import {
 } from "../../vendor/aic-editor-core/save-boundary.js";
 import { createSourceModeController } from "../../vendor/aic-editor-core/source-mode.js";
 import { createEditorHelp } from "../../vendor/aic-editor-core/editor-help.js";
+import {
+  notePagesBar,
+  showNotePage,
+} from "../../vendor/aic-editor-core/note-pages-bar.js";
 import { PrimarySave } from "./primary-save.js";
 import {
   applyUiComponent,
@@ -482,6 +486,8 @@ function makeEditor(text, retainedState = null) {
           langCompartment.of(fencedLang()),
           placeholder(SLASH_SNIPPET_PLACEHOLDER),
           slashSnippetExtension(),
+          // outside the source/preview compartment: both modes share the bar
+          notePagesBar(),
           // colors nested fenced-code tokens; markdown structure styling is
           // owned by the handler classes (theme.css bumps their specificity)
           syntaxHighlighting(darkHighlight, { fallback: true }),
@@ -820,6 +826,9 @@ window.addEventListener("message", (event) => {
           /* stale saved selection — keep the default */
         }
       }
+      // Linked Note follows a file to the page bound to it (`--- <path>`).
+      if (!requested && Number.isInteger(msg.page))
+        showNotePage(view, msg.page);
       requestAnimationFrame(() => view?.focus());
       break;
     }

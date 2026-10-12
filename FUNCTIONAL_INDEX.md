@@ -461,6 +461,25 @@ note: the sidecar of the active file, or an editable placeholder when it does
 not exist yet. When a note is active, Linked Note shows its nearest existing
 parent note; with no open file it shows the workspace project note.
 
+### Note pages
+
+A note is a notebook. A line that is exactly `---`, first in the body or after a
+blank line and outside fenced code and leading frontmatter, starts a new page;
+`--- <workspace-relative path>` also binds that page to a file or folder (a
+folder covers the files beneath it). Pages are a view: the note stays one file
+and its text is never rewritten. Both surfaces show the shared page bar
+(previous, next, position, bound target) when a note has more than one page.
+
+Unpinned Linked Note resolves the active file in this order: its sidecar, opened
+on the page bound to that file if it has one; without a sidecar, the note in the
+same workspace folder whose bound page is most specific for the file (then the
+nearest note above it, then alphabetical order); otherwise the sidecar
+placeholder. A note opened through a bound page saves to its own file. The
+second step lists at most 500 `*.note.md` files on demand, skips `node_modules`,
+`.git` and `dist`, keeps each note's bound targets in memory until that note
+changes, and falls back to the placeholder when the lookup fails or exceeds 1.5
+seconds. URL targets are ignored in VS Code.
+
 Folder notes (`<folder>.note.md`) and the project note
 (`<workspace>.note.md`) are ordinary Markdown files. Open them like any other
 document; nothing switches to them in place.

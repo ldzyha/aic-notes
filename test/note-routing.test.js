@@ -10,7 +10,7 @@ const require = createRequire(import.meta.url);
 const bundle = await build({
   stdin: {
     contents:
-      'export {SecondaryNotePane} from "./src/secondary/provider.js"; export {MarkdownEditorProvider} from "./src/editor/provider.js"; export {openNoteDocument} from "./src/notes/create.js"; export {NoteEditOwnership} from "./src/notes/edit-ownership.js"; export {parentNoteCandidates} from "./src/notes/parent-context.js"; export {workspaceLinkUri} from "./src/notes/navigation.js";',
+      'export {SecondaryNotePane} from "./src/secondary/provider.js"; export {MarkdownEditorProvider} from "./src/editor/provider.js"; export {openNoteDocument} from "./src/notes/create.js"; export {NoteEditOwnership} from "./src/notes/edit-ownership.js"; export {parentNoteCandidates} from "./src/notes/parent-context.js"; export {workspaceLinkUri} from "./src/notes/navigation.js"; export {invalidateBoundNotes} from "./src/notes/relationships.js";',
     resolveDir: fileURLToPath(new URL("..", import.meta.url)),
   },
   bundle: true,
@@ -36,7 +36,15 @@ function harness(withOwnership = false) {
   const willSaveListeners = new Set();
   const files = new Map([["/workspace", { type: 2 }]]);
   const documents = new Map();
-  const events = { opened: [], closed: [], writes: [], saved: [], errors: [] };
+  const events = {
+    opened: [],
+    closed: [],
+    writes: [],
+    saved: [],
+    errors: [],
+    scans: [],
+    reads: [],
+  };
   const tabGroups = {
     activeTabGroup: {},
     all: [],
@@ -137,8 +145,18 @@ function harness(withOwnership = false) {
         resource.path.startsWith("/workspace") ? folder : undefined,
       asRelativePath: (resource) =>
         resource.path.replace(/^\/workspace\/?/u, ""),
-      findFiles: async () => [],
+      findFiles: async (_include, _exclude, limit) => {
+        events.scans.push(limit);
+        return [...files.keys()]
+          .filter((name) => name.endsWith(".note.md"))
+          .map((name) => uri(name));
+      },
       fs: {
+        readFile: async (resource) => {
+          if (!files.has(resource.path)) throw new Error("missing");
+          events.reads.push(resource.path);
+          return new TextEncoder().encode(files.get(resource.path).text);
+        },
         stat: async (resource) => {
           if (!files.has(resource.path)) throw new Error("missing");
           return { ...files.get(resource.path), ctime: 1 };
@@ -186,6 +204,7 @@ function harness(withOwnership = false) {
         dispose() {},
         onDidCreate: () => disposable(),
         onDidDelete: () => disposable(),
+        onDidChange: () => disposable(),
       }),
     },
     commands: {
@@ -1231,4 +1250,158 @@ test("secondary does not save a note deleted while its draft edit is applied", a
   assert.deepEqual(h.events.saved, []);
   assert.equal(document.getText(), "recoverable changed draft");
   assert.equal(h.pane.draftDirty, true);
+});
+
+const activate = (h, resource) => {
+  h.vscode.window.tabGroups.activeTabGroup.activeTab = {
+    input: { uri: resource },
+  };
+  return h.pane.followActive();
+};
+
+test("a sidecar opens on its page bound to the active file without scanning", async () => {
+  const h = harness();
+  h.addFile("src", undefined, 2);
+  const source = h.addFile("src/app.js");
+  const note = h.addFile(
+    "src/app.note.md",
+    "intro\n\n--- src/other.js\nother\n\n--- /src/app.js\nmine\n",
+  );
+  assert.equal(await activate(h, source), true);
+  assert.equal(h.pane.documentUri.toString(), note.toString());
+  assert.equal(h.pane.pendingViewState.page, 2);
+  assert.deepEqual(h.events.scans, []);
+  const inits = h.sent.filter((value) => value === "init").length;
+  assert.equal(await h.pane.followActive(), true);
+  assert.equal(h.sent.filter((value) => value === "init").length, inits);
+});
+
+test("without a sidecar the most specific bound page wins, folders cover their files, and a sidecar still wins", async () => {
+  const h = harness();
+  h.addFile("src", undefined, 2);
+  h.addFile("src/app", undefined, 2);
+  const editor = h.addFile("src/app/editor.ts");
+  const view = h.addFile("src/app/view.ts");
+  const lib = h.addFile("src/lib.ts");
+  const book = h.addFile(
+    "book.note.md",
+    "start\n\n--- /src\nfolder\n\n--- src/app/editor.ts\neditor\n",
+  );
+  const zeta = h.addFile(
+    "zeta.note.md",
+    "start\n\n--- https://example.com/src/lib.ts\nurl\n\n--- src/app/\napp\n",
+  );
+
+  assert.equal(await activate(h, editor), true);
+  assert.equal(h.pane.documentUri.toString(), book.toString());
+  assert.equal(h.pane.placeholderUri, undefined);
+  assert.equal(h.pane.pendingViewState.page, 2);
+
+  assert.equal(await activate(h, view), true);
+  assert.equal(h.pane.documentUri.toString(), zeta.toString());
+  assert.equal(h.pane.pendingViewState.page, 2);
+
+  assert.equal(await activate(h, lib), true);
+  assert.equal(h.pane.documentUri.toString(), book.toString());
+  assert.equal(h.pane.pendingViewState.page, 1);
+  assert.deepEqual(h.events.scans, [500]);
+  assert.deepEqual(h.events.reads.sort(), [book.path, zeta.path]);
+
+  const sidecar = h.addFile("src/lib.note.md", "sidecar");
+  assert.equal(await h.pane.followActive(), true);
+  assert.equal(h.pane.documentUri.toString(), sidecar.toString());
+  assert.equal(h.pane.pendingViewState.page, undefined);
+  assert.deepEqual(h.events.writes, []);
+  assert.deepEqual(h.events.saved, []);
+});
+
+test("equally specific bound pages prefer the nearest ancestor note, then the alphabetical one", async () => {
+  const h = harness();
+  h.addFile("src", undefined, 2);
+  h.addFile("src/app", undefined, 2);
+  h.addFile("docs", undefined, 2);
+  const file = h.addFile("src/app/x.ts");
+  const text = "start\n\n--- src/app\npage\n";
+  h.addFile("docs/a.note.md", text);
+  const second = h.addFile("b.note.md", text);
+  const first = h.addFile("a.note.md", text);
+  assert.equal(await activate(h, file), true);
+  assert.equal(h.pane.documentUri.toString(), first.toString());
+  h.files.delete(first.path);
+  await h.pane.onNotesChanged(first);
+  assert.equal(await h.pane.followActive(), true);
+  assert.equal(h.pane.documentUri.toString(), second.toString());
+  const nearest = h.addFile("src/z.note.md", text);
+  await h.pane.onNotesChanged(nearest);
+  assert.equal(await h.pane.followActive(), true);
+  assert.equal(h.pane.documentUri.toString(), nearest.toString());
+});
+
+test("bound targets are cached per note and invalidated by file and document changes", async () => {
+  const h = harness();
+  const file = h.addFile("x.ts");
+  const note = h.addFile("book.note.md", "plain");
+  assert.equal(await activate(h, file), true);
+  assert.equal(h.pane.placeholderUri.path, "/workspace/x.note.md");
+  h.files.get(note.path).text = "start\n\n--- x.ts\npage\n";
+  assert.equal(await h.pane.followActive(), true);
+  assert.equal(h.pane.placeholderUri.path, "/workspace/x.note.md");
+  assert.deepEqual(h.events.reads, [note.path]);
+  assert.deepEqual(h.events.scans, [500]);
+
+  h.invalidateBoundNotes(note);
+  assert.equal(await h.pane.followActive(), true);
+  assert.equal(h.pane.documentUri.toString(), note.toString());
+  assert.equal(h.pane.placeholderUri, undefined);
+  assert.equal(h.pane.pendingViewState.page, 1);
+
+  // An open note's unsaved text is what the next lookup sees.
+  const document = h.getDocument(note);
+  document.replace(0, document.getText().length, "plain again");
+  h.pane.onDocumentChanged({ document, contentChanges: [{}] });
+  assert.equal(await h.pane.followActive(), true);
+  assert.equal(h.pane.placeholderUri.path, "/workspace/x.note.md");
+  assert.deepEqual(h.events.scans, [500]);
+});
+
+test("a pinned pane neither scans for nor follows a bound page", async () => {
+  const h = harness();
+  const pinned = h.addFile("pinned.note.md");
+  h.addFile("book.note.md", "start\n\n--- x.ts\npage\n");
+  h.pane.documentUri = pinned;
+  h.pane.pinned = true;
+  assert.equal(await activate(h, h.addFile("x.ts")), false);
+  assert.equal(h.pane.documentUri, pinned);
+  assert.deepEqual(h.events.scans, []);
+  assert.deepEqual(h.events.reads, []);
+});
+
+test("a failing note scan falls back to the sidecar placeholder", async () => {
+  const h = harness();
+  h.addFile("book.note.md", "start\n\n--- x.ts\npage\n");
+  h.vscode.workspace.findFiles = async () => {
+    throw new Error("search unavailable");
+  };
+  assert.equal(await activate(h, h.addFile("x.ts")), true);
+  assert.equal(h.pane.placeholderUri.path, "/workspace/x.note.md");
+  assert.equal(h.pane.documentUri, undefined);
+});
+
+test("saving a note opened through a bound page writes that note and creates no sidecar", async () => {
+  const h = harness();
+  const file = h.addFile("x.ts");
+  const note = h.addFile("book.note.md", "start\n\n--- x.ts\npage\n");
+  assert.equal(await activate(h, file), true);
+  h.pane.draftDirty = true;
+  const result = await h.pane.commitDraft(
+    "start\n\n--- x.ts\nedited\n",
+    h.pane.generation,
+    1,
+    "book.note.md",
+  );
+  assert.equal(result.saved, true);
+  assert.equal(h.files.get(note.path).text, "start\n\n--- x.ts\nedited\n");
+  assert.deepEqual(h.events.saved, [note.path]);
+  assert.deepEqual(h.events.writes, []);
+  assert.equal(h.files.has("/workspace/x.note.md"), false);
 });

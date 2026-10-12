@@ -21,7 +21,15 @@ import {
   noteDescriptorForUri,
   notePlaceholderForUri,
 } from "../notes/create.js";
-import { noteRelationshipsForTarget } from "../notes/relationships.js";
+import {
+  boundNoteForTarget,
+  invalidateBoundNotes,
+  noteRelationshipsForTarget,
+} from "../notes/relationships.js";
+import {
+  notePages,
+  pageForTarget,
+} from "../../vendor/aic-editor-core/note-pages.js";
 import {
   openSourceAtHref,
   openExternalLink,
@@ -63,8 +71,9 @@ export class SecondaryNotePane {
       vscode.workspace.onDidCloseTextDocument((document) =>
         pane.onDocumentClosed(document),
       ),
-      noteWatcher.onDidCreate(() => pane.onNotesChanged()),
-      noteWatcher.onDidDelete(() => pane.onNotesChanged()),
+      noteWatcher.onDidCreate((uri) => pane.onNotesChanged(uri)),
+      noteWatcher.onDidDelete((uri) => pane.onNotesChanged(uri)),
+      noteWatcher.onDidChange((uri) => invalidateBoundNotes(uri)),
     ];
     for (const resource of resources) pane.scope.add(resource);
     context.subscriptions.push(pane);
@@ -81,6 +90,7 @@ export class SecondaryNotePane {
     this.sourceUri = undefined;
     this.placeholderUri = undefined;
     this.placeholderText = undefined;
+    this.pageSource = undefined;
     this.pinned = false;
     this.ready = false;
     this.generation = 0;
@@ -471,7 +481,8 @@ export class SecondaryNotePane {
     this.documentUri = next.document?.uri;
     this.placeholderUri = next.placeholderUri;
     this.placeholderText = next.placeholderText;
-    this.pendingViewState = { selection };
+    this.pageSource = next.pageSource;
+    this.pendingViewState = { selection, page: next.page };
     this.generation++;
     await this.sendInit();
   }
@@ -592,6 +603,7 @@ export class SecondaryNotePane {
       preserveFocus = true,
       isCurrent = () => true,
       allowPlaceholder = true,
+      bound = false,
     } = {},
   ) {
     if (
@@ -606,7 +618,14 @@ export class SecondaryNotePane {
     if (!folder) return false;
     const descriptor = await noteDescriptorForUri(uri);
     if (!isCurrent() || (this.pinned && !force)) return false;
-    const noteUri = descriptor.noteUri;
+    // Note pages: a file without a sidecar shows the note whose page is bound
+    // to it. That note is staged as itself, so saving never creates a sidecar.
+    const boundUri =
+      bound && descriptor.relPath && !(await exists(descriptor.noteUri))
+        ? await boundNoteForTarget(folder, descriptor.relPath)
+        : undefined;
+    if (!isCurrent() || (this.pinned && !force)) return false;
+    const noteUri = boundUri ?? descriptor.noteUri;
     const currentUri = this.documentUri ?? this.placeholderUri;
     if (this.draftDirty && currentUri?.toString() === noteUri.toString()) {
       await this.focus(preserveFocus);
@@ -615,7 +634,21 @@ export class SecondaryNotePane {
     const transition = await this.beginNavigation();
     if (!transition) return false;
     try {
-      const next = await this.stageNote(noteUri, uri);
+      let next;
+      if (boundUri && (await exists(boundUri))) {
+        const boundPath = vscode.workspace
+          .asRelativePath(boundUri, false)
+          .replaceAll("\\", "/");
+        next = await this.stageNote(
+          boundUri,
+          (await resolveTarget(folder, boundPath)) ?? undefined,
+        );
+      }
+      if (!next?.document) next = await this.stageNote(descriptor.noteUri, uri);
+      const page = next.document
+        ? pageForTarget(notePages(next.document.getText()), descriptor.relPath)
+        : -1;
+      if (page >= 0) Object.assign(next, { page, pageSource: uri.toString() });
       if (!isCurrent() || (this.pinned && !force)) return false;
       if (!allowPlaceholder && next.placeholderUri) return false;
       if (!transition.isCurrent()) {
@@ -630,7 +663,8 @@ export class SecondaryNotePane {
       if (
         next.document === this.document &&
         next.placeholderUri?.toString() === this.placeholderUri?.toString() &&
-        next.sourceUri?.toString() === this.sourceUri?.toString()
+        next.sourceUri?.toString() === this.sourceUri?.toString() &&
+        next.pageSource === this.pageSource
       ) {
         await this.sendPaneState();
         await this.focus(preserveFocus);
@@ -703,16 +737,19 @@ export class SecondaryNotePane {
       }
       return false;
     }
-    return this.followTargetNow(uri, { isCurrent });
+    return this.followTargetNow(uri, { isCurrent, bound: true });
   }
 
-  async onNotesChanged() {
+  async onNotesChanged(uri) {
+    invalidateBoundNotes(uri, true);
     if (this.scope.disposed) return;
     if (isNotePath(this.activeMainResource()?.path)) await this.followActive();
     await this.refreshRelationships();
   }
 
   onDocumentChanged(event) {
+    if (event.contentChanges.length && isNotePath(event.document.uri.path))
+      invalidateBoundNotes(event.document.uri);
     if (
       this.scope.disposed ||
       !this.documentUri ||
@@ -784,6 +821,7 @@ export class SecondaryNotePane {
       placeholder: !document,
       relationships,
       selection: viewState?.selection,
+      page: viewState?.page,
       ...(this.editSurface ? this.ownership.state(this.editSurface) : {}),
       readOnly:
         resourceReadOnly(this.documentUri ?? this.placeholderUri) ||

@@ -188,6 +188,7 @@ async function harness({ writable = true } = {}) {
         dispose() {},
         onDidCreate: event,
         onDidDelete: event,
+        onDidChange: event,
       }),
       onDidChangeTextDocument: (listener) => {
         changes.add(listener);
@@ -438,6 +439,42 @@ test("read-only virtual providers render notes and reject edits or instruction w
   } finally {
     h.dispose();
   }
+});
+
+test("read-only virtual Linked Note opens the page bound to the active file; the webview installs the shared page bar", async () => {
+  const h = await harness({ writable: false });
+  try {
+    h.files.set("/workspace/book.note.md", {
+      type: 1,
+      text: "start\n\n--- /docs\nfolder\n\n--- docs/source.ts\nsource\n",
+    });
+    const before = [...h.files.keys()];
+    const pane = h.providers.get("aicNotes.secondary");
+    const panel = h.panel();
+    pane.resolveWebviewView(panel);
+    await panel.receive({ type: "ready" });
+    h.api.window.tabGroups.activeTabGroup.activeTab = {
+      input: { uri: h.uri("/workspace/docs/source.ts") },
+    };
+    assert.equal(await pane.followActive(), true);
+    const init = panel.messages.findLast((message) => message.type === "init");
+    assert.equal(init.relativePath, "book.note.md");
+    assert.equal(init.page, 2);
+    assert.equal(init.readOnly, true);
+    assert.equal(init.placeholder, false);
+    assert.deepEqual([...h.files.keys()], before);
+    assert.deepEqual(h.errors, []);
+  } finally {
+    h.dispose();
+  }
+  const webview = await readFile(
+    new URL("../src/webview/main.js", import.meta.url),
+    "utf8",
+  );
+  assert.match(webview, /aic-editor-core\/note-pages-bar\.js/u);
+  assert.equal(webview.match(/notePagesBar\(\)/gu).length, 1);
+  assert.match(webview, /Number\.isInteger\(msg\.page\)\)\s+showNotePage\(/u);
+  assert.match(webview, /import UI_SYSTEM_CSS from/u);
 });
 
 test("activation leaves legacy encrypted files untouched and registers only Markdown editors", async () => {

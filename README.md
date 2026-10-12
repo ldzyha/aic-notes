@@ -416,6 +416,21 @@ Reload the VS Code window after installation. Local editing and the bundled agen
   workspace scan. Use the ordinary Explorer, editor commands and Linked Note pane;
   existing project-global and sidecar files remain available at their filesystem paths.
 
+### Note pages
+
+A note is a notebook. A line that is exactly `---`, first in the body or after a
+blank line and outside fenced code and leading frontmatter, starts a new page;
+`--- src/app/editor.ts` also binds that page to a workspace-relative file or
+folder. The note stays one file and its text is never rewritten; a page bar
+(previous, next, position, bound target) appears when there is more than one page.
+
+Unpinned Linked Note opens the active file's sidecar, on the page bound to that
+file if it has one. Without a sidecar it opens the note in the same workspace
+folder whose bound page matches the file most specifically (a bound folder
+covers the files beneath it) and saves edits to that note; otherwise it shows
+the sidecar placeholder. That lookup runs on demand over at most 500
+`*.note.md` files and is cached until a note changes.
+
 Pin affects only automatic following. Explicitly opening a file, folder, project, or
 note always routes to the requested context. An unsaved note stays visible until it is saved, so a
 tab event cannot silently discard its draft.

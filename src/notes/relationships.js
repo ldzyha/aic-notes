@@ -4,6 +4,10 @@ import * as vscode from "vscode";
 import { noteDescriptorForUri } from "./create.js";
 import { folderNotePathFor } from "./paths.js";
 import { resolveTarget } from "./target.js";
+import {
+  notePages,
+  targetSpecificity,
+} from "../../vendor/aic-editor-core/note-pages.js";
 
 const EXCLUDE = "{**/node_modules/**,**/.git/**,**/dist/**}";
 
@@ -122,4 +126,109 @@ export async function noteRelationshipsForTarget(uri) {
       left.depth - right.depth ||
       left.label.localeCompare(right.label),
   );
+}
+
+// Note pages: `--- <path>` binds a page of any note to a workspace path. The
+// lookup runs only when the followed file has no sidecar. It lists one
+// workspace folder's notes (same exclusions as relationships, capped), reads
+// each note once, and keeps only its bound targets until the note changes.
+const BOUND_NOTE_LIMIT = 500;
+const BOUND_SCAN_MS = 1500;
+const BOUND_LINE = /(?:^|\n)---[ \t]+\S/u;
+const boundLists = new Map();
+const boundTargets = new Map();
+let boundEpoch = 0;
+
+export function invalidateBoundNotes(uri, listChanged = false) {
+  boundEpoch++;
+  if (uri) boundTargets.delete(uri.toString());
+  else boundTargets.clear();
+  if (listChanged) boundLists.clear();
+}
+
+async function boundTargetsOf(uri, open) {
+  const key = uri.toString();
+  const cached = boundTargets.get(key);
+  if (cached) return cached;
+  const epoch = boundEpoch;
+  const text =
+    open.get(key)?.getText() ??
+    new TextDecoder().decode(await vscode.workspace.fs.readFile(uri));
+  const targets = BOUND_LINE.test(text)
+    ? notePages(text).flatMap((page) => (page.target ? [page.target] : []))
+    : [];
+  if (epoch === boundEpoch) boundTargets.set(key, targets);
+  return targets;
+}
+
+async function scanBoundNotes(folder, relPath) {
+  const key = folder.uri.toString();
+  let list = boundLists.get(key);
+  if (!list) {
+    list = Promise.resolve(
+      vscode.workspace.findFiles(
+        new vscode.RelativePattern(folder, "**/*.note.md"),
+        new vscode.RelativePattern(folder, EXCLUDE),
+        BOUND_NOTE_LIMIT,
+      ),
+    );
+    boundLists.set(key, list);
+    list.catch(() => boundLists.delete(key));
+  }
+  const uris = await list;
+  const open = new Map(
+    vscode.workspace.textDocuments.map((document) => [
+      document.uri.toString(),
+      document,
+    ]),
+  );
+  const fileDir = path.posix.dirname(relPath);
+  let best;
+  for (let index = 0; index < uris.length; index += 16) {
+    const batch = uris.slice(index, index + 16);
+    const targets = await Promise.all(
+      batch.map((uri) => boundTargetsOf(uri, open).catch(() => [])),
+    );
+    batch.forEach((uri, offset) => {
+      const score = Math.max(
+        0,
+        ...targets[offset].map((bound) => targetSpecificity(bound, relPath)),
+      );
+      if (!score) return;
+      const notePath = normalizedRelative(folder, uri);
+      const noteDir = path.posix.dirname(notePath);
+      // Ties: the note nearest above the file, then alphabetical.
+      const near =
+        noteDir === "."
+          ? 1
+          : `${fileDir}/`.startsWith(`${noteDir}/`)
+            ? depthOf(noteDir) + 1
+            : 0;
+      if (
+        !best ||
+        score > best.score ||
+        (score === best.score &&
+          (near > best.near || (near === best.near && notePath < best.path)))
+      )
+        best = { uri, score, near, path: notePath };
+    });
+  }
+  return best?.uri;
+}
+
+/** The note with the most specific page bound to `relPath`, or undefined. */
+export async function boundNoteForTarget(folder, relPath) {
+  let timer;
+  try {
+    return await Promise.race([
+      scanBoundNotes(folder, relPath),
+      new Promise((resolve) => {
+        timer = setTimeout(resolve, BOUND_SCAN_MS);
+      }),
+    ]);
+  } catch {
+    return undefined;
+  } finally {
+    clearTimeout(timer);
+  }
 }
