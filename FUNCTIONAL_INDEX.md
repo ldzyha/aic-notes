@@ -454,29 +454,16 @@ working-tree previews are permitted, while release proof requires committed
 source. Publisher listings, credentials and explicit enable variables complete
 activation; usage and setup are in [extension updates](../standard-notes-aic/pwa/EXTENSION_UPDATES.md).
 
-## Focused note scopes
+## One note per surface
 
-**Current**, **Shared**, and **Global** show one note scope at a time. Switching
-waits for the active draft to save; a failed save keeps that scope open. The
-shared tab control supports arrow keys, Home/End and Enter/Space, and hides
-inactive panels from focus and assistive technology. Switching scopes never
-copies inherited text into the Current note.
+The main custom editor shows only the opened document. Linked Note shows one
+note: the sidecar of the active file, or an editable placeholder when it does
+not exist yet. When a note is active, Linked Note shows its nearest existing
+parent note; with no open file it shows the workspace project note.
 
-In the browser, Current belongs to the exact URL, Shared to its origin, and
-Global to the browser profile. In VS Code, Current stays anchored to the
-original file, Shared opens its nearest existing folder note, and Global opens
-the existing project note. Native TextDocument ownership and Undo remain in
-VS Code; scope navigation reuses the owning editor. Missing sidecars are
-disabled and selecting a tab never creates a file.
-
-The PWA explores imported Markdown files as folders. For `app/src/page.md`,
-Shared resolves `app/src.note.md` (or the nearest existing ancestor sidecar),
-and Global resolves `app/app.note.md`. These paths follow the VS Code sidecar
-convention. Loose files without an identifiable project folder have no Global
-file scope. Workspace labels do not determine note identity.
-Browser-library bundles use their existing URL, origin and Global records,
-including orphan Shared records and Global without a page note. Scope editors
-retain independent Undo until the selected context closes or changes.
+Folder notes (`<folder>.note.md`) and the project note
+(`<workspace>.note.md`) are ordinary Markdown files. Open them like any other
+document; nothing switches to them in place.
 
 PWA saves write to explicitly connected Markdown originals. Cached copies remain
 read-only until a file destination is selected. Synchronization remains under the

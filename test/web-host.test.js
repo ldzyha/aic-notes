@@ -50,8 +50,6 @@ async function harness({ writable = true } = {}) {
     ["/workspace/docs", { type: 2 }],
     ["/workspace/docs/readme.md", { type: 1, text: "# Browser note\n" }],
     ["/workspace/docs/source.ts", { type: 1, text: "const value = 1;\n" }],
-    ["/workspace/docs.note.md", { type: 1, text: "# Shared\n" }],
-    ["/workspace/workspace.note.md", { type: 1, text: "# Global\n" }],
     ["/workspace/notes.aicnotes", { type: 1, text: sealed }],
   ]);
   const providers = new Map(),
@@ -459,41 +457,6 @@ test("activation leaves legacy encrypted files untouched and registers only Mark
       ),
       false,
     );
-  } finally {
-    h.dispose();
-  }
-});
-
-test("read-only virtual Markdown can navigate Shared and Global scope notes", async () => {
-  const h = await harness({ writable: false });
-  try {
-    const document = h.getDocument(h.uri("/workspace/docs/readme.md"));
-    const panel = h.panel();
-    await h.providers
-      .get("aicNotes.markdown")
-      .resolveCustomTextEditor(document, panel);
-    await panel.receive({ type: "ready" });
-    const init = panel.messages.find((message) => message.type === "init");
-    assert.equal(init.readOnly, true);
-    for (const [id, path] of [
-      ["shared", "docs.note.md"],
-      ["global", "workspace.note.md"],
-    ]) {
-      await panel.receive({
-        type: "scope.select",
-        id,
-        path,
-        relativePath: "docs/readme.md",
-        generation: init.generation,
-      });
-      const opened = h.executed.find(
-        ([command, target]) =>
-          command === "vscode.openWith" && target.path === `/workspace/${path}`,
-      );
-      assert.ok(opened, `Open ${id} while read-only`);
-    }
-    assert.equal(document.isDirty, false);
-    assert.deepEqual(h.errors, []);
   } finally {
     h.dispose();
   }

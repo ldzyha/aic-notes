@@ -184,8 +184,8 @@ try {
       const page = await openPage({ theme, width });
       await init(page, wideCode, false, "Scroll.note.md");
       await page.keyboard.press("Control+Home");
-      const scroller = page.locator("#scope-current .cm-scroller");
-      const pre = page.locator("#scope-current .cm-md-code-preview > pre");
+      const scroller = page.locator("#editor .cm-scroller");
+      const pre = page.locator("#editor .cm-md-code-preview > pre");
       await pre.waitFor();
       await scroller.evaluate((element) => {
         element.scrollTop = 0;
@@ -194,12 +194,12 @@ try {
       const geometry = await scroller.evaluate((element) => ({
         height: element.clientHeight,
         contentHeight: element.scrollHeight,
-        panelHeight: element.closest("#scope-current").clientHeight,
+        panelHeight: element.closest("#editor").clientHeight,
       }));
       assert.ok(geometry.height > 0, "linked editor remains visible");
       assert.ok(
         geometry.height <= geometry.panelHeight + 1,
-        "linked document scroller fits the active scope panel",
+        "linked document scroller fits the editor row",
       );
       assert.ok(
         geometry.contentHeight > geometry.height + 100,
@@ -207,8 +207,7 @@ try {
       );
       await page.mouse.wheel(0, 100);
       await page.waitForFunction(
-        () =>
-          document.querySelector("#scope-current .cm-scroller").scrollTop > 10,
+        () => document.querySelector("#editor .cm-scroller").scrollTop > 10,
       );
       assert.equal(await pre.evaluate((element) => element.scrollTop), 0);
       await scroller.evaluate((element) => {
@@ -218,7 +217,7 @@ try {
       await page.mouse.wheel(140, 0);
       await page.waitForFunction(
         () =>
-          document.querySelector("#scope-current .cm-md-code-preview > pre")
+          document.querySelector("#editor .cm-md-code-preview > pre")
             .scrollLeft > 10,
       );
       assert.equal(await scroller.evaluate((element) => element.scrollTop), 0);

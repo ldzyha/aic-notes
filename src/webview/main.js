@@ -80,7 +80,6 @@ import SLASH_SNIPPETS_CSS from "../../vendor/aic-editor-core/slash-snippets.css"
 import PREVIEW_LAYOUT_CSS from "../../vendor/aic-editor-core/preview-layout.css";
 import SECURITY_BLOCK_CSS from "../../vendor/aic-editor-core/security-block.css";
 import SECURITY_IMPORT_CSS from "../../vendor/aic-editor-core/security-import-extension.css";
-import { createScopeTabs } from "../../vendor/aic-editor-core/scope-tabs.js";
 import THEME_CSS from "./theme.css";
 
 const api = acquireVsCodeApi();
@@ -97,7 +96,6 @@ const docState = {
   generation: 0,
   placeholder: false,
   relationships: [],
-  scopes: [],
   hasSurface: false,
   readOnly: false,
   lease: undefined,
@@ -111,96 +109,6 @@ const host = makeHost(api, docState);
 const clipboard = makeClipboardClient(api, docState);
 let paneNotice = "";
 const saveWaiters = new Set();
-let scopeTabs = null;
-
-function wireScopeTabs(scopes, selected = "current") {
-  scopeTabs?.dispose();
-  document.getElementById("aic-scope-tabs")?.remove();
-  docState.scopes = Array.isArray(scopes) ? scopes : [];
-  const current = document.getElementById("scope-current");
-  const shared = document.getElementById("scope-shared");
-  const global = document.getElementById("scope-global");
-  if (!current || !shared || !global) return;
-  const targets = {
-    current: docState.scopes.find((row) => row.relation === "current") ?? {
-      exists: true,
-    },
-    shared: docState.scopes
-      .filter((row) => row.relation === "parent" && row.exists)
-      .sort(
-        (left, right) =>
-          (right.depth ?? right.path.split("/").length) -
-          (left.depth ?? left.path.split("/").length),
-      )[0],
-    global: docState.scopes.find((row) => row.relation === "project"),
-  };
-  const editor = document.getElementById("editor");
-  // Move the live editor out before clearing placeholder panels. Clearing an
-  // active Shared/Global panel must never detach CodeMirror's mounting root.
-  if (editor && editor.parentElement !== current) current.append(editor);
-  shared.textContent = targets.shared
-    ? "Open the nearest shared folder note."
-    : "No shared folder note exists for this file.";
-  global.textContent = targets.global
-    ? "Open the workspace note."
-    : "No workspace note exists for this file.";
-  const selectedPanel = { current, shared, global }[selected] ?? current;
-  if (editor && editor.parentElement !== selectedPanel)
-    selectedPanel.replaceChildren(editor);
-  scopeTabs = createScopeTabs(document, {
-    label: "Note scope",
-    items: [
-      { id: "current", label: "Current", panel: current },
-      {
-        id: "shared",
-        label: "Shared",
-        panel: shared,
-        disabled: !targets.shared?.exists,
-        title: !targets.shared?.exists
-          ? "No shared folder note exists for this file"
-          : undefined,
-      },
-      {
-        id: "global",
-        label: "Global",
-        panel: global,
-        disabled: !targets.global?.exists,
-        title: !targets.global?.exists
-          ? "No workspace note exists for this file"
-          : undefined,
-      },
-    ],
-    selected: ["current", "shared", "global"].includes(selected)
-      ? selected
-      : "current",
-    onSelect: async (id) => {
-      const target = targets[id];
-      if (!target?.exists || !target.path) return false;
-      const priorView = view;
-      const priorPath = docState.relativePath;
-      if (
-        !(await saveCurrentDraft()) ||
-        view !== priorView ||
-        docState.relativePath !== priorPath
-      )
-        return false;
-      api.postMessage({
-        type: "scope.select",
-        id,
-        path: target.path,
-        relativePath: docState.relativePath,
-        generation: docState.generation,
-        lease: docState.lease,
-      });
-      // The host owns the target switch and returns a fresh init. Keep the
-      // current panel visible until that acknowledged identity arrives.
-      return false;
-    },
-  });
-  scopeTabs.element.id = "aic-scope-tabs";
-  current.parentElement?.insertBefore(scopeTabs.element, current);
-}
-
 function finishSaveRequests(saved) {
   const active = secondarySurface ? draft : primarySave;
   if (saved && (active.pending || (active.queued && active.dirty))) return;
@@ -862,7 +770,6 @@ window.addEventListener("message", (event) => {
         secondarySurface && Array.isArray(msg.relationships)
           ? msg.relationships
           : [];
-      wireScopeTabs(msg.scopes ?? msg.relationships, msg.selectedScope);
       if (!retainEditor) {
         draft.hydrate(msg.text, msg.generation, {
           discardLocal: true,
@@ -955,7 +862,6 @@ window.addEventListener("message", (event) => {
       docState.relationships = Array.isArray(msg.relationships)
         ? msg.relationships
         : [];
-      wireScopeTabs(msg.scopes ?? msg.relationships, msg.selectedScope);
       view.dispatch({
         effects: setPropertyRelationships.of(docState.relationships),
       });
@@ -1049,8 +955,6 @@ window.addEventListener(
   "unload",
   () => {
     unwireSaveBoundary();
-    scopeTabs?.dispose();
-    scopeTabs = null;
     documentViews.clear();
     clipboard.cancel();
     finishSaveRequests(false);

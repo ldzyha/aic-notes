@@ -101,8 +101,6 @@ export class SecondaryNotePane {
     this.readyWaiters = new Set();
     this.savingLease = 0;
     this.navigationPaused = false;
-    this.scopeOrigin = undefined;
-    this.scopeSelected = "current";
     this.editSurface = ownership?.register({
       uri: () => this.document?.uri ?? this.documentUri ?? this.placeholderUri,
       dirty: () =>
@@ -278,9 +276,7 @@ export class SecondaryNotePane {
         <strong>Open a workspace file</strong>
         <span id="pane-empty-detail">Its note or editable placeholder will appear here.</span>
       </div>
-      <section id="scope-current"><div id="editor"></div></section>
-      <section id="scope-shared" hidden></section>
-      <section id="scope-global" hidden></section>
+      <div id="editor"></div>
       <footer id="secondary-footer" aria-label="Linked note actions">
         <button id="pane-target" class="aic-pane-icon cm-aic-icon-button" type="button" data-aic-icon="open" aria-label="Open linked source file" title="Open linked source file" hidden></button>
         <button id="pane-clear" class="aic-pane-icon cm-aic-icon-button danger" type="button" data-aic-icon="trash" aria-label="Move note to Trash" hidden></button>
@@ -596,7 +592,6 @@ export class SecondaryNotePane {
       preserveFocus = true,
       isCurrent = () => true,
       allowPlaceholder = true,
-      beforeAdopt,
     } = {},
   ) {
     if (
@@ -641,7 +636,6 @@ export class SecondaryNotePane {
         await this.focus(preserveFocus);
         return true;
       }
-      beforeAdopt?.();
       await this.adoptNote(next);
       await this.focus(preserveFocus);
       return true;
@@ -663,13 +657,6 @@ export class SecondaryNotePane {
   async followActiveNow() {
     if (this.scope.disposed || this.suppressFollowing > 0 || this.pinned)
       return false;
-    // Scope-tab routing calls openNow directly and never enters this follower.
-    // Reset the anchor only after an independent workbench selection has passed
-    // the draft barrier and is about to become this pane's owner.
-    const resetScope = () => {
-      this.scopeOrigin = undefined;
-      this.scopeSelected = "current";
-    };
     const uri = this.activeMainResource();
     const isCurrent = () =>
       this.suppressFollowing === 0 &&
@@ -682,11 +669,7 @@ export class SecondaryNotePane {
         (candidate) => vscode.workspace.getWorkspaceFolder(candidate),
       );
       return folder
-        ? this.followTargetNow(folder.uri, {
-            preserveFocus: true,
-            isCurrent,
-            beforeAdopt: resetScope,
-          })
+        ? this.followTargetNow(folder.uri, { preserveFocus: true, isCurrent })
         : false;
     }
     if (isNotePath(uri.path)) {
@@ -700,7 +683,6 @@ export class SecondaryNotePane {
             preserveFocus: true,
             isCurrent,
             allowPlaceholder: candidate.isProject,
-            beforeAdopt: resetScope,
           });
         } catch (error) {
           if (!isCurrent()) return false;
@@ -721,7 +703,7 @@ export class SecondaryNotePane {
       }
       return false;
     }
-    return this.followTargetNow(uri, { isCurrent, beforeAdopt: resetScope });
+    return this.followTargetNow(uri, { isCurrent });
   }
 
   async onNotesChanged() {
@@ -777,9 +759,7 @@ export class SecondaryNotePane {
     const relativePath = vscode.workspace
       .asRelativePath(uri, false)
       .replaceAll("\\", "/");
-    const scopeOrigin = this.scopeOrigin;
-    const scopeSelected = this.scopeSelected;
-    let relationshipTarget = scopeOrigin ?? this.sourceUri;
+    let relationshipTarget = this.sourceUri;
     if (!relationshipTarget) {
       const folder = vscode.workspace.getWorkspaceFolder(uri);
       relationshipTarget = folder
@@ -790,12 +770,7 @@ export class SecondaryNotePane {
       ? await noteRelationshipsForTarget(relationshipTarget)
       : [];
     const viewState = this.pendingViewState;
-    if (
-      !current() ||
-      this.scopeOrigin?.toString() !== scopeOrigin?.toString() ||
-      this.scopeSelected !== scopeSelected
-    )
-      return;
+    if (!current()) return;
     if (this.editSurface) await this.ownership.activate(this.editSurface);
     if (!current()) return;
     this.draftDirty = false;
@@ -808,8 +783,6 @@ export class SecondaryNotePane {
       surface: "secondary",
       placeholder: !document,
       relationships,
-      scopes: relationships,
-      selectedScope: this.scopeSelected,
       selection: viewState?.selection,
       ...(this.editSurface ? this.ownership.state(this.editSurface) : {}),
       readOnly:
@@ -832,7 +805,7 @@ export class SecondaryNotePane {
     const generation = this.generation;
     const view = this.view;
     const request = ++this.relationshipRequest;
-    let target = this.scopeOrigin ?? this.sourceUri;
+    let target = this.sourceUri;
     if (!target && uri) {
       const folder = vscode.workspace.getWorkspaceFolder(uri);
       const relativePath = folder
@@ -853,8 +826,6 @@ export class SecondaryNotePane {
     await this.view.webview.postMessage({
       type: "relationships",
       relationships,
-      scopes: relationships,
-      selectedScope: this.scopeSelected,
     });
   }
 
@@ -1323,59 +1294,6 @@ export class SecondaryNotePane {
           break;
         case "pane.target": {
           await this.openCurrentTarget();
-          break;
-        }
-        case "scope.select": {
-          if (typeof message.path !== "string" || !this.sourceUri) break;
-          if (
-            (message.relativePath &&
-              message.relativePath !== this.editingPath()) ||
-            (message.generation != null &&
-              message.generation !== this.generation) ||
-            (this.editSurface &&
-              message.lease != null &&
-              !this.ownership.accepts(this.editSurface, message.lease))
-          )
-            break;
-          const expected = {
-            current: "current",
-            shared: "parent",
-            global: "project",
-          }[message.id];
-          if (!expected) break;
-          const origin = this.scopeOrigin ?? this.sourceUri;
-          const originKey = origin.toString();
-          const view = this.view;
-          const generation = this.generation;
-          const relationships = await noteRelationshipsForTarget(origin);
-          if (
-            this.scope.disposed ||
-            this.view !== view ||
-            this.generation !== generation ||
-            (this.scopeOrigin ?? this.sourceUri)?.toString() !== originKey
-          )
-            break;
-          const selected =
-            expected === "parent"
-              ? [...relationships]
-                  .reverse()
-                  .find((row) => row.relation === expected)
-              : relationships.find((row) => row.relation === expected);
-          if (!selected?.exists || selected.path !== message.path) break;
-          const folder = vscode.workspace.getWorkspaceFolder(origin);
-          const uri =
-            folder && selected
-              ? workspaceLinkUri(folder, selected.path)
-              : undefined;
-          if (!uri) break;
-          const previousOrigin = this.scopeOrigin;
-          const previousSelected = this.scopeSelected;
-          this.scopeOrigin = origin;
-          this.scopeSelected = message.id;
-          if (!(await this.openNow(uri, { reveal: false }))) {
-            this.scopeSelected = previousSelected;
-            this.scopeOrigin = previousOrigin;
-          }
           break;
         }
         case "bus":

@@ -27,9 +27,8 @@ scroll within the sidebar instead of being clipped below it. Store availability
 is verified separately.
 
 The local-file PWA opens and edits Markdown files and folders directly on disk.
-Current, Shared and Global tabs focus on
-one note at a time across supported hosts; mobile navigation gives the editor
-more space. Optional on-device AI and the shared DDK-based writing guide help
+In VS Code the main editor shows the opened document and Linked Note shows the
+active file's note; mobile navigation gives the editor more space. Optional on-device AI and the shared DDK-based writing guide help
 revise documents. Folder imports count only Markdown files and support progress
 and cancellation. VS Code refuses to save an existing document after its file
 has been deleted. Synchronization remains under the user's control.

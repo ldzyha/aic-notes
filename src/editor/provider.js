@@ -26,11 +26,9 @@ import {
   workspaceLinkUri,
 } from "../notes/navigation.js";
 import { openNoteDocument } from "../notes/create.js";
-import { resolveTarget } from "../notes/target.js";
 import { isNotePath } from "../secondary/model.js";
 import { DisposableScope } from "../lifecycle.js";
 import { ClipboardHost } from "../clipboard.js";
-import { noteRelationshipsForTarget } from "../notes/relationships.js";
 
 // [[target]] → note path candidates, aic LINK_RE semantics (sync.js:913):
 // a *.md target is used as-is, anything else gets `.note.md`; tried both
@@ -81,7 +79,6 @@ export class MarkdownEditorProvider {
     this.context = context;
     this.sessions = new Set();
     this.selectionRequest = 0;
-    this.scopeContexts = new Map();
     this.ownership = ownership;
     this.scope = new DisposableScope();
   }
@@ -214,35 +211,6 @@ export class MarkdownEditorProvider {
 
     const sendInit = async () => {
       if (session.scope.disposed) return false;
-      const contextKey = document.uri.toString();
-      let scoped = this.scopeContexts.get(contextKey);
-      let origin = scoped?.origin;
-      if (!origin && folder && isNotePath(document.uri.path))
-        origin = await resolveTarget(folder, relativePath);
-      scoped = this.scopeContexts.get(contextKey);
-      origin = scoped?.origin ?? origin;
-      origin ??= document.uri;
-      const originFolder = vscode.workspace.getWorkspaceFolder(origin);
-      if (
-        scoped &&
-        (!originFolder ||
-          originFolder.uri.toString() !== folder?.uri.toString())
-      )
-        this.scopeContexts.delete(contextKey);
-      scoped = this.scopeContexts.get(contextKey);
-      const activeScope =
-        scoped && scoped.origin.toString() === origin.toString()
-          ? scoped
-          : undefined;
-      const relationships =
-        originFolder && !isNotePath(origin.path)
-          ? await noteRelationshipsForTarget(activeScope?.origin ?? origin)
-          : [];
-      if (
-        session.scope.disposed ||
-        this.scopeContexts.get(contextKey) !== activeScope
-      )
-        return false;
       return webview.postMessage({
         type: "init",
         text: document.getText(),
@@ -259,9 +227,6 @@ export class MarkdownEditorProvider {
             session.editSurface &&
             this.ownership.state(session.editSurface).readOnly,
           ),
-        relationships,
-        scopes: relationships,
-        selectedScope: activeScope?.selected ?? "current",
       });
     };
     const sendReset = () => {
@@ -500,73 +465,6 @@ export class MarkdownEditorProvider {
               resolve(session.selection);
               break;
             }
-            case "scope.select": {
-              if (!folder || typeof msg.path !== "string") break;
-              if (
-                (msg.relativePath && msg.relativePath !== relativePath) ||
-                (msg.generation != null &&
-                  msg.generation !== state.generation) ||
-                (session.editSurface &&
-                  msg.lease != null &&
-                  !this.ownership.accepts(session.editSurface, msg.lease))
-              )
-                break;
-              const expected = {
-                current: "current",
-                shared: "parent",
-                global: "project",
-              }[msg.id];
-              if (!expected) break;
-              const identity = document.uri.toString();
-              const scoped = this.scopeContexts.get(document.uri.toString());
-              const scopedOrigin = scoped?.origin?.toString();
-              const generation = state.generation;
-              const origin =
-                scoped?.origin ??
-                (isNotePath(document.uri.path)
-                  ? await resolveTarget(folder, relativePath)
-                  : document.uri);
-              if (
-                !origin ||
-                session.scope.disposed ||
-                document.uri.toString() !== identity
-              )
-                break;
-              const originFolder = vscode.workspace.getWorkspaceFolder(origin);
-              if (
-                !originFolder ||
-                originFolder.uri.toString() !== folder.uri.toString()
-              )
-                break;
-              const relationships = await noteRelationshipsForTarget(origin);
-              if (
-                session.scope.disposed ||
-                document.uri.toString() !== identity ||
-                state.generation !== generation ||
-                !webviewPanel.active ||
-                this.scopeContexts.get(identity) !== scoped ||
-                scoped?.origin?.toString() !== scopedOrigin
-              )
-                break;
-              const selected =
-                expected === "parent"
-                  ? [...relationships]
-                      .reverse()
-                      .find((row) => row.relation === expected)
-                  : relationships.find((row) => row.relation === expected);
-              if (!selected?.exists || selected.path !== msg.path) break;
-              const uri = workspaceLinkUri(folder, selected.path);
-              if (!uri) break;
-              if (msg.id === "current")
-                this.scopeContexts.delete(uri.toString());
-              else
-                this.scopeContexts.set(uri.toString(), {
-                  origin,
-                  selected: msg.id,
-                });
-              await openNoteDocument(uri);
-              break;
-            }
             case "bus":
               await this._routeBus(msg, document, folder, relativePath);
               break;
@@ -615,7 +513,6 @@ export class MarkdownEditorProvider {
       session.scope.add(disposable);
     session.scope.defer(() => {
       if (session.editSurface) this.ownership.dispose(session.editSurface);
-      this.scopeContexts.delete(document.uri.toString());
       for (const resolve of session.editingWaiters.values()) resolve(null);
       session.editingWaiters.clear();
       this.sessions.delete(session);
@@ -722,7 +619,7 @@ export class MarkdownEditorProvider {
       webview,
       distRoot,
       "main.js",
-      '<section id="scope-current"><div id="editor"></div></section><section id="scope-shared" hidden></section><section id="scope-global" hidden></section>' +
+      '<div id="editor"></div>' +
         (isNote
           ? '<footer id="document-actions" aria-label="Note actions"><span id="editing-status" role="status" aria-live="polite"></span></footer>'
           : ""),

@@ -189,7 +189,7 @@ test("note association, project fallback, and local footer actions are explicit"
   assert.match(provider, /preferredWorkspaceFolder/u);
   assert.match(
     provider,
-    /this\.followTargetNow\(folder\.uri, \{\s*preserveFocus: true,\s*isCurrent,\s*beforeAdopt: resetScope,?\s*\}\)/u,
+    /this\.followTargetNow\(folder\.uri, \{\s*preserveFocus: true,\s*isCurrent,?\s*\}\)/u,
   );
   assert.match(
     create,

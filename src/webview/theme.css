@@ -74,21 +74,11 @@ body.aic-main-note-surface {
   grid-template-rows: auto minmax(0, 1fr) auto;
 }
 .aic-main-note-surface #editor {
-  min-height: 0;
-  height: 100%;
-}
-#scope-current,
-#scope-shared,
-#scope-global {
+  grid-row: 2;
   min-width: 0;
   min-height: 0;
   height: 100%;
-  grid-row: 2;
   overflow: hidden;
-}
-#scope-shared:empty,
-#scope-global:empty {
-  color: var(--muted);
 }
 #document-actions {
   grid-row: 3;
@@ -400,9 +390,10 @@ body.aic-secondary-surface {
 }
 
 .aic-secondary-surface #editor {
+  grid-row: 2;
   min-width: 0;
   min-height: 0;
-  /* Keep CodeMirror bounded by the active scope panel so it owns scrolling. */
+  /* Keep CodeMirror bounded by the grid row so it owns scrolling. */
   height: 100%;
   overflow: hidden;
 }
