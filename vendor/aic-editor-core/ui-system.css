@@ -421,6 +421,29 @@ details[open] > summary > .aic-tree__toggle {
   color: var(--aic-danger, #b92337);
 }
 
+.aic-pages {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--aic-space-1);
+  min-width: 0;
+  padding: 0 var(--aic-space-2);
+  background: var(--aic-bg, Canvas);
+  color: var(--aic-muted, GrayText);
+  font-size: 12px;
+}
+.aic-pages__position {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.aic-pages__target {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (pointer: coarse) {
   .aic-button,
   .aic-toolbar .aic-button,
@@ -454,40 +477,4 @@ details[open] > summary > .aic-tree__toggle {
     color: GrayText;
     opacity: 1;
   }
-}
-
-.aic-context--tabs {
-  box-sizing: border-box;
-  display: flex;
-  flex: 0 0 auto;
-  gap: var(--aic-space-1);
-  min-width: 0;
-  padding: var(--aic-space-1);
-  border-bottom: 1px solid var(--aic-border);
-  background: var(--aic-tabbar-bg, var(--aic-contrast, Canvas));
-}
-.aic-context__tab {
-  --aic-button-size: var(--aic-control-size-touch);
-  flex: 1 1 0;
-  min-width: 44px;
-  max-width: 140px;
-  min-height: var(--aic-button-size);
-  border-radius: var(--aic-space-1);
-  white-space: nowrap;
-}
-.aic-context__tab[aria-selected="true"] {
-  background: var(--aic-bg, Canvas);
-  border-color: var(--aic-border);
-  color: var(--aic-accent);
-}
-.aic-context__tab:focus-visible {
-  outline-offset: -3px;
-}
-@media (pointer: fine) {
-  .aic-context__tab {
-    --aic-button-size: var(--aic-control-size);
-  }
-}
-.aic-context__panel[hidden] {
-  display: none !important;
 }

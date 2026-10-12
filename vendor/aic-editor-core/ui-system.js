@@ -50,9 +50,10 @@ export const UI_COMPONENTS = Object.freeze({
     ["group", "item", "row", "label", "actions", "icon", "toggle"],
   ),
   context: definition(
-    ["compact", "empty", "editing", "tabs", "document"],
-    ["title", "path", "item", "link", "current", "tab", "panel", "status"],
+    ["compact", "empty", "editing", "document"],
+    ["title", "path", "item", "link", "current", "status"],
   ),
+  pages: definition([], ["position", "target"]),
 });
 
 function definition(modifiers, elements) {

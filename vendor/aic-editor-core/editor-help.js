@@ -41,7 +41,7 @@ export function createEditorHelp(document, { host }) {
   applyUiComponent(hostHint, "menu", [], "hint");
   hostHint.textContent =
     host === "browser"
-      ? "Notes are saved to your selected Markdown files. Current, Shared and Global use the same editor."
+      ? "Notes are saved to your selected Markdown files."
       : host === "vscode"
         ? "VS Code edits local Markdown files and linked notes; Save keeps its normal document boundary."
         : "Standard Notes owns its account encryption and synchronization; AIC edits the note Markdown.";
@@ -78,6 +78,10 @@ export function createEditorHelp(document, { host }) {
       ["!> text", "warning quote"],
       ["!>> text", "error quote"],
       [">>> title … <<<", "collapsible details block"],
+      [
+        "--- or --- path-or-URL",
+        "after a blank line, start a new page of this note; a target names it",
+      ],
       [
         "```language … ```",
         "code block; finish the opening language before closing the fence",
@@ -132,8 +136,8 @@ export function createEditorHelp(document, { host }) {
           "Content",
           "import the current selection, or the visible page when none is selected",
         ],
-        ["Insert from file…", "append another Markdown file to Current"],
-        ["Download copy", "download the active scope as plaintext Markdown"],
+        ["Insert from file…", "append another Markdown file to this note"],
+        ["Download copy", "download this note as plaintext Markdown"],
         ["Continue", "restore access to the remembered file or folder"],
       ]),
     );
