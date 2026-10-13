@@ -1,6 +1,8 @@
+import { CompletionContext } from "@codemirror/autocomplete";
+import { EditorState } from "@codemirror/state";
 import {
   DOCUMENTATION_SNIPPETS,
-  slashSnippetSearchText,
+  slashSnippetCompletions,
   slashSnippetSections,
   slashSnippetTemplate,
   slashSnippetToken,
@@ -54,6 +56,23 @@ export function nativeMarkdownSlashQuery(document, position) {
   });
 }
 
+/**
+ * The catalogue entries that match the typed `/word`, best first. Matching
+ * and order are the shared core's: the command, then its aliases, then loose
+ * matches; a bare `/` lists the whole catalogue in its own order.
+ */
+export function nativeSlashMatches(text) {
+  const result = slashSnippetCompletions(
+    new CompletionContext(EditorState.create({ doc: text }), text.length, true),
+  );
+  const byCommand = new Map(
+    DOCUMENTATION_SNIPPETS.map((entry) => [entry.command, entry]),
+  );
+  return (result?.options ?? []).map(({ label }) =>
+    byCommand.get(label.slice(1)),
+  );
+}
+
 export function createMarkdownSlashCompletionProvider(vscode) {
   return {
     provideCompletionItems(document, position) {
@@ -67,21 +86,26 @@ export function createMarkdownSlashCompletionProvider(vscode) {
         new vscode.Position(position.line, query.startCharacter),
         position,
       );
-      return DOCUMENTATION_SNIPPETS.map((entry) => {
+      const items = nativeSlashMatches(query.text).map((entry, order) => {
         const item = new vscode.CompletionItem(
           "/" + entry.command,
           vscode.CompletionItemKind.Snippet,
         );
         const section = sections[entry.group];
         item.detail = `${section.name} · ${entry.title}`;
-        item.filterText = slashSnippetSearchText(entry);
+        // VS Code scores items by filterText before it reads sortText. Every
+        // item here already matches, so all get the typed text and the same
+        // score: the order below is the order shown.
+        item.filterText = query.text;
         item.insertText = new vscode.SnippetString(
           slashSnippetTemplate(entry, sourceBeforeCursor),
         );
         item.range = range;
-        item.sortText = `${String(section.rank).padStart(2, "0")}:${entry.command}`;
+        item.sortText = String(order).padStart(2, "0");
         return item;
       });
+      // Incomplete: the next keystroke asks again instead of re-filtering.
+      return new vscode.CompletionList(items, true);
     },
   };
 }
