@@ -31,14 +31,6 @@ export function workspaceFolderFor(uri, api = vscode) {
     : undefined;
 }
 
-// Existing local standalone sidecars remain supported. Other schemes must be
-// backed by the selected workspace; arbitrary document/content URIs stay out.
-export function isFileResource(uri, api = vscode) {
-  return Boolean(
-    uri && (uri.scheme === "file" || workspaceFolderFor(uri, api)),
-  );
-}
-
 export function assertWritableResource(uri, api = vscode) {
   if (resourceReadOnly(uri, api)) {
     throw new Error(

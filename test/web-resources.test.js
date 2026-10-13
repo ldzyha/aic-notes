@@ -29,7 +29,6 @@ runInNewContext(bundle.outputFiles[0].text, {
 });
 const {
   workspaceFolderFor,
-  isFileResource,
   resourceReadOnly,
   assertWritableResource,
 } = module.exports;
@@ -62,10 +61,6 @@ test("virtual resources preserve workspace URI authority, boundary and revision"
     { fragment: "revision" },
   ])
     assert.equal(workspaceFolderFor({ ...root, ...patch }, api), undefined);
-  assert.equal(
-    isFileResource({ scheme: "file", path: "/standalone.note.md" }, api),
-    true,
-  );
 });
 
 test("unknown and read-only virtual providers cannot mutate notes", () => {

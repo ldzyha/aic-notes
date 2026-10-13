@@ -1,7 +1,7 @@
 {
   "name": "aic-notes",
   "displayName": "AIC Notes",
-  "description": "Local AIC Markdown documents and linked notes, with no account connection or note synchronization.",
+  "description": "Local AIC Markdown documents and one workspace note with a page per file, with no account connection or note synchronization.",
   "version": "60.0.2",
   "aicEditorCore": "7.5.3",
   "publisher": "ldzyha",
@@ -18,7 +18,7 @@
   "keywords": [
     "markdown",
     "notes",
-    "sidecar notes",
+    "workspace notes",
     "mermaid",
     "wysiwyg",
     "editor"
