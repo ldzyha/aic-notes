@@ -4,6 +4,7 @@ import {
   SecondaryDraft,
   secondarySaveState,
   minimalTextChange,
+  mergeDraftText,
 } from "../src/webview/secondary-draft.js";
 
 function setup(text = "base", path = "project.note.md") {
@@ -65,15 +66,17 @@ test("matching success adopts host-stamped properties without leaving a false di
   assert.equal(minimalTextChange(text, text), null);
 });
 
-test("new input during save stays dirty and is not replaced by older stamped text", () => {
+test("new input during save stays dirty and is carried onto the text the host saved", () => {
   const draft = setup();
   draft.edit("submitted");
   const commit = draft.begin();
   draft.edit("submitted plus newer input");
   draft.acknowledge({ ...commit, text: "stamped submitted", saved: true });
-  assert.equal(draft.current, "submitted plus newer input");
+  assert.equal(draft.current, "stamped submitted plus newer input");
   assert.equal(state(draft), "dirty");
+  assert.equal(draft.stale, false);
   const retry = draft.begin();
+  assert.equal(retry.base, undefined);
   draft.acknowledge({ ...retry, saved: true });
   assert.equal(state(draft), "saved");
 });
@@ -138,4 +141,81 @@ test("secondary drains a requested newer save once but never saves each interven
   draft.acknowledge({ ...retry, saved: false });
   assert.equal(draft.takeQueued(), false);
   assert.equal(draft.dirty, true);
+});
+
+test("a three-way draft merge keeps both changes byte-exact or refuses", () => {
+  const base = "--- a.js\nabout a\n\n--- b.js\nabout b\n";
+  const mine = base.replace("about a", "about a\r\n  more\t");
+  const theirs = `# T\n\n${base.replace("about b", "B")}tail`;
+  // Their minimal change spans my page (it changed before and after it).
+  assert.equal(mergeDraftText(base, theirs, mine), null);
+  const after = base.replace("about b", "B \u00e9");
+  assert.equal(
+    mergeDraftText(base, after, mine),
+    "--- a.js\nabout a\r\n  more\t\n\n--- b.js\nB \u00e9\n",
+  );
+  const before = `# T\n\n${base}`;
+  assert.equal(
+    mergeDraftText(base, before, base.replace("about b", "mine")),
+    "# T\n\n--- a.js\nabout a\n\n--- b.js\nmine\n",
+  );
+  assert.equal(mergeDraftText(base, base, mine), mine);
+  assert.equal(mergeDraftText(base, theirs, base), theirs);
+  assert.equal(mergeDraftText(base, mine, mine), mine);
+  // The same page, and changes that only touch, are never merged.
+  assert.equal(
+    mergeDraftText(base, base.replace("about a", "theirs"), mine),
+    null,
+  );
+  assert.equal(mergeDraftText("ab", "aXb", "aYb"), null);
+  assert.equal(mergeDraftText("ab", "abX", "abY"), null);
+  assert.equal(mergeDraftText("a b", "aX b", "a bY"), "aX bY");
+});
+
+test("a draft whose host text moved on sends its base until a save lands", () => {
+  const draft = setup("one\n\ntwo\n");
+  draft.edit("one mine\n\ntwo\n");
+  assert.equal(draft.begin().base, undefined);
+  draft.acknowledge({ requestId: 1, relativePath: "project.note.md" });
+  draft.hostChanged();
+  assert.equal(draft.stale, true);
+  draft.edit("one mine!\n\ntwo\n");
+  const stale = draft.begin();
+  assert.equal(stale.base, "one\n\ntwo\n");
+  // Refused by the host: the draft and its base stay for the next attempt.
+  draft.acknowledge({ ...stale, saved: false });
+  assert.deepEqual(
+    [draft.current, draft.stale, state(draft)],
+    ["one mine!\n\ntwo\n", true, "dirty"],
+  );
+  const retry = draft.begin();
+  assert.equal(retry.base, "one\n\ntwo\n");
+  // Rebased by the host: its text is adopted and the draft is in sync again.
+  draft.acknowledge({
+    ...retry,
+    text: "one mine!\n\ntwo theirs\n",
+    generation: 9,
+    saved: true,
+  });
+  assert.deepEqual(
+    [draft.current, draft.stale, state(draft)],
+    ["one mine!\n\ntwo theirs\n", false, "saved"],
+  );
+
+  // Input typed during that save which overlaps the host's part stays a
+  // stale draft on the committed text: it can never replace the host's text.
+  draft.edit("one mine!\n\ntwo theirs\nmore");
+  const commit = draft.begin();
+  draft.edit("one mine!\n\ntwo theirs\nmore and newer");
+  draft.acknowledge({
+    ...commit,
+    text: "one mine!\n\ntwo theirs\nmore\n\n--- x\nappended",
+    saved: true,
+  });
+  assert.equal(draft.current, "one mine!\n\ntwo theirs\nmore and newer");
+  assert.deepEqual([draft.stale, state(draft)], [true, "dirty"]);
+  assert.equal(draft.begin().base, "one mine!\n\ntwo theirs\nmore");
+  // A fresh host text ends the stale state.
+  draft.hydrate("fresh", 10, { discardLocal: true });
+  assert.equal(draft.stale, false);
 });

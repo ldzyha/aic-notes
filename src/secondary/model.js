@@ -1,3 +1,9 @@
+import {
+  appendPageText,
+  notePages,
+  pageForTarget,
+} from "../../vendor/aic-editor-core/note-pages.js";
+
 // One note file per workspace folder. Every other file of that folder is a
 // page inside it, bound by a `--- <folder-relative path>` separator line.
 export const WORKSPACE_NOTE = "aic.md";
@@ -78,4 +84,23 @@ export class NavigationQueue {
     );
     return result;
   }
+}
+
+/**
+ * A draft typed into the empty placeholder, moved onto the note that appeared
+ * on disk meanwhile: `text` plus the draft's pages appended, never changing a
+ * byte of `text`. Null when the draft has text outside a page or `text`
+ * already has a page for one of its targets.
+ */
+export function appendDraftPages(text, draft) {
+  const existing = notePages(text);
+  let next = text;
+  for (const page of notePages(draft)) {
+    if (page.target === null || pageForTarget(existing, page.target) >= 0)
+      return null;
+    const separator = appendPageText(next, page.target);
+    if (!separator) return null;
+    next += separator + draft.slice(page.content, page.to);
+  }
+  return next;
 }

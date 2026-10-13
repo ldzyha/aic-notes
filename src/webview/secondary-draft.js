@@ -8,6 +8,10 @@ export class SecondaryDraft {
   #requestId = 0;
   #commit = null;
   #requested = false;
+  // The host text this draft was typed on, and whether the host has moved on
+  // from it. A stale draft sends its base so the host can rebase it.
+  #base = "";
+  #stale = false;
 
   get current() {
     return this.#session.current;
@@ -21,6 +25,14 @@ export class SecondaryDraft {
   get queued() {
     return this.#requested;
   }
+  get stale() {
+    return this.#stale;
+  }
+
+  /** The host text changed while this draft holds unsaved or pending input. */
+  hostChanged() {
+    this.#stale = true;
+  }
 
   hydrate(text, generation, options = {}) {
     const accepted = this.#session.hydrate(text, generation, options);
@@ -29,6 +41,8 @@ export class SecondaryDraft {
         this.#path = options.relativePath;
       this.#commit = null;
       this.#requested = false;
+      this.#base = String(text ?? "");
+      this.#stale = false;
     }
     return accepted;
   }
@@ -43,6 +57,7 @@ export class SecondaryDraft {
     if (!commit) return null;
     this.#commit = Object.freeze({
       ...commit,
+      ...(this.#stale ? { base: this.#base } : {}),
       requestId: ++this.#requestId,
       relativePath: this.#path,
     });
@@ -72,15 +87,22 @@ export class SecondaryDraft {
       this.#path !== commit.relativePath
     )
       return false;
-    // Property timestamps are normalized by the host during save. Only adopt
-    // that normalized text when no newer input exists; newer edits stay local.
-    if (
-      message.saved === true &&
-      this.current === commit.text &&
-      typeof message.text === "string"
-    )
-      this.#session.edit(message.text);
-    this.#session.acknowledge(message);
+    if (message.saved === true && typeof message.text === "string") {
+      // The host may have saved a rebased text. Input typed after the commit
+      // is carried onto it; input that overlaps the host's part stays a stale
+      // draft on the committed text, so it can never replace the host's text.
+      const merged = mergeDraftText(commit.text, message.text, this.current);
+      if (merged === null) {
+        this.#session.acknowledge({ ...message, text: commit.text });
+        this.#base = commit.text;
+        this.#stale = true;
+      } else {
+        this.#session.edit(merged);
+        this.#session.acknowledge(message);
+        this.#base = message.text;
+        this.#stale = false;
+      }
+    } else this.#session.acknowledge(message);
     this.#commit = null;
     if (!message.saved) this.#requested = false;
     return true;
@@ -114,4 +136,27 @@ export function minimalTextChange(current, next) {
     nextTo--;
   }
   return { from, to, insert: next.slice(from, nextTo) };
+}
+
+/**
+ * Three-way merge of one draft: `mine` and `theirs` both started as `base`.
+ * Returns the text holding both changes, byte-exact, or null when their
+ * changed ranges touch or overlap.
+ */
+export function mergeDraftText(base, theirs, mine) {
+  if (theirs === mine) return mine;
+  const host = minimalTextChange(base, theirs);
+  if (!host) return mine;
+  const local = minimalTextChange(base, mine);
+  if (!local) return theirs;
+  const shift = host.insert.length - (host.to - host.from);
+  let from;
+  if (local.to < host.from) from = local.from;
+  else if (local.from > host.to) from = local.from + shift;
+  else return null;
+  return (
+    theirs.slice(0, from) +
+    local.insert +
+    theirs.slice(from + local.to - local.from)
+  );
 }

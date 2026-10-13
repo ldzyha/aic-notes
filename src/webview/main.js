@@ -767,6 +767,8 @@ window.addEventListener("message", (event) => {
       if (!view) return;
       if (docState.editingConflict) return;
       if (secondarySurface && (draft.dirty || draft.pending)) {
+        // The draft is never replaced; its next save is rebased by the host.
+        draft.hostChanged();
         api.postMessage({ type: "draft.externalConflict" });
         return;
       }

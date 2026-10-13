@@ -14,6 +14,7 @@ import {
   notePageHistory,
 } from "../vendor/aic-editor-core/note-page-cards.js";
 import { hostChange } from "../src/webview/host-changes.js";
+import { minimalTextChange } from "../src/webview/secondary-draft.js";
 
 const require = createRequire(import.meta.url);
 const bundle = await build({
@@ -958,6 +959,8 @@ function live({ ownership = false, readOnly = false } = {}) {
       ++client.requestId,
       client.relativePath,
       client.lease,
+      h.pane.view,
+      client.stale ? client.base : undefined,
     );
     if (result.saved) {
       client.dirty = false;
@@ -981,6 +984,8 @@ function live({ ownership = false, readOnly = false } = {}) {
             client.resourceUri = message.resourceUri;
             client.lease = message.lease;
             client.dirty = false;
+            client.base = message.text;
+            client.stale = false;
             client.state = EditorState.create({
               doc: message.text,
               extensions: [
@@ -1005,12 +1010,27 @@ function live({ ownership = false, readOnly = false } = {}) {
             }
             break;
           case "external":
+            // An unsaved draft is never replaced (src/webview/main.js): it
+            // goes stale and its next save carries the text it was typed on.
+            if (client.dirty) {
+              client.stale = true;
+              void h.pane.onMessage({ type: "draft.externalConflict" });
+              break;
+            }
             client.generation = message.generation;
             view.dispatch(hostChange(message.changes));
+            client.base = client.text;
             break;
-          case "committed":
+          case "committed": {
             client.generation = message.generation;
+            if (!message.saved) break;
+            // The host may have saved a rebased text: adopt it as host text.
+            const change = minimalTextChange(client.text, message.text);
+            if (change) view.dispatch(hostChange(change));
+            client.base = message.text;
+            client.stale = false;
             break;
+          }
           case "editing.probe":
             queueMicrotask(() =>
               h.pane.onMessage({
@@ -1364,9 +1384,152 @@ test("the note appearing or vanishing on disk swaps placeholder and file only fo
   await h.activate(h.addFile("b.js"));
   assert.equal(h.client.inits, inits);
   assert.equal(h.client.text, "--- a.js\nmine");
-  assert.equal((await h.client.save()).action, "appeared");
   assert.equal(h.files.get(note.path).text, "theirs\n");
   assert.deepEqual(h.events.saved, []);
+});
+
+test("a typed-in placeholder is appended to the note that appeared on disk", async () => {
+  const h = live();
+  const a = h.addFile("a.js");
+  const b = h.addFile("lib/b.js");
+  await h.activate(a);
+  await h.client.type("mine  \n  a\t");
+  await h.activate(b);
+  await h.client.type("about b");
+  const draft = "--- a.js\nmine  \n  a\t\n\n--- lib/b.js\nabout b";
+  assert.equal(h.client.text, draft);
+  const theirs = "---\ntitle: t\n---\n# Theirs\n\n--- c.js\nabout c";
+  const note = h.addFile("aic.md", theirs);
+  await h.activate(a);
+  assert.equal(h.client.text, draft);
+  assert.equal(h.pane.draftDirty, true);
+
+  const result = await h.client.save();
+  assert.equal(result.saved, true);
+  const merged = `${theirs}\n\n${draft}`;
+  assert.equal(h.files.get(note.path).text, merged);
+  assert.equal(merged.startsWith(theirs), true);
+  assert.equal(h.of("committed").at(-1).text, merged);
+  assert.deepEqual(h.events.saved, [note.path]);
+  assert.deepEqual(
+    h.events.applied.flatMap(({ creates }) => creates),
+    [],
+  );
+  // The pane now shows the real file: same editor, focus kept, draft clean.
+  assert.equal(h.client.text, merged);
+  assert.deepEqual(
+    [h.client.page.target, h.client.page.text],
+    ["a.js", "mine  \n  a\t"],
+  );
+  assert.equal(h.pane.documentUri.path, note.path);
+  assert.equal(h.pane.placeholderUri, undefined);
+  assert.equal(h.pane.draftDirty, false);
+  assert.equal(h.client.inits, 1);
+  // Later saves are ordinary saves of that file.
+  await h.client.type("!");
+  assert.equal((await h.client.save()).saved, true);
+  assert.equal(h.files.get(note.path).text, merged.replace("a\t", "a\t!"));
+});
+
+test("a placeholder draft that collides with the appeared note is kept and saved once resolved", async () => {
+  const h = live();
+  const a = h.addFile("a.js");
+  await h.activate(a);
+  await h.client.type("mine");
+  const theirs = "intro\n\n--- a.js\nfrom git\n";
+  const note = h.addFile("aic.md", theirs);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const result = await h.client.save();
+    assert.equal(result.action, "appeared");
+    assert.equal(h.files.get(note.path).text, theirs);
+    assert.equal(h.getDocument(note).getText(), theirs);
+    assert.deepEqual(h.events.saved, []);
+    assert.deepEqual(h.events.applied, []);
+    assert.equal(h.of("committed").at(-1).saved, false);
+    // The draft stays visible and editable in the pane.
+    assert.equal(h.client.text, "--- a.js\nmine");
+    assert.equal(h.pane.draftDirty, true);
+    assert.equal(h.pane.placeholderUri.path, note.path);
+    assert.equal(h.pane.documentUri, undefined);
+  }
+  assert.match(
+    h.of("paneState").at(-1).status,
+    /^Note appeared on disk with this page · draft kept/u,
+  );
+  // The user moves the other page out of the way; the next Ctrl+S lands.
+  h.getDocument(note).replace(7, 15, "--- old-a.js");
+  const resolved = "intro\n\n--- old-a.js\nfrom git\n";
+  assert.equal(h.getDocument(note).getText(), resolved);
+  assert.equal((await h.client.save()).saved, true);
+  assert.equal(h.files.get(note.path).text, `${resolved}\n--- a.js\nmine`);
+  assert.equal(h.client.text, `${resolved}\n--- a.js\nmine`);
+
+  // Whole-note text (no page) typed into a placeholder never merges.
+  const w = live();
+  await w.activate(undefined);
+  await w.client.type("loose text");
+  const other = w.addFile("aic.md", "theirs\n");
+  assert.equal((await w.client.save()).action, "appeared");
+  assert.equal(w.files.get(other.path).text, "theirs\n");
+  assert.equal(w.client.text, "loose text");
+  assert.equal(w.pane.draftDirty, true);
+});
+
+test("an external change on another page and the dirty page both survive the save byte-exact", async () => {
+  const h = live();
+  const a = h.addFile("a.js");
+  const base = "# T  \n\n--- a.js\nabout a\n\n--- b.js\nabout b\n";
+  const note = h.addFile("aic.md", base);
+  await h.activate(a);
+  await h.client.type(" mine\t");
+  const document = h.getDocument(note);
+  // The main editor rewrites page B while page A is an unsaved draft here.
+  const at = document.getText().indexOf("about b");
+  document.replace(at, at + 7, "B theirs \u00e9  \n\nmore");
+  const theirs = document.getText();
+  assert.equal(h.of("external").length, 1);
+  // The draft is not replaced and the pane says so.
+  assert.equal(h.client.text, base.replace("about a", "about a mine\t"));
+  assert.match(h.of("paneState").at(-1).status, /^File changed externally/u);
+  assert.equal(h.pane.draftDirty, true);
+
+  const result = await h.client.save();
+  assert.equal(result.saved, true);
+  const merged = theirs.replace("about a", "about a mine\t");
+  assert.equal(h.files.get(note.path).text, merged);
+  assert.equal(h.of("committed").at(-1).text, merged);
+  assert.equal(h.client.text, merged);
+  assert.equal(h.client.generation, h.pane.generation);
+  assert.deepEqual(
+    [h.client.page.target, h.client.page.text],
+    ["a.js", "about a mine\t"],
+  );
+  assert.equal(h.pane.draftDirty, false);
+
+  // The same text changed in both places: nothing is written, the draft
+  // stays, and the save lands once the other change is taken back.
+  await h.client.type(" again");
+  const mine = h.client.text;
+  const before = document.getText();
+  const page = before.indexOf("about a mine\t");
+  document.replace(page, page + 13, "THEIRS");
+  const conflicting = document.getText();
+  const applied = h.events.applied.length;
+  const refused = await h.client.save();
+  assert.equal(refused.action, "stale-draft");
+  assert.equal(document.getText(), conflicting);
+  assert.equal(h.events.applied.length, applied);
+  assert.equal(h.client.text, mine);
+  assert.equal(h.pane.draftDirty, true);
+  assert.match(
+    h.of("paneState").at(-1).status,
+    /^File changed externally in the same text · draft kept/u,
+  );
+  document.replace(page, page + 6, "about a mine\t");
+  assert.equal(document.getText(), before);
+  assert.equal((await h.client.save()).saved, true);
+  assert.equal(h.files.get(note.path).text, mine);
+  assert.equal(h.client.text, mine);
 });
 
 test("the pane and the main tab of aic.md share one edit lease", async () => {
@@ -1479,7 +1642,7 @@ test("a workspace with legacy .note.md files is byte-identical after following f
   const b = h.addFile("src/b.ts", "code b");
   const legacy = h.addFile(
     "src/a.note.md",
-    "---\naic: note\n---\nlegacy a\r\n",
+    "---\naic: note\n---\nlegacy a  \n",
   );
   h.addFile("src/b.note.md", "legacy b");
   h.addFile("src.note.md", "legacy folder note");

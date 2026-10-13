@@ -11,10 +11,12 @@ import { formatError } from "../errors.js";
 import {
   activeWindowResource,
   NavigationQueue,
+  appendDraftPages,
   pageTargetFor,
   preferredWorkspaceFolder,
   WORKSPACE_NOTE,
 } from "./model.js";
+import { mergeDraftText } from "../webview/secondary-draft.js";
 import {
   openSourceAtHref,
   openExternalLink,
@@ -582,6 +584,7 @@ export class SecondaryNotePane {
     relativePath,
     lease,
     view = this.view,
+    base,
   ) {
     this.savingLease++;
     let draft = String(text ?? "");
@@ -629,10 +632,32 @@ export class SecondaryNotePane {
         await reply(false);
         return { action: "wrong-note", skipped: true };
       }
-      if (generation !== this.generation) {
+      // The note changed under an unsaved draft: the webview sends the text
+      // the draft was typed on. Both changes are kept when they do not touch;
+      // otherwise nothing is written and the next Ctrl+S tries again.
+      let theirs = null;
+      if (typeof base === "string" && this.documentUri) {
+        try {
+          if (!this.document || this.document.isClosed)
+            this.document = await vscode.workspace.openTextDocument(
+              this.documentUri,
+            );
+          theirs = this.document.getText();
+        } catch {
+          return await stale();
+        }
+      }
+      const rebased =
+        theirs === null ? null : mergeDraftText(base, theirs, draft);
+      if (rebased !== null) {
+        draft = rebased;
+        generation = this.generation;
+      } else if (theirs !== null || generation !== this.generation) {
         await reply(false);
         await this.sendPaneState(
-          "File changed externally · draft kept in the editor",
+          theirs === null
+            ? "File changed externally · draft kept in the editor"
+            : "File changed externally in the same text · draft kept in the editor. Copy your text or undo the other change, then press Ctrl+S.",
         );
         return { action: "stale-draft", skipped: true };
       }
@@ -660,10 +685,45 @@ export class SecondaryNotePane {
 
       if (!current()) return await stale();
 
+      if (
+        !this.documentUri &&
+        this.placeholderUri &&
+        (await exists(this.placeholderUri))
+      ) {
+        // The note appeared on disk under a typed-in placeholder. The draft's
+        // new pages are appended to it; a page the file already has, or text
+        // outside a page, stays a draft and nothing on disk is replaced.
+        const uri = this.placeholderUri;
+        let appeared;
+        try {
+          appeared = await vscode.workspace.openTextDocument(uri);
+        } catch {
+          appeared = undefined;
+        }
+        const rebased =
+          appeared && this.placeholderText === ""
+            ? appendDraftPages(appeared.getText(), draft)
+            : null;
+        if (!current()) return await stale();
+        if (rebased === null) {
+          await reply(false);
+          await this.sendPaneState(
+            "Note appeared on disk with this page · draft kept in the editor. Copy your text or remove the page from the file, then press Ctrl+S.",
+          );
+          return { action: "appeared", skipped: true };
+        }
+        this.documentUri = uri;
+        this.document = appeared;
+        this.placeholderUri = undefined;
+        this.placeholderText = undefined;
+        draft = rebased;
+      }
+
       let document;
       if (!this.documentUri && this.placeholderUri) {
         const uri = this.placeholderUri;
         if (await exists(uri)) {
+          // It appeared between the check above and this one.
           await reply(false);
           await this.sendPaneState(
             "Note appeared on disk · draft kept in the editor",
@@ -818,6 +878,7 @@ export class SecondaryNotePane {
                 message.relativePath,
                 message.lease,
                 view,
+                message.base,
               ),
             );
           await this.editQueue;
