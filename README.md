@@ -406,6 +406,10 @@ Reload the VS Code window after installation. Local editing and the bundled agen
   the first save creates a missing `aic.md`.
 - When `aic.md` itself, a non-file tab or a file outside the workspace is active, Linked Note
   shows the whole note as cards.
+- When `aic.md` changes while Linked Note has unsaved text, the draft is not replaced. Saving
+  writes the draft's pages into the changed note if those pages did not change there; otherwise
+  nothing is written, the draft stays, and the footer offers "Discard my changes and reload",
+  which asks for confirmation.
 - Existing `*.note.md` files remain ordinary Markdown files and are no longer followed.
 
 ### Note pages

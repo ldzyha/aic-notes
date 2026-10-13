@@ -312,6 +312,11 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 - Viewing a file never creates or changes `aic.md`. A file without a page shows an empty card;
   the first typed text appends `--- <path>` and that text, and the first save creates a missing
   `aic.md`.
+- When `aic.md` changes under an unsaved Linked Note draft, the draft is not replaced and the
+  save merges by pages: a page only the draft changed takes the draft's text, a page the draft
+  added is appended, and every other byte is the note's. A page changed on both sides, or a
+  draft that removed, renamed or inserted pages over a changed note, writes nothing and keeps
+  the draft; the footer then offers "Discard my changes and reload" with a confirmation.
 - Existing `*.note.md` files remain ordinary Markdown files and are no longer followed. They are
   never moved, renamed, rewritten or deleted. The legacy `aicNotes.noteRedirect` association is
   a main-editor alias, not a disposable redirect.
