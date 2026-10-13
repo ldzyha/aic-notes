@@ -111,7 +111,10 @@ test("shared checkbox aliases keep one visible completion and never activate in 
       ({ label, displayLabel }) => (displayLabel ?? label) === "/checklist",
     );
     assert.equal(items.length, 1);
-    assert.ok(items[0].label.includes(doc));
+    // Core ranks the matches itself: the command or its alias comes first.
+    assert.equal(result.filter, false);
+    assert.equal(result.options[0], items[0]);
+    assert.equal(items[0].label, "/checklist");
     assert.equal(items[0].section.name, "Blocks");
     const fenced = "```markdown\n" + doc + "\n```";
     assert.equal(
@@ -192,13 +195,25 @@ test("Core catalog renames /security to /aic and keeps old words as aliases", ()
     const result = slashSnippetCompletions(
       new CompletionContext(state(doc), doc.length, true),
     );
-    const items = result.options.filter(({ label }) =>
-      label.split(" ").includes(doc),
+    assert.equal(result.options[0].displayLabel, "/aic", alias);
+    assert.equal(
+      result.options.filter(({ label }) => label === "/aic").length,
+      1,
     );
-    assert.deepEqual(
-      items.map(({ displayLabel }) => displayLabel),
-      ["/aic"],
+  }
+  // A command match is first even when another group is listed earlier.
+  for (const [typed, command] of [
+    ["/error", "/error-handling"],
+    ["/aic", "/aic"],
+    ["/sec", "/section"],
+    ["/test", "/test-cases"],
+    ["/gloss", "/glossary"],
+    ["/list", "/list"],
+  ]) {
+    const result = slashSnippetCompletions(
+      new CompletionContext(state(typed), typed.length, true),
     );
+    assert.equal(result.options[0].label, command, typed);
   }
   assert.deepEqual(byCommand["high-level-design"].searchTerms, ["high-level"]);
   assert.deepEqual(byCommand["error-handling"].searchTerms, ["errors"]);

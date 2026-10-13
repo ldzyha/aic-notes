@@ -9,9 +9,15 @@
 //   under a paragraph remains a setext heading.
 // - Leading frontmatter (a bare `---` first line up to the next bare `---`
 //   line) belongs to page 1 and is never a break.
-// - Nothing inside a ``` or ~~~ fence counts; an unclosed fence runs to the end.
-// - A break with only blank text before it binds page 1 instead of creating an
-//   empty first page; a break on the last line starts an empty last page.
+// - A bare `---` inside a ``` or ~~~ fence is never a break. A bound separator
+//   (`--- <target>` after a blank line) always starts a page, fenced or not,
+//   and a fence never extends past its page: an unclosed fence ends with the
+//   page. Known edge: a fenced diff with a blank line followed by `--- a/file`
+//   splits there.
+// - The first break with only blank text before it binds page 1 instead of
+//   creating an empty first page. Every later break starts its own page, also
+//   when the page before it is empty; a break on the last line starts an empty
+//   last page.
 // Offsets index the given text; CRLF line ends are tolerated. Page 1 always
 // starts at 0, so it also holds frontmatter and a leading break line; every
 // later page starts after its break line and the last page ends the text.
@@ -63,29 +69,33 @@ function scan(source) {
   let fence = "";
   for (let start = body; start <= source.length;) {
     const { raw, next } = lineAt(source, start);
-    const mark = FENCE.exec(raw);
-    const match = !fence && blank ? SEPARATOR.exec(raw) : null;
-    if (fence) {
-      if (mark?.[1].startsWith(fence) && !mark[2].trim()) fence = "";
-    } else if (mark && !(mark[1][0] === "`" && mark[2].includes("`")))
-      fence = mark[1];
-    else if (match) {
-      const empty = !pages.length && !source.slice(content, start).trim();
+    const found = blank ? SEPARATOR.exec(raw) : null;
+    // A bound separator starts a page even inside a fence; a bare one does not.
+    const match = found && (!fence || found[1] !== undefined) ? found : null;
+    if (match) {
+      const empty = separator < 0 && !source.slice(content, start).trim();
       if (!empty) pages.push(page(start));
       separator = start;
       content = Math.min(next, source.length);
       if (!empty) from = content;
       target = match[1] ?? null;
+      fence = "";
+    } else {
+      const mark = FENCE.exec(raw);
+      if (fence) {
+        if (mark?.[1].startsWith(fence) && !mark[2].trim()) fence = "";
+      } else if (mark && !(mark[1][0] === "`" && mark[2].includes("`")))
+        fence = mark[1];
     }
     blank = !match && !raw.trim();
     start = next;
   }
   pages.push(page(source.length));
-  return { pages, fence };
+  return pages;
 }
 
 export function notePages(text) {
-  return scan(String(text ?? "")).pages;
+  return scan(String(text ?? ""));
 }
 
 /** Label form of a target: a URL is shown without its username and password. */
@@ -141,9 +151,10 @@ export function pageForTarget(pages, target) {
 
 /**
  * Text to insert at the very end of `text` to start a page bound to `target`.
- * It puts a blank line before the separator (none in an empty note), closes a
- * code fence left open at the end, and ends with a line break so that typing
- * continues inside the new page. Returns "" for a target that cannot be bound.
+ * It puts a blank line before the separator (none in an empty note) and ends
+ * with a line break so that typing continues inside the new page. Returns ""
+ * for a target that cannot be bound: an empty one, or one that would not be
+ * read back as the last page of `text` plus the returned text.
  */
 export function appendPageText(text, target) {
   const source = String(text ?? "");
@@ -154,10 +165,14 @@ export function appendPageText(text, target) {
   const eol = source.includes("\r\n") ? "\r\n" : "\n";
   const lines = source.split(/\r?\n/u);
   const last = lines.at(-1);
-  const { fence } = scan(source);
   let lead = eol + eol;
-  if (fence) lead = (last ? eol : "") + fence + eol + eol;
-  else if (!last.trim())
+  if (!last.trim())
     lead = last ? eol : source && lines.at(-2).trim() ? eol : "";
-  return `${lead}--- ${name}${eol}`;
+  const added = `${lead}--- ${name}${eol}`;
+  // A target the parser would not read back (a line break character such as
+  // U+2028 inside it) cannot be bound: writing it would never find its page.
+  const page = scan(source + added).at(-1);
+  return page.target === name && page.content === source.length + added.length
+    ? added
+    : "";
 }

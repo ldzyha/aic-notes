@@ -8,6 +8,10 @@ import {
   notePageCards,
   pageExternalChange,
 } from "../vendor/aic-editor-core/note-page-cards.js";
+import {
+  appendPageText,
+  notePages,
+} from "../vendor/aic-editor-core/note-pages.js";
 import { hostChange, remote } from "../src/webview/host-changes.js";
 
 function focused(text, target) {
@@ -79,5 +83,34 @@ test("every document replacement the webview applies from a host message is mark
   assert.match(
     handler,
     /selection: \{[^}]*\},\s*scrollIntoView: true,\s*annotations: \[remote\.of\(true\)\]/u,
+  );
+});
+
+test("a bound separator starts a page even inside an unclosed fence", () => {
+  const text =
+    "--- a.js\n```js\ncode\n\n--- b.js\nabout b\n\n--- c.js\nabout c\n";
+  const a = focusedPage(focused(text, "a.js").state);
+  assert.equal(text.slice(a.from, a.to), "```js\ncode");
+  const b = focusedPage(focused(text, "b.js").state);
+  assert.deepEqual([b.exists, text.slice(b.from, b.to)], [true, "about b"]);
+  // Nothing closes the fence for the writer and no page is duplicated.
+  assert.equal(appendPageText(text, "d.js"), "\n--- d.js\n");
+  assert.deepEqual(
+    notePages(`${text}${appendPageText(text, "d.js")}`).map(
+      ({ target }) => target,
+    ),
+    ["a.js", "b.js", "c.js", "d.js"],
+  );
+  // A leading separator keeps its empty page; an unreadable target is unbound.
+  assert.deepEqual(
+    notePages("--- a.js\n\n--- b.js\n\n--- c.js\nC").map(
+      ({ target }) => target,
+    ),
+    ["a.js", "b.js", "c.js"],
+  );
+  assert.equal(appendPageText("", `a${String.fromCharCode(0x2028)}b`), "");
+  assert.equal(
+    focusPageTarget(focused(text, "a.js"), `a${String.fromCharCode(0x2028)}b`),
+    false,
   );
 });
