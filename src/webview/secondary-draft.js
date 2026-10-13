@@ -1,4 +1,5 @@
 import { DraftSession } from "../../vendor/aic-editor-core/draft-session.js";
+import { mergeDraftPages } from "../secondary/model.js";
 
 // VS Code's sidecar adapter owns request/path correlation; the shared core
 // continues to own the explicit-save draft lifecycle.
@@ -89,9 +90,14 @@ export class SecondaryDraft {
       return false;
     if (message.saved === true && typeof message.text === "string") {
       // The host may have saved a rebased text. Input typed after the commit
-      // is carried onto it; input that overlaps the host's part stays a stale
-      // draft on the committed text, so it can never replace the host's text.
-      const merged = mergeDraftText(commit.text, message.text, this.current);
+      // is carried onto it: as one textual hunk, or page by page when the
+      // host's rebase changed text on both sides of it. Input that cannot be
+      // carried stays a stale draft on the committed text, so it can never
+      // replace the host's text.
+      const merged =
+        mergeDraftText(commit.text, message.text, this.current) ??
+        mergeDraftPages(commit.text, message.text, this.current).text ??
+        null;
       if (merged === null) {
         this.#session.acknowledge({ ...message, text: commit.text });
         this.#base = commit.text;
@@ -139,9 +145,10 @@ export function minimalTextChange(current, next) {
 }
 
 /**
- * Three-way merge of one draft: `mine` and `theirs` both started as `base`.
- * Returns the text holding both changes, byte-exact, or null when their
- * changed ranges touch or overlap.
+ * Rebase of input typed during a save: `mine` started as the committed text
+ * `base`, which the host saved as `theirs`. Returns `theirs` with that input,
+ * byte-exact, or null when the single changed ranges touch or overlap. A file
+ * changed by someone else is merged by pages (mergeDraftPages), never here.
  */
 export function mergeDraftText(base, theirs, mine) {
   if (theirs === mine) return mine;

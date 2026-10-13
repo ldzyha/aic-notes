@@ -950,6 +950,22 @@ function live({ ownership = false, readOnly = false } = {}) {
     });
     return true;
   };
+  // A user edit anywhere in the shown text (whole-note view).
+  client.replace = async (from, to, insert) => {
+    view.dispatch({ changes: { from, to, insert }, userEvent: "input" });
+    client.dirty = true;
+    await h.pane.onMessage({
+      type: "draft.state",
+      dirty: true,
+      relativePath: client.relativePath,
+    });
+  };
+  // The footer's Discard my changes and reload button.
+  client.discard = () =>
+    h.pane.onMessage({
+      type: "draft.discard",
+      relativePath: client.relativePath,
+    });
   // The real Ctrl+Z of the pane (historyKeymap runs this command).
   client.undo = () => undo(view);
   client.save = async () => {
@@ -994,10 +1010,33 @@ function live({ ownership = false, readOnly = false } = {}) {
                 access.of(EditorState.readOnly.of(Boolean(message.readOnly))),
               ],
             });
-            focusPageTarget(view, message.focus ?? null);
+            client.focus = message.focus ?? null;
+            focusPageTarget(view, client.focus);
             break;
           case "page.focus":
-            focusPageTarget(view, message.target);
+            client.focus = message.target ?? null;
+            focusPageTarget(view, client.focus);
+            break;
+          case "reset":
+            // src/webview/main.js: the draft is dropped for the host text.
+            client.generation = message.generation;
+            view.dispatch(
+              hostChange({
+                from: 0,
+                to: client.state.doc.length,
+                insert: message.text,
+              }),
+            );
+            if ((focusedPage(client.state)?.target ?? null) !== client.focus)
+              focusPageTarget(view, client.focus);
+            client.dirty = false;
+            client.base = message.text;
+            client.stale = false;
+            void h.pane.onMessage({
+              type: "draft.state",
+              dirty: false,
+              relativePath: client.relativePath,
+            });
             break;
           case "editingState":
             if (client.state && message.relativePath === client.relativePath) {
@@ -1537,13 +1576,14 @@ test("an external change on another page and the dirty page both survive the sav
   );
   assert.equal(h.pane.draftDirty, false);
 
-  // The same text changed in both places: nothing is written, the draft
-  // stays, and the save lands once the other change is taken back.
+  // The same page changed in both places, in different words of it: nothing
+  // is written, the draft stays, and the save lands once the other change
+  // is taken back.
   await h.client.type(" again");
   const mine = h.client.text;
   const before = document.getText();
   const page = before.indexOf("about a mine\t");
-  document.replace(page, page + 13, "THEIRS");
+  document.replace(page, page + 5, "ABOUT");
   const conflicting = document.getText();
   const applied = h.events.applied.length;
   const refused = await h.client.save();
@@ -1552,15 +1592,263 @@ test("an external change on another page and the dirty page both survive the sav
   assert.equal(h.events.applied.length, applied);
   assert.equal(h.client.text, mine);
   assert.equal(h.pane.draftDirty, true);
+  assert.deepEqual(h.events.saved, [note.path]);
+  assert.equal(h.files.get(note.path).text, before);
+  assert.equal(h.of("committed").at(-1).saved, false);
   assert.match(
     h.of("paneState").at(-1).status,
-    /^File changed externally in the same text · draft kept/u,
+    /^This page changed in the file too · draft kept in the editor\. /u,
   );
-  document.replace(page, page + 6, "about a mine\t");
+  assert.equal(h.of("paneState").at(-1).discard, true);
+  assert.equal((await h.client.save()).action, "stale-draft");
+  assert.equal(document.getText(), conflicting);
+  document.replace(page, page + 5, "about");
   assert.equal(document.getText(), before);
   assert.equal((await h.client.save()).saved, true);
   assert.equal(h.files.get(note.path).text, mine);
   assert.equal(h.client.text, mine);
+});
+
+test("external changes on both sides of the dirty page are merged by pages, byte-exact", async () => {
+  const h = live();
+  const a = h.addFile("src/a.js");
+  const base =
+    "intro \t\n\n--- src/a.js\nabout a\n\n--- b.js\nabout b  \n\n--- c.js\nabout c";
+  const note = h.addFile("aic.md", base);
+  await h.activate(a);
+  await h.client.type(" MINE");
+  const document = h.getDocument(note);
+  const c = base.indexOf("about c");
+  document.replace(c, c + 7, "C theirs\n\n\n");
+  document.replace(0, 5, "INTRO");
+  const theirs = document.getText();
+  assert.equal(
+    theirs,
+    "INTRO \t\n\n--- src/a.js\nabout a\n\n--- b.js\nabout b  \n\n--- c.js\nC theirs\n\n\n",
+  );
+  assert.equal(h.client.text, base.replace("about a", "about a MINE"));
+
+  const result = await h.client.save();
+  assert.equal(result.saved, true);
+  const merged = theirs.replace("about a", "about a MINE");
+  assert.equal(h.files.get(note.path).text, merged);
+  assert.equal(h.of("committed").at(-1).text, merged);
+  assert.equal(h.client.text, merged);
+  assert.deepEqual(
+    [h.client.page.target, h.client.page.text],
+    ["src/a.js", "about a MINE"],
+  );
+  assert.equal(h.pane.draftDirty, false);
+  assert.equal(h.of("paneState").at(-1).status, "");
+
+  // A change only before, then only after, the dirty page.
+  for (const [find, text] of [
+    ["INTRO", "# Intro\n"],
+    ["about b  ", "B\t"],
+  ]) {
+    await h.client.type("!");
+    const at = document.getText().indexOf(find);
+    document.replace(at, at + find.length, text);
+    const expected = document.getText().replace("MINE", "MINE!");
+    assert.equal((await h.client.save()).saved, true);
+    assert.equal(h.files.get(note.path).text, expected);
+    assert.equal(h.client.text, expected);
+    document.replace(
+      document.getText().indexOf("MINE!"),
+      document.getText().indexOf("MINE!") + 5,
+      "MINE",
+    );
+    assert.equal(await document.save(), true);
+    assert.equal(h.client.text, document.getText());
+  }
+});
+
+test("a page added in the pane is appended to the changed file unless the file has it now", async () => {
+  const h = live();
+  const x = h.addFile("new/x.js");
+  const base = "intro\n\n--- a.js\nabout a\n";
+  const note = h.addFile("aic.md", base);
+  await h.activate(x);
+  await h.client.type("mine\n\tx  ");
+  const document = h.getDocument(note);
+  document.replace(0, 5, "INTRO\t");
+  const theirs = document.getText();
+  assert.equal((await h.client.save()).saved, true);
+  const merged = `${theirs}\n--- new/x.js\nmine\n\tx  `;
+  assert.equal(h.files.get(note.path).text, merged);
+  assert.equal(merged.startsWith(theirs), true);
+  assert.equal(h.client.text, merged);
+  assert.deepEqual(
+    [h.client.page.target, h.client.page.text],
+    ["new/x.js", "mine\n\tx  "],
+  );
+
+  // The file gained that page meanwhile: a conflict, nothing is written.
+  const y = h.addFile("y.js");
+  await h.activate(y);
+  await h.client.type("mine");
+  const draft = h.client.text;
+  document.replace(
+    document.getText().length,
+    document.getText().length,
+    "\n\n--- ./Y.js\ntheirs",
+  );
+  const conflicting = document.getText();
+  const applied = h.events.applied.length;
+  assert.equal((await h.client.save()).action, "stale-draft");
+  assert.equal(document.getText(), conflicting);
+  assert.equal(h.files.get(note.path).text, merged);
+  assert.equal(h.events.applied.length, applied);
+  assert.equal(h.client.text, draft);
+  assert.equal(h.pane.draftDirty, true);
+  assert.match(
+    h.of("paneState").at(-1).status,
+    /^This page changed in the file too · draft kept/u,
+  );
+});
+
+test("a structural draft change or a repeated target is saved only onto an unchanged file", async () => {
+  const h = live();
+  const base = "intro\n\n--- a.js\nabout a\n\n--- b.js\nabout b\n";
+  const note = h.addFile("aic.md", base);
+  await h.activate(undefined);
+  const document = h.getDocument(note);
+  // The draft renames page a; the file changes on page b.
+  await h.client.replace(
+    base.indexOf("a.js"),
+    base.indexOf("a.js") + 4,
+    "z.js",
+  );
+  const draft = h.client.text;
+  const b = base.indexOf("about b");
+  document.replace(b, b + 7, "B");
+  const conflicting = document.getText();
+  assert.equal((await h.client.save()).action, "stale-draft");
+  assert.equal(document.getText(), conflicting);
+  assert.deepEqual(h.events.applied, []);
+  assert.deepEqual(h.events.saved, []);
+  assert.equal(h.client.text, draft);
+  assert.equal(h.pane.draftDirty, true);
+  const state = h.of("paneState").at(-1);
+  assert.match(
+    state.status,
+    /^Pages were added, removed, renamed or repeated and the file changed too · draft kept/u,
+  );
+  assert.equal(state.discard, true);
+  // The file is again what the draft started from: saved as typed.
+  document.replace(b, b + 1, "about b");
+  assert.equal((await h.client.save()).saved, true);
+  assert.equal(h.files.get(note.path).text, draft);
+
+  // A target the file now has twice cannot be matched to the draft.
+  await h.client.type("mine");
+  const mine = h.client.text;
+  const end = document.getText().length;
+  document.replace(end, end, "\n--- B.js\nagain\n");
+  const twice = document.getText();
+  assert.equal((await h.client.save()).action, "stale-draft");
+  assert.equal(document.getText(), twice);
+  assert.equal(h.client.text, mine);
+  assert.match(h.of("paneState").at(-1).status, /^Pages were added, removed/u);
+});
+
+test("unbound text of the whole-note view merges with a change on a bound page", async () => {
+  const h = live();
+  const base = "intro\n\n--- a.js\nabout a\n\n---\nloose\n";
+  const note = h.addFile("aic.md", base);
+  await h.activate(undefined);
+  await h.client.replace(0, 5, "INTRO  ");
+  await h.client.replace(
+    h.client.text.indexOf("loose"),
+    h.client.text.indexOf("loose") + 5,
+    "LOOSE",
+  );
+  const document = h.getDocument(note);
+  const a = base.indexOf("about a");
+  document.replace(a, a + 7, "A theirs\t\n");
+  const theirs = document.getText();
+  assert.equal((await h.client.save()).saved, true);
+  const merged = theirs.replace("intro", "INTRO  ").replace("loose", "LOOSE");
+  assert.equal(h.files.get(note.path).text, merged);
+  assert.equal(h.client.text, merged);
+  // The leading text changed on both sides.
+  await h.client.replace(0, 5, "Mine");
+  document.replace(8, 8, "theirs");
+  assert.equal((await h.client.save()).action, "stale-draft");
+  assert.match(
+    h.of("paneState").at(-1).status,
+    /^This page changed in the file too/u,
+  );
+  assert.equal(h.files.get(note.path).text, merged);
+});
+
+test("Discard my changes and reload drops the draft for the document text after a confirmation", async () => {
+  const h = live();
+  const a = h.addFile("a.js");
+  const base = "intro\n\n--- a.js\nabout a\n\n--- b.js\nabout b\n";
+  const note = h.addFile("aic.md", base);
+  await h.activate(a);
+  await h.client.type(" mine");
+  const draft = h.client.text;
+  const document = h.getDocument(note);
+  document.replace(
+    base.indexOf("about a"),
+    base.indexOf("about a") + 5,
+    "ABOUT",
+  );
+  const theirs = document.getText();
+  assert.equal((await h.client.save()).action, "stale-draft");
+  assert.equal(h.of("paneState").at(-1).discard, true);
+
+  // Cancelled (or dismissed): nothing changes.
+  const asked = [];
+  h.vscode.window.showWarningMessage = async (...args) => {
+    asked.push(args);
+    return undefined;
+  };
+  await h.client.discard();
+  assert.equal(asked.length, 1);
+  assert.match(asked[0][0], /^Discard your unsaved changes in aic\.md/u);
+  assert.equal(asked[0][1].modal, true);
+  assert.equal(asked[0][2], "Discard and reload");
+  assert.equal(h.client.text, draft);
+  assert.equal(h.pane.draftDirty, true);
+  assert.deepEqual(h.of("reset"), []);
+
+  // Confirmed: the pane shows the document again and the file is untouched.
+  h.vscode.window.showWarningMessage = async (...args) => args.at(-1);
+  await h.client.discard();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(h.client.text, theirs);
+  assert.equal(h.client.dirty, false);
+  assert.equal(h.client.stale, false);
+  assert.equal(h.client.generation, h.pane.generation);
+  assert.deepEqual(
+    [h.client.page.target, h.client.page.text],
+    ["a.js", "ABOUT a"],
+  );
+  assert.equal(h.pane.draftDirty, false);
+  assert.equal(document.getText(), theirs);
+  assert.deepEqual(h.events.applied, []);
+  assert.deepEqual(h.events.saved, []);
+  assert.equal(h.of("paneState").at(-1).status, "");
+  assert.equal(h.of("paneState").at(-1).discard, false);
+  // The pane is an ordinary clean editor again.
+  await h.client.type(" again");
+  assert.equal((await h.client.save()).saved, true);
+  assert.equal(
+    h.files.get(note.path).text,
+    theirs.replace("ABOUT a", "ABOUT a again"),
+  );
+
+  // Never while a save is running, and never for another note path.
+  await h.client.type("!");
+  h.pane.savingLease++;
+  await h.client.discard();
+  h.pane.savingLease--;
+  await h.pane.onMessage({ type: "draft.discard", relativePath: "other.md" });
+  assert.equal(h.of("reset").length, 1);
+  assert.equal(h.pane.draftDirty, true);
 });
 
 test("the pane and the main tab of aic.md share one edit lease", async () => {

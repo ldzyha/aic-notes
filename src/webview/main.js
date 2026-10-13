@@ -107,6 +107,8 @@ const docState = {
   readOnly: false,
   lease: undefined,
   editingConflict: false,
+  // Secondary pane only: the host refused to merge the stale draft.
+  saveConflict: false,
 };
 const draft = new SecondaryDraft();
 const primarySave = new PrimarySave();
@@ -188,6 +190,13 @@ function reflectSaveState() {
     save.classList.toggle("aic-button--unsaved", state === "dirty");
     save.setAttribute("aria-busy", String(Boolean(active.pending)));
     save.setAttribute("aria-description", label);
+  }
+  // Offered only after the host refused to merge this draft into the file.
+  if (!draft.stale || !draft.dirty) docState.saveConflict = false;
+  const discard = document.getElementById("aic-discard");
+  if (discard) {
+    discard.hidden = !docState.saveConflict;
+    discard.disabled = Boolean(active.pending);
   }
 }
 
@@ -386,6 +395,22 @@ function wirePaneControls() {
   });
   save.id = "aic-save";
   save.hidden = true;
+  if (secondarySurface) {
+    const discard = createIconButton(document, {
+      label: "Discard my changes and reload",
+      icon: "reset",
+      className: "aic-pane-icon",
+      // The host asks for confirmation before anything is dropped.
+      onActivate: () =>
+        api.postMessage({
+          type: "draft.discard",
+          relativePath: docState.relativePath,
+        }),
+    });
+    discard.id = "aic-discard";
+    discard.hidden = true;
+    footer.prepend(discard);
+  }
   footer.prepend(save);
   footer.prepend(
     sourceMode.createButton(document, () => view, "aic-pane-icon"),
@@ -789,10 +814,13 @@ window.addEventListener("message", (event) => {
       view.dispatch(
         hostChange({ from: 0, to: view.state.doc.length, insert: msg.text }),
       );
-      if (secondarySurface)
+      if (secondarySurface) {
         draft.hydrate(msg.text, msg.generation, { discardLocal: true });
-      else primarySave.edit(msg.text);
+        applyFocus(docState.focus);
+        paneNotice = "";
+      } else primarySave.edit(msg.text);
       reflectSaveState();
+      if (secondarySurface) postDraftState();
       break;
     }
     case "committed": {
@@ -835,6 +863,7 @@ window.addEventListener("message", (event) => {
       docState.placeholder = secondarySurface && Boolean(msg.hasPlaceholder);
       document.body.dataset.placeholder = String(docState.placeholder);
       paneNotice = msg.status || "";
+      if (msg.discard) docState.saveConflict = true;
       reflectSaveState();
       const empty = document.getElementById("pane-empty");
       const editor = document.getElementById("editor");

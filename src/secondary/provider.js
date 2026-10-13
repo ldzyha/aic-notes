@@ -12,11 +12,11 @@ import {
   activeWindowResource,
   NavigationQueue,
   appendDraftPages,
+  mergeDraftPages,
   pageTargetFor,
   preferredWorkspaceFolder,
   WORKSPACE_NOTE,
 } from "./model.js";
-import { mergeDraftText } from "../webview/secondary-draft.js";
 import {
   openSourceAtHref,
   openExternalLink,
@@ -42,6 +42,9 @@ async function exists(uri) {
 // page of that note bound to the active file (`--- <folder-relative path>`) and
 // the whole note when the note itself, or no workspace file, is active. The
 // note text stays one document: switching files only moves the page focus.
+const CONFLICT_EXIT =
+  "Copy your text, then use Discard my changes and reload, or undo the other change and press Ctrl+S.";
+
 export class SecondaryNotePane {
   static register(context, ownership) {
     const pane = new SecondaryNotePane(context, ownership);
@@ -553,7 +556,7 @@ export class SecondaryNotePane {
     await this.sendPaneState();
   }
 
-  async sendPaneState(status = "") {
+  async sendPaneState(status = "", discard = false) {
     if (this.scope.disposed) return;
     if (this.editSurface) void this.ownership.changed(this.editSurface);
     if (!this.view) return;
@@ -574,6 +577,8 @@ export class SecondaryNotePane {
       hasPlaceholder: Boolean(this.placeholderUri),
       hasSurface,
       status,
+      // A refused merge: the pane offers Discard my changes and reload.
+      discard,
     });
   }
 
@@ -636,8 +641,9 @@ export class SecondaryNotePane {
         return { action: "wrong-note", skipped: true };
       }
       // The note changed under an unsaved draft: the webview sends the text
-      // the draft was typed on. Both changes are kept when they do not touch;
-      // otherwise nothing is written and the next Ctrl+S tries again.
+      // the draft was typed on. The draft's pages are carried onto the note
+      // when the same pages did not change there; otherwise nothing is
+      // written and the next Ctrl+S tries again.
       let theirs = null;
       if (typeof base === "string" && this.documentUri) {
         try {
@@ -650,17 +656,20 @@ export class SecondaryNotePane {
           return await stale();
         }
       }
-      const rebased =
-        theirs === null ? null : mergeDraftText(base, theirs, draft);
-      if (rebased !== null) {
-        draft = rebased;
+      const merge =
+        theirs === null ? null : mergeDraftPages(base, theirs, draft);
+      if (typeof merge?.text === "string") {
+        draft = merge.text;
         generation = this.generation;
-      } else if (theirs !== null || generation !== this.generation) {
+      } else if (merge || generation !== this.generation) {
         await reply(false);
         await this.sendPaneState(
-          theirs === null
+          !merge
             ? "File changed externally · draft kept in the editor"
-            : "File changed externally in the same text · draft kept in the editor. Copy your text or undo the other change, then press Ctrl+S.",
+            : merge.conflict === "page"
+              ? `This page changed in the file too · draft kept in the editor. ${CONFLICT_EXIT}`
+              : `Pages were added, removed, renamed or repeated and the file changed too · draft kept in the editor. ${CONFLICT_EXIT}`,
+          Boolean(merge),
         );
         return { action: "stale-draft", skipped: true };
       }
@@ -858,6 +867,41 @@ export class SecondaryNotePane {
     }
   }
 
+  // The way out of a refused merge: drop the pane draft and show the note
+  // document again. The file is not written.
+  async discardDraft(relativePath, view = this.view) {
+    const current = () =>
+      !this.scope.disposed &&
+      this.view === view &&
+      Boolean(this.documentUri) &&
+      relativePath === this.editingPath() &&
+      this.savingLease === 0;
+    if (!current()) return false;
+    const confirm = "Discard and reload";
+    const choice = await vscode.window.showWarningMessage(
+      `Discard your unsaved changes in ${WORKSPACE_NOTE} and reload the note as it is in the file? Copy your text first if you need it. The file is not changed.`,
+      { modal: true },
+      confirm,
+    );
+    if (choice !== confirm || !current()) return false;
+    const document = await this.currentDocument();
+    if (!document || !current()) {
+      await this.sendPaneState(
+        "Note is unavailable · draft kept in the editor",
+      );
+      return false;
+    }
+    this.draftRevision++;
+    this.draftDirty = false;
+    await view?.webview.postMessage({
+      type: "reset",
+      text: document.getText(),
+      generation: this.generation,
+    });
+    await this.sendPaneState();
+    return true;
+  }
+
   async onMessage(message) {
     if (this.scope.disposed) return;
     // Capture before queueing: a replacement view may reuse path, generation
@@ -924,6 +968,9 @@ export class SecondaryNotePane {
           await this.sendPaneState(
             "File changed externally · current draft was not replaced",
           );
+          break;
+        case "draft.discard":
+          await this.discardDraft(message.relativePath, view);
           break;
         case "draft.saveResult": {
           const resolve = this.saveWaiters.get(message.requestId);

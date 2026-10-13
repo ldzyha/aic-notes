@@ -6,6 +6,7 @@ import {
   minimalTextChange,
   mergeDraftText,
 } from "../src/webview/secondary-draft.js";
+import { mergeDraftPages } from "../src/secondary/model.js";
 
 function setup(text = "base", path = "project.note.md") {
   const draft = new SecondaryDraft();
@@ -143,7 +144,7 @@ test("secondary drains a requested newer save once but never saves each interven
   assert.equal(draft.dirty, true);
 });
 
-test("a three-way draft merge keeps both changes byte-exact or refuses", () => {
+test("input typed during a save is rebased as one textual hunk or refused", () => {
   const base = "--- a.js\nabout a\n\n--- b.js\nabout b\n";
   const mine = base.replace("about a", "about a\r\n  more\t");
   const theirs = `# T\n\n${base.replace("about b", "B")}tail`;
@@ -202,14 +203,32 @@ test("a draft whose host text moved on sends its base until a save lands", () =>
     ["one mine!\n\ntwo theirs\n", false, "saved"],
   );
 
-  // Input typed during that save which overlaps the host's part stays a
-  // stale draft on the committed text: it can never replace the host's text.
+  // Input typed during that save is carried into its page of the host's
+  // text, also when the host's part touches it or lies on both sides of it.
+  draft.hydrate("intro\n\n--- p\nmo", 9, { discardLocal: true });
+  draft.edit("intro\n\n--- p\nmore");
+  const appended = draft.begin();
+  draft.edit("intro\n\n--- p\nmore and newer");
+  draft.acknowledge({
+    ...appended,
+    text: "INTRO\n\n--- p\nmore\n\n--- x\nappended",
+    saved: true,
+  });
+  assert.equal(
+    draft.current,
+    "INTRO\n\n--- p\nmore and newer\n\n--- x\nappended",
+  );
+  assert.deepEqual([draft.stale, state(draft)], [false, "dirty"]);
+  draft.hydrate("one mine!\n\ntwo theirs\n", 9, { discardLocal: true });
+
+  // Input that changes the same page as the host's part stays a stale draft
+  // on the committed text: it can never replace the host's text.
   draft.edit("one mine!\n\ntwo theirs\nmore");
   const commit = draft.begin();
   draft.edit("one mine!\n\ntwo theirs\nmore and newer");
   draft.acknowledge({
     ...commit,
-    text: "one mine!\n\ntwo theirs\nmore\n\n--- x\nappended",
+    text: "one mine!\n\ntwo theirs\nmore HOST",
     saved: true,
   });
   assert.equal(draft.current, "one mine!\n\ntwo theirs\nmore and newer");
@@ -218,4 +237,174 @@ test("a draft whose host text moved on sends its base until a save lands", () =>
   // A fresh host text ends the stale state.
   draft.hydrate("fresh", 10, { discardLocal: true });
   assert.equal(draft.stale, false);
+});
+
+const merged = (base, theirs, draft) => mergeDraftPages(base, theirs, draft);
+
+test("a page merge takes the draft's pages and keeps every other byte of the file", () => {
+  const base =
+    "intro \t\n\n--- src/a.js\nabout a\n\n--- b.js\nabout b  \n\n--- c.js\nabout c";
+  const draft = base.replace("about a", "about a MINE");
+  // The file changed before and after the dirty page.
+  const theirs = base
+    .replace("intro", "INTRO")
+    .replace("about c", "C theirs\n\n\n");
+  assert.deepEqual(merged(base, theirs, draft), {
+    text: theirs.replace("about a", "about a MINE"),
+  });
+  // Only before, only after, a removed and an added page, CRLF, odd blanks.
+  for (const other of [
+    base.replace("intro", "# T\r\n\r\nintro"),
+    base.replace("about b  ", "B \u00e9\t\n\n\n"),
+    base.replace("--- b.js\nabout b  \n\n", ""),
+    `${base}\n\n--- d.js\nabout d\n`,
+    base.replace("--- b.js", "--- B.js  ").replaceAll("\n", "\r\n"),
+  ]) {
+    const mine = other.includes("\r\n--- ")
+      ? "about a MINE"
+      : "about a\n\n  MINE\t";
+    const local = base.replace("about a", mine);
+    const result = merged(base, other, local);
+    assert.equal(result.text, other.replace("about a", mine));
+    // Nothing but the dirty page differs from the file.
+    assert.equal(result.text.replace(mine, "about a"), other);
+  }
+  // Without an external change the draft is saved exactly as typed.
+  const loose = `${draft}\n\n\n`;
+  assert.deepEqual(merged(base, base, loose), { text: loose });
+  assert.deepEqual(merged(base, theirs, base), { text: theirs });
+  assert.deepEqual(merged(base, draft, draft), { text: draft });
+  // Blank lines typed at the end of a page belong to the file when merging.
+  assert.deepEqual(
+    merged(base, theirs, base.replace("about a", "about a\n\n")),
+    { text: theirs },
+  );
+});
+
+test("a page changed on both sides is a conflict even without textual overlap", () => {
+  const base = "--- a.js\none two three\n\n--- b.js\nabout b\n";
+  const draft = base.replace("three", "three MINE");
+  const page = { conflict: "page" };
+  assert.deepEqual(merged(base, base.replace("one", "ONE"), draft), page);
+  assert.deepEqual(
+    merged(base, base.replace("one two three", ""), draft),
+    page,
+  );
+  // The page is gone from, or renamed in, the file.
+  assert.deepEqual(merged(base, "--- b.js\nabout b\n", draft), page);
+  assert.deepEqual(merged(base, base.replace("a.js", "z.js"), draft), page);
+  // The same new text on both sides is no conflict.
+  const both = base.replace("three", "three MINE").replace("about b", "B");
+  assert.deepEqual(merged(base, both, draft), { text: both });
+  // Only the separator line changed in the file: its bytes are kept.
+  const spelled = base.replace("--- a.js", "---   ./A.js \t");
+  assert.deepEqual(merged(base, spelled, draft), {
+    text: spelled.replace("three", "three MINE"),
+  });
+});
+
+test("a page the draft added is appended unless the file has it now", () => {
+  const base = "intro\n\n--- a.js\nabout a";
+  const draft = `${base}\n\n--- new/x.js\nmine\n\tx  \n`;
+  const theirs = base.replace("intro", "INTRO\t") + "\n";
+  const result = merged(base, theirs, draft);
+  assert.equal(result.text, `${theirs}\n--- new/x.js\nmine\n\tx  \n`);
+  assert.equal(result.text.startsWith(theirs), true);
+  // An added page together with a changed one.
+  assert.deepEqual(merged(base, theirs, draft.replace("about a", "A mine")), {
+    text: `${theirs.replace("about a", "A mine")}\n--- new/x.js\nmine\n\tx  \n`,
+  });
+  // The file added another page meanwhile: both stay.
+  const more = `${base}\n\n--- other.js\ntheirs`;
+  assert.deepEqual(merged(base, more, draft), {
+    text: `${more}\n\n--- new/x.js\nmine\n\tx  \n`,
+  });
+  // The file has that page now, however its target is spelled.
+  for (const name of ["new/x.js", "./NEW/x.js"])
+    assert.deepEqual(merged(base, `${base}\n\n--- ${name}\ntheirs`, draft), {
+      conflict: "page",
+    });
+  // Typing into an empty page keeps the blank line before the next page.
+  const empty = "--- a.js\n\n--- b.js\nabout b";
+  assert.deepEqual(
+    merged(
+      empty,
+      empty.replace("about b", "B"),
+      empty.replace("a.js\n", "a.js\nmine\n"),
+    ),
+    { text: "--- a.js\nmine\n\n--- b.js\nB" },
+  );
+  const last = "intro\n\n--- a.js";
+  assert.deepEqual(merged(last, `# ${last}`, `${last}\nmine`), {
+    text: "# intro\n\n--- a.js\nmine",
+  });
+});
+
+test("duplicate targets and structural draft changes are never merged with a changed file", () => {
+  const base = "intro\n\n--- a.js\nabout a\n\n--- b.js\nabout b\n";
+  const draft = base.replace("about a", "mine");
+  const theirs = base.replace("about b", "B");
+  const structure = { conflict: "structure" };
+  // A target used twice in the base, the file or the draft.
+  const twice = `${base}\n--- A.js\nagain\n`;
+  assert.deepEqual(merged(twice, `${twice}x`, twice.replace("mine", "m")), {
+    text: `${twice}x`,
+  });
+  assert.deepEqual(
+    merged(twice, `${twice}x`, twice.replace("about b", "m")),
+    structure,
+  );
+  assert.deepEqual(
+    merged(base, `${theirs}\n--- ./a.js\nagain`, draft),
+    structure,
+  );
+  assert.deepEqual(
+    merged(base, theirs, `${draft}\n--- a.js\nagain`),
+    structure,
+  );
+  // The draft removed, renamed, respelled, reordered or inserted a page.
+  for (const structural of [
+    base.replace("--- b.js\nabout b\n", ""),
+    base.replace("--- a.js", "--- z.js"),
+    base.replace("--- a.js", "--- ./a.js"),
+    "intro\n\n--- b.js\nabout b\n\n--- a.js\nabout a\n",
+    base.replace("--- b.js", "--- n.js\nnew\n\n--- b.js"),
+    base.replace("--- b.js", "---\nloose\n\n--- b.js"),
+  ]) {
+    assert.deepEqual(merged(base, theirs, structural), structure);
+    // Allowed, saved as typed, while the file is what the draft started from.
+    assert.deepEqual(merged(base, base, structural), { text: structural });
+  }
+});
+
+test("unbound pages merge by position and refuse when they cannot be aligned", () => {
+  const base =
+    "intro\n\n--- a.js\nabout a\n\n---\nloose one\n\n---\nloose two\n";
+  const theirs = base.replace("about a", "A theirs").replace("two", "2");
+  // The leading text and the first bare page are the draft's; the rest stays.
+  assert.deepEqual(
+    merged(base, theirs, base.replace("intro", "INTRO").replace("one", "1")),
+    { text: theirs.replace("intro", "INTRO").replace("one", "1") },
+  );
+  assert.deepEqual(merged(base, theirs, base.replace("two", "II")), {
+    conflict: "page",
+  });
+  // A note that starts with its first page gains leading text in the file.
+  const bound = "--- a.js\nabout a\n";
+  assert.deepEqual(
+    merged(bound, `intro\n\n${bound}`, bound.replace("about a", "mine")),
+    { text: "intro\n\n--- a.js\nmine\n" },
+  );
+  assert.deepEqual(
+    merged(bound, bound.replace("about a", "A"), `mine\n\n${bound}`),
+    { text: "mine\n\n--- a.js\nA\n" },
+  );
+  // A bare page appeared in, or vanished from, the file.
+  for (const other of [
+    `${base}\n---\nthird\n`,
+    base.replace("\n---\nloose two\n", ""),
+  ])
+    assert.deepEqual(merged(base, other, base.replace("about a", "mine")), {
+      conflict: "structure",
+    });
 });
