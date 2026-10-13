@@ -376,8 +376,9 @@ export class SecondaryNotePane {
     await this.sendInit();
   }
 
-  // Same note, other file: move the page focus only. The document, its draft
-  // and its undo history stay as they are, and nothing is written.
+  // Same note, other file: move the page focus only. The document and its
+  // draft stay as they are and nothing is written; the webview empties its
+  // undo history, so undo cannot reach the page that was focused before.
   async refocus(target) {
     if (target === this.focusTarget) return;
     this.focusTarget = target;

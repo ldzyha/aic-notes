@@ -6,9 +6,10 @@
 // and structured previews — the table grid, shared Properties/Security cards,
 // and in-place Mermaid.
 //
-// NO CM history: the TextDocument owns undo/redo — Ctrl+Z/Y post to the
-// extension host, the resulting document change flows back as a remote-tagged
-// transaction.
+// NO CM history in the main editor: the TextDocument owns undo/redo — Ctrl+Z/Y
+// post to the extension host, the resulting document change flows back as a
+// remote-tagged transaction. The Secondary pane edits a draft and uses the
+// page cards' own history (`notePageHistory`), emptied on every target change.
 //
 // Edit protocol (see src/editor/provider.js): the webview applies its own
 // edits locally and posts {type:"edit", changes, generation}; the extension
@@ -25,7 +26,7 @@ import {
   placeholder,
 } from "@codemirror/view";
 import { EditorState, Compartment } from "@codemirror/state";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { defaultKeymap, historyKeymap } from "@codemirror/commands";
 import { syntaxHighlighting } from "@codemirror/language";
 
 import { HANDLERS, decorationPlugin } from "../../vendor/markdown/session.js";
@@ -67,6 +68,7 @@ import {
   focusedPage,
   notePageCards,
   notePageCardsPreview,
+  notePageHistory,
 } from "../../vendor/aic-editor-core/note-page-cards.js";
 import { hostChange, remote } from "./host-changes.js";
 import { PrimarySave } from "./primary-save.js";
@@ -530,7 +532,9 @@ function makeEditor(text, retainedState = null) {
             }),
           ]),
           drawSelection(),
-          ...(secondarySurface ? [history()] : []),
+          // The only history: the page cards empty it when the focused target
+          // changes, so undo never reaches an edit made on another page.
+          ...(secondarySurface ? [notePageHistory()] : []),
           keymap.of([
             ...(secondarySurface
               ? historyKeymap

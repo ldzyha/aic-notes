@@ -5,11 +5,13 @@ import { build } from "esbuild";
 import { createRequire } from "node:module";
 import { runInNewContext } from "node:vm";
 import { fileURLToPath } from "node:url";
+import { undo } from "@codemirror/commands";
 import { Compartment, EditorState } from "@codemirror/state";
 import {
   focusPageTarget,
   focusedPage,
   notePageCards,
+  notePageHistory,
 } from "../vendor/aic-editor-core/note-page-cards.js";
 import { hostChange } from "../src/webview/host-changes.js";
 
@@ -947,6 +949,8 @@ function live({ ownership = false, readOnly = false } = {}) {
     });
     return true;
   };
+  // The real Ctrl+Z of the pane (historyKeymap runs this command).
+  client.undo = () => undo(view);
   client.save = async () => {
     const result = await h.pane.commitDraft(
       client.text,
@@ -981,6 +985,7 @@ function live({ ownership = false, readOnly = false } = {}) {
               doc: message.text,
               extensions: [
                 notePageCards(),
+                notePageHistory(),
                 access.of(EditorState.readOnly.of(Boolean(message.readOnly))),
               ],
             });
@@ -1102,6 +1107,9 @@ test("switching files keeps the unsaved draft in the same document and only move
   assert.equal(h.pane.view.title, "b.js");
   assert.equal(h.files.get(note.path).text, "--- a.js\nabout a\n");
   h.untouched();
+  // Undo on B's card cannot reach the text typed on A's page.
+  assert.equal(h.client.undo(), false);
+  assert.equal(h.client.text, "--- a.js\nabout a more\n");
   // The next keystroke starts B's page; one save writes both pages.
   await h.client.type("about b");
   assert.equal(
@@ -1325,6 +1333,12 @@ test("an external change to aic.md while a page is focused is applied and the fo
   );
   assert.equal(h.client.inits, 1);
   assert.equal(h.client.generation, h.pane.generation);
+  // Text another editor wrote is not an undo step of the pane.
+  assert.equal(h.client.undo(), false);
+  assert.equal(h.client.text, document.getText());
+  await h.client.type("!");
+  assert.equal(h.client.undo(), true);
+  assert.equal(h.client.text, document.getText());
 });
 
 test("the note appearing or vanishing on disk swaps placeholder and file only for a clean pane", async () => {
