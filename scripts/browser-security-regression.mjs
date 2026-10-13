@@ -68,7 +68,7 @@ async function init(page, secondary, text = source, relativePath = "vault.note.m
   await post(page, {
     type: "init", text, relativePath, generation: 0,
     selection: { anchor: text.length, head: text.length },
-    ...(secondary ? { placeholder: false, relationships: [] } : {}),
+    ...(secondary ? { placeholder: false } : {}),
   });
   if (secondary) await post(page, {
     type: "paneState", title: relativePath, hasSurface: true,
@@ -190,7 +190,7 @@ try {
       `${surface}: successful read has no visible panel`);
     await ackSave(page, secondary, 0);
     assert.equal(await count(page, secondary ? "commit" : "save"), 1, `${surface}: Paste saves through parent ACK`);
-    await page.locator("#pane-pin, .cm-content").first().click();
+    await page.locator("#secondary-footer, .cm-content").first().click();
     assert.equal(await count(page, secondary ? "commit" : "save"), 1, `${surface}: clean blur does not duplicate save`);
     await page.waitForFunction(() => document.body.dataset.readOnly === "false");
     await page.locator(".cm-content").focus();
@@ -218,7 +218,7 @@ try {
       `${surface}: failed read does not commit`);
     assert.equal(await count(page, "save"), savesAfterExplicit,
       `${surface}: failed read does not save`);
-    await page.locator("#pane-pin, .cm-content").first().click();
+    await page.locator("#secondary-footer, .cm-content").first().click();
     assert.equal(await count(page, "commit"), commitsAfterExplicit,
       `${surface}: blur after failure does not commit`);
     assert.equal(await count(page, "save"), savesAfterExplicit,
@@ -244,7 +244,7 @@ try {
     await post(page, {
       type: "init", text: authenticatorSource, relativePath: "authenticator.note.md", generation: 0,
       selection: { anchor: authenticatorSource.length, head: authenticatorSource.length },
-      ...(secondary ? { placeholder: false, relationships: [] } : {}),
+      ...(secondary ? { placeholder: false } : {}),
     });
     const convert = page.getByRole("button", { name: "Convert and save security blocks", exact: true });
     await convert.waitFor();

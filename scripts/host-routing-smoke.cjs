@@ -19,7 +19,6 @@ exports.run = async function run() {
   assert.ok(extension, "development extension exists");
   await extension.activate();
   const note = vscode.Uri.joinPath(folder.uri, "sample.note.md");
-  const source = vscode.Uri.joinPath(folder.uri, "sample.js");
   const mainNote = (type) =>
     vscode.window.tabGroups.all.some((group) =>
       group.tabs.some(
@@ -48,21 +47,11 @@ exports.run = async function run() {
     "focusing main note does not redirect or close it",
   );
 
-  await vscode.commands.executeCommand("aicNotes.openSource", note);
-  await until(
-    () =>
-      vscode.window.tabGroups.all.some((group) =>
-        group.tabs.some(
-          (tab) =>
-            tab.input instanceof vscode.TabInputText &&
-            tab.input.uri.toString() === source.toString(),
-        ),
-      ),
-    "explicit Open Source opens the backing file",
-  );
+  // A legacy sidecar is an ordinary file: revealing Linked Note opens no other tab.
+  await vscode.commands.executeCommand("aicNotes.noteForCurrentFile");
   assert.ok(
     mainNote("aicNotes.markdown"),
-    "Open Source does not close the existing note tab",
+    "revealing Linked Note does not close the existing note tab",
   );
 
   await vscode.commands.executeCommand("workbench.action.closeAllEditors");
@@ -84,6 +73,6 @@ exports.run = async function run() {
     "legacy alias no longer disposes its own panel",
   );
   console.log(
-    "AIC routing host smoke: main notes, explicit source action, legacy association PASS",
+    "AIC routing host smoke: main notes, Linked Note reveal, legacy association PASS",
   );
 };

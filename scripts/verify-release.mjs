@@ -193,8 +193,7 @@ for (const retired of [
 }
 
 for (const command of [
-  "aicNotes.linkSelectionToNote",
-  "aicNotes.openProjectNote",
+  "aicNotes.noteForCurrentFile",
   "aicNotes.enableAgentWorkflow",
   "aicNotes.syncAgentInstructions",
 ]) {
@@ -205,13 +204,17 @@ for (const command of [
   )
     throw new Error(`packaged command is missing: ${command}`);
 }
-const selectionBinding = packagedManifest.contributes.keybindings.find(
-  (value) =>
-    value.command === "aicNotes.linkSelectionToNote" &&
-    value.key === "ctrl+alt+l",
-);
-if (selectionBinding?.mac !== "cmd+alt+l")
-  throw new Error("packaged selection-link keybinding is missing");
+for (const retired of [
+  "aicNotes.linkSelectionToNote",
+  "aicNotes.openProjectNote",
+  "aicNotes.noteForExplorerItem",
+  "aicNotes.enableExplorerNesting",
+  "aicNotes.openInSecondary",
+  "aicNotes.openSource",
+]) {
+  if (JSON.stringify(packagedManifest.contributes).includes(retired))
+    throw new Error(`retired note command remains in the manifest: ${retired}`);
+}
 const openBinding = packagedManifest.contributes.keybindings.find(
   (value) => value.command === "aicNotes.noteForCurrentFile",
 );

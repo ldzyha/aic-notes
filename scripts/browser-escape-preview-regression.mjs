@@ -63,7 +63,7 @@ async function init(page, secondary, text, pathName) {
     relativePath: pathName,
     generation: 0,
     selection: { anchor: text.length, head: text.length },
-    ...(secondary ? { placeholder: false, relationships: [] } : {}),
+    ...(secondary ? { placeholder: false } : {}),
   });
 }
 

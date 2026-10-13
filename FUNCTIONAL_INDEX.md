@@ -229,10 +229,6 @@ production webview browser checks. Artifact publication is verified separately f
 - Queued and in-flight sidebar saves retain the originating view. Document version/text, note
   identity, generation and ownership are revalidated before mutation. An exclusive create edit
   refuses an intervening file; these guards do not claim arbitrary filesystem compare-and-swap.
-- Trash does not save dirty notes. It rechecks view, revision and lease after confirmation,
-  including a separately confirmed permanent-delete fallback.
-- Link Selection to Note uses the active native/custom document, refuses unsaved source revisions,
-  and delegates insertion to the live sidebar draft. No helper saves the source or target implicitly.
 - Shared task markers enforce read-only state and keyboard/ARIA behavior in both products.
   Canonical details parsing is linear and cached per immutable document; language aliases and the
   cancelable bounded Mermaid queue have one shared implementation.
@@ -241,8 +237,8 @@ production webview browser checks. Artifact publication is verified separately f
 - Core distribution is an explicit inventory. Unconnected experiments do not enter the mirror
   automatically, and a working-tree snapshot cannot pass the publication verifier.
 - The retired File Context sphere and native Notes & Documents tree have no view,
-  command, provider, watcher or scan runtime. Contextual parent-note relationships,
-  Linked Note, source following and ordinary Explorer navigation remain independent.
+  command, provider, watcher or scan runtime. Linked Note and ordinary Explorer navigation
+  remain independent.
 
 The VS Code extension is local-only and has no Standard Notes account connection.
 The contracts below describe this coordinated release target, not future sync behavior.
@@ -258,8 +254,8 @@ Linux desktop smoke checks are not implied.
 
 | Area / owner                                                | Implemented contract                                                                                                                                          | Explicit limitation                                                                                                   |
 | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Shared templates and native completion                      | DDK sections (title, question, answer) `/section` … `/open-question`; blocks and `/flowchart`, `/sequence`, `/state-diagram`; contextual heading levels in `.md` and `.note.md` | No page templates, dashboards or grouping UI |
-| New-note bodies (`note-template`, `src/notes/templates.js`) | New notes start blank; custom template source remains authored | Existing notes are not rewritten; Standard Notes does not receive VS Code workspace templates                         |
+| Shared templates and native completion                      | DDK sections (title, question, answer) `/section` … `/open-question`; blocks and `/flowchart`, `/sequence`, `/state-diagram`; contextual heading levels in every `.md` | No page templates, dashboards or grouping UI |
+| New-note bodies (`note-template`) | A missing `aic.md` starts empty | Existing notes and `.aic/templates/*.md` files are not rewritten and are no longer read |
 | Shared diagram model/builder                                | Actual Mermaid SVG provides palette insertion, connection dragging, typed relationships, property editing, draft Copy, Undo/Redo/deletion and zoom/scroll/fit | Bounded flow/class/sequence grammar; no multiselect, subgraph authoring, visual timeline or arbitrary Mermaid support |
 | Shared diagram session                                      | Inline Apply changes only the current block; outside edits preserve the draft; conflicting block edits/read-only retain a Copy-only draft; Ctrl/Cmd+S saves   | Cancel explicitly discards the draft; note identity changes retire the session; no cross-scale links                  |
 | Layout and ordering                                         | Inline editing and read preview use the same Mermaid auto-layout; direction and sequence ordering are source semantics                                        | No arbitrary stored coordinates; legacy coordinates are ignored, and removed only after an actual visual edit         |
@@ -281,7 +277,7 @@ Ctrl/Cmd+Shift+7/8/9 (numbered/bullet/checkbox lists). These shortcuts apply to 
 slash catalog supplies `/checklist` there as well, searchable by checkbox/tasklist.
 Formatting is one local edit, never a save, and protects code/frontmatter/structured blocks.
 
-- The note editor persists only local workspace `*.md` and `*.note.md` files. The optional
+- The note editor persists only local workspace `*.md` files. The optional
   trusted agent workflow writes a bundled instruction copy and a local workspace marker;
   neither path is note synchronization.
 - There is no account sign-in, note synchronization, tag graph, conflict resolver, or remote
@@ -382,14 +378,13 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
   selection, and theme wiring.
 - Markdown editor interactions in this section are the shared product contract. A release cannot
   replace a preview action with raw-source fallback in only one product.
-- Workspace navigation, sidecars, project context, Explorer trees, local Trash, and selection
-  comments are VS Code host capabilities. They are deliberately absent from Standard Notes, just
+- Workspace navigation and the per-folder `aic.md` note are VS Code host capabilities. They are deliberately absent from Standard Notes, just
   as Standard Notes UUID/lock/component lifecycle behavior is absent from VS Code.
 
 ## Verification ownership
 
 - Pure behavior: `test/*.test.js`; retired sphere modules are excluded from the release.
-- Host navigation, parent selection, draft/save races and edit leases:
+- Host navigation, page focus, draft/save races and edit leases:
   `test/note-routing.test.js`, `test/note-transition-races.test.js`,
   `test/edit-ownership.test.js`.
 - Exact-key retired-auth cleanup and trusted agent bootstrap:
@@ -418,9 +413,8 @@ There are no Node globals, filesystem modules or subprocesses in the browser hos
 checks virtual resource workspace boundaries, authority and revision. All reads
 use `workspace.fs`, while editing, undo and saves retain the existing TextDocument
 owners. Native desktop file notes remain compatible. Read-only providers can show
-Markdown and linked notes; writes, sidecar creation, deletion and agent setup are
-rejected before mutation. Unknown virtual providers cannot write. Trash failures
-still require explicit permanent-delete confirmation.
+Markdown and linked notes; writes, creation of `aic.md` and agent setup are
+rejected before mutation. Unknown virtual providers cannot write.
 
 Menu visibility uses VS Code's filesystem-resource context, and slash completions
 support Markdown across filesystem schemes. No account, sync or repository provider

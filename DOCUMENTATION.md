@@ -22,8 +22,8 @@ use a complete statement with its subject and necessary conditions. Do not turn 
 into a question heading followed by “Yes,” “No,” or a repeated answer. A simple
 answer is a format-selection signal, not proof that a question is bad or a claim is true.
 
-For example, write “Pinned notes stay open when you switch tabs” instead of “Do
-pinned notes stay open?” Write “Install AIC Notes in code-server from its VSIX”
+For example, write “Unsaved notes stay open when you switch tabs” instead of “Do
+unsaved notes stay open?” Write “Install AIC Notes in code-server from its VSIX”
 instead of “Can code-server install AIC Notes? Yes.”
 
 Use a short paragraph for a necessary explanation, a list for facts or steps, a

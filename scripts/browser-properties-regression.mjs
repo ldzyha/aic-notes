@@ -89,14 +89,14 @@ const count = (page, type) =>
     type,
   );
 
-async function init(page, secondary, text, relativePath, relationships = []) {
+async function init(page, secondary, text, relativePath) {
   await post(page, {
     type: "init",
     text,
     relativePath,
     generation: 0,
     selection: { anchor: text.length, head: text.length },
-    ...(secondary ? { placeholder: false, relationships } : {}),
+    ...(secondary ? { placeholder: false } : {}),
   });
   if (secondary)
     await post(page, {
@@ -157,15 +157,7 @@ async function snapshot(page, relativePath) {
 
 try {
   const sidebar = await openPage(true);
-  await init(sidebar, true, source, "vault.note.md", [
-    {
-      relation: "parent",
-      label: "Synthetic parent",
-      path: "Parent.note.md",
-      depth: 1,
-      exists: true,
-    },
-  ]);
+  await init(sidebar, true, source, "vault.note.md");
   const card = sidebar.locator(".cm-aic-properties");
   await card.waitFor();
   assert.equal(
@@ -207,94 +199,8 @@ try {
   assert.equal(await count(sidebar, "commit"), 0, "copy must not save");
 
   const sections = card.locator(".cm-aic-security-section");
-  const tree = card.locator(".cm-aic-note-relations");
-  assert.ok(await tree.count());
-  assert.deepEqual(
-    await card.evaluate((element) => {
-      const metadata = element.querySelector(".cm-aic-properties-metadata");
-      const related = element.querySelector(".cm-aic-note-relations");
-      const custom = element.querySelector(".cm-aic-security-body");
-      return {
-        metadataBeforeTree: Boolean(
-          metadata.compareDocumentPosition(related) &
-            Node.DOCUMENT_POSITION_FOLLOWING,
-        ),
-        treeBeforeCustom: Boolean(
-          related.compareDocumentPosition(custom) &
-            Node.DOCUMENT_POSITION_FOLLOWING,
-        ),
-        hasContextHeading: related.textContent.includes("Context"),
-      };
-    }),
-    {
-      metadataBeforeTree: true,
-      treeBeforeCustom: true,
-      hasContextHeading: false,
-    },
-  );
+  assert.equal(await card.locator(".cm-aic-note-relations").count(), 0);
   assert.ok(await sections.count());
-  await tree
-    .getByRole("button", { name: "Open parent note Synthetic parent" })
-    .click();
-  await sidebar.waitForFunction(() =>
-    window.messages.some(
-      (message) => message.type === "bus" && message.topic === "note.open",
-    ),
-  );
-  const navigation = await sidebar.evaluate(() =>
-    window.messages
-      .filter(
-        (message) => message.type === "bus" && message.topic === "note.open",
-      )
-      .at(-1),
-  );
-  assert.deepEqual(navigation.payload, { path: "Parent.note.md" });
-  assert.equal(
-    await count(sidebar, "commit"),
-    0,
-    "navigation must not edit or save",
-  );
-  await post(sidebar, {
-    type: "relationships",
-    relationships: [
-      {
-        relation: "child",
-        label: "Updated child",
-        path: "Updated.note.md",
-        exists: true,
-      },
-    ],
-  });
-  await tree
-    .getByRole("button", { name: "Open child note Updated child" })
-    .waitFor();
-  assert.equal(
-    await tree
-      .getByRole("button", { name: "Open parent note Synthetic parent" })
-      .count(),
-    0,
-  );
-  await tree
-    .getByRole("button", { name: "Open child note Updated child" })
-    .click();
-  await sidebar.waitForFunction(() =>
-    window.messages.filter(
-      (message) => message.type === "bus" && message.topic === "note.open",
-    ).length === 2,
-  );
-  assert.deepEqual(
-    await sidebar.evaluate(
-      () =>
-        window.messages
-          .filter(
-            (message) =>
-              message.type === "bus" && message.topic === "note.open",
-          )
-          .at(-1).payload,
-    ),
-    { path: "Updated.note.md" },
-  );
-  assert.equal(await count(sidebar, "commit"), 0);
 
   await card.getByRole("button", { name: "Paste empty" }).click();
   const read = await request(sidebar, "read");

@@ -3,7 +3,8 @@
 [English](README.md) · [Українська](README.uk.md)
 
 AIC Notes is a Markdown editor for VS Code desktop and the Web. It edits every `*.md` document with the AIC
-preview-first surface, including `*.note.md`, and shows linked notes in the Secondary Side Bar.
+preview-first surface and keeps one note file per workspace folder, `aic.md`, whose page for the
+active file is shown in the Secondary Side Bar.
 The extension adds no Standard Notes sign-in, account requests or note synchronization.
 File operations use the filesystem provider selected in VS Code. Copy blocks manually when needed.
 
@@ -296,14 +297,12 @@ Both editors share task controls, details parsing, code-language aliases and the
 Mermaid render queue. Nested inputs own their selection; Ctrl/Cmd+A inside a diagram field
 does not select the surrounding Markdown document.
 
-Linked-code comments are inserted into the live sidebar draft, not written through a separate
-filesystem path. Save and Trash revalidate document identity,
+Save revalidates document identity,
 revision, editing ownership and the originating view after asynchronous work. Provider-owned
 scopes retire subscriptions and pending requests when a surface closes.
 
 The File Context sphere and the native Notes & Documents tree have been removed.
-Linked Note, source following, Explorer commands and contextual parent-note
-relationships remain; existing Markdown and sidecar files are not migrated or deleted.
+Linked Note remains; existing Markdown and `*.note.md` files are not migrated or deleted.
 
 ## Editor features — shared editor core 6.2.2
 
@@ -320,22 +319,16 @@ Linux desktop smoke checks are not implied.
   bare checkbox list and simple table. `/checkbox` and `/tasklist` also find `/checklist`.
   `/aic` inserts an AIC block (fields, secrets, codes); `/security`, `/password`, `/2fa`,
   `/fields`, `/properties` and `/credentials` also find it.
-- Explorer note clicks open just the note in the main editor. **Open Source** is a separate
-  action that opens the source with its linked sidebar note; folder/project sources are revealed.
-  Persisted legacy note associations resolve to the main editor without changing user settings.
-  An unpinned sidebar follows the main note's nearest existing ancestor folder note, otherwise
-  its workspace project note or lazy project placeholder. Folders without their own note are skipped.
-  Unsaved sidebar drafts are preserved; repeated events for the same parent do not reset its editor.
+- Opening `aic.md` in the main editor shows the whole note as page cards, each with
+  **Open target**. Persisted legacy note associations resolve to the main editor without changing
+  user settings. Unsaved sidebar drafts are preserved when the active file changes.
 - The note pane starts directly at its content, without a duplicate name, folder,
   created/updated date or save-status header. Saved notes are neutral; unsaved notes have a soft amber tint and a small
   change marker; placeholders are gray. Save, Ctrl/Cmd+S and leaving the surface commit the draft.
-- Context ancestors require existing `.note.md` notes. Project navigation always remains,
-  opening its note or placeholder; the actual current target can also be a placeholder.
 - In the AIC editor, Mermaid is edited as raw Markdown with a live preview below the fence.
   `/mermaid` finds `/flowchart`; native VS Code text editors offer snippets but not the embedded preview.
-- New default file/folder/project notes start blank. Existing notes and
-  accepted `.aic/templates/*.md` overrides are preserved exactly. No generated file/date
-  Properties are added.
+- A missing `aic.md` starts empty. Existing notes and `.aic/templates/*.md` files are left
+  exactly as they are and are no longer read. No generated file/date Properties are added.
 - Insert `/flowchart`, `/sequence` or `/state-diagram` in AIC Markdown. The Mermaid
   preview has **Copy** and one **Edit** button matching other code blocks. **Edit** reveals the
   source and a live preview. Diagrams fit the available width with their full content height,
@@ -405,36 +398,27 @@ Reload the VS Code window after installation. Local editing and the bundled agen
 ## Local note model
 
 - `*.md` is a normal local Markdown document shown in the full AIC Markdown editor.
-- `*.note.md` is a local contextual note that can open in the main editor or linked sidebar.
-- A file note sits beside its source: `src/cart.js` → `src/cart.note.md`.
-- A folder note sits beside its folder: `src/components/` → `src/components.note.md`.
-- A project note sits at the workspace root: `demo/` → `demo.note.md`.
-- Closing every file buffer follows the current workspace project note. If it does not exist, an
-  editable gray placeholder appears; the file is created only after content changes and
-  `Ctrl/Cmd+S`.
-- There is no extension-specific Notes & Documents activity-bar tree or background
-  workspace scan. Use the ordinary Explorer, editor commands and Linked Note pane;
-  existing project-global and sidecar files remain available at their filesystem paths.
+- Each workspace folder has one note file: `<workspaceFolder>/aic.md`. With several workspace
+  folders, the active file's folder chooses the note.
+- Linked Note shows only the page of `aic.md` bound to the active file. A file without a page
+  shows an empty card.
+- Viewing a file never creates or changes `aic.md`. The first typed text appends the page, and
+  the first save creates a missing `aic.md`.
+- When `aic.md` itself, a non-file tab or a file outside the workspace is active, Linked Note
+  shows the whole note as cards.
+- Existing `*.note.md` files remain ordinary Markdown files and are no longer followed.
 
 ### Note pages
 
 A note is a notebook. A line that is exactly `---`, first in the body or after a
 blank line and outside fenced code and leading frontmatter, starts a new page;
-`--- src/app/editor.ts` also binds that page to a workspace-relative file or
-folder. The note stays one file and its text is never rewritten; a page bar
-(previous, next, position, bound target) appears when there is more than one page.
+`--- src/app/editor.ts` binds that page to exactly that workspace-relative file.
+The note stays one file. Each page is a card whose header names the target;
+**Open target** opens that file in the main editor and is the only card action.
+A target path opens only inside the note's workspace folder.
 
-Unpinned Linked Note opens the active file's sidecar, on the page bound to that
-file if it has one. Without a sidecar it opens the note in the same workspace
-folder whose bound page matches the file most specifically (a bound folder
-covers the files beneath it) and saves edits to that note; otherwise it shows
-the sidecar placeholder. That lookup is best-effort: it runs on demand
-over at most 500 `*.note.md` files (notes beyond that may not be found), matches
-paths case-insensitively, and is cached until a note changes.
-
-Pin affects only automatic following. Explicitly opening a file, folder, project, or
-note always routes to the requested context. An unsaved note stays visible until it is saved, so a
-tab event cannot silently discard its draft.
+An unsaved note stays visible until it is saved: changing the active file only
+moves the page focus and keeps the draft.
 
 ## Saving and deleting
 
@@ -444,9 +428,7 @@ saved state before terminating the app; an interrupted process cannot guarantee 
 The pane is softly amber while unsaved, neutral after a successful local save, and gray for an
 unmaterialized placeholder. Ordinary Markdown documents use the same explicit VS Code save action.
 
-Trash is local and recoverable. The Linked Note footer Trash action asks for confirmation,
-then uses the operating-system Trash where VS Code supports it. It never contacts or modifies
-another application.
+The extension has no delete action: it never deletes, moves or renames a note file.
 
 When upgrading from a synchronization-capable release, AIC Notes removes only its retired local
 session key, encrypted session directory, and workspace bindings. Existing `*.md` and `*.note.md`
@@ -497,21 +479,10 @@ renderer.
 
 ## Commands
 
-- **AIC Notes: Open Linked Note** (`Ctrl/Cmd+Alt+N`)
-- **AIC Notes: Link Selection to Note** (`Ctrl+Alt+L` / `Cmd+Alt+L`, with
-  `Ctrl/Cmd+Shift+/` as an alias)
-- **AIC Notes: Open Project Note**
-- **AIC Notes: Open Note in Secondary Side Bar**
-- **AIC Notes: Refresh**
-- **AIC Notes: Enable Explorer Nesting for Notes**
+- **AIC Notes: Open Note Page for Current File** (`Ctrl/Cmd+Alt+N`)
 - **AIC Notes: Use Native Editor for Plain Markdown**
-- **AIC Notes: Delete Note** / **Delete All Notes in Folder**
 - **AIC Notes: Enable AIC Agent Workflow** / **Sync Agent Instructions**
 - **AIC Notes: Copy Agent Instructions**
-
-Link Selection requires an already saved source revision. It copies selected lines into one
-deduplicated linked-code details block in the live sidebar draft and opens the comment caret.
-It does not save the source or target implicitly; press Ctrl/Cmd+S in the note to persist it.
 
 ## Optional AIC agent workflow
 
