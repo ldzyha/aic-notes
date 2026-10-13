@@ -416,9 +416,11 @@ blank line and outside fenced code and leading frontmatter, starts a new page;
 The note stays one file. Each page is a card whose header names the target;
 **Open target** opens that file in the main editor and is the only card action.
 A target path opens only inside the note's workspace folder.
+A bound line starts its page even inside an unclosed code fence, so a fence
+never runs past its page.
 
 An unsaved note stays visible until it is saved: changing the active file only
-moves the page focus and keeps the draft.
+moves the page focus and keeps the draft. Undo stays within the focused page.
 
 ## Saving and deleting
 

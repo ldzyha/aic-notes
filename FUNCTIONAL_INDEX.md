@@ -305,8 +305,8 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 - One note file per workspace folder: `<workspaceFolder>/aic.md`. Linked Note shows only the
   page bound to the active file by a `--- <workspace-relative path>` line; `aic.md` itself, a
   non-file tab or a file outside the workspace shows the whole note as cards.
-- Changing the active file inside one workspace folder only moves the page focus: the document,
-  its unsaved draft and its undo history are kept.
+- Changing the active file inside one workspace folder only moves the page focus: the document
+  and its unsaved draft are kept. Undo stays within the focused page.
 - Navigation is serialized. A slower open/stat operation cannot replace a later user selection,
   and one rejected navigation request cannot poison the queue.
 - Viewing a file never creates or changes `aic.md`. A file without a page shows an empty card;
@@ -455,6 +455,8 @@ blank line and outside fenced code and leading frontmatter, starts a new page;
 a view: the note stays one file. The main editor shows every page as a card
 whose header names the target and offers "Open target". Linked Note shows one
 card: the page of the active file, or an empty card when it has none yet.
+A bound line starts its page even inside an unclosed code fence, so a fence
+never runs past its page.
 
 Existing `*.note.md` files remain ordinary Markdown files and are no longer
 followed.
