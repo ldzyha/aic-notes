@@ -1431,6 +1431,37 @@ test("a typed-in placeholder is appended to the note that appeared on disk", asy
   assert.equal(h.files.get(note.path).text, merged.replace("a\t", "a\t!"));
 });
 
+for (const failure of ["apply", "save"]) {
+  test(`a failed ${failure} of the appended placeholder never lets a retry replace the note`, async () => {
+    const h = live();
+    await h.activate(h.addFile("a.js"));
+    await h.client.type("mine");
+    const theirs = "theirs\n";
+    const note = h.addFile("aic.md", theirs);
+    const document = h.getDocument(note);
+    const apply = h.vscode.workspace.applyEdit;
+    const save = document.save;
+    if (failure === "apply") h.vscode.workspace.applyEdit = async () => false;
+    else document.save = async () => false;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      assert.equal((await h.client.save()).action, "save-failed");
+      assert.equal(h.files.get(note.path).text, theirs);
+      assert.equal(document.getText().startsWith(theirs), true);
+      // Still a placeholder draft: a later save appends again, never replaces.
+      assert.equal(h.pane.placeholderUri.path, note.path);
+      assert.equal(h.pane.documentUri, undefined);
+      assert.equal(h.client.text, "--- a.js\nmine");
+      assert.equal(h.pane.draftDirty, true);
+    }
+    h.vscode.workspace.applyEdit = apply;
+    document.save = save;
+    assert.equal((await h.client.save()).saved, true);
+    assert.equal(h.files.get(note.path).text, "theirs\n\n--- a.js\nmine");
+    assert.equal(h.client.text, "theirs\n\n--- a.js\nmine");
+    assert.equal(h.pane.documentUri.path, note.path);
+  });
+}
+
 test("a placeholder draft that collides with the appeared note is kept and saved once resolved", async () => {
   const h = live();
   const a = h.addFile("a.js");

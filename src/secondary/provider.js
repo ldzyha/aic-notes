@@ -587,6 +587,9 @@ export class SecondaryNotePane {
     base,
   ) {
     this.savingLease++;
+    // A placeholder moved onto the note that appeared on disk; undone below
+    // unless that save lands, so a retry can never replace the file's text.
+    let adopted = null;
     let draft = String(text ?? "");
     let replied = false;
     const reply = async (saved) => {
@@ -700,10 +703,14 @@ export class SecondaryNotePane {
         } catch {
           appeared = undefined;
         }
+        // A failed attempt may have left its text in the unsaved document.
+        const earlier = this.appearedRebase;
         const rebased =
-          appeared && this.placeholderText === ""
-            ? appendDraftPages(appeared.getText(), draft)
-            : null;
+          !appeared || this.placeholderText !== ""
+            ? null
+            : earlier?.draft === draft && earlier.text === appeared.getText()
+              ? earlier.text
+              : appendDraftPages(appeared.getText(), draft);
         if (!current()) return await stale();
         if (rebased === null) {
           await reply(false);
@@ -716,6 +723,8 @@ export class SecondaryNotePane {
         this.document = appeared;
         this.placeholderUri = undefined;
         this.placeholderText = undefined;
+        adopted = uri;
+        this.appearedRebase = { draft, text: rebased };
         draft = rebased;
       }
 
@@ -826,6 +835,8 @@ export class SecondaryNotePane {
         await this.sendPaneState("Save failed · draft kept in the editor");
         return { action: "save-failed", skipped: true };
       }
+      adopted = null;
+      this.appearedRebase = undefined;
       if (this.draftRevision === submittedRevision) this.draftDirty = false;
       await this.sendPaneState();
       return { action: "saved", saved: true };
@@ -836,6 +847,12 @@ export class SecondaryNotePane {
       await reply(false);
       throw error;
     } finally {
+      if (adopted && this.documentUri?.toString() === adopted.toString()) {
+        this.documentUri = undefined;
+        this.document = undefined;
+        this.placeholderUri = adopted;
+        this.placeholderText = "";
+      }
       this.savingLease--;
       if (this.editSurface) void this.ownership.changed(this.editSurface);
     }
