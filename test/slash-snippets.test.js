@@ -19,32 +19,49 @@ function state(doc, readOnly = false) {
   });
 }
 
-test("shared slash catalog covers pages, sections, and formatting blocks", () => {
-  assert.equal(SLASH_SNIPPETS_CORE_VERSION, "1.2.0");
+test("shared slash catalog covers blocks, DDK sections and diagrams", () => {
+  assert.equal(SLASH_SNIPPETS_CORE_VERSION, "2.0.0");
+  assert.equal(DOCUMENTATION_SNIPPETS.length, 18);
   assert.equal(
     new Set(DOCUMENTATION_SNIPPETS.map(({ command }) => command)).size,
     DOCUMENTATION_SNIPPETS.length,
   );
   assert.deepEqual(
     new Set(DOCUMENTATION_SNIPPETS.map(({ kind }) => kind)),
-    new Set(["page", "section", "block"]),
+    new Set(["section", "block"]),
   );
-  assert.deepEqual(
-    new Set(DOCUMENTATION_SNIPPETS.map(({ group }) => group)),
-    new Set([
-      "pages",
-      "structure",
-      "assurance",
-      "references",
-      "data",
-      "diagrams",
-      "content",
-    ]),
-  );
+  const commandsIn = (group) =>
+    DOCUMENTATION_SNIPPETS.filter((entry) => entry.group === group).map(
+      ({ command }) => command,
+    );
+  assert.deepEqual(commandsIn("blocks"), [
+    "aic",
+    "list",
+    "list-numbered",
+    "checklist",
+    "table",
+    "code",
+    "details",
+  ]);
+  assert.deepEqual(commandsIn("sections"), [
+    "section",
+    "glossary",
+    "bibliography",
+    "high-level-design",
+    "detailed-view",
+    "error-handling",
+    "test-cases",
+    "open-question",
+  ]);
+  assert.deepEqual(commandsIn("diagrams"), [
+    "flowchart",
+    "sequence",
+    "state-diagram",
+  ]);
   for (const entry of DOCUMENTATION_SNIPPETS) {
     assert.match(entry.question, /\?$/u);
-    if (entry.command === "security")
-      assert.match(entry.template, /^```aic\n/u);
+    assert.equal(entry.kind === "section", entry.group === "sections");
+    if (entry.command === "aic") assert.match(entry.template, /^```aic\n/u);
     else assert.match(entry.template, /\$\{/u);
   }
 });
@@ -73,14 +90,14 @@ test("shared basic blocks distinguish unordered points, ordered points and a gen
   );
   for (const command of ["list", "list-numbered", "checklist", "table"]) {
     assert.equal(byCommand[command].kind, "block");
-    assert.equal(byCommand[command].group, "data");
+    assert.equal(byCommand[command].group, "blocks");
     assert.equal(
       slashSnippetTemplate(byCommand[command], "# Page\n\n## Answer\n"),
       byCommand[command].template,
     );
   }
   for (const command of ["mapping-table", "comparison", "tasks"]) {
-    assert.ok(byCommand[command]);
+    assert.equal(byCommand[command], undefined);
   }
 });
 
@@ -95,7 +112,7 @@ test("shared checkbox aliases keep one visible completion and never activate in 
     );
     assert.equal(items.length, 1);
     assert.ok(items[0].label.includes(doc));
-    assert.equal(items[0].section.name, "Tables & lists");
+    assert.equal(items[0].section.name, "Blocks");
     const fenced = "```markdown\n" + doc + "\n```";
     assert.equal(
       slashSnippetQuery(state(fenced), fenced.indexOf(doc) + doc.length),
@@ -112,62 +129,154 @@ test("slash activation is line-scoped, writable, and outside code fences", () =>
     text: "/",
     hasPageContent: false,
   });
-  assert.equal(slashSnippetQuery(state("Text /page"), 10), null);
-  const fenced = "~~~text\n/page\n~~~";
+  assert.equal(slashSnippetQuery(state("Text /section"), 13), null);
+  const fenced = "~~~text\n/section\n~~~";
   assert.equal(
-    slashSnippetQuery(state(fenced), fenced.indexOf("/page") + 5),
+    slashSnippetQuery(state(fenced), fenced.indexOf("/section") + 8),
     null,
   );
-  assert.equal(slashSnippetQuery(state("/page", true), 5), null);
+  assert.equal(slashSnippetQuery(state("/section", true), 8), null);
 });
 
-test("slash completion ranks sections first inside an existing page", () => {
-  const editorState = state("# Existing\n\n/");
-  const result = slashSnippetCompletions(
-    new CompletionContext(editorState, editorState.doc.length, false),
-  );
-  assert.ok(result);
-  assert.equal(result.from, editorState.doc.length - 1);
-  assert.equal(
-    result.options.find(({ label }) => label === "/section").section.rank,
-    0,
-  );
-  assert.equal(
-    result.options.find(({ label }) => label === "/section").section.name,
-    "Structure",
-  );
-  assert.equal(
-    result.options.find(({ label }) => label === "/glossary").section.name,
-    "References",
-  );
-  assert.equal(
-    result.options.find(({ label }) => label === "/flowchart").section.name,
-    "Diagrams",
-  );
-  assert.ok(result.options.every(({ info }) => info === undefined));
-  assert.equal(
-    result.options.find(({ label }) => label === "/page").section.rank,
-    6,
-  );
+test("slash completion keeps one fixed group order in empty and existing documents", () => {
+  const optionsFor = (doc) => {
+    const editorState = state(doc);
+    const result = slashSnippetCompletions(
+      new CompletionContext(editorState, editorState.doc.length, false),
+    );
+    assert.ok(result);
+    assert.equal(result.from, editorState.doc.length - 1);
+    assert.equal(result.options.length, DOCUMENTATION_SNIPPETS.length);
+    assert.ok(result.options.every(({ info }) => info === undefined));
+    return result.options;
+  };
+  for (const doc of ["/", "# Existing\n\n/"]) {
+    const options = optionsFor(doc);
+    const shown = (command) =>
+      options.find(
+        ({ label, displayLabel }) => (displayLabel ?? label) === command,
+      );
+    assert.deepEqual(shown("/aic").section, { name: "Blocks", rank: 0 });
+    assert.deepEqual(shown("/table").section, { name: "Blocks", rank: 0 });
+    assert.deepEqual(shown("/section").section, { name: "Sections", rank: 1 });
+    assert.deepEqual(shown("/glossary").section, { name: "Sections", rank: 1 });
+    assert.deepEqual(shown("/flowchart").section, {
+      name: "Diagrams",
+      rank: 2,
+    });
+    assert.deepEqual(shown("/state-diagram").section, {
+      name: "Diagrams",
+      rank: 2,
+    });
+    assert.equal(shown("/page"), undefined);
+    assert.equal(shown("/security"), undefined);
+  }
 });
 
-test("Core catalog supports waves, noise and contextual document sections", () => {
+test("Core catalog renames /security to /aic and keeps old words as aliases", () => {
   const byCommand = Object.fromEntries(
     DOCUMENTATION_SNIPPETS.map((entry) => [entry.command, entry]),
   );
-  assert.equal(byCommand.purpose, undefined);
-  assert.match(byCommand.noise.template, /same note/u);
-  assert.match(
-    byCommand.wave.template,
-    /Prerequisite.*Action.*Verifiable result/u,
+  assert.equal(byCommand.security, undefined);
+  assert.equal(byCommand.aic.title, "AIC block (fields, secrets, codes)");
+  for (const alias of [
+    "security",
+    "password",
+    "2fa",
+    "fields",
+    "properties",
+    "credentials",
+  ]) {
+    assert.ok(byCommand.aic.searchTerms.includes(alias), alias);
+    const doc = "/" + alias;
+    const result = slashSnippetCompletions(
+      new CompletionContext(state(doc), doc.length, true),
+    );
+    const items = result.options.filter(({ label }) =>
+      label.split(" ").includes(doc),
+    );
+    assert.deepEqual(
+      items.map(({ displayLabel }) => displayLabel),
+      ["/aic"],
+    );
+  }
+  assert.deepEqual(byCommand["high-level-design"].searchTerms, ["high-level"]);
+  assert.deepEqual(byCommand["error-handling"].searchTerms, ["errors"]);
+  assert.deepEqual(byCommand["test-cases"].searchTerms, ["verification"]);
+  assert.deepEqual(byCommand["open-question"].searchTerms, ["open-questions"]);
+  assert.deepEqual(byCommand.flowchart.searchTerms, ["mermaid"]);
+});
+
+test("Core catalog re-levels DDK sections and drops the retired page commands", () => {
+  const byCommand = Object.fromEntries(
+    DOCUMENTATION_SNIPPETS.map((entry) => [entry.command, entry]),
   );
-  assert.match(byCommand.implementation.template, /### Error handling/u);
-  assert.match(byCommand["entity-map"].template, /flowchart TB/u);
-  assert.match(byCommand.timeline.template, /\ntimeline\n/u);
+  for (const command of [
+    "purpose",
+    "page",
+    "page-architecture",
+    "page-capability",
+    "page-decision",
+    "context",
+    "noise",
+    "wave",
+    "implementation",
+    "owned-detail",
+    "synthesis",
+    "entity-map",
+    "class-diagram",
+    "timeline",
+  ]) {
+    assert.equal(byCommand[command], undefined, command);
+  }
+  assert.match(byCommand.section.template, /^## \$\{1:Title\}\n\n\*\$\{2:/u);
+  assert.match(
+    byCommand["high-level-design"].template,
+    /```mermaid\nflowchart LR\n[\s\S]*\| Part \| Responsibility \| Dependency \|/u,
+  );
+  assert.match(
+    byCommand["detailed-view"].template,
+    /\| Step \| Owner \| Behavior \| Completion condition \|/u,
+  );
+  assert.match(
+    byCommand["error-handling"].template,
+    /\| Failure \| Response \| Recovery \/ cleanup \|/u,
+  );
+  assert.match(
+    byCommand["test-cases"].template,
+    /\| Scenario \/ precondition \| Action \| Expected result \|/u,
+  );
+  assert.match(byCommand.sequence.template, /\nsequenceDiagram\n/u);
+  assert.match(byCommand["state-diagram"].template, /\nstateDiagram-v2\n/u);
+  assert.match(slashSnippetTemplate(byCommand.section, ""), /^# /u);
   assert.match(
     slashSnippetTemplate(byCommand.section, "# Document\n\n## Subject\n"),
     /^### /u,
   );
+  assert.match(
+    slashSnippetTemplate(
+      byCommand["high-level-design"],
+      "# Document\n\n## Subject\n",
+    ),
+    /^### High-level design\n/u,
+  );
+  assert.match(
+    slashSnippetTemplate(byCommand.glossary, "###### Deepest\n"),
+    /^###### Glossary\n/u,
+  );
+  assert.match(
+    slashSnippetTemplate(
+      byCommand["open-question"],
+      "# Doc\n\n```md\n### Not a heading\n```\n",
+    ),
+    /^## Open question\n/u,
+  );
+  for (const command of ["flowchart", "sequence", "state-diagram", "aic"]) {
+    assert.equal(
+      slashSnippetTemplate(byCommand[command], "# Document\n\n## Subject\n"),
+      byCommand[command].template,
+    );
+  }
   for (const entry of DOCUMENTATION_SNIPPETS) {
     assert.doesNotMatch(
       entry.template,

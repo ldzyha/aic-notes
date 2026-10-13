@@ -258,16 +258,15 @@ Linux desktop smoke checks are not implied.
 
 | Area / owner                                                | Implemented contract                                                                                                                                          | Explicit limitation                                                                                                   |
 | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Shared templates and native completion                      | Core questions → answers → detail; `/noise`, `/wave`, `/implementation`, `/context`, `/entity-map`; contextual heading levels in `.md` and `.note.md`         | No automatic wave/noise state, dashboards or grouping UI                                                              |
-| New-note bodies (`note-template`, `src/notes/templates.js`) | Shared Noise guidance evolves through `/wave` in the same note; custom template source remains authored and an empty body receives the valid AIC seed         | Existing notes are not rewritten; Standard Notes does not receive VS Code workspace templates                         |
+| Shared templates and native completion                      | DDK sections (title, question, answer) `/section` … `/open-question`; blocks and `/flowchart`, `/sequence`, `/state-diagram`; contextual heading levels in `.md` and `.note.md` | No page templates, dashboards or grouping UI |
+| New-note bodies (`note-template`, `src/notes/templates.js`) | New notes start blank; custom template source remains authored | Existing notes are not rewritten; Standard Notes does not receive VS Code workspace templates                         |
 | Shared diagram model/builder                                | Actual Mermaid SVG provides palette insertion, connection dragging, typed relationships, property editing, draft Copy, Undo/Redo/deletion and zoom/scroll/fit | Bounded flow/class/sequence grammar; no multiselect, subgraph authoring, visual timeline or arbitrary Mermaid support |
 | Shared diagram session                                      | Inline Apply changes only the current block; outside edits preserve the draft; conflicting block edits/read-only retain a Copy-only draft; Ctrl/Cmd+S saves   | Cancel explicitly discards the draft; note identity changes retire the session; no cross-scale links                  |
 | Layout and ordering                                         | Inline editing and read preview use the same Mermaid auto-layout; direction and sequence ordering are source semantics                                        | No arbitrary stored coordinates; legacy coordinates are ignored, and removed only after an actual visual edit         |
 
 Usage: insert a diagram through `/`, choose **Edit diagram visually** on its AIC preview, edit and
 Apply, then Ctrl/Cmd+S. Ctrl/Cmd+S within the builder combines Apply with the existing explicit save.
-The native Markdown editor shares templates but remains a source editor. `/entity-map` describes
-composition; `/timeline` stays chronological. Shared preview-spacing and session-lifecycle fixes
+The native Markdown editor shares templates but remains a source editor. Shared preview-spacing and session-lifecycle fixes
 are implemented; completed cross-platform/live-client smoke testing is not implied.
 
 ## Product boundary
@@ -371,13 +370,12 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 - Details accordions preserve comments, task-checkbox interaction, collapsed/open state, and links.
 - Action glyphs are CSS SVG masks; no renderer must accept inline SVG button markup.
 - Slash on an otherwise empty Markdown line opens the shared contextual template catalog in AIC
-  Markdown, native/untitled VS Code Markdown, and contextual notes. Empty
-  notes rank complete pages first, existing pages rank page sections first, and `Tab` advances
-  through inserted perspective questions. Seven labeled groups organize complete pages, structure,
-  assurance, references, data, diagrams, and content. The same core is mounted in ordinary `.md`
+  Markdown, native/untitled VS Code Markdown, and contextual notes. `Tab` advances
+  through inserted questions. Three labeled groups in one fixed order organize Blocks, Sections
+  and Diagrams. The same core is mounted in ordinary `.md`
   documents and contextual `.note.md` notes. Code and read-only contexts never activate it.
 - `/list`, `/list-numbered` and `/table` are primitive blocks, without mandatory page metadata or
-  headings. Specialized tables/checklists and the existing `/class-diagram` remain distinct.
+  headings.
 
 ## Paired-editor boundary
 

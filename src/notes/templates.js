@@ -1,7 +1,7 @@
 import { DEFAULT_NOTE_BODY_TEMPLATE } from "../../vendor/aic-editor-core/note-template.js";
 
 // New notes start blank. Explicit project template overrides remain owned by
-// the user; /noise and /wave insert guidance only when requested.
+// the user.
 
 export const TEMPLATE_PATHS = {
   "file-note": ".aic/templates/file-note.md",

@@ -55,11 +55,11 @@ const fakeVscode = {
 };
 
 test("native Markdown uses the shared slash catalog and group order", () => {
-  const document = markdownDocument("# Existing\n\n/com");
+  const document = markdownDocument("# Existing\n\n/hig");
   const position = new Position(2, 4);
   const query = nativeMarkdownSlashQuery(document, position);
   assert.deepEqual(query, {
-    text: "/com",
+    text: "/hig",
     startCharacter: 0,
     hasPageContent: true,
   });
@@ -67,33 +67,67 @@ test("native Markdown uses the shared slash catalog and group order", () => {
   const items = createMarkdownSlashCompletionProvider(
     fakeVscode,
   ).provideCompletionItems(document, position);
-  const comparison = items.find(({ label }) => label === "/comparison");
-  assert.equal(
-    comparison.detail,
-    "Tables & lists · Current and target comparison",
+  assert.equal(items.length, 18);
+  const design = items.find(({ label }) => label === "/high-level-design");
+  assert.equal(design.detail, "Sections · High-level design");
+  assert.equal(design.filterText, "/high-level-design /high-level");
+  assert.equal(design.insertText.value.includes("${1:"), true);
+  assert.deepEqual(design.range, new Range(new Position(2, 0), position));
+  const sortOf = (command) =>
+    items.find(({ label }) => label === command).sortText;
+  assert.equal(sortOf("/aic"), "00:aic");
+  assert.equal(sortOf("/table"), "00:table");
+  assert.equal(sortOf("/high-level-design"), "01:high-level-design");
+  assert.equal(sortOf("/state-diagram"), "02:state-diagram");
+  const empty = createMarkdownSlashCompletionProvider(
+    fakeVscode,
+  ).provideCompletionItems(markdownDocument("/"), new Position(0, 1));
+  assert.deepEqual(
+    empty.map(({ label, sortText, detail }) => [label, sortText, detail]),
+    items.map(({ label, sortText, detail }) => [label, sortText, detail]),
   );
-  assert.equal(comparison.insertText.value.includes("${1:"), true);
-  assert.deepEqual(comparison.range, new Range(new Position(2, 0), position));
+});
+
+test("native Markdown finds the AIC block by its old security words", () => {
+  const provider = createMarkdownSlashCompletionProvider(fakeVscode);
+  for (const path of ["/docs/readme.md", "/docs/readme.note.md"]) {
+    const source = "/security";
+    const items = provider.provideCompletionItems(
+      markdownDocument(source, path),
+      new Position(0, source.length),
+    );
+    assert.equal(
+      items.some(({ label }) => label === "/security"),
+      false,
+    );
+    const item = items.find(({ label }) => label === "/aic");
+    assert.equal(item.detail, "Blocks · AIC block (fields, secrets, codes)");
+    assert.equal(
+      item.filterText,
+      "/aic /security /password /authenticator /two-factor /2fa /secret /fields /properties /credentials",
+    );
+    assert.match(item.insertText.value, /^```aic\n/u);
+  }
 });
 
 test("native Markdown excludes prose and fenced code but includes note Markdown", () => {
   assert.equal(
     nativeMarkdownSlashQuery(
-      markdownDocument("text /page"),
-      new Position(0, 10),
+      markdownDocument("text /section"),
+      new Position(0, 13),
     ),
     null,
   );
   assert.deepEqual(
     nativeMarkdownSlashQuery(
-      markdownDocument("/page", "/docs/readme.note.md"),
-      new Position(0, 5),
+      markdownDocument("/section", "/docs/readme.note.md"),
+      new Position(0, 8),
     ),
-    { text: "/page", startCharacter: 0, hasPageContent: false },
+    { text: "/section", startCharacter: 0, hasPageContent: false },
   );
-  const fenced = markdownDocument("```text\n/page\n```");
+  const fenced = markdownDocument("```text\n/section\n```");
   assert.equal(isInsideMarkdownFence(fenced, 1), true);
-  assert.equal(nativeMarkdownSlashQuery(fenced, new Position(1, 5)), null);
+  assert.equal(nativeMarkdownSlashQuery(fenced, new Position(1, 8)), null);
   assert.equal(isInsideMarkdownFence(fenced, 3), false);
 });
 
@@ -102,17 +136,21 @@ test("native Markdown uses the same Core templates for documents and notes", () 
   for (const path of ["/docs/readme.md", "/docs/readme.note.md"]) {
     const document = markdownDocument("# Page\n\n## Subject\n\n/", path);
     const items = provider.provideCompletionItems(document, new Position(4, 1));
-    const wave = items.find(({ label }) => label === "/wave");
-    assert.match(wave.insertText.value, /^### Wave/u);
-    assert.match(wave.insertText.value, /#### Instruction/u);
+    const valueOf = (command) =>
+      items.find(({ label }) => label === command).insertText.value;
+    assert.match(valueOf("/section"), /^### \$\{1:Title\}/u);
+    assert.match(valueOf("/high-level-design"), /^### High-level design\n/u);
+    assert.match(valueOf("/high-level-design"), /flowchart LR/u);
     assert.match(
-      items.find(({ label }) => label === "/noise").insertText.value,
-      /same note/u,
+      valueOf("/test-cases"),
+      /^### Test cases\n[\s\S]*Scenario \/ precondition/u,
     );
-    assert.match(
-      items.find(({ label }) => label === "/entity-map").insertText.value,
-      /flowchart TB/u,
-    );
+    assert.match(valueOf("/state-diagram"), /^```mermaid\nstateDiagram-v2\n/u);
+    for (const removed of ["/page", "/wave", "/noise", "/entity-map"])
+      assert.equal(
+        items.some(({ label }) => label === removed),
+        false,
+      );
   }
 });
 
@@ -133,7 +171,7 @@ test("native documents and notes offer the same basic list and table blocks", ()
       );
       const item = items.find(({ label }) => label === source);
       assert.equal(item.filterText, source);
-      assert.equal(item.detail, "Tables & lists · " + title);
+      assert.equal(item.detail, "Blocks · " + title);
       assert.match(item.insertText.value, pattern);
       assert.deepEqual(item.range, new Range(new Position(0, 0), position));
     }
@@ -173,7 +211,7 @@ test("native .md and .note.md share one bare checklist discoverable by checkbox/
         false,
       );
       const item = checklists[0];
-      assert.equal(item.detail, "Tables & lists · Checklist");
+      assert.equal(item.detail, "Blocks · Checklist");
       assert.equal(item.filterText, "/checklist /checkbox /tasklist");
       assert.ok(item.filterText.includes(source));
       assert.equal(
@@ -181,9 +219,9 @@ test("native .md and .note.md share one bare checklist discoverable by checkbox/
         "- [ ] ${1:What needs to be done?}${0}",
       );
       assert.deepEqual(item.range, new Range(new Position(0, 0), position));
-      assert.match(
-        items.find(({ label }) => label === "/tasks").insertText.value,
-        /Verify the primary behavior/u,
+      assert.equal(
+        items.some(({ label }) => label === "/tasks"),
+        false,
       );
       const fenced = markdownDocument("~~~markdown\n" + source + "\n~~~", path);
       assert.equal(

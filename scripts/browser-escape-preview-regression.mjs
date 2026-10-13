@@ -93,7 +93,7 @@ const cases = [
   {
     name: "security",
     text: "Before\n\n```aic\n# Synthetic card\n## Main\nPassword*: synthetic-secret | note\n```\n\nAfter",
-    edit: "Edit security block",
+    edit: "Edit AIC block",
     preview: ".cm-aic-security",
   },
   {

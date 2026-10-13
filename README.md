@@ -312,12 +312,14 @@ byte-verify their shared core and run automated tests and production builds. Pri
 browser checks cover the shared controls but do not replace final package verification;
 Linux desktop smoke checks are not implied.
 
-- `/page`, `/section`, `/context` and `/implementation` follow Core's question → answer → detail
-  structure, with dependency-ordered steps and verification where needed. There are no compulsory
-  Purpose/Proposal sections. The same catalog works in AIC and native Markdown, including `.note.md`.
+- `/section`, `/glossary`, `/bibliography`, `/high-level-design`, `/detailed-view`,
+  `/error-handling`, `/test-cases` and `/open-question` insert a heading, one italic question and
+  an answer in the simplest fitting format, at the heading level below the nearest heading above.
+  There are no page templates. The same catalog works in AIC and native Markdown, including `.note.md`.
 - `/list`, `/list-numbered`, `/checklist` and `/table` insert an unordered list, ordered list,
-  bare checkbox list and simple table. `/checkbox` and `/tasklist` also find `/checklist`;
-  `/tasks` remains the separate verification section.
+  bare checkbox list and simple table. `/checkbox` and `/tasklist` also find `/checklist`.
+  `/aic` inserts an AIC block (fields, secrets, codes); `/security`, `/password`, `/2fa`,
+  `/fields`, `/properties` and `/credentials` also find it.
 - Explorer note clicks open just the note in the main editor. **Open Source** is a separate
   action that opens the source with its linked sidebar note; folder/project sources are revealed.
   Persisted legacy note associations resolve to the main editor without changing user settings.
@@ -330,13 +332,11 @@ Linux desktop smoke checks are not implied.
 - Context ancestors require existing `.note.md` notes. Project navigation always remains,
   opening its note or placeholder; the actual current target can also be a placeholder.
 - In the AIC editor, Mermaid is edited as raw Markdown with a live preview below the fence.
-  `/class` finds `/class-diagram`; native VS Code text editors offer snippets but not the embedded preview.
-- `/noise` captures uncertainty; `/wave` develops a result and executable path in the same note.
-  New default file/folder/project notes start with compact Noise guidance. Existing notes and
-  accepted `.aic/templates/*.md` overrides are preserved exactly. Default empty notes use the
-  current AIC template; no generated file/date Properties are added. There is no automatic
-  noise/wave classification or grouping UI.
-- Insert `/flowchart`, `/class-diagram`, `/sequence` or `/entity-map` in AIC Markdown. The Mermaid
+  `/mermaid` finds `/flowchart`; native VS Code text editors offer snippets but not the embedded preview.
+- New default file/folder/project notes start blank. Existing notes and
+  accepted `.aic/templates/*.md` overrides are preserved exactly. No generated file/date
+  Properties are added.
+- Insert `/flowchart`, `/sequence` or `/state-diagram` in AIC Markdown. The Mermaid
   preview has **Copy** and one **Edit** button matching other code blocks. **Edit** reveals the
   source and a live preview. Diagrams fit the available width with their full content height,
   without internal scrollbars or zoom controls. There is no visual
@@ -351,7 +351,7 @@ Linux desktop smoke checks are not implied.
   proposes edits confined to a marked Agentic Notes section. A live-document write bridge and
   cross-client integration are still required; no standalone disk writer is enabled.
 
-Entity-map composition is separate from the chronological, source-edited `/timeline`. Automatic
+Automatic
 drill-down/cross-scale links and visual diagram authoring are **not implemented**. Shared popup/session and preview-navigation stability changes are included;
 this section does not assert that all clients or operating systems have completed final smoke tests.
 
@@ -460,11 +460,9 @@ edited; there is no document-wide preview/edit mode switch.
 
 On an otherwise empty Markdown line, type `/` to open the shared template catalog. It works in the
 AIC Markdown editor, VS Code's native Markdown editor, unsaved Markdown documents, and contextual
-`.note.md` notes; every adapter consumes the same catalog. Empty documents put complete pages first;
-an existing page puts structural sections first.
+`.note.md` notes; every adapter consumes the same catalog, in the same order for empty and existing documents.
 Choose a result, then use `Tab` to move through its highlighted questions and replace the example
-answers. The compact menu separates Pages, Structure, Review, References, Tables & lists, Diagrams,
-and Blocks. Completion stays inactive inside fenced/inline code
+answers. The compact menu separates Blocks, Sections and Diagrams. Completion stays inactive inside fenced/inline code
 and in read-only documents.
 
 - Text, headings, lists, tasks, quotes, emphasis, and fenced languages edit directly.

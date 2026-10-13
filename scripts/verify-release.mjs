@@ -133,8 +133,8 @@ for (const control of [
   "Edit code source",
   "Edit Mermaid source",
   "Type / for templates",
-  "page-architecture",
-  "Structure",
+  "high-level-design",
+  "Sections",
   "cm-snippetField",
   "aic-security",
 ]) {

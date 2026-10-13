@@ -452,12 +452,13 @@ test("shared slash templates are mounted with the common placeholder and styling
     read("vendor/aic-editor-core/slash-snippets.js"),
     read("vendor/aic-editor-core/slash-snippets.css"),
   ]);
-  assert.match(snippets, /SLASH_SNIPPETS_CORE_VERSION = "1\.2\.0"/u);
-  assert.match(snippets, /"page-architecture"/u);
+  assert.match(snippets, /SLASH_SNIPPETS_CORE_VERSION = "2\.0\.0"/u);
+  assert.match(snippets, /"aic"/u);
   assert.match(snippets, /"section"/u);
-  assert.match(snippets, /"noise"/u);
-  assert.match(snippets, /"wave"/u);
+  assert.match(snippets, /"high-level-design"/u);
+  assert.match(snippets, /"state-diagram"/u);
   assert.match(snippets, /"flowchart"/u);
+  assert.doesNotMatch(snippets, /"page-architecture"|"noise"|"wave"/u);
   assert.match(snippets, /snippetCompletion/u);
   assert.match(snippets, /EditorState\.readOnly|state\.readOnly/u);
   assert.match(webview, /slashSnippetExtension\(\)/u);
