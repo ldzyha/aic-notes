@@ -305,33 +305,34 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
   their neutral styling. The live status remains accessible, and acknowledgement
   is required before clearing the unsaved state.
 - The active custom-editor tab is authoritative over a stale native editor. With no active file
-  buffer, the last relevant workspace project note is used, then the first workspace.
-- Pinning affects only automatic following. Explicit file/folder/project/note navigation can
-  always select the requested context.
+  buffer, the workspace folder of the note already shown is used, then the first workspace folder.
+- One note file per workspace folder: `<workspaceFolder>/aic.md`. Linked Note shows only the
+  page bound to the active file by a `--- <workspace-relative path>` line; `aic.md` itself, a
+  non-file tab or a file outside the workspace shows the whole note as cards.
+- Changing the active file inside one workspace folder only moves the page focus: the document,
+  its unsaved draft and its undo history are kept.
 - Navigation is serialized. A slower open/stat operation cannot replace a later user selection,
   and one rejected navigation request cannot poison the queue.
-- A missing sidecar is a lazy placeholder. Unchanged scaffolding does not create a file.
-- Explorer `.note.md` clicks open only the main note editor; Open Source is a distinct action.
-  The legacy `aicNotes.noteRedirect` association is a main-editor alias, not a disposable redirect.
-- An active main `.note.md` follows its nearest existing parent folder note in the unpinned sidebar,
-  falling back to the owning workspace project note/placeholder. The source need not exist. Pin,
-  unsaved drafts and current-tab identity remain authoritative across IO; unchanged parents are
-  not reinitialized. Note creation/deletion recomputes context without writing any notes.
+- Viewing a file never creates or changes `aic.md`. A file without a page shows an empty card;
+  the first typed text appends `--- <path>` and that text, and the first save creates a missing
+  `aic.md`.
+- Existing `*.note.md` files remain ordinary Markdown files and are no longer followed. They are
+  never moved, renamed, rewritten or deleted. The legacy `aicNotes.noteRedirect` association is
+  a main-editor alias, not a disposable redirect.
+- "Open target" on a page card is the only card action. A path opens only inside the note's
+  workspace folder; an `http(s)` target opens externally.
+- The main tab of `aic.md` and Linked Note share one edit lease, so only one of them edits at a
+  time.
 - Saves persist only the authored Markdown. Legacy YAML Properties and historical
   generated keys remain exact raw text; the extension does not interpret, stamp,
   remove, or migrate them. Secondary headers do not display file dates.
-- Context relationships are derived dynamically and displayed only below existing note
-  frontmatter. Only actual notes add ancestor folders; project/current navigation can show a
-  placeholder. Each row opens the exact `.note.md` target. They are never serialized or edited.
-- Trash is local, confirmed, and routed through the operating-system Trash where supported.
 
 ## Surfaces
 
 | Surface                    | Owner                                           | Persistent side effect                                         | Failure behavior                                                     |
 | -------------------------- | ----------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------- |
 | AIC Markdown custom editor | `src/editor/provider.js`, `src/webview/main.js` | explicit VS Code document save                                 | stale generations reset or retain the visible draft                  |
-| Linked Note Secondary pane | `src/secondary/provider.js`                     | explicit local sidecar write/save or local Trash               | never replaces an unsaved draft; reports a compact local error       |
-| Selection-to-note command  | `src/notes/selection.js`                        | inserts into the live local sidebar draft; no implicit save    | rejects unsaved/unbacked/out-of-workspace sources                    |
+| Linked Note Secondary pane | `src/secondary/provider.js`                     | explicit save of the workspace note `aic.md`                   | never replaces an unsaved draft; reports a compact local error       |
 | Structured previews        | `vendor/markdown`, `vendor/aic-editor-core`     | exact Markdown transactions only                               | invalid source remains editable instead of being normalized silently |
 | Slash template completion  | shared core plus `src/editor/slash-provider.js` | inserts exact Markdown in AIC, native, and contextual Markdown | inactive in code/read-only contexts                                  |
 | AIC agent workflow         | `src/agents/bootstrap.js`                       | bundled instructions, explicit local handoff and copy command  | no external CLI or global configuration dependency                   |
@@ -340,13 +341,7 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 
 | Command                          | Contract                                                                                                                 |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `aicNotes.noteForCurrentFile`    | Follow a lazy sidecar for the active local source, or open a note's source; without an active file, report what to focus |
-| `aicNotes.linkSelectionToNote`   | Copy selected source into one deduplicated linked-comment block and focus its comment caret                              |
-| `aicNotes.openInSecondary`       | Route an existing sidecar or placeholder to the Secondary pane                                                           |
-| `aicNotes.noteForExplorerItem`   | Follow a file or folder selected in Explorer, using the same lazy placeholder rule                                       |
-| `aicNotes.openProjectNote`       | Show the selected/current workspace root note or its placeholder                                                         |
-| `aicNotes.enableExplorerNesting` | Add workspace Explorer nesting patterns for sidecars                                                                     |
-| `aicNotes.openSource`            | Explicitly open the file owner with its sidebar note, or reveal the folder/project owner; reject ambiguous sources       |
+| `aicNotes.noteForCurrentFile`    | Reveal Linked Note on the active file's page of `aic.md`; report a missing workspace or a file outside it               |
 | `aicNotes.useNativeForMarkdown`  | Set the user association for plain `*.md` back to the native editor while keeping notes in the AIC main editor           |
 | `aicNotes.enableAgentWorkflow`   | Write the bundled instruction file and a content-bound workspace marker                                                  |
 | `aicNotes.syncAgentInstructions` | Explicitly refresh the bundled workspace handoff without a CLI or global writes                                          |
@@ -454,37 +449,21 @@ activation; usage and setup are in [extension updates](../standard-notes-aic/pwa
 
 ## One note per surface
 
-The main custom editor shows only the opened document. Linked Note shows one
-note: the sidecar of the active file, or an editable placeholder when it does
-not exist yet. When a note is active, Linked Note shows its nearest existing
-parent note; with no open file it shows the workspace project note.
+The main custom editor shows only the opened document. Linked Note shows the
+workspace note `<workspaceFolder>/aic.md`, focused on the page of the active
+file. With several workspace folders, the active file's folder chooses the note.
 
 ### Note pages
 
 A note is a notebook. A line that is exactly `---`, first in the body or after a
 blank line and outside fenced code and leading frontmatter, starts a new page;
-`--- <workspace-relative path>` also binds that page to a file or folder (a
-folder covers the files beneath it). Pages are a view: the note stays one file
-and its text is never rewritten. Both surfaces show the shared page bar
-(previous, next, position, bound target) when a note has more than one page.
+`--- <workspace-relative path>` binds that page to exactly that file. Pages are
+a view: the note stays one file. The main editor shows every page as a card
+whose header names the target and offers "Open target". Linked Note shows one
+card: the page of the active file, or an empty card when it has none yet.
 
-Unpinned Linked Note resolves the active file in this order: its sidecar, opened
-on the page bound to that file if it has one; without a sidecar, the note in the
-same workspace folder whose bound page is most specific for the file (then the
-nearest note above it, then alphabetical order); otherwise the sidecar
-placeholder. A note opened through a bound page saves to its own file. The
-second step is best-effort: it lists at most 500 `*.note.md` files on demand
-(notes beyond that may not be found), skips `node_modules`, `.git` and `dist`,
-matches paths case-insensitively, keeps each note's bound targets in memory
-until that note changes or its document closes, and falls back to the
-placeholder when the lookup fails or exceeds 1.5 seconds. A lookup that finishes
-later replaces that placeholder once, only while the pane is unpinned, still
-follows the same file and the placeholder has no unsaved text. URL targets are
-ignored in VS Code.
-
-Folder notes (`<folder>.note.md`) and the project note
-(`<workspace>.note.md`) are ordinary Markdown files. Open them like any other
-document; nothing switches to them in place.
+Existing `*.note.md` files remain ordinary Markdown files and are no longer
+followed.
 
 PWA saves write to explicitly connected Markdown originals. Cached copies remain
 read-only until a file destination is selected. Synchronization remains under the

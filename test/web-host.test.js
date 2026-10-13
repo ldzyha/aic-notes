@@ -373,32 +373,41 @@ test("browser entry activates real providers and saves a virtual Markdown TextDo
   }
 });
 
-test("browser host opens linked virtual sources, creates a sidecar on explicit save and sets up agent instructions", async () => {
+test("browser host opens linked virtual sources, creates aic.md on the first saved edit and sets up agent instructions", async () => {
   const h = await harness();
   try {
     const pane = h.providers.get("aicNotes.secondary");
     const panel = h.panel();
     pane.resolveWebviewView(panel);
     await panel.receive({ type: "ready" });
-    await pane.followSource(h.uri("/workspace/docs/source.ts"), {
-      force: true,
-    });
+    h.api.window.tabGroups.activeTabGroup.activeTab = {
+      input: { uri: h.uri("/workspace/docs/source.ts") },
+    };
+    assert.equal(await pane.followActive(), true);
     assert.equal(
       pane.placeholderUri.toString(),
-      "vscode-vfs://fixture/workspace/docs/source.note.md",
+      "vscode-vfs://fixture/workspace/aic.md",
     );
-    assert.equal(h.files.has("/workspace/docs/source.note.md"), false);
+    const init = panel.messages.findLast((message) => message.type === "init");
+    assert.deepEqual([init.text, init.placeholder], ["", true]);
+    // The note was already shown: following the file only moves the focus.
+    assert.equal(
+      panel.messages.findLast((message) => message.type === "page.focus")
+        .target,
+      "docs/source.ts",
+    );
+    assert.equal(h.files.has("/workspace/aic.md"), false);
     const state = pane.ownership.state(pane.editSurface);
     await pane.commitDraft(
-      "# Linked note\n",
+      "--- docs/source.ts\nLinked note\n",
       pane.generation,
       1,
-      "docs/source.note.md",
+      "aic.md",
       state.lease,
     );
     assert.equal(
-      h.files.get("/workspace/docs/source.note.md").text,
-      "# Linked note\n",
+      h.files.get("/workspace/aic.md").text,
+      "--- docs/source.ts\nLinked note\n",
     );
     await h.commands.get("aicNotes.enableAgentWorkflow")();
     const marker = JSON.parse(
@@ -441,10 +450,10 @@ test("read-only virtual providers render notes and reject edits or instruction w
   }
 });
 
-test("read-only virtual Linked Note opens the page bound to the active file; the webview installs the shared page bar", async () => {
+test("read-only virtual Linked Note focuses the page bound to the active file; the webview installs the shared page cards", async () => {
   const h = await harness({ writable: false });
   try {
-    h.files.set("/workspace/book.note.md", {
+    h.files.set("/workspace/aic.md", {
       type: 1,
       text: "start\n\n--- /docs\nfolder\n\n--- docs/source.ts\nsource\n",
     });
@@ -458,8 +467,13 @@ test("read-only virtual Linked Note opens the page bound to the active file; the
     };
     assert.equal(await pane.followActive(), true);
     const init = panel.messages.findLast((message) => message.type === "init");
-    assert.equal(init.relativePath, "book.note.md");
-    assert.equal(init.page, 2);
+    assert.equal(init.relativePath, "aic.md");
+    assert.equal(pane.focusTarget, "docs/source.ts");
+    assert.equal(
+      panel.messages.findLast((message) => message.type === "page.focus")
+        .target,
+      "docs/source.ts",
+    );
     assert.equal(init.readOnly, true);
     assert.equal(init.placeholder, false);
     assert.deepEqual([...h.files.keys()], before);
@@ -471,9 +485,18 @@ test("read-only virtual Linked Note opens the page bound to the active file; the
     new URL("../src/webview/main.js", import.meta.url),
     "utf8",
   );
-  assert.match(webview, /aic-editor-core\/note-pages-bar\.js/u);
-  assert.equal(webview.match(/notePagesBar\(\)/gu).length, 1);
-  assert.match(webview, /Number\.isInteger\(msg\.page\)\)\s+showNotePage\(/u);
+  assert.match(webview, /aic-editor-core\/note-page-cards\.js/u);
+  assert.doesNotMatch(webview, /note-pages-bar|showNotePage|notePagesBar/u);
+  assert.equal(webview.match(/notePageCards\(\{/gu).length, 1);
+  assert.equal(webview.match(/notePageCardsPreview\(\)/gu).length, 1);
+  // Focus state sits outside the source/preview compartment, headers inside.
+  assert.ok(
+    webview.indexOf("notePageCards({") <
+      webview.indexOf("sourceMode.extension([") &&
+      webview.indexOf("sourceMode.extension([") <
+        webview.indexOf("notePageCardsPreview()"),
+  );
+  assert.match(webview, /applyFocus\(msg\.focus\)/u);
   assert.match(webview, /import UI_SYSTEM_CSS from/u);
 });
 

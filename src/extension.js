@@ -1,21 +1,13 @@
-// aic-notes — sidecar *.note.md notes + aic-style markdown editing.
-// activate(): linked-note commands, explorer nesting, the Secondary pane and the
+// aic-notes — one workspace note (aic.md) with a page per file + aic-style
+// markdown editing. activate(): the Secondary pane, its reveal command and the
 // custom markdown editor.
 
 import * as vscode from "vscode";
-import {
-  noteForCurrentFile,
-  noteForExplorerItem,
-  openProjectNote,
-  commandHandler,
-} from "./notes/create.js";
-import { enableExplorerNesting, hintIfShadowed } from "./notes/nesting.js";
+import { noteForCurrentFile, commandHandler } from "./notes/create.js";
 import { MarkdownEditorProvider } from "./editor/provider.js";
 import { registerMarkdownSlashCompletionProvider } from "./editor/slash-provider.js";
 import { SecondaryNotePane } from "./secondary/provider.js";
-import { activeResource } from "./secondary/model.js";
 import { NoteEditOwnership } from "./notes/edit-ownership.js";
-import { linkSelectionToNote } from "./notes/selection.js";
 import { AgentWorkflowBootstrap } from "./agents/bootstrap.js";
 import { removeRetiredAuthData } from "./retired-auth-cleanup.js";
 
@@ -62,45 +54,8 @@ export async function activate(context) {
     registerMarkdownSlashCompletionProvider(vscode),
 
     vscode.commands.registerCommand(
-      "aicNotes.openInSecondary",
-      commandHandler((uri, options) => secondary.open(uri, options)),
-    ),
-
-    vscode.commands.registerCommand(
       "aicNotes.noteForCurrentFile",
       commandHandler(() => noteForCurrentFile(secondary)),
-    ),
-    vscode.commands.registerCommand(
-      "aicNotes.linkSelectionToNote",
-      commandHandler(() => linkSelectionToNote(secondary, markdownEditor)),
-    ),
-    vscode.commands.registerCommand(
-      "aicNotes.noteForExplorerItem",
-      commandHandler((uri) => noteForExplorerItem(uri, secondary)),
-    ),
-    vscode.commands.registerCommand(
-      "aicNotes.openProjectNote",
-      commandHandler((uri) => openProjectNote(secondary, uri)),
-    ),
-    vscode.commands.registerCommand(
-      "aicNotes.enableExplorerNesting",
-      commandHandler(enableExplorerNesting),
-    ),
-
-    vscode.commands.registerCommand(
-      "aicNotes.openSource",
-      commandHandler((item) => {
-        const tab = vscode.window.tabGroups.activeTabGroup.activeTab;
-        const uri =
-          item?.uri ??
-          item ??
-          activeResource(
-            tab?.input?.uri ?? tab?.input?.modified,
-            vscode.window.activeTextEditor?.document.uri,
-            Boolean(tab),
-          );
-        return secondary.openSourceForNote(uri);
-      }),
     ),
     // Escape hatch for the *.md default claim: a static customEditors selector
     // cannot be toggled by a setting, so this writes the user-level editor
@@ -125,8 +80,6 @@ export async function activate(context) {
       }),
     ),
   );
-
-  hintIfShadowed(context);
 }
 
 export function deactivate() {}

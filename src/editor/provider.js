@@ -23,10 +23,11 @@ import { webviewHtml } from "./webview-html.js";
 import {
   openSourceAtHref,
   openExternalLink,
+  openPageTarget,
   workspaceLinkUri,
 } from "../notes/navigation.js";
 import { openNoteDocument } from "../notes/create.js";
-import { isNotePath } from "../secondary/model.js";
+import { isWorkspaceNote } from "../secondary/model.js";
 import { DisposableScope } from "../lifecycle.js";
 import { ClipboardHost } from "../clipboard.js";
 
@@ -78,68 +79,13 @@ export class MarkdownEditorProvider {
   constructor(context, ownership) {
     this.context = context;
     this.sessions = new Set();
-    this.selectionRequest = 0;
+    this.snapshotRequest = 0;
     this.ownership = ownership;
     this.scope = new DisposableScope();
   }
 
   dispose() {
     this.scope.dispose();
-  }
-
-  async activeSourceSelection() {
-    if (this.scope.disposed) return null;
-    const session = [...this.sessions].find(({ panel }) => panel.active);
-    if (!session || session.document.isClosed) return null;
-    if (session.commandSelection) {
-      session.commandSelection = false;
-      return this._sourceSelection(session, session.selection);
-    }
-
-    const requestId = `selection-${++this.selectionRequest}`;
-    const requested = new Promise((resolve) => {
-      const timeout = setTimeout(() => {
-        session.selectionWaiters.delete(requestId);
-        resolve(session.selection);
-      }, 750);
-      session.selectionWaiters.set(requestId, (selection) => {
-        clearTimeout(timeout);
-        resolve(selection);
-      });
-    });
-    if (
-      !(await session.panel.webview.postMessage({
-        type: "selection.request",
-        requestId,
-      }))
-    ) {
-      session.selectionWaiters.get(requestId)?.(session.selection);
-      session.selectionWaiters.delete(requestId);
-    }
-    const selection = await requested;
-    if (session.scope.disposed) return null;
-    return this._sourceSelection(session, selection);
-  }
-
-  _sourceSelection(session, selection) {
-    if (
-      !selection ||
-      !Number.isInteger(selection.anchor) ||
-      !Number.isInteger(selection.head) ||
-      selection.anchor === selection.head
-    )
-      return null;
-    const length = session.document.getText().length;
-    const anchor = Math.max(0, Math.min(selection.anchor, length));
-    const head = Math.max(0, Math.min(selection.head, length));
-    if (anchor === head) return null;
-    return {
-      document: session.document,
-      selection: new vscode.Selection(
-        session.document.positionAt(anchor),
-        session.document.positionAt(head),
-      ),
-    };
   }
 
   async resolveCustomTextEditor(document, webviewPanel) {
@@ -151,14 +97,18 @@ export class MarkdownEditorProvider {
       "webview",
     );
     webview.options = { enableScripts: true, localResourceRoots: [distRoot] };
-    webview.html = this._html(webview, distRoot, document.uri);
+    const folder = vscode.workspace.getWorkspaceFolder(document.uri);
+    // The workspace note is also edited from the Secondary pane: one surface
+    // holds the edit lease at a time. Every other Markdown file has one editor.
+    const sharedNote = Boolean(
+      folder && isWorkspaceNote(folder.uri, document.uri),
+    );
+    webview.html = this._html(webview, distRoot, sharedNote);
 
     const state = { generation: 0, applying: 0 };
     const session = {
       document,
       panel: webviewPanel,
-      selection: null,
-      selectionWaiters: new Map(),
       editingWaiters: new Map(),
       ready: false,
       saving: false,
@@ -189,8 +139,7 @@ export class MarkdownEditorProvider {
     const relativePath = vscode.workspace
       .asRelativePath(document.uri, false)
       .replaceAll("\\", "/");
-    const folder = vscode.workspace.getWorkspaceFolder(document.uri);
-    if (isNotePath(document.uri.path) && this.ownership) {
+    if (sharedNote && this.ownership) {
       session.editSurface = this.ownership.register({
         uri: () => document.uri,
         dirty: () => document.isDirty || state.applying > 0 || session.saving,
@@ -426,10 +375,7 @@ export class MarkdownEditorProvider {
                 acknowledge();
                 if (!session.scope.disposed && session.editSurface)
                   void this.ownership.changed(session.editSurface);
-                else if (
-                  !session.scope.disposed &&
-                  isNotePath(document.uri.path)
-                )
+                else if (!session.scope.disposed && sharedNote)
                   webview.postMessage({
                     type: "editingState",
                     relativePath,
@@ -438,33 +384,9 @@ export class MarkdownEditorProvider {
               }
               break;
             }
-            case "selection":
-              session.selection = {
-                anchor: Number(msg.anchor),
-                head: Number(msg.head),
-              };
+            case "page.openTarget":
+              await openPageTarget(folder, msg.target);
               break;
-            case "selection.link":
-              session.selection = {
-                anchor: Number(msg.anchor),
-                head: Number(msg.head),
-              };
-              session.commandSelection = true;
-              await vscode.commands.executeCommand(
-                "aicNotes.linkSelectionToNote",
-              );
-              break;
-            case "selection.snapshot": {
-              const resolve = session.selectionWaiters.get(msg.requestId);
-              if (!resolve) break;
-              session.selectionWaiters.delete(msg.requestId);
-              session.selection = {
-                anchor: Number(msg.anchor),
-                head: Number(msg.head),
-              };
-              resolve(session.selection);
-              break;
-            }
             case "bus":
               await this._routeBus(msg, document, folder, relativePath);
               break;
@@ -516,8 +438,6 @@ export class MarkdownEditorProvider {
       for (const resolve of session.editingWaiters.values()) resolve(null);
       session.editingWaiters.clear();
       this.sessions.delete(session);
-      for (const resolve of session.selectionWaiters.values()) resolve(null);
-      session.selectionWaiters.clear();
     });
     session.scope.add(webviewPanel.onDidDispose(() => session.scope.dispose()));
   }
@@ -529,7 +449,7 @@ export class MarkdownEditorProvider {
         text: session.document.getText(),
         dirty: session.document.isDirty,
       });
-    const requestId = `main-${++this.selectionRequest}`;
+    const requestId = `main-${++this.snapshotRequest}`;
     return new Promise((resolve) => {
       const timeout = setTimeout(() => {
         session.editingWaiters.delete(requestId);
@@ -613,8 +533,7 @@ export class MarkdownEditorProvider {
     }
   }
 
-  _html(webview, distRoot, uri) {
-    const isNote = isNotePath(uri?.path);
+  _html(webview, distRoot, isNote) {
     return webviewHtml(
       webview,
       distRoot,

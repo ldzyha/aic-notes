@@ -61,7 +61,7 @@ test("legacy YAML Properties stay raw while aic blocks use the shared widget", a
   const main = await read("src/webview/main.js");
   const shared = await read("vendor/aic-editor-core/security-block.js");
   assert.match(main, /makePropertiesBlockExtension/u);
-  assert.match(main, /setPropertyRelationships/u);
+  assert.doesNotMatch(main, /setPropertyRelationships|note\.open/u);
   assert.doesNotMatch(main, /makeFrontmatterExtension|handlers\/frontmatter/u);
   assert.match(shared, /class SecurityBlockWidget extends WidgetType/u);
   assert.match(shared, /YAML Properties are no longer supported/u);
@@ -98,14 +98,9 @@ test("VS Code surfaces show no date label and own one in-place source toggle", a
     /createNoteHeaderLabel|Intl\.DateTimeFormat|\.mtime/u,
   );
   assert.match(secondary, /view\.description = undefined/u);
-  assert.match(
-    secondary,
-    /id="pane-target"[^>]*data-aic-icon="open"[^>]*aria-label="Open linked source file"/u,
-  );
-  assert.doesNotMatch(
-    secondary,
-    /id="pane-target"[^>]*data-aic-icon="source"/u,
-  );
+  // The page card's "Open target" is the only navigation control.
+  assert.doesNotMatch(secondary, /id="pane-(?:target|clear|pin)"/u);
+  assert.match(webview, /type: "page\.openTarget", target/u);
   assert.doesNotMatch(editor, /document-source|source\.open/u);
   assert.doesNotMatch(webview, /document-source|Open original file/u);
   assert.equal(webview.match(/sourceMode\.createButton\(/gu)?.length, 1);
@@ -127,8 +122,16 @@ test("the current release is a universal local editor without account connectivi
   const commands = packageJson.contributes.commands.map(
     ({ command }) => command,
   );
-  assert.ok(commands.includes("aicNotes.openProjectNote"));
-  assert.ok(commands.includes("aicNotes.linkSelectionToNote"));
+  assert.ok(commands.includes("aicNotes.noteForCurrentFile"));
+  for (const command of [
+    "aicNotes.openProjectNote",
+    "aicNotes.linkSelectionToNote",
+    "aicNotes.noteForExplorerItem",
+    "aicNotes.enableExplorerNesting",
+    "aicNotes.openInSecondary",
+    "aicNotes.openSource",
+  ])
+    assert.ok(!commands.includes(command), command);
   for (const command of [
     "aicNotes.refreshTree",
     "aicNotes.copyWikiLink",
@@ -159,7 +162,7 @@ test("the current release is a universal local editor without account connectivi
   );
 });
 
-test("note association, project fallback, and local footer actions are explicit", async () => {
+test("note association, the single workspace note and its reveal command are explicit", async () => {
   assert.equal(
     packageJson.contributes.configurationDefaults[
       "workbench.editorAssociations"
@@ -174,37 +177,33 @@ test("note association, project fallback, and local footer actions are explicit"
     { key: "ctrl+alt+n", mac: "cmd+alt+n", when: undefined },
   );
 
-  const [provider, create, target] = await Promise.all([
+  const [provider, create, model] = await Promise.all([
     read("src/secondary/provider.js"),
     read("src/notes/create.js"),
-    read("src/notes/target.js"),
+    read("src/secondary/model.js"),
   ]);
   assert.match(provider, /id="secondary-footer"/u);
-  assert.match(provider, /id="pane-target"/u);
-  assert.match(provider, /id="pane-clear"/u);
-  assert.match(provider, /id="pane-pin"/u);
   assert.doesNotMatch(provider, /pane-auth|pane-sync|pane-delete/u);
   assert.match(provider, /new NavigationQueue\(\)/u);
   assert.match(provider, /activeWindowResource\(vscode\.window\)/u);
   assert.match(provider, /preferredWorkspaceFolder/u);
+  assert.match(model, /export const WORKSPACE_NOTE = "aic\.md";/u);
   assert.match(
     provider,
-    /this\.followTargetNow\(folder\.uri, \{\s*preserveFocus: true,\s*isCurrent,?\s*\}\)/u,
+    /vscode\.Uri\.joinPath\(folder\.uri, WORKSPACE_NOTE\)/u,
   );
-  assert.match(
-    create,
-    /secondary\.followSource\(uri, \{ force: true, preserveFocus: false \}\)/u,
-  );
-  assert.match(
-    create,
-    /secondary\.followTarget\(uri, \{ force: true, preserveFocus: false \}\)/u,
-  );
-  assert.doesNotMatch(create, /openGlobalNote|GLOBAL_NOTE_PATH/u);
-  assert.match(target, /relNotePath === `\$\{folder\.name\}\.note\.md`/u);
+  assert.match(provider, /type: "page\.focus"/u);
+  assert.match(create, /secondary\.followActive\(\)/u);
+  // No sidecar, scan, template or delete path is left in the host.
+  for (const source of [provider, create, model])
+    assert.doesNotMatch(
+      source,
+      /findFiles|\.aic\/templates|useTrash|fs\.delete|fs\.rename|fs\.writeFile/u,
+    );
   assert.doesNotMatch(provider, /aicNotes\.refreshTree/u);
 });
 
-test("Secondary save and Trash paths are deterministic and local", async () => {
+test("Secondary save path is deterministic and local", async () => {
   const [provider, webview, extension, secondaryDraft, theme] =
     await Promise.all([
       read("src/secondary/provider.js"),
@@ -234,14 +233,7 @@ test("Secondary save and Trash paths are deterministic and local", async () => {
   );
   assert.match(webview, /save\.setAttribute\("aria-description", label\)/u);
   assert.doesNotMatch(theme, /data-save-state="saved"|#5aa66a/u);
-  assert.match(
-    provider,
-    /trashNotesLocally\(\[uri\], \{ beforeDelete: current \}\)/u,
-  );
-  assert.match(
-    provider,
-    /Only the local sidecar moves to the operating-system Trash/u,
-  );
+  assert.doesNotMatch(provider, /trashNotesLocally|Move to Trash/u);
   assert.doesNotMatch(
     provider,
     /Standard Notes|syncService|queueSync|performSync|authenticate|authConnected|remoteUuid|bindingState/iu,
@@ -300,43 +292,6 @@ test("retired synchronization source, bridge, and binaries are absent", async ()
       relativePath,
     );
   }
-});
-
-test("source selections cross both VS Code and custom-editor boundaries", async () => {
-  const [provider, webview, selection, extension] = await Promise.all([
-    read("src/editor/provider.js"),
-    read("src/webview/main.js"),
-    read("src/notes/selection.js"),
-    read("src/extension.js"),
-  ]);
-  const bindings = packageJson.contributes.keybindings.filter(
-    ({ command }) => command === "aicNotes.linkSelectionToNote",
-  );
-  assert.ok(
-    bindings.some(
-      ({ key, mac }) => key === "ctrl+alt+l" && mac === "cmd+alt+l",
-    ),
-  );
-  assert.ok(
-    bindings.some(
-      ({ key, mac }) => key === "ctrl+shift+/" && mac === "cmd+shift+/",
-    ),
-  );
-  assert.match(provider, /async activeSourceSelection\(\)/u);
-  assert.match(provider, /type: "selection\.request"/u);
-  assert.match(provider, /case "selection\.snapshot"/u);
-  assert.match(webview, /type: "selection\.snapshot"/u);
-  assert.match(webview, /type: "selection\.link", anchor, head/u);
-  assert.match(selection, /document\.isDirty/u);
-  assert.doesNotMatch(
-    selection,
-    /await document\.save\(\)|workspace\.applyEdit|ensureNoteFile/u,
-  );
-  assert.match(selection, /selection_source_unsaved/u);
-  assert.match(selection, /document\.getText\(editor\.selection\)/u);
-  assert.match(selection, /secondary\.insertLinkedCode/u);
-  assert.match(webview, /case "linkedCode\.insert"/u);
-  assert.match(extension, /linkSelectionToNote\(secondary, markdownEditor\)/u);
 });
 
 test("preview selection stays native while Ctrl+A reveals source", async () => {
@@ -429,21 +384,6 @@ test("structured previews keep explicit icon actions and transient editors", asy
     table + frontmatter + codeFence + mermaid,
     /createElementNS\(/u,
   );
-});
-
-test("pin uses a recognizable shared thumbtack with outlined and filled states", async () => {
-  const [icons, provider, webview] = await Promise.all([
-    read("vendor/aic-editor-core/icons.css"),
-    read("src/secondary/provider.js"),
-    read("src/webview/main.js"),
-  ]);
-  assert.match(icons, /data-aic-icon="pin"\]\[aria-pressed="true"/u);
-  assert.match(icons, /M5 2h6v2l-1 1v4l2 2H4l2-2V5L5 4Z/u);
-  assert.match(
-    provider,
-    /data-aic-icon="pin" aria-label="Pin note" aria-pressed="false"/u,
-  );
-  assert.match(webview, /msg.pinned \? "Unpin note" : "Pin note"/u);
 });
 
 test("shared slash templates are mounted with the common placeholder and styling", async () => {

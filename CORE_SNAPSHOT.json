@@ -1,7 +1,7 @@
 {
   "coreVersion": "7.5.3",
   "sourceRepository": "https://github.com/ldzyha/standard-notes-aic",
-  "sourceCommit": "90bf2eef6350330df6d3b155d6c9fb4e2dbbbf57",
+  "sourceCommit": "64c8763f8644f63f5ff1244413e68cb917cbff8a",
   "files": {
     "agent-guide.d.ts": "d6ffa86047957502482f327954244f9220ba0797e7a00812e88a4bed78d643c5",
     "agent-guide.js": "6e33b835cadfc64472cb12e909100d32c460b8c9e9cb3874fe7d34ca5e20f6cd",
@@ -24,7 +24,7 @@
     "draft-session.d.ts": "43351029016947a597cd1771986fa9cec3fa8b6c78e2bb9bd7230a0db0e7a766",
     "draft-session.js": "2b9a02ead705469b9f85be59662ab124ca2452fa8bdd78c4e8c9615d4e1ad6e4",
     "editor-help.d.ts": "afc3775183a2edda93920f5dbd313502016bebb8c58e5df83151de9c647bb9b3",
-    "editor-help.js": "00634f3b0c2275825613af45310fbfb6ac70bc81b2fabe5d097e99f487f6ba98",
+    "editor-help.js": "169e789cc5e2dc69048615c19d2a0611ef6c650b5c7efb8834169217b4031f41",
     "field-label.d.ts": "c91bcd2ec47ab31e6be5b5ca229443473fd5cf25ca853c0c36db33ccb380a82c",
     "field-label.js": "b81d70236cb542be7649e3e82588ec703cae86fe8579f850a606ec96bcae8034",
     "field-parts.d.ts": "4d23d10968f4faca0cd295b45ab66273a9b3042fce6826ce02f8e96f048082e7",
@@ -43,10 +43,10 @@
     "mermaid-viewport.css": "cae70f2f8d23d15ca5dbbcaa6977bd229ac22e2276cca414f05a97ea7e813252",
     "mermaid-viewport.d.ts": "fa383c5cad3084311a1070d70da85578769ca39a05e4797ab9594be95001caa2",
     "mermaid-viewport.js": "f80b46605752cc194f259805a71cdcd053df1b8424fa1b03cea03a8e003a6a39",
-    "note-pages-bar.d.ts": "9237d0fce96326899902c48a0859bcef68f9840daf6386f9f1e87180169bfdb7",
-    "note-pages-bar.js": "36da17b97170b792ea3200730d02360fb8e43857bc1cdba8ecab7299be4381f7",
-    "note-pages.d.ts": "31d309bd93c06b46cbb7450f81bbae43ac317bc15bfe69ad1fbcfcc2f2d16287",
-    "note-pages.js": "6f8fb2717da3ba3fa291f6cdc03127f1d2af84f31ca19fd8ff70901b21f5c734",
+    "note-page-cards.d.ts": "4cc9de79a901b6f28d92413070e11fd6c233b2e96bb7c7e07f92e553f1c49e03",
+    "note-page-cards.js": "749daccadc0d412f980c1341f9c627cb7550af1cd7d05377e25f04c4fa005606",
+    "note-pages.d.ts": "91c3a155c9b633a8375db4d9f0720f268259fe17a1123154494ebe67fdcfc46f",
+    "note-pages.js": "971ac9c19fb8512897adc8e4b04d11822e367594677c022437731dc956a97ce0",
     "note-template.d.ts": "df28496995d29d89624d2772923014e900999a9bb4a3a6097163ed55d954fe9c",
     "note-template.js": "f93a673198e55a0889cd3bc2af9cee82255a099365824a5c9264aea36d592dfa",
     "preview-layout.css": "0dfa3ff798aa4fb99fe47826bb9c471b5ce27bbec2e126d7b52c7015ca7ccc37",
@@ -93,8 +93,8 @@
     "structured-preview.js": "14510724bf3336d7334e898dfdd19117bb0b48079c1f1941ea370ea1e312e83c",
     "task-marker.d.ts": "c052c03ec0e45084726954c76fec308d9d7d77415ecb1b89a9d99d03627f58dd",
     "task-marker.js": "50ffab505a9af768a07927f3b9c5ad72e87f79e9d41a09972e3d1b85e337bc31",
-    "ui-system.css": "91a9e912fa6f4e66f6d75ac4a3c0ccd0d8c01dc4d9de7974413230c02aef8dde",
-    "ui-system.d.ts": "27ba299bf6c7ed52aa137e25908aa6ca73723367c7650a5240e654208858a7d6",
-    "ui-system.js": "06825bbb1ee363d4e977c3a6ba899b0edaafaff482e8818b51b04895fa52a46e"
+    "ui-system.css": "cc6ff93262571387b7946e02430365ff365a7bc73a803003d39bd10e33c5452f",
+    "ui-system.d.ts": "4d90991e57493add461dcc579ae434b2b7deeec8adf8d805c229d3d5c88ca216",
+    "ui-system.js": "e618f7901465ce12c245fa9341305760171cbe4272620320e366d80b1d0bff0b"
   }
 }

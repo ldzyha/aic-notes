@@ -27,6 +27,12 @@ test("every public command is registered and indexed", () => {
     "aicNotes.copyWikiLink",
     "aicNotes.deleteNote",
     "aicNotes.deleteFolderNotes",
+    "aicNotes.linkSelectionToNote",
+    "aicNotes.openInSecondary",
+    "aicNotes.noteForExplorerItem",
+    "aicNotes.openProjectNote",
+    "aicNotes.enableExplorerNesting",
+    "aicNotes.openSource",
   ]) {
     assert.ok(
       !manifest.contributes.commands.some(({ command }) => command === retired),
@@ -40,11 +46,12 @@ test("functional index records the release-critical state contracts", () => {
   for (const contract of [
     "Ctrl/Cmd+S",
     "active custom-editor tab is authoritative",
-    "Pinning affects only automatic following",
+    "One note file per workspace folder",
+    "Viewing a file never creates or changes",
     "Secondary headers do not display file dates",
     "No Standard Notes account connection is offered by the VS Code extension",
     "One universal VSIX",
-    "Trash is local",
+    "are no longer followed",
     "Slash on an otherwise empty Markdown line",
   ])
     assert.ok(index.includes(contract), `missing contract: ${contract}`);

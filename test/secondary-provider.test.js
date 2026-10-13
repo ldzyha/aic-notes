@@ -21,8 +21,8 @@ const bundled = await build({
 function harness(failure) {
   const uri = {
     scheme: "file",
-    fsPath: "D:/workspace/project.note.md",
-    toString: () => "file:///D:/workspace/project.note.md",
+    fsPath: "D:/workspace/aic.md",
+    toString: () => "file:///D:/workspace/aic.md",
   };
   const messages = [];
   const errors = [];
@@ -46,7 +46,7 @@ function harness(failure) {
     workspace: {
       asRelativePath: () => {
         if (failure === "path") throw new Error("path failed");
-        return "project.note.md";
+        return "aic.md";
       },
       fs: {
         stat: async () => {
@@ -126,19 +126,19 @@ for (const failure of [
       text: "local edit",
       generation: 3,
       requestId: 9,
-      relativePath: "project.note.md",
+      relativePath: "aic.md",
     });
     assert.equal(messages.length, 1);
     assert.equal(messages[0].type, "committed");
     assert.equal(messages[0].saved, false);
     assert.equal(messages[0].requestId, 9);
-    assert.equal(messages[0].relativePath, "project.note.md");
+    assert.equal(messages[0].relativePath, "aic.md");
     await pane.onMessage({
       type: "commit",
       text: "retry",
       generation: 3,
       requestId: 10,
-      relativePath: "project.note.md",
+      relativePath: "aic.md",
     });
     assert.equal(
       messages.length,
@@ -157,7 +157,7 @@ test("a status failure after saving cannot send a contradictory failure acknowle
       text: "local edit",
       generation: 3,
       requestId: 9,
-      relativePath: "project.note.md",
+      relativePath: "aic.md",
     }),
     /status failed/u,
   );
@@ -179,7 +179,7 @@ test("queued draft-state messages for an old note cannot clear current dirty sta
   assert.equal(pane.draftRevision, 0);
   await pane.onMessage({
     type: "draft.state",
-    relativePath: "project.note.md",
+    relativePath: "aic.md",
     dirty: false,
     pending: true,
   });

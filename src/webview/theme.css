@@ -377,9 +377,6 @@ body.aic-secondary-surface {
   cursor: not-allowed;
   opacity: 0.42;
 }
-#secondary-footer .aic-pane-icon.danger {
-  color: var(--aic-danger);
-}
 
 @media (pointer: coarse) {
   #secondary-footer .aic-pane-icon {

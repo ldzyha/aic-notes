@@ -7,21 +7,14 @@ import { fileURLToPath } from "node:url";
 const stubs = {
   "./notes/create.js": `
     export const noteForCurrentFile = () => {};
-    export const noteForExplorerItem = () => {};
-    export const openProjectNote = () => {};
     export const commandHandler = (handler) => handler;`,
-  "./notes/nesting.js": `
-    export const enableExplorerNesting = () => {};
-    export const hintIfShadowed = () => {};`,
   "./editor/provider.js":
     "export const MarkdownEditorProvider = { register: () => ({}) };",
   "./editor/slash-provider.js":
     "export const registerMarkdownSlashCompletionProvider = () => ({});",
   "./secondary/provider.js":
     "export const SecondaryNotePane = { register: () => ({ open() {} }) };",
-  "./secondary/model.js": "export const activeResource = () => undefined;",
   "./notes/edit-ownership.js": "export class NoteEditOwnership {}",
-  "./notes/selection.js": "export const linkSelectionToNote = () => {};",
   "./agents/bootstrap.js":
     "export const AgentWorkflowBootstrap = { register: () => {} };",
 };
@@ -98,8 +91,6 @@ test("local extension activates without account commands or network access", asy
   };
   await module.exports.activate(context);
   assert.ok(commands.includes("aicNotes.noteForCurrentFile"));
-  assert.ok(commands.includes("aicNotes.linkSelectionToNote"));
-  assert.ok(commands.includes("aicNotes.openInSecondary"));
   assert.equal(treeProviders, 0);
   for (const retired of [
     "aicNotes.refreshTree",
@@ -108,6 +99,12 @@ test("local extension activates without account commands or network access", asy
     "aicNotes.openNote",
     "aicNotes.deleteNote",
     "aicNotes.deleteFolderNotes",
+    "aicNotes.linkSelectionToNote",
+    "aicNotes.openInSecondary",
+    "aicNotes.noteForExplorerItem",
+    "aicNotes.openProjectNote",
+    "aicNotes.enableExplorerNesting",
+    "aicNotes.openSource",
   ])
     assert.ok(!commands.includes(retired));
   assert.ok(

@@ -1,25 +1,26 @@
-import { notePathFor } from "../notes/paths.js";
+// One note file per workspace folder. Every other file of that folder is a
+// page inside it, bound by a `--- <folder-relative path>` separator line.
+export const WORKSPACE_NOTE = "aic.md";
 
-export const NOTE_SUFFIX = ".note.md";
-export const MARKDOWN_SUFFIX = ".md";
-
-export function isNotePath(value) {
-  return String(value ?? "")
-    .replaceAll("\\", "/")
-    .endsWith(NOTE_SUFFIX);
+function relativeTo(folderUri, uri) {
+  const root = String(folderUri?.path ?? "").replace(/\/+$/u, "");
+  const value = String(uri?.path ?? "");
+  return value.startsWith(`${root}/`) ? value.slice(root.length + 1) : "";
 }
 
-export function markdownKind(value) {
-  const normalized = String(value ?? "")
-    .replaceAll("\\", "/")
-    .toLowerCase();
-  if (!normalized.endsWith(MARKDOWN_SUFFIX)) return null;
-  return normalized.endsWith(NOTE_SUFFIX) ? "note" : "document";
+/** True for `<workspaceFolder>/aic.md` itself (never for a nested aic.md). */
+export function isWorkspaceNote(folderUri, uri) {
+  return relativeTo(folderUri, uri).toLowerCase() === WORKSPACE_NOTE;
 }
 
-export function linkedNotePath(relativePath) {
-  const normalized = String(relativePath ?? "").replaceAll("\\", "/");
-  return isNotePath(normalized) ? normalized : notePathFor(normalized);
+/**
+ * Page target of a file inside its workspace folder: the folder-relative path
+ * with `/`. Null for the folder itself, the note itself and outside paths, so
+ * the note can never become a page of itself.
+ */
+export function pageTargetFor(folderUri, uri) {
+  const target = relativeTo(folderUri, uri);
+  return !target || target.toLowerCase() === WORKSPACE_NOTE ? null : target;
 }
 
 // VS Code can keep activeTextEditor pointed at the last native editor while a
@@ -55,20 +56,6 @@ export function preferredWorkspaceFolder(
     if (folder) return folder;
   }
   return workspaceFolders?.[0];
-}
-
-export function paneCapabilities({
-  hasDocument = false,
-  hasPlaceholder = false,
-  hasSource = false,
-} = {}) {
-  const hasSurface = Boolean(hasDocument || hasPlaceholder);
-  return Object.freeze({
-    hasSurface,
-    canPin: Boolean(hasSurface || hasSource),
-    canOpenTarget: Boolean(hasSource),
-    canTrash: Boolean(hasDocument),
-  });
 }
 
 // Navigation requests arrive from several VS Code event streams. Serializing

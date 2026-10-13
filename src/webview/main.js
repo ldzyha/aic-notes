@@ -24,7 +24,7 @@ import {
   drawSelection,
   placeholder,
 } from "@codemirror/view";
-import { EditorState, Annotation, Compartment } from "@codemirror/state";
+import { EditorState, Compartment } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { syntaxHighlighting } from "@codemirror/language";
 
@@ -40,7 +40,6 @@ import { makeFencedMarkdown } from "./fenced-local.js";
 import { darkHighlight } from "./highlight.js";
 import { makeHost, makeClipboardClient } from "./host-shim.js";
 import { detailsExtension } from "./details.js";
-import { upsertLinkedCodeReference } from "../notes/selection-model.js";
 import {
   SecondaryDraft,
   secondarySaveState,
@@ -55,7 +54,6 @@ import { markdownFormatting } from "../../vendor/aic-editor-core/formatting.js";
 import {
   makeSecurityBlockExtension,
   makePropertiesBlockExtension,
-  setPropertyRelationships,
 } from "../../vendor/aic-editor-core/security-block.js";
 import { makeSecurityImportExtension } from "../../vendor/aic-editor-core/security-import-extension.js";
 import {
@@ -65,9 +63,12 @@ import {
 import { createSourceModeController } from "../../vendor/aic-editor-core/source-mode.js";
 import { createEditorHelp } from "../../vendor/aic-editor-core/editor-help.js";
 import {
-  notePagesBar,
-  showNotePage,
-} from "../../vendor/aic-editor-core/note-pages-bar.js";
+  focusPageTarget,
+  focusedPage,
+  notePageCards,
+  notePageCardsPreview,
+} from "../../vendor/aic-editor-core/note-page-cards.js";
+import { hostChange, remote } from "./host-changes.js";
 import { PrimarySave } from "./primary-save.js";
 import {
   applyUiComponent,
@@ -87,7 +88,6 @@ import SECURITY_IMPORT_CSS from "../../vendor/aic-editor-core/security-import-ex
 import THEME_CSS from "./theme.css";
 
 const api = acquireVsCodeApi();
-const remote = Annotation.define();
 const secondarySurface = document.body.classList.contains(
   "aic-secondary-surface",
 );
@@ -99,13 +99,12 @@ const docState = {
   resourceUri: "",
   generation: 0,
   placeholder: false,
-  relationships: [],
+  // Secondary pane only: the page target shown alone; null is the whole note.
+  focus: null,
   hasSurface: false,
   readOnly: false,
   lease: undefined,
   editingConflict: false,
-  canTrash: false,
-  actionPending: false,
 };
 const draft = new SecondaryDraft();
 const primarySave = new PrimarySave();
@@ -232,6 +231,21 @@ for (const css of [
 
 let view = null;
 const documentViews = new Map();
+const viewKey = () => docState.resourceUri || docState.relativePath;
+
+// Show only the page bound to `target` (Secondary pane), or the whole note as
+// cards. Only an effect is dispatched: the text and its draft never change.
+function applyFocus(target) {
+  docState.focus =
+    secondarySurface && typeof target === "string" ? target : null;
+  if (!view || (focusedPage(view.state)?.target ?? null) === docState.focus)
+    return;
+  // A target that cannot be written as a page has none: show the whole note.
+  if (!focusPageTarget(view, docState.focus)) {
+    docState.focus = null;
+    focusPageTarget(view, null);
+  }
+}
 const accessCompartment = new Compartment();
 const sourceMode = createSourceModeController();
 function accessExtension() {
@@ -249,10 +263,6 @@ function reflectEditingState() {
   const status = document.getElementById("editing-status");
   if (status) status.textContent = text;
   if (secondarySurface) reflectSaveState();
-  const clear = document.getElementById("pane-clear");
-  if (clear)
-    clear.disabled =
-      docState.readOnly || !docState.canTrash || docState.actionPending;
   document.body.dataset.readOnly = String(docState.readOnly);
 }
 function setEditingState(readOnly, lease = docState.lease) {
@@ -379,22 +389,6 @@ function wirePaneControls() {
     sourceMode.createButton(document, () => view, "aic-pane-icon"),
   );
   wireEditorHelp(footer);
-  if (!secondarySurface) return;
-  document
-    .getElementById("pane-pin")
-    ?.addEventListener("click", () => api.postMessage({ type: "pane.pin" }));
-  document.getElementById("pane-target")?.addEventListener("click", () => {
-    const path = docState.relativePath;
-    void saveCurrentDraft().then((saved) => {
-      if (saved && path === docState.relativePath)
-        api.postMessage({ type: "pane.target" });
-    });
-  });
-  document
-    .getElementById("pane-clear")
-    ?.addEventListener("click", () =>
-      api.postMessage({ type: "pane.clear", lease: docState.lease }),
-    );
 }
 
 // Nested fenced-code highlighting: the language sits in a Compartment so a
@@ -486,13 +480,18 @@ function makeEditor(text, retainedState = null) {
           langCompartment.of(fencedLang()),
           placeholder(SLASH_SNIPPET_PLACEHOLDER),
           slashSnippetExtension(),
-          // outside the source/preview compartment: both modes share the bar
-          notePagesBar(),
+          // outside the source/preview compartment: page focus and its edit
+          // confinement hold in both modes
+          notePageCards({
+            onOpenTarget: (target) =>
+              api.postMessage({ type: "page.openTarget", target }),
+          }),
           // colors nested fenced-code tokens; markdown structure styling is
           // owned by the handler classes (theme.css bumps their specificity)
           syntaxHighlighting(darkHighlight, { fallback: true }),
           sourceMode.extension([
             decorationPlugin(HANDLERS),
+            notePageCardsPreview(),
             makeCalloutExtension(),
             makeLinkActionsExtension(host),
             makeTableExtension(host, {
@@ -500,9 +499,6 @@ function makeEditor(text, retainedState = null) {
             }),
             makePropertiesBlockExtension({
               document,
-              initialRelationships: () => docState.relationships,
-              onRelationshipOpen: (path) =>
-                host.bus.publish("note.open", { path }),
               onReadClipboard: () => clipboard.readText(),
               onCopy: (source) => clipboard.writeText(source),
               onOpen: (url) => host.bus.publish("link.external", { url }),
@@ -582,28 +578,6 @@ function makeEditor(text, retainedState = null) {
                 return true;
               },
             },
-            ...(!secondarySurface
-              ? [
-                  {
-                    key: "Mod-Shift-/",
-                    run: (editor) => {
-                      const { anchor, head } = editor.state.selection.main;
-                      if (anchor === head) return false;
-                      api.postMessage({ type: "selection.link", anchor, head });
-                      return true;
-                    },
-                  },
-                  {
-                    key: "Mod-Alt-l",
-                    run: (editor) => {
-                      const { anchor, head } = editor.state.selection.main;
-                      if (anchor === head) return false;
-                      api.postMessage({ type: "selection.link", anchor, head });
-                      return true;
-                    },
-                  },
-                ]
-              : []),
             ...defaultKeymap,
           ]),
           EditorView.lineWrapping, // a note wraps, never scrolls sideways
@@ -635,8 +609,6 @@ function makeEditor(text, retainedState = null) {
             if (update.selectionSet || update.docChanged) {
               const { anchor, head } = update.state.selection.main;
               api.setState({ anchor, head, path: docState.relativePath });
-              if (!secondarySurface)
-                api.postMessage({ type: "selection", anchor, head });
             }
           }),
         ],
@@ -662,40 +634,6 @@ window.addEventListener("message", (event) => {
       );
       break;
     }
-    case "linkedCode.insert": {
-      let result;
-      if (
-        secondarySurface &&
-        view &&
-        !docState.readOnly &&
-        msg.relativePath === docState.relativePath &&
-        msg.generation === docState.generation &&
-        msg.lease === docState.lease &&
-        Number.isFinite(msg.expiresAt) &&
-        Date.now() <= msg.expiresAt
-      ) {
-        result = upsertLinkedCodeReference(
-          view.state.doc.toString(),
-          msg.reference,
-          msg.selectedText,
-        );
-        view.dispatch({
-          changes:
-            minimalTextChange(view.state.doc.toString(), result.text) ?? [],
-          selection: { anchor: result.cursor },
-          scrollIntoView: true,
-          userEvent: "input",
-        });
-        view.focus();
-      }
-      api.postMessage({
-        type: "linkedCode.result",
-        requestId: msg.requestId,
-        accepted: Boolean(result),
-        created: result?.created,
-      });
-      break;
-    }
     case "editing.probe":
       if (msg.relativePath !== docState.relativePath || !view) break;
       setEditingState(true);
@@ -717,22 +655,15 @@ window.addEventListener("message", (event) => {
       docState.editingConflict = true;
       setEditingState(true);
       break;
-    case "selection.request": {
-      const { anchor, head } = view?.state.selection.main ?? {
-        anchor: 0,
-        head: 0,
-      };
-      api.postMessage({
-        type: "selection.snapshot",
-        requestId: msg.requestId,
-        anchor,
-        head,
-      });
-      break;
-    }
     case "init": {
+      const resourceUri =
+        typeof msg.resourceUri === "string" ? msg.resourceUri : "";
+      // Two workspace folders both hold an `aic.md`: the path alone is not
+      // an identity.
       const sameIdentity = Boolean(
-        view && docState.relativePath === msg.relativePath,
+        view &&
+        docState.relativePath === msg.relativePath &&
+        docState.resourceUri === resourceUri,
       );
       if (sameIdentity && msg.generation < docState.generation) break;
       const active = secondarySurface ? draft : primarySave;
@@ -750,8 +681,8 @@ window.addEventListener("message", (event) => {
         sameIdentity && view.state.doc.toString() === msg.text;
       if (!retainEditor) {
         if (view && docState.relativePath) {
-          documentViews.delete(docState.relativePath);
-          documentViews.set(docState.relativePath, {
+          documentViews.delete(viewKey());
+          documentViews.set(viewKey(), {
             state: view.state,
             scrollTop: view.scrollDOM.scrollTop,
             scrollLeft: view.scrollDOM.scrollLeft,
@@ -764,18 +695,13 @@ window.addEventListener("message", (event) => {
       }
       if (!sameIdentity) sourceMode.reset();
       docState.relativePath = msg.relativePath;
-      docState.resourceUri =
-        typeof msg.resourceUri === "string" ? msg.resourceUri : "";
+      docState.resourceUri = resourceUri;
       docState.hasSurface = true;
       docState.editingConflict = false;
       docState.readOnly = Boolean(msg.readOnly);
       docState.lease = msg.lease;
       docState.generation = msg.generation;
       docState.placeholder = secondarySurface && Boolean(msg.placeholder);
-      docState.relationships =
-        secondarySurface && Array.isArray(msg.relationships)
-          ? msg.relationships
-          : [];
       if (!retainEditor) {
         draft.hydrate(msg.text, msg.generation, {
           discardLocal: true,
@@ -784,7 +710,7 @@ window.addEventListener("message", (event) => {
         primarySave.reset(msg.relativePath, msg.text, msg.dirty);
         paneNotice = "";
         view?.destroy();
-        const cached = documentViews.get(msg.relativePath);
+        const cached = documentViews.get(viewKey());
         const retainedState =
           cached?.state.doc.toString() === msg.text ? cached.state : null;
         view = makeEditor(msg.text, retainedState);
@@ -801,17 +727,11 @@ window.addEventListener("message", (event) => {
       }
       reflectSaveState();
       reflectEditingState();
-      view.dispatch({
-        effects: setPropertyRelationships.of(docState.relationships),
-      });
-      const requested = msg.selection;
+      // Before the selection: a focused page clamps the caret into itself.
+      applyFocus(msg.focus);
       const saved = api.getState();
-      const selection =
-        requested ?? (saved?.path === msg.relativePath ? saved : null);
-      if (
-        selection &&
-        (requested || (!retainEditor && !documentViews.has(msg.relativePath)))
-      ) {
+      const selection = saved?.path === msg.relativePath ? saved : null;
+      if (selection && !retainEditor && !documentViews.has(viewKey())) {
         const len = view.state.doc.length;
         try {
           view.dispatch({
@@ -826,12 +746,19 @@ window.addEventListener("message", (event) => {
           /* stale saved selection — keep the default */
         }
       }
-      // Linked Note follows a file to the page bound to it (`--- <path>`).
-      if (!requested && Number.isInteger(msg.page))
-        showNotePage(view, msg.page);
       requestAnimationFrame(() => view?.focus());
       break;
     }
+    case "page.focus":
+      // The active file changed and its page is in the note already shown:
+      // only the focus moves. The document and its draft are untouched.
+      if (
+        secondarySurface &&
+        view &&
+        msg.relativePath === docState.relativePath
+      )
+        applyFocus(msg.target);
+      break;
     case "external": {
       if (!view) return;
       if (docState.editingConflict) return;
@@ -841,10 +768,7 @@ window.addEventListener("message", (event) => {
       }
       docState.generation = msg.generation;
       clipboard.cancel();
-      view.dispatch({
-        changes: msg.changes,
-        annotations: [remote.of(true)],
-      });
+      view.dispatch(hostChange(msg.changes));
       if (secondarySurface)
         draft.hydrate(view.state.doc.toString(), msg.generation);
       else primarySave.edit(view.state.doc.toString());
@@ -856,24 +780,13 @@ window.addEventListener("message", (event) => {
       if (docState.editingConflict) return;
       docState.generation = msg.generation;
       clipboard.cancel();
-      view.dispatch({
-        changes: { from: 0, to: view.state.doc.length, insert: msg.text },
-        annotations: [remote.of(true)],
-      });
+      view.dispatch(
+        hostChange({ from: 0, to: view.state.doc.length, insert: msg.text }),
+      );
       if (secondarySurface)
         draft.hydrate(msg.text, msg.generation, { discardLocal: true });
       else primarySave.edit(msg.text);
       reflectSaveState();
-      break;
-    }
-    case "relationships": {
-      if (!secondarySurface || !view) return;
-      docState.relationships = Array.isArray(msg.relationships)
-        ? msg.relationships
-        : [];
-      view.dispatch({
-        effects: setPropertyRelationships.of(docState.relationships),
-      });
       break;
     }
     case "committed": {
@@ -883,8 +796,7 @@ window.addEventListener("message", (event) => {
         view.state.doc.toString(),
         draft.current,
       );
-      if (change)
-        view.dispatch({ changes: change, annotations: [remote.of(true)] });
+      if (change) view.dispatch(hostChange(change));
       paneNotice = msg.saved
         ? ""
         : "Save failed. Your changes are kept. Press Ctrl+S to retry.";
@@ -912,31 +824,12 @@ window.addEventListener("message", (event) => {
     }
     case "paneState": {
       document.title = msg.title;
-      docState.canTrash = Boolean(msg.canTrash);
-      docState.actionPending = Boolean(msg.actionPending);
       docState.hasSurface = Boolean(msg.hasSurface);
       if (!docState.hasSurface) clipboard.cancel();
       docState.placeholder = secondarySurface && Boolean(msg.hasPlaceholder);
       document.body.dataset.placeholder = String(docState.placeholder);
       paneNotice = msg.status || "";
       reflectSaveState();
-      const pin = document.getElementById("pane-pin");
-      if (pin) {
-        pin.setAttribute("aria-pressed", String(Boolean(msg.pinned)));
-        pin.setAttribute("aria-label", msg.pinned ? "Unpin note" : "Pin note");
-        pin.disabled = !msg.canPin;
-      }
-      const target = document.getElementById("pane-target");
-      if (target) {
-        target.hidden = !msg.canOpenTarget;
-        target.disabled = !msg.canOpenTarget || Boolean(msg.actionPending);
-      }
-      const clear = document.getElementById("pane-clear");
-      if (clear) {
-        clear.hidden = !msg.canTrash;
-        clear.disabled =
-          docState.readOnly || !msg.canTrash || Boolean(msg.actionPending);
-      }
       const empty = document.getElementById("pane-empty");
       const editor = document.getElementById("editor");
       if (empty) empty.hidden = Boolean(msg.hasSurface);

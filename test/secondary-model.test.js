@@ -2,11 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   activeResource,
-  isNotePath,
-  markdownKind,
-  linkedNotePath,
+  isWorkspaceNote,
   NavigationQueue,
-  paneCapabilities,
+  pageTargetFor,
   preferredWorkspaceFolder,
 } from "../src/secondary/model.js";
 
@@ -40,35 +38,6 @@ test("no active buffer falls back to the last project, then the first workspace"
   );
 });
 
-test("note actions depend on note existence, never pin state", () => {
-  assert.deepEqual(
-    paneCapabilities({
-      hasDocument: true,
-      hasPlaceholder: false,
-      hasSource: true,
-    }),
-    {
-      hasSurface: true,
-      canPin: true,
-      canOpenTarget: true,
-      canTrash: true,
-    },
-  );
-  assert.deepEqual(
-    paneCapabilities({
-      hasDocument: false,
-      hasPlaceholder: true,
-      hasSource: true,
-    }),
-    {
-      hasSurface: true,
-      canPin: true,
-      canOpenTarget: true,
-      canTrash: false,
-    },
-  );
-});
-
 test("navigation requests stay ordered and recover after rejection", async () => {
   const queue = new NavigationQueue();
   const events = [];
@@ -99,17 +68,29 @@ test("navigation requests stay ordered and recover after rejection", async () =>
   assert.deepEqual(events, ["first", "failed", "last"]);
 });
 
-test("note paths are Secondary-only candidates without note-of-note recursion", () => {
-  assert.equal(isNotePath("src/app.note.md"), true);
-  assert.equal(isNotePath("src/app.md"), false);
-  assert.equal(linkedNotePath("src/app.ts"), "src/app.note.md");
-  assert.equal(linkedNotePath("src/README.md"), "src/README.note.md");
-  assert.equal(linkedNotePath("src/app.note.md"), "src/app.note.md");
-});
-
-test("all Markdown paths have an explicit note or document identity", () => {
-  assert.equal(markdownKind("src/app.note.md"), "note");
-  assert.equal(markdownKind("docs/README.md"), "document");
-  assert.equal(markdownKind("docs/README.MD"), "document");
-  assert.equal(markdownKind("src/app.ts"), null);
+test("a file's page target is its folder-relative path; the note is never its own page", () => {
+  const folder = { path: "/work/app" };
+  const at = (path) => ({ path });
+  assert.equal(pageTargetFor(folder, at("/work/app/src/a.ts")), "src/a.ts");
+  assert.equal(pageTargetFor(folder, at("/work/app/a.note.md")), "a.note.md");
+  assert.equal(
+    pageTargetFor(folder, at("/work/app/docs/aic.md")),
+    "docs/aic.md",
+  );
+  assert.equal(
+    pageTargetFor({ path: "/work/app/" }, at("/work/app/b.js")),
+    "b.js",
+  );
+  for (const path of [
+    "/work/app/aic.md",
+    "/work/app/AIC.md",
+    "/work/app",
+    "/work/application/a.ts",
+    "/elsewhere/a.ts",
+  ])
+    assert.equal(pageTargetFor(folder, at(path)), null, path);
+  assert.equal(isWorkspaceNote(folder, at("/work/app/aic.md")), true);
+  assert.equal(isWorkspaceNote(folder, at("/work/app/docs/aic.md")), false);
+  assert.equal(isWorkspaceNote(folder, at("/work/app/a.note.md")), false);
+  assert.equal(isWorkspaceNote(folder, at("/work/application/aic.md")), false);
 });

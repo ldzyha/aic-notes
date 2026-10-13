@@ -84,42 +84,9 @@
     "commands": [
       {
         "command": "aicNotes.noteForCurrentFile",
-        "title": "Open Linked Note",
+        "title": "Open Note Page for Current File",
         "category": "AIC Notes",
         "icon": "$(note)"
-      },
-      {
-        "command": "aicNotes.linkSelectionToNote",
-        "title": "Link Selection to Note",
-        "category": "AIC Notes",
-        "icon": "$(comment-discussion)"
-      },
-      {
-        "command": "aicNotes.openInSecondary",
-        "title": "Open Note in Secondary Side Bar",
-        "category": "AIC Notes"
-      },
-      {
-        "command": "aicNotes.noteForExplorerItem",
-        "title": "Open Linked Note",
-        "category": "AIC Notes"
-      },
-      {
-        "command": "aicNotes.openProjectNote",
-        "title": "Open Project Note",
-        "category": "AIC Notes",
-        "icon": "$(root-folder-opened)"
-      },
-      {
-        "command": "aicNotes.enableExplorerNesting",
-        "title": "Enable Explorer Nesting for Notes",
-        "category": "AIC Notes"
-      },
-      {
-        "command": "aicNotes.openSource",
-        "title": "Open Source",
-        "category": "AIC Notes",
-        "icon": "$(go-to-file)"
       },
       {
         "command": "aicNotes.useNativeForMarkdown",
@@ -149,50 +116,14 @@
         "command": "aicNotes.noteForCurrentFile",
         "key": "ctrl+alt+n",
         "mac": "cmd+alt+n"
-      },
-      {
-        "command": "aicNotes.linkSelectionToNote",
-        "key": "ctrl+alt+l",
-        "mac": "cmd+alt+l",
-        "when": "editorTextFocus && editorHasSelection && isFileSystemResource && resourceFilename not =~ /\\.note\\.md$/"
-      },
-      {
-        "command": "aicNotes.linkSelectionToNote",
-        "key": "ctrl+shift+/",
-        "mac": "cmd+shift+/",
-        "when": "editorTextFocus && editorHasSelection && isFileSystemResource && resourceFilename not =~ /\\.note\\.md$/"
       }
     ],
     "menus": {
       "editor/title": [
         {
-          "command": "aicNotes.openSource",
-          "when": "isFileSystemResource && resourceFilename =~ /\\.note\\.md$/",
-          "group": "navigation"
-        },
-        {
           "command": "aicNotes.noteForCurrentFile",
-          "when": "isFileSystemResource && resourceFilename not =~ /\\.note\\.md$/",
+          "when": "isFileSystemResource",
           "group": "navigation"
-        }
-      ],
-      "explorer/context": [
-        {
-          "command": "aicNotes.openSource",
-          "when": "isFileSystemResource && resourceFilename =~ /\\.note\\.md$/",
-          "group": "navigation@1"
-        },
-        {
-          "command": "aicNotes.noteForExplorerItem",
-          "group": "2_workspace",
-          "when": "isFileSystemResource"
-        }
-      ],
-      "editor/context": [
-        {
-          "command": "aicNotes.linkSelectionToNote",
-          "when": "editorHasSelection && isFileSystemResource && resourceFilename not =~ /\\.note\\.md$/",
-          "group": "navigation@10"
         }
       ]
     },
@@ -222,41 +153,6 @@
       "workbench.editorAssociations": {
         "*.note.md": "aicNotes.markdown",
         "*.md": "aicNotes.markdown"
-      },
-      "explorer.fileNesting.patterns": {
-        "*.js": "${capture}.note.md",
-        "*.mjs": "${capture}.note.md",
-        "*.cjs": "${capture}.note.md",
-        "*.ts": "${capture}.note.md",
-        "*.jsx": "${capture}.note.md",
-        "*.tsx": "${capture}.note.md",
-        "*.py": "${capture}.note.md",
-        "*.rs": "${capture}.note.md",
-        "*.go": "${capture}.note.md",
-        "*.java": "${capture}.note.md",
-        "*.rb": "${capture}.note.md",
-        "*.php": "${capture}.note.md",
-        "*.css": "${capture}.note.md",
-        "*.scss": "${capture}.note.md",
-        "*.html": "${capture}.note.md",
-        "*.isml": "${capture}.note.md",
-        "*.json": "${capture}.note.md",
-        "*.jsonc": "${capture}.note.md",
-        "*.toml": "${capture}.note.md",
-        "*.yml": "${capture}.note.md",
-        "*.yaml": "${capture}.note.md",
-        "*.md": "${capture}.note.md",
-        "*.sh": "${capture}.note.md",
-        "*.sql": "${capture}.note.md",
-        "*.xml": "${capture}.note.md",
-        "*.svg": "${capture}.note.md",
-        "*.txt": "${capture}.note.md",
-        "*.vue": "${capture}.note.md",
-        "*.svelte": "${capture}.note.md",
-        ".env": ".env.note.md",
-        ".gitignore": ".gitignore.note.md",
-        "Makefile": "Makefile.note.md",
-        "Dockerfile": "Dockerfile.note.md"
       }
     }
   },

@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import * as path from "./uri-path.js";
 import { sourceLocationFromHref } from "./selection-model.js";
+import { structuredError } from "../errors.js";
 
 // Webview links are document content, not trusted filesystem capabilities.
 // Allow relative wiki traversal only when its normalized destination remains
@@ -39,6 +40,39 @@ export async function openExternalLink(value) {
     return false;
   }
   return vscode.env.openExternal(vscode.Uri.parse(url));
+}
+
+// "Open target" of a page card. The target is note content: a path is taken
+// relative to the note's workspace folder and must stay inside it; only
+// http(s) URLs leave the editor.
+export async function openPageTarget(folder, target) {
+  const value = String(target ?? "").trim();
+  if (/^https?:\/\//iu.test(value)) return openExternalLink(value);
+  const relative = value
+    .replaceAll("\\", "/")
+    .replace(/^(?:\.?\/)+/u, "")
+    .replace(/\/+$/u, "");
+  const uri = folder ? workspaceLinkUri(folder, relative) : null;
+  if (!uri)
+    throw structuredError(
+      "notes_target_outside_workspace",
+      `${value || "this page"} is not a path inside the note's workspace folder`,
+      ["Bind the page to a path relative to the workspace folder"],
+    );
+  let stat;
+  try {
+    stat = await vscode.workspace.fs.stat(uri);
+  } catch {
+    throw structuredError(
+      "notes_target_missing",
+      `${relative} does not exist`,
+      ["Restore the file or correct the page's `--- <path>` line"],
+    );
+  }
+  if (stat.type & vscode.FileType.Directory)
+    await vscode.commands.executeCommand("revealInExplorer", uri);
+  else await vscode.commands.executeCommand("vscode.open", uri);
+  return true;
 }
 
 export async function openSourceAtHref(uri, href) {
