@@ -480,7 +480,10 @@ export class SecondaryNotePane {
         );
         return false;
       }
-      await this.adoptNote({ ...next, focusTarget: target });
+      await this.adoptNote({
+        ...next,
+        focusTarget: noteUri ? target : null,
+      });
       await this.focus(preserveFocus);
       return true;
     } finally {

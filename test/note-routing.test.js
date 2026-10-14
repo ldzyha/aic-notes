@@ -1547,7 +1547,16 @@ test("a note file chosen in the code editor is picked up on the next follow and 
   assert.equal(h.client.text, "--- /workspace/a.js\nsecond?\n");
   assert.equal(h.files.get(second.path).text, "--- /workspace/a.js\nsecond\n");
   assert.deepEqual(h.events.saved, [first.path]);
+  // The choice removed in the code editor: a clean pane asks for it again.
+  h.client.saveReply = true;
+  h.chooseInCodeEditor(null);
+  assert.equal(await h.activate(a), true);
+  assert.equal(h.pane.documentUri ?? h.pane.placeholderUri, undefined);
+  assert.equal(h.files.get(second.path).text, "--- /workspace/a.js\nsecond?\n");
+  assert.equal(h.pane.view.title, "Linked Note");
+  assert.equal(h.of("paneState").at(-1).hasSurface, false);
 
+  h.chooseInCodeEditor(first.path);
   // The registered pane re-reads the choice when the window gets focus.
   let focus;
   h.vscode.window.onDidChangeWindowState = (listener) => {
