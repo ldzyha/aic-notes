@@ -3,8 +3,8 @@
 [English](README.md) · [Українська](README.uk.md)
 
 AIC Notes is a Markdown editor for VS Code desktop and the Web. It edits every `*.md` document with the AIC
-preview-first surface and keeps one note file per workspace folder, `aic.md`, whose page for the
-active file is shown in the Secondary Side Bar.
+preview-first surface and keeps one note file, chosen once, whose page for the active file is
+shown in the Secondary Side Bar.
 The extension adds no Standard Notes sign-in, account requests or note synchronization.
 File operations use the filesystem provider selected in VS Code. Copy blocks manually when needed.
 
@@ -321,7 +321,7 @@ Linux desktop smoke checks are not implied.
   bare checkbox list and simple table. `/checkbox` and `/tasklist` also find `/checklist`.
   `/aic` inserts an AIC block (fields, secrets, codes); `/security`, `/password`, `/2fa`,
   `/fields`, `/properties` and `/credentials` also find it.
-- Opening `aic.md` in the main editor shows the whole note as page cards, each with
+- Opening the note file in the main editor shows the whole note as page cards, each with
   **Open target**. Persisted legacy note associations resolve to the main editor without changing
   user settings. Unsaved sidebar drafts are preserved when the active file changes.
 - The note pane starts directly at its content, without a duplicate name, folder,
@@ -329,7 +329,7 @@ Linux desktop smoke checks are not implied.
   change marker; placeholders are gray. Save, Ctrl/Cmd+S and leaving the surface commit the draft.
 - In the AIC editor, Mermaid is edited as raw Markdown with a live preview below the fence.
   `/mermaid` finds `/flowchart`; native VS Code text editors offer snippets but not the embedded preview.
-- A missing `aic.md` starts empty. Existing notes and `.aic/templates/*.md` files are left
+- A missing note file starts empty. Existing notes and `.aic/templates/*.md` files are left
   exactly as they are and are no longer read. No generated file/date Properties are added.
 - Insert `/flowchart`, `/sequence` or `/state-diagram` in AIC Markdown. The Mermaid
   preview has **Copy** and one **Edit** button matching other code blocks. **Edit** reveals the
@@ -400,28 +400,36 @@ Reload the VS Code window after installation. Local editing and the bundled agen
 ## Local note model
 
 - `*.md` is a normal local Markdown document shown in the full AIC Markdown editor.
-- Each workspace folder has one note file: `<workspaceFolder>/aic.md`. With several workspace
-  folders, the active file's folder chooses the note.
-- Linked Note shows only the page of `aic.md` bound to the active file. A file without a page
+- There is one note file for every workspace. Until it is chosen, Linked Note shows only
+  **Choose your note file**: open an existing Markdown file or name a new one (suggested name
+  `aic.md`). **AIC Notes: Change Note File** chooses another one.
+- On desktop the choice is stored in `$XDG_CONFIG_HOME/aic/note-file.json` (else
+  `~/.config/aic/note-file.json`), the same file the aic code editor uses, so choosing in either
+  app sets it for both. A change made in the code editor is picked up when VS Code gets focus or
+  the active file changes. In VS Code for the Web the choice is kept by VS Code instead.
+- Linked Note shows only the page of the note bound to the active file. A file without a page
   shows an empty card.
-- Viewing a file never creates or changes `aic.md`. The first typed text appends the page, and
-  the first save creates a missing `aic.md`.
-- When `aic.md` itself, a non-file tab or a file outside the workspace is active, Linked Note
-  shows the whole note as cards.
-- When `aic.md` changes while Linked Note has unsaved text, the draft is not replaced. Saving
+- Viewing a file never creates or changes the note file. The first typed text appends the page,
+  and the first save creates a missing note file.
+- When the note file itself, a non-file tab or no file is active, Linked Note shows the whole
+  note as cards.
+- When the note file changes while Linked Note has unsaved text, the draft is not replaced. Saving
   writes the draft's pages into the changed note if those pages did not change there; otherwise
   nothing is written, the draft stays, and the footer offers "Discard my changes and reload",
   which asks for confirmation.
-- Existing `*.note.md` files remain ordinary Markdown files and are no longer followed.
+- Existing `*.note.md` files, and an `aic.md` of an earlier version that is not the chosen note
+  file, remain ordinary Markdown files and are no longer followed.
 
 ### Note pages
 
 A note is a notebook. A line that is exactly `---`, first in the body or after a
 blank line and outside fenced code and leading frontmatter, starts a new page;
-`--- src/app/editor.ts` binds that page to exactly that workspace-relative file.
-The note stays one file. Each page is a card whose header names the target;
-**Open target** opens that file in the main editor and is the only card action.
-A target path opens only inside the note's workspace folder.
+`--- /home/me/app/src/editor.ts` binds that page to exactly that file by its full path
+(`C:/work/app/src/editor.ts` on Windows; in VS Code for the Web, the full file URI). Paths
+match in any case and with `\` or `/`; a relative path such as `src/editor.ts` matches no
+file. The note stays one file. Each page is a card whose header names the target;
+**Open target** is the only card action: it opens an existing file in the main editor or an
+`http(s)` address in the browser, and refuses relative paths, folders and other schemes.
 A bound line starts its page even inside an unclosed code fence, so a fence
 never runs past its page.
 
@@ -488,6 +496,7 @@ renderer.
 ## Commands
 
 - **AIC Notes: Open Note Page for Current File** (`Ctrl/Cmd+Alt+N`)
+- **AIC Notes: Change Note File**
 - **AIC Notes: Use Native Editor for Plain Markdown**
 - **AIC Notes: Enable AIC Agent Workflow** / **Sync Agent Instructions**
 - **AIC Notes: Copy Agent Instructions**
