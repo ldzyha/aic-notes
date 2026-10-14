@@ -293,11 +293,13 @@ test("a page changed on both sides is a conflict even without textual overlap", 
   // The page is gone from, or renamed in, the file.
   assert.deepEqual(merged(base, "--- b.js\nabout b\n", draft), page);
   assert.deepEqual(merged(base, base.replace("a.js", "z.js"), draft), page);
+  // `./a.js` is another target than `a.js`.
+  assert.deepEqual(merged(base, base.replace("a.js", "./a.js"), draft), page);
   // The same new text on both sides is no conflict.
   const both = base.replace("three", "three MINE").replace("about b", "B");
   assert.deepEqual(merged(base, both, draft), { text: both });
   // Only the separator line changed in the file: its bytes are kept.
-  const spelled = base.replace("--- a.js", "---   ./A.js \t");
+  const spelled = base.replace("--- a.js", "---   A.JS \t");
   assert.deepEqual(merged(base, spelled, draft), {
     text: spelled.replace("three", "three MINE"),
   });
@@ -320,7 +322,7 @@ test("a page the draft added is appended unless the file has it now", () => {
     text: `${more}\n\n--- new/x.js\nmine\n\tx  \n`,
   });
   // The file has that page now, however its target is spelled.
-  for (const name of ["new/x.js", "./NEW/x.js"])
+  for (const name of ["new/x.js", "NEW\\X.js", "new/x.js/"])
     assert.deepEqual(merged(base, `${base}\n\n--- ${name}\ntheirs`, draft), {
       conflict: "page",
     });
@@ -355,7 +357,7 @@ test("duplicate targets and structural draft changes are never merged with a cha
     structure,
   );
   assert.deepEqual(
-    merged(base, `${theirs}\n--- ./a.js\nagain`, draft),
+    merged(base, `${theirs}\n--- A.js\nagain`, draft),
     structure,
   );
   assert.deepEqual(
@@ -366,6 +368,7 @@ test("duplicate targets and structural draft changes are never merged with a cha
   for (const structural of [
     base.replace("--- b.js\nabout b\n", ""),
     base.replace("--- a.js", "--- z.js"),
+    base.replace("--- a.js", "--- A.js"),
     base.replace("--- a.js", "--- ./a.js"),
     "intro\n\n--- b.js\nabout b\n\n--- a.js\nabout a\n",
     base.replace("--- b.js", "--- n.js\nnew\n\n--- b.js"),

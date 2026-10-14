@@ -1691,7 +1691,7 @@ test("a page added in the pane is appended to the changed file unless the file h
   document.replace(
     document.getText().length,
     document.getText().length,
-    "\n\n--- ./Y.js\ntheirs",
+    "\n\n--- Y.JS\ntheirs",
   );
   const conflicting = document.getText();
   const applied = h.events.applied.length;
