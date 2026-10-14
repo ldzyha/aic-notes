@@ -1,9 +1,14 @@
-// aic-notes — one workspace note (aic.md) with a page per file + aic-style
-// markdown editing. activate(): the Secondary pane, its reveal command and the
-// custom markdown editor.
+// aic-notes — one note file for the whole product with a page per file +
+// aic-style markdown editing. activate(): the Secondary pane, its reveal and
+// change-note-file commands and the custom markdown editor.
 
 import * as vscode from "vscode";
-import { noteForCurrentFile, commandHandler } from "./notes/create.js";
+import {
+  noteForCurrentFile,
+  changeNoteFile,
+  commandHandler,
+} from "./notes/create.js";
+import { NoteFileChoice } from "./notes/note-file.js";
 import { MarkdownEditorProvider } from "./editor/provider.js";
 import { registerMarkdownSlashCompletionProvider } from "./editor/slash-provider.js";
 import { SecondaryNotePane } from "./secondary/provider.js";
@@ -47,8 +52,13 @@ export async function activate(context) {
   await removeRetiredAuthData(context);
   AgentWorkflowBootstrap.register(context);
   const ownership = new NoteEditOwnership();
-  const secondary = SecondaryNotePane.register(context, ownership);
-  const markdownEditor = MarkdownEditorProvider.register(context, ownership);
+  const choice = new NoteFileChoice({ globalState: context.globalState });
+  const secondary = SecondaryNotePane.register(context, ownership, choice);
+  const markdownEditor = MarkdownEditorProvider.register(
+    context,
+    ownership,
+    choice,
+  );
   context.subscriptions.push(
     markdownEditor,
     registerMarkdownSlashCompletionProvider(vscode),
@@ -56,6 +66,10 @@ export async function activate(context) {
     vscode.commands.registerCommand(
       "aicNotes.noteForCurrentFile",
       commandHandler(() => noteForCurrentFile(secondary)),
+    ),
+    vscode.commands.registerCommand(
+      "aicNotes.changeNoteFile",
+      commandHandler(() => changeNoteFile(secondary)),
     ),
     // Escape hatch for the *.md default claim: a static customEditors selector
     // cannot be toggled by a setting, so this writes the user-level editor

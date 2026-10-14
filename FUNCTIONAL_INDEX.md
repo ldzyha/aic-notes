@@ -300,29 +300,40 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
   saving is needed; reduced motion uses a static indicator. Placeholders retain
   their neutral styling. The live status remains accessible, and acknowledgement
   is required before clearing the unsaved state.
-- The active custom-editor tab is authoritative over a stale native editor. With no active file
-  buffer, the workspace folder of the note already shown is used, then the first workspace folder.
-- One note file per workspace folder: `<workspaceFolder>/aic.md`. Linked Note shows only the
-  page bound to the active file by a `--- <workspace-relative path>` line; `aic.md` itself, a
-  non-file tab or a file outside the workspace shows the whole note as cards.
-- Changing the active file inside one workspace folder only moves the page focus: the document
-  and its unsaved draft are kept. Undo stays within the focused page.
+- The active custom-editor tab is authoritative over a stale native editor.
+- One note file for the whole product, chosen once (`src/notes/note-file.js`). On a Node
+  extension host the choice is `$XDG_CONFIG_HOME/aic/note-file.json` (else
+  `~/.config/aic/note-file.json`), `{"schemaVersion":1,"path":"<absolute path>"}`, shared with
+  the aic code editor and written atomically (temporary file and rename, mode 0600). A missing,
+  malformed or unreadable file is no choice. A host without Node (VS Code for the Web) keeps the
+  chosen URI in globalState. The choice is re-read on every follow and when the window gets focus.
+- Without a choice Linked Note shows only "Choose your note file" (open an existing Markdown
+  file, or name a new one, default `aic.md`). `aicNotes.changeNoteFile` chooses another.
+- Linked Note shows only the page bound to the active file by a `--- <full path>` line: the
+  `file:` path with `/`, or the full URI on another file system. The note file itself, a
+  non-file tab or no file shows the whole note as cards.
+- Changing the active file only moves the page focus: the document and its unsaved draft are
+  kept. Undo stays within the focused page. A newly chosen note file is shown after the draft is
+  saved; a failed save keeps the old note.
 - Navigation is serialized. A slower open/stat operation cannot replace a later user selection,
   and one rejected navigation request cannot poison the queue.
-- Viewing a file never creates or changes `aic.md`. A file without a page shows an empty card;
-  the first typed text appends `--- <path>` and that text, and the first save creates a missing
-  `aic.md`.
-- When `aic.md` changes under an unsaved Linked Note draft, the draft is not replaced and the
+- Viewing a file never creates or changes the note file. A file without a page shows an empty
+  card; the first typed text appends `--- <path>` and that text, and the first save creates a
+  missing note file.
+- When the note file changes under an unsaved Linked Note draft, the draft is not replaced and the
   save merges by pages: a page only the draft changed takes the draft's text, a page the draft
   added is appended, and every other byte is the note's. A page changed on both sides, or a
   draft that removed, renamed or inserted pages over a changed note, writes nothing and keeps
   the draft; the footer then offers "Discard my changes and reload" with a confirmation.
-- Existing `*.note.md` files remain ordinary Markdown files and are no longer followed. They are
+- Existing `*.note.md` files, and an earlier per-workspace `aic.md` that is not the chosen
+  note file, remain ordinary Markdown files and are no longer followed. They are
   never moved, renamed, rewritten or deleted. The legacy `aicNotes.noteRedirect` association is
   a main-editor alias, not a disposable redirect.
-- "Open target" on a page card is the only card action. A path opens only inside the note's
-  workspace folder; an `http(s)` target opens externally.
-- The main tab of `aic.md` and Linked Note share one edit lease, so only one of them edits at a
+- "Open target" on a page card is the only card action. An `http(s)` target opens externally;
+  a full path, or a full URI of a file system VS Code can read, opens in the editor when it is
+  an existing regular file. Relative paths, folders and other schemes are refused.
+- The main tab of the note file (as chosen when the tab opened) and Linked Note share one edit
+  lease, so only one of them edits at a
   time.
 - Saves persist only the authored Markdown. Legacy YAML Properties and historical
   generated keys remain exact raw text; the extension does not interpret, stamp,
@@ -333,7 +344,7 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 | Surface                    | Owner                                           | Persistent side effect                                         | Failure behavior                                                     |
 | -------------------------- | ----------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------- |
 | AIC Markdown custom editor | `src/editor/provider.js`, `src/webview/main.js` | explicit VS Code document save                                 | stale generations reset or retain the visible draft                  |
-| Linked Note Secondary pane | `src/secondary/provider.js`                     | explicit save of the workspace note `aic.md`                   | never replaces an unsaved draft; reports a compact local error       |
+| Linked Note Secondary pane | `src/secondary/provider.js`                     | explicit save of the chosen note file                          | never replaces an unsaved draft; reports a compact local error       |
 | Structured previews        | `vendor/markdown`, `vendor/aic-editor-core`     | exact Markdown transactions only                               | invalid source remains editable instead of being normalized silently |
 | Slash template completion  | shared core plus `src/editor/slash-provider.js` | inserts exact Markdown in AIC, native, and contextual Markdown | inactive in code/read-only contexts                                  |
 | AIC agent workflow         | `src/agents/bootstrap.js`                       | bundled instructions, explicit local handoff and copy command  | no external CLI or global configuration dependency                   |
@@ -342,7 +353,8 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 
 | Command                          | Contract                                                                                                                 |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `aicNotes.noteForCurrentFile`    | Reveal Linked Note on the active file's page of `aic.md`; report a missing workspace or a file outside it               |
+| `aicNotes.noteForCurrentFile`    | Reveal Linked Note on the active file's page of the note file; ask for the note file first when none is chosen          |
+| `aicNotes.changeNoteFile`        | Choose another note file and store the choice shared with the aic code editor                                            |
 | `aicNotes.useNativeForMarkdown`  | Set the user association for plain `*.md` back to the native editor while keeping notes in the AIC main editor           |
 | `aicNotes.enableAgentWorkflow`   | Write the bundled instruction file and a content-bound workspace marker                                                  |
 | `aicNotes.syncAgentInstructions` | Explicitly refresh the bundled workspace handoff without a CLI or global writes                                          |
@@ -383,7 +395,7 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
   selection, and theme wiring.
 - Markdown editor interactions in this section are the shared product contract. A release cannot
   replace a preview action with raw-source fallback in only one product.
-- Workspace navigation and the per-folder `aic.md` note are VS Code host capabilities. They are deliberately absent from Standard Notes, just
+- Workspace navigation and the chosen note file are VS Code host capabilities. They are deliberately absent from Standard Notes, just
   as Standard Notes UUID/lock/component lifecycle behavior is absent from VS Code.
 
 ## Verification ownership
@@ -418,7 +430,7 @@ There are no Node globals, filesystem modules or subprocesses in the browser hos
 checks virtual resource workspace boundaries, authority and revision. All reads
 use `workspace.fs`, while editing, undo and saves retain the existing TextDocument
 owners. Native desktop file notes remain compatible. Read-only providers can show
-Markdown and linked notes; writes, creation of `aic.md` and agent setup are
+Markdown and linked notes; writes, creation of the note file and agent setup are
 rejected before mutation. Unknown virtual providers cannot write.
 
 Menu visibility uses VS Code's filesystem-resource context, and slash completions
@@ -448,15 +460,14 @@ activation; usage and setup are in [extension updates](../standard-notes-aic/pwa
 
 ## One note per surface
 
-The main custom editor shows only the opened document. Linked Note shows the
-workspace note `<workspaceFolder>/aic.md`, focused on the page of the active
-file. With several workspace folders, the active file's folder chooses the note.
+The main custom editor shows only the opened document. Linked Note shows the one
+chosen note file, focused on the page of the active file.
 
 ### Note pages
 
 A note is a notebook. A line that is exactly `---`, first in the body or after a
 blank line and outside fenced code and leading frontmatter, starts a new page;
-`--- <workspace-relative path>` binds that page to exactly that file. Pages are
+`--- <full path or URI>` binds that page to exactly that file. Pages are
 a view: the note stays one file. The main editor shows every page as a card
 whose header names the target and offers "Open target". Linked Note shows one
 card: the page of the active file, or an empty card when it has none yet.

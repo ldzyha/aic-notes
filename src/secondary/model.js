@@ -5,31 +5,6 @@ import {
   pageForTarget,
 } from "../../vendor/aic-editor-core/note-pages.js";
 
-// One note file per workspace folder. Every other file of that folder is a
-// page inside it, bound by a `--- <folder-relative path>` separator line.
-export const WORKSPACE_NOTE = "aic.md";
-
-function relativeTo(folderUri, uri) {
-  const root = String(folderUri?.path ?? "").replace(/\/+$/u, "");
-  const value = String(uri?.path ?? "");
-  return value.startsWith(`${root}/`) ? value.slice(root.length + 1) : "";
-}
-
-/** True for `<workspaceFolder>/aic.md` itself (never for a nested aic.md). */
-export function isWorkspaceNote(folderUri, uri) {
-  return relativeTo(folderUri, uri).toLowerCase() === WORKSPACE_NOTE;
-}
-
-/**
- * Page target of a file inside its workspace folder: the folder-relative path
- * with `/`. Null for the folder itself, the note itself and outside paths, so
- * the note can never become a page of itself.
- */
-export function pageTargetFor(folderUri, uri) {
-  const target = relativeTo(folderUri, uri);
-  return !target || target.toLowerCase() === WORKSPACE_NOTE ? null : target;
-}
-
 // VS Code can keep activeTextEditor pointed at the last native editor while a
 // custom-editor tab is active. The active tab is therefore authoritative and
 // the text editor is only a fallback.
@@ -50,19 +25,6 @@ export function activeWindowResource(window) {
     window.activeTextEditor?.document?.uri,
     Boolean(tab),
   );
-}
-
-export function preferredWorkspaceFolder(
-  candidateUris,
-  workspaceFolders,
-  resolveFolder,
-) {
-  for (const uri of candidateUris ?? []) {
-    if (!uri) continue;
-    const folder = resolveFolder?.(uri);
-    if (folder) return folder;
-  }
-  return workspaceFolders?.[0];
 }
 
 // Navigation requests arrive from several VS Code event streams. Serializing

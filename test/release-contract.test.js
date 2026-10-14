@@ -162,7 +162,7 @@ test("the current release is a universal local editor without account connectivi
   );
 });
 
-test("note association, the single workspace note and its reveal command are explicit", async () => {
+test("note association, the one chosen note file and its reveal command are explicit", async () => {
   assert.equal(
     packageJson.contributes.configurationDefaults[
       "workbench.editorAssociations"
@@ -186,12 +186,10 @@ test("note association, the single workspace note and its reveal command are exp
   assert.doesNotMatch(provider, /pane-auth|pane-sync|pane-delete/u);
   assert.match(provider, /new NavigationQueue\(\)/u);
   assert.match(provider, /activeWindowResource\(vscode\.window\)/u);
-  assert.match(provider, /preferredWorkspaceFolder/u);
-  assert.match(model, /export const WORKSPACE_NOTE = "aic\.md";/u);
-  assert.match(
-    provider,
-    /vscode\.Uri\.joinPath\(folder\.uri, WORKSPACE_NOTE\)/u,
-  );
+  // One chosen note file; a page is bound to the active file's full path.
+  assert.match(provider, /noteUri = await this\.choice\?\.read\(\)/u);
+  assert.match(provider, /const own = pageTarget\(active\)/u);
+  assert.doesNotMatch(model, /WORKSPACE_NOTE|pageTargetFor|isWorkspaceNote/u);
   assert.match(provider, /type: "page\.focus"/u);
   assert.match(create, /secondary\.followActive\(\)/u);
   // No sidecar, scan, template or delete path is left in the host.

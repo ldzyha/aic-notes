@@ -89,6 +89,11 @@
         "icon": "$(note)"
       },
       {
+        "command": "aicNotes.changeNoteFile",
+        "title": "Change Note File",
+        "category": "AIC Notes"
+      },
+      {
         "command": "aicNotes.useNativeForMarkdown",
         "title": "Use Native Editor for Plain Markdown",
         "category": "AIC Notes"

@@ -687,8 +687,7 @@ window.addEventListener("message", (event) => {
     case "init": {
       const resourceUri =
         typeof msg.resourceUri === "string" ? msg.resourceUri : "";
-      // Two workspace folders both hold an `aic.md`: the path alone is not
-      // an identity.
+      // Another note file may have the same path text: the URI is the identity.
       const sameIdentity = Boolean(
         view &&
         docState.relativePath === msg.relativePath &&
@@ -869,12 +868,22 @@ window.addEventListener("message", (event) => {
       const editor = document.getElementById("editor");
       if (empty) empty.hidden = Boolean(msg.hasSurface);
       if (editor) editor.hidden = !msg.hasSurface;
+      const detail = document.getElementById("pane-empty-detail");
+      if (detail) {
+        detail.dataset.text ??= detail.textContent;
+        detail.textContent = msg.problem
+          ? `${msg.problem}. Choose your note file again.`
+          : detail.dataset.text;
+      }
       break;
     }
   }
 });
 
 wirePaneControls();
+document
+  .getElementById("pane-choose")
+  ?.addEventListener("click", () => api.postMessage({ type: "note.choose" }));
 document.addEventListener("keydown", (event) => {
   if (
     event.defaultPrevented ||

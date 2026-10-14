@@ -2,7 +2,6 @@ import { utf8Length } from "../host-runtime.js";
 import {
   resourceReadOnly,
   assertWritableResource,
-  workspaceFolderFor,
 } from "../notes/resources.js";
 import * as vscode from "vscode";
 import * as path from "../notes/uri-path.js";
@@ -13,10 +12,8 @@ import {
   NavigationQueue,
   appendDraftPages,
   mergeDraftPages,
-  pageTargetFor,
-  preferredWorkspaceFolder,
-  WORKSPACE_NOTE,
 } from "./model.js";
+import { pageTarget, sameTarget } from "../notes/note-file.js";
 import {
   openSourceAtHref,
   openExternalLink,
@@ -38,22 +35,19 @@ async function exists(uri) {
   }
 }
 
-// One note per workspace folder: `<workspaceFolder>/aic.md`. The pane shows the
-// page of that note bound to the active file (`--- <folder-relative path>`) and
-// the whole note when the note itself, or no workspace file, is active. The
-// note text stays one document: switching files only moves the page focus.
+// One note file for the whole product, chosen once (see note-file.js). The pane
+// shows the page of that note bound to the active file (`--- <full path>`)
+// and the whole note when the note itself, or no file, is active. The note
+// text stays one document: switching files only moves the page focus.
 const CONFLICT_EXIT =
   "Copy your text, then use Discard my changes and reload, or undo the other change and press Ctrl+S.";
 
 export class SecondaryNotePane {
-  static register(context, ownership) {
-    const pane = new SecondaryNotePane(context, ownership);
+  static register(context, ownership, choice) {
+    const pane = new SecondaryNotePane(context, ownership, choice);
     const follow = () => void pane.followActive().catch(() => undefined);
-    const noteWatcher = vscode.workspace.createFileSystemWatcher(
-      `**/${WORKSPACE_NOTE}`,
-    );
+    pane.onNoteFileEvent = follow;
     const resources = [
-      noteWatcher,
       vscode.window.registerWebviewViewProvider(SECONDARY_VIEW_ID, pane, {
         webviewOptions: { retainContextWhenHidden: true },
       }),
@@ -66,9 +60,10 @@ export class SecondaryNotePane {
       vscode.workspace.onDidCloseTextDocument((document) =>
         pane.onDocumentClosed(document),
       ),
-      // The note appearing or disappearing on disk swaps file and placeholder.
-      noteWatcher.onDidCreate(follow),
-      noteWatcher.onDidDelete(follow),
+      // The code editor may have chosen another note file meanwhile.
+      vscode.window.onDidChangeWindowState((state) => {
+        if (state.focused) follow();
+      }),
     ];
     for (const resource of resources) pane.scope.add(resource);
     context.subscriptions.push(pane);
@@ -76,11 +71,11 @@ export class SecondaryNotePane {
     return pane;
   }
 
-  constructor(context, ownership) {
+  constructor(context, ownership, choice) {
     this.context = context;
+    this.choice = choice;
     this.scope = new DisposableScope();
     this.view = undefined;
-    this.folder = undefined;
     this.document = undefined;
     this.documentUri = undefined;
     this.placeholderUri = undefined;
@@ -122,6 +117,7 @@ export class SecondaryNotePane {
   dispose() {
     if (this.scope.disposed) return;
     this.scope.dispose();
+    this.noteWatcher?.dispose();
     if (this.editSurface) this.ownership.dispose(this.editSurface);
     for (const resolve of this.snapshotWaiters.values()) resolve(null);
     this.snapshotWaiters.clear();
@@ -129,7 +125,7 @@ export class SecondaryNotePane {
     this.saveWaiters.clear();
   }
 
-  // Folder-relative, so it is also the base for relative links in the note.
+  // The note's identity in webview messages.
   editingPath() {
     const uri = this.documentUri ?? this.placeholderUri;
     return uri
@@ -265,8 +261,9 @@ export class SecondaryNotePane {
       "main.js",
       `<span id="pane-status" class="aic-visually-hidden" role="status" aria-live="polite" aria-atomic="true"></span>
       <div id="pane-empty" class="aic-pane-empty">
-        <strong>Open a workspace file</strong>
-        <span id="pane-empty-detail">Its page in the workspace note aic.md will appear here.</span>
+        <strong>Choose your note file</strong>
+        <span id="pane-empty-detail">One Markdown file holds a page for every file you open. The aic code editor uses the same file.</span>
+        <button id="pane-choose" type="button" class="aic-button aic-button--primary">Choose your note file</button>
       </div>
       <div id="editor"></div>
       <footer id="secondary-footer" aria-label="Linked note actions">
@@ -371,7 +368,6 @@ export class SecondaryNotePane {
   }
 
   async adoptNote(next) {
-    this.folder = next.folder;
     this.document = next.document;
     this.documentUri = next.document?.uri;
     this.placeholderUri = next.placeholderUri;
@@ -442,21 +438,23 @@ export class SecondaryNotePane {
     const isCurrent = () =>
       !this.scope.disposed &&
       this.activeMainResource()?.toString() === active?.toString();
-    // A file picks its own workspace folder. Anything else (the note itself,
-    // a settings tab, a file outside the workspace) shows a whole note.
-    const own = active ? workspaceFolderFor(active) : undefined;
-    const folder =
-      own ??
-      preferredWorkspaceFolder(
-        [this.documentUri ?? this.placeholderUri],
-        vscode.workspace.workspaceFolders,
-        (candidate) => workspaceFolderFor(candidate),
-      );
-    if (!folder) return false;
-    const noteUri = vscode.Uri.joinPath(folder.uri, WORKSPACE_NOTE);
-    const target = own ? pageTargetFor(own.uri, active) : null;
+    let noteUri;
+    try {
+      noteUri = await this.choice?.read();
+    } catch {
+      noteUri = null;
+    }
+    if (!isCurrent()) return false;
+    this.watchNote(noteUri);
+    // The note itself, or no file at all, shows the whole note.
+    const own = pageTarget(active);
+    const target = noteUri && sameTarget(own, pageTarget(noteUri)) ? null : own;
     const shown = this.documentUri ?? this.placeholderUri;
-    if (shown?.toString() === noteUri.toString()) {
+    if (!noteUri && !shown) {
+      await this.sendPaneState();
+      return false;
+    }
+    if (noteUri && shown?.toString() === noteUri.toString()) {
       const onDisk = await exists(noteUri);
       if (!isCurrent()) return false;
       // An unsaved draft is never replaced; saving reports a changed file.
@@ -470,11 +468,11 @@ export class SecondaryNotePane {
         return true;
       }
     }
-    // Another workspace folder's note, or this note appeared/vanished on disk.
+    // Another note file was chosen, or this note appeared/vanished on disk.
     const transition = await this.beginNavigation();
     if (!transition) return false;
     try {
-      const next = await this.stageNote(noteUri);
+      const next = noteUri ? await this.stageNote(noteUri) : {};
       if (!isCurrent()) return false;
       if (!transition.isCurrent()) {
         await this.sendPaneState(
@@ -482,12 +480,37 @@ export class SecondaryNotePane {
         );
         return false;
       }
-      await this.adoptNote({ ...next, folder, focusTarget: target });
+      await this.adoptNote({ ...next, focusTarget: target });
       await this.focus(preserveFocus);
       return true;
     } finally {
       transition.release();
     }
+  }
+
+  // The note appearing or disappearing on disk swaps file and placeholder.
+  watchNote(uri) {
+    const key = uri?.toString() ?? "";
+    if (this.noteWatcherKey === key || this.scope.disposed) return;
+    this.noteWatcher?.dispose();
+    this.noteWatcher = undefined;
+    this.noteWatcherKey = key;
+    const folder = uri && noteFolder(uri);
+    if (!folder) return;
+    const watcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(folder, path.basename(uri.path)),
+    );
+    const follow = () => this.onNoteFileEvent?.();
+    watcher.onDidCreate(follow);
+    watcher.onDidDelete(follow);
+    this.noteWatcher = watcher;
+  }
+
+  async chooseNoteFile() {
+    if (this.scope.disposed || !this.choice) return false;
+    const uri = await this.choice.pick();
+    if (!uri) return false;
+    return this.followActive({ preserveFocus: false });
   }
 
   onDocumentChanged(event) {
@@ -561,10 +584,11 @@ export class SecondaryNotePane {
     if (this.editSurface) void this.ownership.changed(this.editSurface);
     if (!this.view) return;
     const hasSurface = Boolean(this.documentUri || this.placeholderUri);
+    const note = this.documentUri ?? this.placeholderUri;
     const title = this.focusTarget
-      ? path.posix.basename(this.focusTarget)
-      : hasSurface
-        ? WORKSPACE_NOTE
+      ? path.basename(this.focusTarget)
+      : note
+        ? path.basename(note.path)
         : "Linked Note";
     this.view.title = title;
     // Keep filesystem timestamps as host metadata; the compact header shows only
@@ -576,6 +600,8 @@ export class SecondaryNotePane {
       hasNote: Boolean(this.documentUri),
       hasPlaceholder: Boolean(this.placeholderUri),
       hasSurface,
+      // No note file is chosen: the pane offers Choose your note file.
+      problem: hasSurface ? "" : (this.choice?.problem ?? ""),
       status,
       // A refused merge: the pane offers Discard my changes and reload.
       discard,
@@ -879,7 +905,7 @@ export class SecondaryNotePane {
     if (!current()) return false;
     const confirm = "Discard and reload";
     const choice = await vscode.window.showWarningMessage(
-      `Discard your unsaved changes in ${WORKSPACE_NOTE} and reload the note as it is in the file? Copy your text first if you need it. The file is not changed.`,
+      `Discard your unsaved changes in ${path.basename(this.documentUri.path)} and reload the note as it is in the file? Copy your text first if you need it. The file is not changed.`,
       { modal: true },
       confirm,
     );
@@ -954,7 +980,10 @@ export class SecondaryNotePane {
           await vscode.commands.executeCommand(message.type);
           break;
         case "page.openTarget":
-          await openPageTarget(this.folder, message.target);
+          await openPageTarget(message.target);
+          break;
+        case "note.choose":
+          await this.chooseNoteFile();
           break;
         case "bus":
           await this.routeBus(message);
@@ -1021,10 +1050,16 @@ export class SecondaryNotePane {
       await openExternalLink(payload?.url);
       return;
     }
-    if (topic === "file.open" && this.folder && payload?.path) {
-      const uri = workspaceLinkUri(this.folder, payload.path);
+    // A relative link in the note stays inside the note's folder.
+    const note = this.documentUri ?? this.placeholderUri;
+    if (topic === "file.open" && note && payload?.path) {
+      const uri = workspaceLinkUri({ uri: noteFolder(note) }, payload.path);
       if (!uri) return;
       await openSourceAtHref(uri, payload?.href ?? "");
     }
   }
+}
+
+function noteFolder(uri) {
+  return uri.with({ path: path.dirname(uri.path) });
 }

@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 const stubs = {
   "./notes/create.js": `
     export const noteForCurrentFile = () => {};
+    export const changeNoteFile = () => {};
     export const commandHandler = (handler) => handler;`,
   "./editor/provider.js":
     "export const MarkdownEditorProvider = { register: () => ({}) };",
@@ -91,6 +92,7 @@ test("local extension activates without account commands or network access", asy
   };
   await module.exports.activate(context);
   assert.ok(commands.includes("aicNotes.noteForCurrentFile"));
+  assert.ok(commands.includes("aicNotes.changeNoteFile"));
   assert.equal(treeProviders, 0);
   for (const retired of [
     "aicNotes.refreshTree",

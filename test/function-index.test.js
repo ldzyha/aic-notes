@@ -46,7 +46,7 @@ test("functional index records the release-critical state contracts", () => {
   for (const contract of [
     "Ctrl/Cmd+S",
     "active custom-editor tab is authoritative",
-    "One note file per workspace folder",
+    "One note file for the whole product, chosen once",
     "Viewing a file never creates or changes",
     "Secondary headers do not display file dates",
     "No Standard Notes account connection is offered by the VS Code extension",

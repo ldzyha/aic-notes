@@ -28,7 +28,7 @@ const sealed = JSON.stringify({
   cipher: { name: "AES-GCM", data: "AAAAAAAAAAAAAAAAAAAAAA==" },
 });
 
-async function harness({ writable = true } = {}) {
+async function harness({ writable = true, noteFile } = {}) {
   function uri(path, scheme = "vscode-vfs", authority = "fixture") {
     return {
       scheme,
@@ -38,6 +38,9 @@ async function harness({ writable = true } = {}) {
       fragment: "",
       get fsPath() {
         throw new Error("Virtual URI must never use fsPath");
+      },
+      with(change) {
+        return uri(change.path ?? this.path, scheme, authority);
       },
       toString() {
         return `${scheme}://${authority}${this.path}`;
@@ -59,6 +62,7 @@ async function harness({ writable = true } = {}) {
   const changes = new Set(),
     saves = new Set();
   const executed = [];
+  const dialogs = [];
   const getDocument = (target) => {
     if (documents.has(target.path)) return documents.get(target.path);
     let text = files.get(target.path)?.text;
@@ -98,6 +102,12 @@ async function harness({ writable = true } = {}) {
     Uri: {
       joinPath: (base, ...parts) =>
         uri([base.path, ...parts].join("/"), base.scheme, base.authority),
+      parse: (value) => {
+        const [, scheme, authority, path] =
+          /^([a-z-]+):\/\/([^/]*)(\/.*)$/u.exec(value);
+        return uri(path, scheme, authority);
+      },
+      file: (path) => uri(path, "file", ""),
     },
     FileType: { File: 1, Directory: 2, SymbolicLink: 64 },
     Position: class {
@@ -154,6 +164,7 @@ async function harness({ writable = true } = {}) {
         return disposable();
       },
       onDidChangeActiveTextEditor: event,
+      onDidChangeWindowState: event,
       tabGroups: {
         activeTabGroup: {},
         all: [],
@@ -161,6 +172,12 @@ async function harness({ writable = true } = {}) {
         onDidChangeTabGroups: event,
       },
       showInformationMessage: async () => undefined,
+      // "Choose your note file" → Create a new note file → this file.
+      showQuickPick: async (items) => items[1],
+      showSaveDialog: async (options) => {
+        dialogs.push(options);
+        return uri("/workspace/aic.md");
+      },
       showErrorMessage: (message) => errors.push(message),
       showWarningMessage: (message) => {
         errors.push(message);
@@ -256,10 +273,17 @@ async function harness({ writable = true } = {}) {
       },
     },
   };
+  const NOTE_KEY = "aicNotes.noteFile";
+  const state = new Map(noteFile ? [[NOTE_KEY, noteFile]] : []);
   const context = {
     extensionUri: uri("/extension", "https", "extension.test"),
     subscriptions: [],
-    globalState: { get: () => true },
+    // Every retired-data migration reads as done; the note file is unset.
+    globalState: {
+      get: (key) => (state.has(key) ? state.get(key) : key !== NOTE_KEY),
+      update: async (key, value) =>
+        value === undefined ? state.delete(key) : state.set(key, value),
+    },
     workspaceState: { keys: () => [] },
   };
   const module = { exports: {} };
@@ -330,6 +354,8 @@ async function harness({ writable = true } = {}) {
     errors,
     getDocument,
     panel,
+    state,
+    dialogs,
     dispose: () => context.subscriptions.forEach((item) => item.dispose?.()),
   };
 }
@@ -373,33 +399,46 @@ test("browser entry activates real providers and saves a virtual Markdown TextDo
   }
 });
 
-test("browser host opens linked virtual sources, creates aic.md on the first saved edit and sets up agent instructions", async () => {
+test("browser host asks for the note file once, keeps it in globalState and creates it on the first saved edit", async () => {
   const h = await harness();
   try {
     const pane = h.providers.get("aicNotes.secondary");
     const panel = h.panel();
     pane.resolveWebviewView(panel);
-    await panel.receive({ type: "ready" });
     h.api.window.tabGroups.activeTabGroup.activeTab = {
       input: { uri: h.uri("/workspace/docs/source.ts") },
     };
-    assert.equal(await pane.followActive(), true);
+    await panel.receive({ type: "ready" });
+    // No note file yet: only the Choose your note file action is shown.
+    const unset = panel.messages.findLast(
+      (message) => message.type === "paneState",
+    );
+    assert.deepEqual([unset.hasSurface, unset.problem], [false, ""]);
+    assert.equal(pane.documentUri ?? pane.placeholderUri, undefined);
+    await panel.receive({ type: "note.choose" });
+    assert.equal(
+      h.dialogs[0].defaultUri.toString(),
+      "vscode-vfs://fixture/workspace/aic.md",
+    );
+    // A web host cannot reach ~/.config/aic: the choice is kept in VS Code.
+    assert.equal(
+      h.state.get("aicNotes.noteFile"),
+      "vscode-vfs://fixture/workspace/aic.md",
+    );
     assert.equal(
       pane.placeholderUri.toString(),
       "vscode-vfs://fixture/workspace/aic.md",
     );
     const init = panel.messages.findLast((message) => message.type === "init");
-    assert.deepEqual([init.text, init.placeholder], ["", true]);
-    // The note was already shown: following the file only moves the focus.
-    assert.equal(
-      panel.messages.findLast((message) => message.type === "page.focus")
-        .target,
-      "docs/source.ts",
+    // The page target of a virtual file is its full URI.
+    assert.deepEqual(
+      [init.text, init.placeholder, init.focus],
+      ["", true, "vscode-vfs://fixture/workspace/docs/source.ts"],
     );
     assert.equal(h.files.has("/workspace/aic.md"), false);
     const state = pane.ownership.state(pane.editSurface);
     await pane.commitDraft(
-      "--- docs/source.ts\nLinked note\n",
+      "--- vscode-vfs://fixture/workspace/docs/source.ts\nLinked note\n",
       pane.generation,
       1,
       "aic.md",
@@ -407,7 +446,7 @@ test("browser host opens linked virtual sources, creates aic.md on the first sav
     );
     assert.equal(
       h.files.get("/workspace/aic.md").text,
-      "--- docs/source.ts\nLinked note\n",
+      "--- vscode-vfs://fixture/workspace/docs/source.ts\nLinked note\n",
     );
     await h.commands.get("aicNotes.enableAgentWorkflow")();
     const marker = JSON.parse(
@@ -451,31 +490,32 @@ test("read-only virtual providers render notes and reject edits or instruction w
 });
 
 test("read-only virtual Linked Note focuses the page bound to the active file; the webview installs the shared page cards", async () => {
-  const h = await harness({ writable: false });
+  const h = await harness({
+    writable: false,
+    noteFile: "vscode-vfs://fixture/workspace/aic.md",
+  });
   try {
     h.files.set("/workspace/aic.md", {
       type: 1,
-      text: "start\n\n--- /docs\nfolder\n\n--- docs/source.ts\nsource\n",
+      text: "start\n\n--- docs/source.ts\nrelative\n\n--- VSCODE-VFS://fixture/workspace/docs/source.ts\nsource\n",
     });
     const before = [...h.files.keys()];
     const pane = h.providers.get("aicNotes.secondary");
     const panel = h.panel();
     pane.resolveWebviewView(panel);
-    await panel.receive({ type: "ready" });
     h.api.window.tabGroups.activeTabGroup.activeTab = {
       input: { uri: h.uri("/workspace/docs/source.ts") },
     };
-    assert.equal(await pane.followActive(), true);
+    await panel.receive({ type: "ready" });
     const init = panel.messages.findLast((message) => message.type === "init");
     assert.equal(init.relativePath, "aic.md");
-    assert.equal(pane.focusTarget, "docs/source.ts");
     assert.equal(
-      panel.messages.findLast((message) => message.type === "page.focus")
-        .target,
-      "docs/source.ts",
+      pane.focusTarget,
+      "vscode-vfs://fixture/workspace/docs/source.ts",
     );
     assert.equal(init.readOnly, true);
     assert.equal(init.placeholder, false);
+    assert.equal(h.dialogs.length, 0);
     assert.deepEqual([...h.files.keys()], before);
     assert.deepEqual(h.errors, []);
   } finally {
