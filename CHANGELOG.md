@@ -2,6 +2,97 @@
 
 [English](CHANGELOG.md) · [Українська](CHANGELOG.uk.md)
 
+## 61.6.5 — 2026-10-14
+
+Release sequence 61 · 6 feature outcomes · 5 fixed-bug outcomes.
+Coordinates Standard Notes AIC 52.7.6, AIC Notes 61.6.5, experimental browser
+0.12.0 and shared core 8.0.0. Prepared release; publication is verified separately.
+Shared core 8.0.0 is a breaking change of the note model: one note is split into
+pages, and the note-scope tabs are gone.
+
+### F01 — Plain Markdown files without encrypted notes
+
+AIC Notes edits plain Markdown through VS Code's filesystem provider and native
+Save/Undo. The **AIC Encrypted Notes** editor for `.aicnotes` files is removed;
+the extension neither opens nor converts them, and existing files stay untouched.
+Secret fields stay masked on screen, but the Markdown source is plain text.
+
+### F02 — One note at a time instead of Current, Shared and Global
+
+The Current, Shared and Global tabs are removed. The main editor shows only the
+opened document, and Linked Note shows the note for the active file. Folder and
+project notes from earlier versions stay ordinary Markdown files; no user file
+is changed.
+
+### F03 — Note pages with exact targets and one-page focus
+
+In the main editor and Linked Note, a `---` line after a blank line splits a note
+into pages, and `--- <path-or-url>` binds the following page to that file or web
+address. Each page appears as a card. A bound card shows its target exactly and
+offers **Open target**, which opens a path inside the note's workspace folder or
+an `http(s)` address externally; an unbound page is a plain divider.
+
+### F04 — Linked Note shows the active file's page of `aic.md`
+
+Each workspace folder has one note file, `aic.md`. Linked Note shows the page
+bound to the active file by `--- <workspace-relative path>` and keeps edits inside
+that page. Changing the active file in the same folder moves only the page focus;
+the document and an unsaved draft stay. Viewing writes nothing: a file without a
+page shows an empty card, the first typed text adds the page, and the first save
+creates a missing `aic.md`. `aic.md` itself, a non-file tab or a file outside the
+workspace shows the whole note as cards.
+
+### F05 — Sidecar notes, pin and Trash are retired
+
+Linked Note no longer follows `*.note.md` sidecars or the nearest parent note.
+Pin, the note Trash, Explorer nesting, note templates, note relationships and
+link-selection-to-note are removed. Existing `*.note.md` and template files are
+never moved, renamed, rewritten or deleted; they stay ordinary Markdown files.
+
+### F06 — Slash templates follow DDK; `/aic` inserts an AIC block
+
+The `/` menu has three groups: Markdown blocks, the eight DDK sections (Section,
+Glossary, Bibliography, High-level design, Detailed view, Error handling, Test
+cases, Open question) and flowchart, sequence and state diagrams. VS Code's
+native slash completions offer the same catalogue. `/aic` inserts an AIC block; `/security` still finds it. Page,
+noise/wave and other templates outside DDK are removed. Untitled AIC blocks and
+their Copy, Edit, Cut and reorder labels say "AIC block". Existing Markdown reads
+and renders as before.
+
+### B01 — Page boundaries follow the note text
+
+An unclosed code fence ends with its page instead of swallowing the following
+pages. A bound separator always starts a new page, leading empty pages are kept,
+and the first page starts at the top of the note, including frontmatter. Targets
+keep their letter case, web addresses are shown without a user name or password,
+and a target that would not read back unchanged is refused.
+
+### B02 — Undo stays in the focused page
+
+In Linked Note, changing the active file clears the Undo history, so Undo can no
+longer change a page that is not shown. Text that arrives from VS Code, such as
+an external file change or an acknowledged save, is never an Undo step.
+
+### B03 — A stale Linked Note draft is merged, not trapped
+
+When `aic.md` changes under an unsaved Linked Note draft, Save merges by pages: a
+page only the draft changed takes the draft's text, a page the draft added is
+appended, and every other byte stays as on disk. A page changed on both sides is
+a conflict with a truthful status, and the footer offers **Discard my changes and
+reload** after a confirmation. If the first save into a newly appeared `aic.md`
+fails, a retry can no longer replace that file's text.
+
+### B04 — Typed slash commands come first
+
+A typed command name ranks above alias and loose matches in the editor menu and
+in native completions: `/error` offers **/error-handling** first, and Enter
+inserts it.
+
+### B05 — Editor bars follow the color scheme
+
+The bars above and below the editor, such as the AIC import bar, use the active
+light or dark colors instead of CodeMirror's default light panel.
+
 ## 60.0.2 — 2026-10-02
 
 Release sequence 60 · 0 feature outcomes · 2 fixed-bug outcomes.
