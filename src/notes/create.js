@@ -1,5 +1,7 @@
 import * as vscode from "vscode";
-import { formatError } from "../errors.js";
+import { structuredError, formatError } from "../errors.js";
+import { activeWindowResource } from "../secondary/model.js";
+import { resourceLabel, workspaceFolderFor } from "./resources.js";
 
 export async function openNoteDocument(uri, options = {}) {
   if (uri.path.endsWith(".note.md")) {
@@ -17,20 +19,24 @@ export async function openNoteDocument(uri, options = {}) {
   await vscode.commands.executeCommand("vscode.open", uri);
 }
 
-// Reveal the Secondary pane on the active file's page of the note file,
-// asking for the note file first when none is chosen. Nothing is created: the
-// page is written by the first saved edit.
+// Reveal the Secondary pane on the active file's page of the workspace note
+// `aic.md`. Nothing is created: the page is written by the first saved edit.
 export async function noteForCurrentFile(secondary) {
-  if (!(await secondary.choice.read()) && !(await secondary.chooseNoteFile()))
-    return;
+  if (!vscode.workspace.workspaceFolders?.length) {
+    throw structuredError("notes_no_workspace", "no workspace folder is open", [
+      "Open a folder first",
+    ]);
+  }
+  const uri = activeWindowResource(vscode.window);
+  if (uri?.scheme === "file" && !workspaceFolderFor(uri)) {
+    throw structuredError(
+      "notes_outside_workspace",
+      `${resourceLabel(uri)} is not inside the workspace`,
+      ["Open the file's folder as a workspace first"],
+    );
+  }
   await secondary.followActive();
   await secondary.focus(false);
-}
-
-// "AIC Notes: Change Note File": the same choice the code editor reads.
-export async function changeNoteFile(secondary) {
-  await secondary.choice.read();
-  if (await secondary.chooseNoteFile()) await secondary.focus(false);
 }
 
 // shared command wrapper: structured errors surface as messages, never throw

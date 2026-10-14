@@ -31,11 +31,10 @@ function harness() {
     scheme: "file",
     path,
     fsPath: path,
-    with: (change) => uri(change.path ?? path),
     toString: () => `file://${path}`,
   });
   const folder = { name: "workspace", uri: uri("/workspace") };
-  // Another folder: choosing its aic.md is the cross-note navigation.
+  // A second root with its own aic.md: the only cross-note navigation left.
   const other = { name: "other", uri: uri("/other") };
   const folderOf = (resource) =>
     [folder, other].find((entry) =>
@@ -94,11 +93,6 @@ function harness() {
       joinPath: (base, ...parts) =>
         uri([base.path, ...parts].join("/").replace(/\/+/gu, "/")),
     },
-    RelativePattern: class {
-      constructor(base, pattern) {
-        Object.assign(this, { base, pattern });
-      }
-    },
     FileType: { File: 1, Directory: 2 },
     Position: class {
       constructor(line, character) {
@@ -156,11 +150,6 @@ function harness() {
         willSaveListeners.add(listener);
         return { dispose: () => willSaveListeners.delete(listener) };
       },
-      createFileSystemWatcher: () => ({
-        dispose() {},
-        onDidCreate: disposable,
-        onDidDelete: disposable,
-      }),
     },
     commands: { executeCommand: async () => undefined },
     window: {
@@ -184,18 +173,10 @@ function harness() {
   });
   const context = { extensionUri: uri("/extension") };
   const ownership = new module.exports.NoteEditOwnership();
-  // The chosen note file (src/notes/note-file.js), held in memory.
-  const choice = {
-    uri: null,
-    problem: "",
-    read: async () => choice.uri,
-    isNote: (resource) => resource?.toString() === choice.uri?.toString(),
-  };
   return {
     ...module.exports,
     context,
     ownership,
-    choice,
     vscode,
     addFile,
     documentFor,
@@ -231,13 +212,8 @@ function harness() {
 
 async function mainEditor(h) {
   const resource = h.addFile("aic.md", "body");
-  h.choice.uri = resource;
   const document = h.documentFor(resource);
-  const provider = new h.MarkdownEditorProvider(
-    h.context,
-    h.ownership,
-    h.choice,
-  );
+  const provider = new h.MarkdownEditorProvider(h.context, h.ownership);
   const panel = h.panel();
   await provider.resolveCustomTextEditor(document, panel);
   await panel.send({ type: "ready" });
@@ -253,9 +229,8 @@ async function mainEditor(h) {
 
 async function auditSidebar(h) {
   const uri = h.addFile("aic.md", "base");
-  h.choice.uri = uri;
   const document = h.documentFor(uri);
-  const pane = new h.SecondaryNotePane(h.context, h.ownership, h.choice);
+  const pane = new h.SecondaryNotePane(h.context, h.ownership);
   pane.document = document;
   pane.documentUri = uri;
   pane.view = h.panel();
@@ -280,8 +255,6 @@ for (const saved of [true, false]) {
     pane.draftDirty = true;
     pane.sendInit = async () => {};
     const next = h.addFile("aic.md", "next", h.other);
-    // The code editor chose another note file meanwhile.
-    h.choice.uri = next;
     pane.focus = async () => {};
     pane.activeMainResource = () => h.addFile("next.js", "code", h.other);
     const originalSave = document.save;
@@ -467,7 +440,7 @@ test("exclusive note creation refuses an intervening file without overwriting it
 
 test("closing and resolving sidebar views does not retain retired registrations", async () => {
   const h = harness();
-  const pane = new h.SecondaryNotePane(h.context, h.ownership, h.choice);
+  const pane = new h.SecondaryNotePane(h.context, h.ownership);
   for (let index = 0; index < 200; index++) {
     const panel = h.panel();
     let close;
@@ -508,8 +481,7 @@ async function sidebar(h) {
   const first = h.addFile("aic.md", "first");
   const second = h.addFile("aic.md", "second", h.other);
   const source = h.addFile("second.js", "source", h.other);
-  h.choice.uri = second;
-  const pane = new h.SecondaryNotePane(h.context, h.ownership, h.choice);
+  const pane = new h.SecondaryNotePane(h.context, h.ownership);
   const messages = [];
   pane.documentUri = first;
   pane.document = h.documentFor(first);

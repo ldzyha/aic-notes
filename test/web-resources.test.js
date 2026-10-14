@@ -27,7 +27,11 @@ runInNewContext(bundle.outputFiles[0].text, {
     return {};
   },
 });
-const { resourceReadOnly, assertWritableResource } = module.exports;
+const {
+  workspaceFolderFor,
+  resourceReadOnly,
+  assertWritableResource,
+} = module.exports;
 const root = {
   scheme: "vscode-vfs",
   authority: "github",
@@ -41,6 +45,23 @@ const api = {
     fs: { isWritableFileSystem: () => true },
   },
 };
+
+test("virtual resources preserve workspace URI authority, boundary and revision", () => {
+  assert.equal(
+    workspaceFolderFor({ ...root, path: `${root.path}/docs/a.md` }, api),
+    folder,
+  );
+  for (const patch of [
+    { authority: "another" },
+    { scheme: "https" },
+    { scheme: "untitled" },
+    { path: "/owner/repository/a.md" },
+    { path: "/owner/repo/../secret.md" },
+    { query: "ref=other" },
+    { fragment: "revision" },
+  ])
+    assert.equal(workspaceFolderFor({ ...root, ...patch }, api), undefined);
+});
 
 test("unknown and read-only virtual providers cannot mutate notes", () => {
   for (const writable of [false, undefined]) {

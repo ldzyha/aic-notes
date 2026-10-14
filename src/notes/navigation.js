@@ -42,55 +42,36 @@ export async function openExternalLink(value) {
   return vscode.env.openExternal(vscode.Uri.parse(url));
 }
 
-// "Open target" of a page card. The target is note content, so only two
-// things are opened: an http(s) URL in the browser, and an existing regular
-// file (a full path, or a full URI of a file system VS Code can read) in an
-// editor tab, as File > Open would. Relative paths, folders and other schemes
-// are refused; nothing is ever run.
-export function pageTargetUri(target, api = vscode) {
-  const value = String(target ?? "").trim();
-  if (!value || /[\u0000-\u001f]/u.test(value)) return null;
-  const slashed = value.replaceAll("\\", "/");
-  if (slashed.startsWith("/") || /^[a-zA-Z]:\//u.test(slashed))
-    return api.Uri.file(slashed);
-  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//u.test(value)) return null;
-  let uri;
-  try {
-    uri = api.Uri.parse(value, true);
-  } catch {
-    return null;
-  }
-  return uri.scheme !== "untitled" &&
-    api.workspace.fs.isWritableFileSystem?.(uri.scheme) !== undefined
-    ? uri
-    : null;
-}
-
-export async function openPageTarget(target) {
+// "Open target" of a page card. The target is note content: a path is taken
+// relative to the note's workspace folder and must stay inside it; only
+// http(s) URLs leave the editor.
+export async function openPageTarget(folder, target) {
   const value = String(target ?? "").trim();
   if (/^https?:\/\//iu.test(value)) return openExternalLink(value);
-  const uri = pageTargetUri(value);
+  const relative = value
+    .replaceAll("\\", "/")
+    .replace(/^(?:\.?\/)+/u, "")
+    .replace(/\/+$/u, "");
+  const uri = folder ? workspaceLinkUri(folder, relative) : null;
   if (!uri)
     throw structuredError(
-      "notes_target_unsupported",
-      `${value || "this page"} is not a full file path or an http(s) URL`,
-      ["Bind the page to a full path, e.g. `--- /home/me/src/app.js`"],
+      "notes_target_outside_workspace",
+      `${value || "this page"} is not a path inside the note's workspace folder`,
+      ["Bind the page to a path relative to the workspace folder"],
     );
   let stat;
   try {
     stat = await vscode.workspace.fs.stat(uri);
   } catch {
-    stat = undefined;
+    throw structuredError(
+      "notes_target_missing",
+      `${relative} does not exist`,
+      ["Restore the file or correct the page's `--- <path>` line"],
+    );
   }
-  if (!stat)
-    throw structuredError("notes_target_missing", `${value} does not exist`, [
-      "Restore the file or correct the page's `--- <path>` line",
-    ]);
-  if (!(stat.type & vscode.FileType.File))
-    throw structuredError("notes_target_not_file", `${value} is not a file`, [
-      "Bind the page to a file, not a folder",
-    ]);
-  await vscode.commands.executeCommand("vscode.open", uri);
+  if (stat.type & vscode.FileType.Directory)
+    await vscode.commands.executeCommand("revealInExplorer", uri);
+  else await vscode.commands.executeCommand("vscode.open", uri);
   return true;
 }
 

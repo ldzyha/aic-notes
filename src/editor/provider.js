@@ -27,6 +27,7 @@ import {
   workspaceLinkUri,
 } from "../notes/navigation.js";
 import { openNoteDocument } from "../notes/create.js";
+import { isWorkspaceNote } from "../secondary/model.js";
 import { DisposableScope } from "../lifecycle.js";
 import { ClipboardHost } from "../clipboard.js";
 
@@ -59,8 +60,8 @@ async function resolveWikiTarget(folder, fromRelPath, target) {
 }
 
 export class MarkdownEditorProvider {
-  static register(context, ownership, choice) {
-    const provider = new MarkdownEditorProvider(context, ownership, choice);
+  static register(context, ownership) {
+    const provider = new MarkdownEditorProvider(context, ownership);
     // Retain the old viewType for persisted user associations and restored
     // tabs, but resolve it to the same main editor, never a disposable redirect.
     provider.registrations = ["aicNotes.markdown", "aicNotes.noteRedirect"].map(
@@ -75,9 +76,8 @@ export class MarkdownEditorProvider {
     return provider;
   }
 
-  constructor(context, ownership, choice) {
+  constructor(context, ownership) {
     this.context = context;
-    this.choice = choice;
     this.sessions = new Set();
     this.snapshotRequest = 0;
     this.ownership = ownership;
@@ -98,10 +98,11 @@ export class MarkdownEditorProvider {
     );
     webview.options = { enableScripts: true, localResourceRoots: [distRoot] };
     const folder = vscode.workspace.getWorkspaceFolder(document.uri);
-    // The chosen note file is also edited from the Secondary pane: one
-    // surface holds the edit lease at a time. Every other Markdown file has
-    // one editor. Decided when the tab opens.
-    const sharedNote = Boolean(this.choice?.isNote(document.uri));
+    // The workspace note is also edited from the Secondary pane: one surface
+    // holds the edit lease at a time. Every other Markdown file has one editor.
+    const sharedNote = Boolean(
+      folder && isWorkspaceNote(folder.uri, document.uri),
+    );
     webview.html = this._html(webview, distRoot, sharedNote);
 
     const state = { generation: 0, applying: 0 };
@@ -384,7 +385,7 @@ export class MarkdownEditorProvider {
               break;
             }
             case "page.openTarget":
-              await openPageTarget(msg.target);
+              await openPageTarget(folder, msg.target);
               break;
             case "bus":
               await this._routeBus(msg, document, folder, relativePath);
