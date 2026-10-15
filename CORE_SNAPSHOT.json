@@ -1,7 +1,7 @@
 {
   "coreVersion": "8.0.0",
   "sourceRepository": "https://github.com/ldzyha/standard-notes-aic",
-  "sourceCommit": "604303dc83dae6444c09ececf01fda8e08da3c91",
+  "sourceCommit": "2c10b69e1706f107c4f4260e66f25ebc5ed996d7",
   "files": {
     "agent-guide.d.ts": "d6ffa86047957502482f327954244f9220ba0797e7a00812e88a4bed78d643c5",
     "agent-guide.js": "6e33b835cadfc64472cb12e909100d32c460b8c9e9cb3874fe7d34ca5e20f6cd",
@@ -45,8 +45,8 @@
     "mermaid-viewport.js": "f80b46605752cc194f259805a71cdcd053df1b8424fa1b03cea03a8e003a6a39",
     "note-page-cards.d.ts": "dea4d1733248ce4ecb2616c0602f54688bb055c1ecd83d785c07646d77d13684",
     "note-page-cards.js": "ac403561f1dcaa137df20fc7fb2d78b8e38475247650f336ddff4be78372da33",
-    "note-pages.d.ts": "80f515e6f00032f53e8d353cbb20ce6eecdf5d39946545bd0f143c2c69639f1a",
-    "note-pages.js": "3fd9c9ba6e18f0d7b22722fc6b7658c64ef395129ace4ff3bad19fa0754f1c76",
+    "note-pages.d.ts": "518f81d3e26c58148804ec588955ba004a9355b9f74ffb8b3bac91a7f01aa9b2",
+    "note-pages.js": "2e7be361d0871e87a45867e6da63931a31a3fae1d11337be6c6e85269e2abef6",
     "note-template.d.ts": "df28496995d29d89624d2772923014e900999a9bb4a3a6097163ed55d954fe9c",
     "note-template.js": "f93a673198e55a0889cd3bc2af9cee82255a099365824a5c9264aea36d592dfa",
     "preview-layout.css": "0dfa3ff798aa4fb99fe47826bb9c471b5ce27bbec2e126d7b52c7015ca7ccc37",
