@@ -255,7 +255,7 @@ Linux desktop smoke checks are not implied.
 | Area / owner                                                | Implemented contract                                                                                                                                          | Explicit limitation                                                                                                   |
 | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Shared templates and native completion                      | DDK sections (title, question, answer) `/section` … `/open-question`; blocks and `/flowchart`, `/sequence`, `/state-diagram`; contextual heading levels in every `.md` | No page templates, dashboards or grouping UI |
-| New-note bodies (`note-template`) | A missing `aic.md` starts empty | Existing notes and `.aic/templates/*.md` files are not rewritten and are no longer read |
+| New-note bodies (`note-template`) | A missing project note starts empty | Existing notes and `.aic/templates/*.md` files are not rewritten and are no longer read |
 | Shared diagram model/builder                                | Actual Mermaid SVG provides palette insertion, connection dragging, typed relationships, property editing, draft Copy, Undo/Redo/deletion and zoom/scroll/fit | Bounded flow/class/sequence grammar; no multiselect, subgraph authoring, visual timeline or arbitrary Mermaid support |
 | Shared diagram session                                      | Inline Apply changes only the current block; outside edits preserve the draft; conflicting block edits/read-only retain a Copy-only draft; Ctrl/Cmd+S saves   | Cancel explicitly discards the draft; note identity changes retire the session; no cross-scale links                  |
 | Layout and ordering                                         | Inline editing and read preview use the same Mermaid auto-layout; direction and sequence ordering are source semantics                                        | No arbitrary stored coordinates; legacy coordinates are ignored, and removed only after an actual visual edit         |
@@ -302,27 +302,33 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
   is required before clearing the unsaved state.
 - The active custom-editor tab is authoritative over a stale native editor. With no active file
   buffer, the workspace folder of the note already shown is used, then the first workspace folder.
-- One note file per workspace folder: `<workspaceFolder>/aic.md`. Linked Note shows only the
-  page bound to the active file by a `--- <workspace-relative path>` line; `aic.md` itself, a
-  non-file tab or a file outside the workspace shows the whole note as cards.
+- One note per project at the workspace folder root, named after the folder:
+  `<folder>/<folder name>.note.md` (`src/secondary/model.js` `projectNoteName`; a folder name that
+  cannot be a file name falls back to the last path segment). Linked Note shows only the page
+  bound to the active file by a `--- <project-relative path>` line (`/` separators, no leading
+  `./` or `/`); the note itself (in any letter case), a non-file tab or a file outside the
+  workspace shows the whole note as cards.
 - Changing the active file inside one workspace folder only moves the page focus: the document
   and its unsaved draft are kept. Undo stays within the focused page.
 - Navigation is serialized. A slower open/stat operation cannot replace a later user selection,
   and one rejected navigation request cannot poison the queue.
-- Viewing a file never creates or changes `aic.md`. A file without a page shows an empty card;
-  the first typed text appends `--- <path>` and that text, and the first save creates a missing
-  `aic.md`.
-- When `aic.md` changes under an unsaved Linked Note draft, the draft is not replaced and the
+- Viewing a file never creates or changes the project note. A file without a page shows an empty
+  card; the first typed text appends `--- <path>` and that text, and the first save creates a
+  missing project note.
+- When the project note changes under an unsaved Linked Note draft, the draft is not replaced and the
   save merges by pages: a page only the draft changed takes the draft's text, a page the draft
   added is appended, and every other byte is the note's. A page changed on both sides, or a
   draft that removed, renamed or inserted pages over a changed note, writes nothing and keeps
   the draft; the footer then offers "Discard my changes and reload" with a confirmation.
-- Existing `*.note.md` files remain ordinary Markdown files and are no longer followed. They are
-  never moved, renamed, rewritten or deleted. The legacy `aicNotes.noteRedirect` association is
+- A project note of that name from versions up to 60.x is adopted as is: its text is the leading
+  page and nothing is rewritten until the user edits. Other `*.note.md` files remain ordinary
+  Markdown files and are not followed. The `<folder>/aic.md` of 61.6.5 is no longer followed.
+  None of these files is ever moved, renamed, rewritten or deleted by the extension. The legacy `aicNotes.noteRedirect` association is
   a main-editor alias, not a disposable redirect.
-- "Open target" on a page card is the only card action. A path opens only inside the note's
-  workspace folder; an `http(s)` target opens externally.
-- The main tab of `aic.md` and Linked Note share one edit lease, so only one of them edits at a
+- "Open target" on a page card is the only card action. A relative path opens that file of the
+  note's project; an `http(s)` target opens externally. Folders, paths leaving the project and
+  other schemes are refused.
+- The main tab of the project note and Linked Note share one edit lease, so only one of them edits at a
   time.
 - Saves persist only the authored Markdown. Legacy YAML Properties and historical
   generated keys remain exact raw text; the extension does not interpret, stamp,
@@ -333,7 +339,7 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 | Surface                    | Owner                                           | Persistent side effect                                         | Failure behavior                                                     |
 | -------------------------- | ----------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------- |
 | AIC Markdown custom editor | `src/editor/provider.js`, `src/webview/main.js` | explicit VS Code document save                                 | stale generations reset or retain the visible draft                  |
-| Linked Note Secondary pane | `src/secondary/provider.js`                     | explicit save of the workspace note `aic.md`                   | never replaces an unsaved draft; reports a compact local error       |
+| Linked Note Secondary pane | `src/secondary/provider.js`                     | explicit save of the project note `<folder name>.note.md`      | never replaces an unsaved draft; reports a compact local error       |
 | Structured previews        | `vendor/markdown`, `vendor/aic-editor-core`     | exact Markdown transactions only                               | invalid source remains editable instead of being normalized silently |
 | Slash template completion  | shared core plus `src/editor/slash-provider.js` | inserts exact Markdown in AIC, native, and contextual Markdown | inactive in code/read-only contexts                                  |
 | AIC agent workflow         | `src/agents/bootstrap.js`                       | bundled instructions, explicit local handoff and copy command  | no external CLI or global configuration dependency                   |
@@ -342,7 +348,7 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 
 | Command                          | Contract                                                                                                                 |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `aicNotes.noteForCurrentFile`    | Reveal Linked Note on the active file's page of `aic.md`; report a missing workspace or a file outside it               |
+| `aicNotes.noteForCurrentFile`    | Reveal Linked Note on the active file's page of the project note; report a missing workspace or a file outside it               |
 | `aicNotes.useNativeForMarkdown`  | Set the user association for plain `*.md` back to the native editor while keeping notes in the AIC main editor           |
 | `aicNotes.enableAgentWorkflow`   | Write the bundled instruction file and a content-bound workspace marker                                                  |
 | `aicNotes.syncAgentInstructions` | Explicitly refresh the bundled workspace handoff without a CLI or global writes                                          |
@@ -383,7 +389,7 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
   selection, and theme wiring.
 - Markdown editor interactions in this section are the shared product contract. A release cannot
   replace a preview action with raw-source fallback in only one product.
-- Workspace navigation and the per-folder `aic.md` note are VS Code host capabilities. They are deliberately absent from Standard Notes, just
+- Workspace navigation and the per-project `<folder name>.note.md` note are VS Code host capabilities. They are deliberately absent from Standard Notes, just
   as Standard Notes UUID/lock/component lifecycle behavior is absent from VS Code.
 
 ## Verification ownership
@@ -418,7 +424,7 @@ There are no Node globals, filesystem modules or subprocesses in the browser hos
 checks virtual resource workspace boundaries, authority and revision. All reads
 use `workspace.fs`, while editing, undo and saves retain the existing TextDocument
 owners. Native desktop file notes remain compatible. Read-only providers can show
-Markdown and linked notes; writes, creation of `aic.md` and agent setup are
+Markdown and linked notes; writes, creation of the project note and agent setup are
 rejected before mutation. Unknown virtual providers cannot write.
 
 Menu visibility uses VS Code's filesystem-resource context, and slash completions
@@ -449,22 +455,22 @@ activation; usage and setup are in [extension updates](../standard-notes-aic/pwa
 ## One note per surface
 
 The main custom editor shows only the opened document. Linked Note shows the
-workspace note `<workspaceFolder>/aic.md`, focused on the page of the active
+project note `<folder>/<folder name>.note.md`, focused on the page of the active
 file. With several workspace folders, the active file's folder chooses the note.
 
 ### Note pages
 
 A note is a notebook. A line that is exactly `---`, first in the body or after a
 blank line and outside fenced code and leading frontmatter, starts a new page;
-`--- <workspace-relative path>` binds that page to exactly that file. Pages are
+`--- <project-relative path>` binds that page to exactly that file. Pages are
 a view: the note stays one file. The main editor shows every page as a card
 whose header names the target and offers "Open target". Linked Note shows one
 card: the page of the active file, or an empty card when it has none yet.
 A bound line starts its page even inside an unclosed code fence, so a fence
 never runs past its page.
 
-Existing `*.note.md` files remain ordinary Markdown files and are no longer
-followed.
+Other `*.note.md` files and the `aic.md` of 61.6.5 remain ordinary Markdown
+files and are not followed.
 
 PWA saves write to explicitly connected Markdown originals. Cached copies remain
 read-only until a file destination is selected. Synchronization remains under the

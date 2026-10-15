@@ -29,8 +29,9 @@ One note splits into pages: a `---` line after a blank line starts a page, and
 as cards with **Open target**. The Current, Shared and Global tabs are removed.
 The browser panel edits one `aic.md` (or the connected file) and shows the page
 of the active tab; per-URL note files, the notes tree, history and pin are
-removed. VS Code's Linked Note shows the page of the workspace `aic.md` bound to
-the active file; sidecar notes, pin and Trash are removed. Existing files are
+removed. VS Code's Linked Note shows the page of the project note
+`<folder>/<folder name>.note.md` bound to the active file by its project-relative
+path; sidecar notes, pin and Trash are removed. Existing files are
 never deleted or converted. The PWA reopens the last note, and slash templates
 follow DDK with `/aic` for an AIC block.
 
@@ -113,7 +114,8 @@ in PowerShell. Test an installed package separately from its build and checksum.
 Shared і Global вилучено. Браузерна панель редагує один `aic.md` (або
 підключений файл) і показує сторінку активної вкладки; окремі файли нотаток для
 URL, дерево нотаток, історію та закріплення вилучено. Linked Note у VS Code
-показує сторінку робочого `aic.md`, прив’язану до активного файла; sidecar-нотатки,
+показує сторінку нотатки проєкту `<папка>/<назва папки>.note.md`, прив’язану до
+активного файла шляхом відносно проєкту; sidecar-нотатки,
 закріплення й Trash вилучено. Наявні файли ніколи не видаляються й не
 конвертуються. PWA знову відкриває останню нотатку, а шаблони `/` відповідають
 DDK, де `/aic` вставляє блок AIC.

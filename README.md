@@ -3,8 +3,8 @@
 [English](README.md) · [Українська](README.uk.md)
 
 AIC Notes is a Markdown editor for VS Code desktop and the Web. It edits every `*.md` document with the AIC
-preview-first surface and keeps one note file per workspace folder, `aic.md`, whose page for the
-active file is shown in the Secondary Side Bar.
+preview-first surface and keeps one note per project, `<folder>/<folder name>.note.md`, whose
+page for the active file is shown in the Secondary Side Bar.
 The extension adds no Standard Notes sign-in, account requests or note synchronization.
 File operations use the filesystem provider selected in VS Code. Copy blocks manually when needed.
 
@@ -23,9 +23,9 @@ text. Use your filesystem or device controls when file encryption is required.
 
 Prepared release 61.6.5 uses shared editor core 8.0.0 in the main editor and Linked Note.
 A `---` line after a blank line splits a note into page cards, and `--- <path>`
-binds a page to a file. Linked Note shows the page of the workspace `aic.md` bound
+binds a page to a file. Linked Note shows the page of the project note bound
 to the active file and keeps edits and Undo inside that page. Sidecar notes, pin,
-Trash and the Current, Shared and Global tabs are removed; existing `*.note.md`
+Trash and the Current, Shared and Global tabs are removed; existing sidecar `*.note.md`
 files stay ordinary Markdown. Slash templates follow DDK, and `/aic` inserts an
 AIC block. Store availability is verified separately.
 
@@ -321,7 +321,7 @@ Linux desktop smoke checks are not implied.
   bare checkbox list and simple table. `/checkbox` and `/tasklist` also find `/checklist`.
   `/aic` inserts an AIC block (fields, secrets, codes); `/security`, `/password`, `/2fa`,
   `/fields`, `/properties` and `/credentials` also find it.
-- Opening `aic.md` in the main editor shows the whole note as page cards, each with
+- Opening the project note in the main editor shows the whole note as page cards, each with
   **Open target**. Persisted legacy note associations resolve to the main editor without changing
   user settings. Unsaved sidebar drafts are preserved when the active file changes.
 - The note pane starts directly at its content, without a duplicate name, folder,
@@ -329,7 +329,7 @@ Linux desktop smoke checks are not implied.
   change marker; placeholders are gray. Save, Ctrl/Cmd+S and leaving the surface commit the draft.
 - In the AIC editor, Mermaid is edited as raw Markdown with a live preview below the fence.
   `/mermaid` finds `/flowchart`; native VS Code text editors offer snippets but not the embedded preview.
-- A missing `aic.md` starts empty. Existing notes and `.aic/templates/*.md` files are left
+- A missing project note starts empty. Existing notes and `.aic/templates/*.md` files are left
   exactly as they are and are no longer read. No generated file/date Properties are added.
 - Insert `/flowchart`, `/sequence` or `/state-diagram` in AIC Markdown. The Mermaid
   preview has **Copy** and one **Edit** button matching other code blocks. **Edit** reveals the
@@ -400,28 +400,34 @@ Reload the VS Code window after installation. Local editing and the bundled agen
 ## Local note model
 
 - `*.md` is a normal local Markdown document shown in the full AIC Markdown editor.
-- Each workspace folder has one note file: `<workspaceFolder>/aic.md`. With several workspace
+- Each project (workspace folder) has one note at its root, named after the folder:
+  `<folder>/<folder name>.note.md`, for example `my app/my app.note.md`. With several workspace
   folders, the active file's folder chooses the note.
-- Linked Note shows only the page of `aic.md` bound to the active file. A file without a page
-  shows an empty card.
-- Viewing a file never creates or changes `aic.md`. The first typed text appends the page, and
-  the first save creates a missing `aic.md`.
-- When `aic.md` itself, a non-file tab or a file outside the workspace is active, Linked Note
-  shows the whole note as cards.
-- When `aic.md` changes while Linked Note has unsaved text, the draft is not replaced. Saving
+- Linked Note shows only the page of the project note bound to the active file. A file without a
+  page shows an empty card.
+- Viewing a file never creates or changes the project note. The first typed text appends the page,
+  and the first save creates a missing project note.
+- When the project note itself, a non-file tab or a file outside the workspace is active, Linked
+  Note shows the whole note as cards.
+- When the project note changes while Linked Note has unsaved text, the draft is not replaced. Saving
   writes the draft's pages into the changed note if those pages did not change there; otherwise
   nothing is written, the draft stays, and the footer offers "Discard my changes and reload",
   which asks for confirmation.
-- Existing `*.note.md` files remain ordinary Markdown files and are no longer followed.
+- A project note of that name from versions up to 60.x is used as is; its text stays the first
+  page and nothing in it is rewritten until you edit. Other `*.note.md` files remain ordinary
+  Markdown files and are not followed.
+- Version 61.6.5 kept the note in `<folder>/aic.md`. That file is no longer followed and is never
+  changed or deleted; if you used it, copy its pages into the project note.
 
 ### Note pages
 
 A note is a notebook. A line that is exactly `---`, first in the body or after a
 blank line and outside fenced code and leading frontmatter, starts a new page;
-`--- src/app/editor.ts` binds that page to exactly that workspace-relative file.
+`--- src/app/editor.ts` binds that page to exactly that project-relative file (written
+with `/`, without a leading `./` or `/`).
 The note stays one file. Each page is a card whose header names the target;
-**Open target** opens that file in the main editor and is the only card action.
-A target path opens only inside the note's workspace folder.
+**Open target** opens that file in the main editor, or an http(s) target in the browser,
+and is the only card action. Folders and paths outside the project are refused.
 A bound line starts its page even inside an unclosed code fence, so a fence
 never runs past its page.
 
