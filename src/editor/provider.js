@@ -27,7 +27,7 @@ import {
   workspaceLinkUri,
 } from "../notes/navigation.js";
 import { openNoteDocument } from "../notes/create.js";
-import { isWorkspaceNote } from "../secondary/model.js";
+import { isProjectNote } from "../secondary/model.js";
 import { DisposableScope } from "../lifecycle.js";
 import { ClipboardHost } from "../clipboard.js";
 
@@ -98,11 +98,9 @@ export class MarkdownEditorProvider {
     );
     webview.options = { enableScripts: true, localResourceRoots: [distRoot] };
     const folder = vscode.workspace.getWorkspaceFolder(document.uri);
-    // The workspace note is also edited from the Secondary pane: one surface
+    // The project note is also edited from the Secondary pane: one surface
     // holds the edit lease at a time. Every other Markdown file has one editor.
-    const sharedNote = Boolean(
-      folder && isWorkspaceNote(folder.uri, document.uri),
-    );
+    const sharedNote = Boolean(folder && isProjectNote(folder, document.uri));
     webview.html = this._html(webview, distRoot, sharedNote);
 
     const state = { generation: 0, applying: 0 };

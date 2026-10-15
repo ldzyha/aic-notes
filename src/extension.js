@@ -1,6 +1,6 @@
-// aic-notes — one workspace note (aic.md) with a page per file + aic-style
-// markdown editing. activate(): the Secondary pane, its reveal command and the
-// custom markdown editor.
+// aic-notes — one project note (<folder name>.note.md) with a page per file +
+// aic-style markdown editing. activate(): the Secondary pane, its reveal
+// command and the custom markdown editor.
 
 import * as vscode from "vscode";
 import { noteForCurrentFile, commandHandler } from "./notes/create.js";

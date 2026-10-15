@@ -5,9 +5,33 @@ import {
   pageForTarget,
 } from "../../vendor/aic-editor-core/note-pages.js";
 
-// One note file per workspace folder. Every other file of that folder is a
-// page inside it, bound by a `--- <folder-relative path>` separator line.
-export const WORKSPACE_NOTE = "aic.md";
+// One note per project (workspace folder): `<folder>/<folder name>.note.md`.
+// Every other file of that folder is a page inside it, bound by a
+// `--- <project-relative path>` separator line.
+const NOTE_SUFFIX = ".note.md";
+
+const usableName = (name) =>
+  typeof name === "string" &&
+  name !== "" &&
+  name !== "." &&
+  name !== ".." &&
+  !/[/\\\u0000-\u001f]/u.test(name);
+
+/**
+ * File name of the project note of a workspace folder: the folder's name
+ * (exact case, as VS Code shows it) plus `.note.md`, or the last segment of
+ * its path when that name cannot be a file name. Null when neither can.
+ */
+export function projectNoteName(folder) {
+  const base = String(folder?.uri?.path ?? "")
+    .replace(/\/+$/u, "")
+    .split("/")
+    .pop();
+  const name = [folder?.name, base].find(usableName);
+  return name ? `${name}${NOTE_SUFFIX}` : null;
+}
+
+const comparable = (value) => value.normalize("NFC").toLowerCase();
 
 function relativeTo(folderUri, uri) {
   const root = String(folderUri?.path ?? "").replace(/\/+$/u, "");
@@ -15,19 +39,21 @@ function relativeTo(folderUri, uri) {
   return value.startsWith(`${root}/`) ? value.slice(root.length + 1) : "";
 }
 
-/** True for `<workspaceFolder>/aic.md` itself (never for a nested aic.md). */
-export function isWorkspaceNote(folderUri, uri) {
-  return relativeTo(folderUri, uri).toLowerCase() === WORKSPACE_NOTE;
+/** True for the project note of `folder` itself (never for a nested file). */
+export function isProjectNote(folder, uri) {
+  const name = projectNoteName(folder);
+  const relative = relativeTo(folder?.uri, uri);
+  return Boolean(name && relative && comparable(relative) === comparable(name));
 }
 
 /**
- * Page target of a file inside its workspace folder: the folder-relative path
- * with `/`. Null for the folder itself, the note itself and outside paths, so
- * the note can never become a page of itself.
+ * Page target of a file inside its workspace folder: the project-relative
+ * path with `/`. Null for the folder itself, the note itself and outside
+ * paths, so the note can never become a page of itself.
  */
-export function pageTargetFor(folderUri, uri) {
-  const target = relativeTo(folderUri, uri);
-  return !target || target.toLowerCase() === WORKSPACE_NOTE ? null : target;
+export function pageTargetFor(folder, uri) {
+  const target = relativeTo(folder?.uri, uri);
+  return !target || isProjectNote(folder, uri) ? null : target;
 }
 
 // VS Code can keep activeTextEditor pointed at the last native editor while a

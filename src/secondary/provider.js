@@ -15,7 +15,7 @@ import {
   mergeDraftPages,
   pageTargetFor,
   preferredWorkspaceFolder,
-  WORKSPACE_NOTE,
+  projectNoteName,
 } from "./model.js";
 import {
   openSourceAtHref,
@@ -38,9 +38,9 @@ async function exists(uri) {
   }
 }
 
-// One note per workspace folder: `<workspaceFolder>/aic.md`. The pane shows the
-// page of that note bound to the active file (`--- <folder-relative path>`) and
-// the whole note when the note itself, or no workspace file, is active. The
+// One note per project: `<workspace folder>/<folder name>.note.md`. The pane
+// shows the page of that note bound to the active file (`--- <project-relative
+// path>`) and the whole note when the note itself, or no project file, is active. The
 // note text stays one document: switching files only moves the page focus.
 const CONFLICT_EXIT =
   "Copy your text, then use Discard my changes and reload, or undo the other change and press Ctrl+S.";
@@ -50,7 +50,7 @@ export class SecondaryNotePane {
     const pane = new SecondaryNotePane(context, ownership);
     const follow = () => void pane.followActive().catch(() => undefined);
     const noteWatcher = vscode.workspace.createFileSystemWatcher(
-      `**/${WORKSPACE_NOTE}`,
+      "**/*.note.md",
     );
     const resources = [
       noteWatcher,
@@ -266,7 +266,7 @@ export class SecondaryNotePane {
       `<span id="pane-status" class="aic-visually-hidden" role="status" aria-live="polite" aria-atomic="true"></span>
       <div id="pane-empty" class="aic-pane-empty">
         <strong>Open a workspace file</strong>
-        <span id="pane-empty-detail">Its page in the workspace note aic.md will appear here.</span>
+        <span id="pane-empty-detail">Its page in the project note &lt;folder name&gt;.note.md will appear here.</span>
       </div>
       <div id="editor"></div>
       <footer id="secondary-footer" aria-label="Linked note actions">
@@ -453,8 +453,10 @@ export class SecondaryNotePane {
         (candidate) => workspaceFolderFor(candidate),
       );
     if (!folder) return false;
-    const noteUri = vscode.Uri.joinPath(folder.uri, WORKSPACE_NOTE);
-    const target = own ? pageTargetFor(own.uri, active) : null;
+    const noteName = projectNoteName(folder);
+    if (!noteName) return false;
+    const noteUri = vscode.Uri.joinPath(folder.uri, noteName);
+    const target = own ? pageTargetFor(own, active) : null;
     const shown = this.documentUri ?? this.placeholderUri;
     if (shown?.toString() === noteUri.toString()) {
       const onDisk = await exists(noteUri);
@@ -564,7 +566,7 @@ export class SecondaryNotePane {
     const title = this.focusTarget
       ? path.posix.basename(this.focusTarget)
       : hasSurface
-        ? WORKSPACE_NOTE
+        ? path.posix.basename((this.documentUri ?? this.placeholderUri).path)
         : "Linked Note";
     this.view.title = title;
     // Keep filesystem timestamps as host metadata; the compact header shows only
@@ -879,7 +881,7 @@ export class SecondaryNotePane {
     if (!current()) return false;
     const confirm = "Discard and reload";
     const choice = await vscode.window.showWarningMessage(
-      `Discard your unsaved changes in ${WORKSPACE_NOTE} and reload the note as it is in the file? Copy your text first if you need it. The file is not changed.`,
+      `Discard your unsaved changes in ${path.posix.basename(this.documentUri.path)} and reload the note as it is in the file? Copy your text first if you need it. The file is not changed.`,
       { modal: true },
       confirm,
     );

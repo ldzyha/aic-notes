@@ -187,11 +187,9 @@ test("note association, the single workspace note and its reveal command are exp
   assert.match(provider, /new NavigationQueue\(\)/u);
   assert.match(provider, /activeWindowResource\(vscode\.window\)/u);
   assert.match(provider, /preferredWorkspaceFolder/u);
-  assert.match(model, /export const WORKSPACE_NOTE = "aic\.md";/u);
-  assert.match(
-    provider,
-    /vscode\.Uri\.joinPath\(folder\.uri, WORKSPACE_NOTE\)/u,
-  );
+  assert.match(model, /\$\{name\}\$\{NOTE_SUFFIX\}/u);
+  assert.match(model, /const NOTE_SUFFIX = "\.note\.md";/u);
+  assert.match(provider, /vscode\.Uri\.joinPath\(folder\.uri, noteName\)/u);
   assert.match(provider, /type: "page\.focus"/u);
   assert.match(create, /secondary\.followActive\(\)/u);
   // No sidecar, scan, template or delete path is left in the host.

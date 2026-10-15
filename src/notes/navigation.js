@@ -43,8 +43,8 @@ export async function openExternalLink(value) {
 }
 
 // "Open target" of a page card. The target is note content: a path is taken
-// relative to the note's workspace folder and must stay inside it; only
-// http(s) URLs leave the editor.
+// relative to the note's workspace folder and must name a file inside it;
+// only http(s) URLs leave the editor. Nothing is ever run.
 export async function openPageTarget(folder, target) {
   const value = String(target ?? "").trim();
   if (/^https?:\/\//iu.test(value)) return openExternalLink(value);
@@ -69,9 +69,11 @@ export async function openPageTarget(folder, target) {
       ["Restore the file or correct the page's `--- <path>` line"],
     );
   }
-  if (stat.type & vscode.FileType.Directory)
-    await vscode.commands.executeCommand("revealInExplorer", uri);
-  else await vscode.commands.executeCommand("vscode.open", uri);
+  if (!(stat.type & vscode.FileType.File))
+    throw structuredError("notes_target_not_file", `${relative} is not a file`, [
+      "Bind the page to a file, not a folder",
+    ]);
+  await vscode.commands.executeCommand("vscode.open", uri);
   return true;
 }
 

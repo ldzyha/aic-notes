@@ -687,7 +687,7 @@ window.addEventListener("message", (event) => {
     case "init": {
       const resourceUri =
         typeof msg.resourceUri === "string" ? msg.resourceUri : "";
-      // Two workspace folders both hold an `aic.md`: the path alone is not
+      // Two workspace folders may have notes of one name: the path alone is not
       // an identity.
       const sameIdentity = Boolean(
         view &&

@@ -19,8 +19,8 @@ export async function openNoteDocument(uri, options = {}) {
   await vscode.commands.executeCommand("vscode.open", uri);
 }
 
-// Reveal the Secondary pane on the active file's page of the workspace note
-// `aic.md`. Nothing is created: the page is written by the first saved edit.
+// Reveal the Secondary pane on the active file's page of the project note
+// `<folder name>.note.md`. Nothing is created: the page is written by the first saved edit.
 export async function noteForCurrentFile(secondary) {
   if (!vscode.workspace.workspaceFolders?.length) {
     throw structuredError("notes_no_workspace", "no workspace folder is open", [

@@ -34,7 +34,7 @@ function harness() {
     toString: () => `file://${path}`,
   });
   const folder = { name: "workspace", uri: uri("/workspace") };
-  // A second root with its own aic.md: the only cross-note navigation left.
+  // A second root with its own project note: the only cross-note navigation left.
   const other = { name: "other", uri: uri("/other") };
   const folderOf = (resource) =>
     [folder, other].find((entry) =>
@@ -211,7 +211,7 @@ function harness() {
 }
 
 async function mainEditor(h) {
-  const resource = h.addFile("aic.md", "body");
+  const resource = h.addFile("workspace.note.md", "body");
   const document = h.documentFor(resource);
   const provider = new h.MarkdownEditorProvider(h.context, h.ownership);
   const panel = h.panel();
@@ -228,7 +228,7 @@ async function mainEditor(h) {
 }
 
 async function auditSidebar(h) {
-  const uri = h.addFile("aic.md", "base");
+  const uri = h.addFile("workspace.note.md", "base");
   const document = h.documentFor(uri);
   const pane = new h.SecondaryNotePane(h.context, h.ownership);
   pane.document = document;
@@ -254,7 +254,7 @@ for (const saved of [true, false]) {
     pane.ready = true;
     pane.draftDirty = true;
     pane.sendInit = async () => {};
-    const next = h.addFile("aic.md", "next", h.other);
+    const next = h.addFile("other.note.md", "next", h.other);
     pane.focus = async () => {};
     pane.activeMainResource = () => h.addFile("next.js", "code", h.other);
     const originalSave = document.save;
@@ -262,12 +262,12 @@ for (const saved of [true, false]) {
     pane.view.onPost = (message) => {
       if (message.type === "draft.saveRequest") {
         void pane
-          .commitDraft("base LOCAL", pane.generation, 71, "aic.md", lease)
+          .commitDraft("base LOCAL", pane.generation, 71, "workspace.note.md", lease)
           .then((result) =>
             pane.onMessage({
               type: "draft.saveResult",
               requestId: message.requestId,
-              relativePath: "aic.md",
+              relativePath: "workspace.note.md",
               saved: Boolean(result.saved),
             }),
           );
@@ -303,14 +303,14 @@ test("a late successful sidebar save result cannot clear a newer dirty draft sta
   pane.draftDirty = false;
   await pane.onMessage({
     type: "draft.state",
-    relativePath: "aic.md",
+    relativePath: "workspace.note.md",
     dirty: true,
     pending: false,
   });
   await pane.onMessage({
     type: "draft.saveResult",
     requestId: request.requestId,
-    relativePath: "aic.md",
+    relativePath: "workspace.note.md",
     saved: true,
   });
   assert.equal(await flush, false);
@@ -334,7 +334,7 @@ test("sidebar refuses a save if external text changes during metadata IO", async
     }
     return stat(uri);
   };
-  const commit = pane.commitDraft("base LOCAL", 0, 1, "aic.md", lease);
+  const commit = pane.commitDraft("base LOCAL", 0, 1, "workspace.note.md", lease);
   await entered.promise;
   document.replace(4, 4, " EXTERNAL");
   release.resolve();
@@ -361,7 +361,7 @@ test("a save from a retired sidebar cannot acknowledge or modify its replacement
     await release.promise;
     return stat(uri);
   };
-  const commit = pane.commitDraft("obsolete", 0, 1, "aic.md", lease);
+  const commit = pane.commitDraft("obsolete", 0, 1, "workspace.note.md", lease);
   await entered.promise;
   pane.view = h.panel();
   release.resolve();
@@ -385,7 +385,7 @@ test("a queued sidebar save retains its originating view", async () => {
     text: "obsolete",
     generation: 0,
     requestId: 1,
-    relativePath: "aic.md",
+    relativePath: "workspace.note.md",
     lease,
   });
   const origin = pane.view;
@@ -478,8 +478,8 @@ test("main save preserves exact source and a later edit remains dirty", async ()
 });
 
 async function sidebar(h) {
-  const first = h.addFile("aic.md", "first");
-  const second = h.addFile("aic.md", "second", h.other);
+  const first = h.addFile("workspace.note.md", "first");
+  const second = h.addFile("other.note.md", "second", h.other);
   const source = h.addFile("second.js", "source", h.other);
   const pane = new h.SecondaryNotePane(h.context, h.ownership);
   const messages = [];
@@ -532,7 +532,7 @@ for (const route of ["follow"]) {
     await entered.promise;
     await pane.onMessage({
       type: "draft.state",
-      relativePath: "aic.md",
+      relativePath: "workspace.note.md",
       dirty: true,
       pending: false,
     });

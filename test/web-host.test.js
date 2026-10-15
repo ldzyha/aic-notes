@@ -373,7 +373,7 @@ test("browser entry activates real providers and saves a virtual Markdown TextDo
   }
 });
 
-test("browser host opens linked virtual sources, creates aic.md on the first saved edit and sets up agent instructions", async () => {
+test("browser host opens linked virtual sources, creates the project note on the first saved edit and sets up agent instructions", async () => {
   const h = await harness();
   try {
     const pane = h.providers.get("aicNotes.secondary");
@@ -386,7 +386,7 @@ test("browser host opens linked virtual sources, creates aic.md on the first sav
     assert.equal(await pane.followActive(), true);
     assert.equal(
       pane.placeholderUri.toString(),
-      "vscode-vfs://fixture/workspace/aic.md",
+      "vscode-vfs://fixture/workspace/workspace.note.md",
     );
     const init = panel.messages.findLast((message) => message.type === "init");
     assert.deepEqual([init.text, init.placeholder], ["", true]);
@@ -396,17 +396,17 @@ test("browser host opens linked virtual sources, creates aic.md on the first sav
         .target,
       "docs/source.ts",
     );
-    assert.equal(h.files.has("/workspace/aic.md"), false);
+    assert.equal(h.files.has("/workspace/workspace.note.md"), false);
     const state = pane.ownership.state(pane.editSurface);
     await pane.commitDraft(
       "--- docs/source.ts\nLinked note\n",
       pane.generation,
       1,
-      "aic.md",
+      "workspace.note.md",
       state.lease,
     );
     assert.equal(
-      h.files.get("/workspace/aic.md").text,
+      h.files.get("/workspace/workspace.note.md").text,
       "--- docs/source.ts\nLinked note\n",
     );
     await h.commands.get("aicNotes.enableAgentWorkflow")();
@@ -453,7 +453,7 @@ test("read-only virtual providers render notes and reject edits or instruction w
 test("read-only virtual Linked Note focuses the page bound to the active file; the webview installs the shared page cards", async () => {
   const h = await harness({ writable: false });
   try {
-    h.files.set("/workspace/aic.md", {
+    h.files.set("/workspace/workspace.note.md", {
       type: 1,
       text: "start\n\n--- /docs\nfolder\n\n--- docs/source.ts\nsource\n",
     });
@@ -467,7 +467,7 @@ test("read-only virtual Linked Note focuses the page bound to the active file; t
     };
     assert.equal(await pane.followActive(), true);
     const init = panel.messages.findLast((message) => message.type === "init");
-    assert.equal(init.relativePath, "aic.md");
+    assert.equal(init.relativePath, "workspace.note.md");
     assert.equal(pane.focusTarget, "docs/source.ts");
     assert.equal(
       panel.messages.findLast((message) => message.type === "page.focus")

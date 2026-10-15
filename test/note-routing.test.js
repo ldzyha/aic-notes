@@ -39,7 +39,7 @@ function harness(withOwnership = false) {
     toString: () => `file://${value}`,
   });
   const folder = { name: "workspace", uri: uri("/workspace") };
-  // A second root: each workspace folder owns its own aic.md.
+  // A second root: each workspace folder owns its own project note.
   const other = { name: "other", uri: uri("/other") };
   const folderOf = (resource) =>
     [folder, other].find(
@@ -416,7 +416,7 @@ test("legacy note association resolves to the same main provider without disposi
   const provider = h.MarkdownEditorProvider.register(h.context);
   assert.equal(h.registrations.get("aicNotes.markdown"), provider);
   assert.equal(h.registrations.get("aicNotes.noteRedirect"), provider);
-  for (const name of ["workspace.note.md", "docs.note.md", "aic.md"]) {
+  for (const name of ["workspace.note.md", "docs.note.md", "aic.md", "notes.md"]) {
     const panel = h.panel();
     await provider.resolveCustomTextEditor(
       h.getDocument(h.addFile(name)),
@@ -433,7 +433,7 @@ test("legacy note association resolves to the same main provider without disposi
 
 test("main-note edits stay in TextDocument until Ctrl+S", async () => {
   const h = harness();
-  const resource = h.addFile("aic.md", "body");
+  const resource = h.addFile("workspace.note.md", "body");
   const document = h.getDocument(resource);
   const provider = new h.MarkdownEditorProvider(h.context);
   const panel = h.panel();
@@ -550,7 +550,7 @@ test("primary does not acknowledge newer external text as saved while an older s
 
 test("a main edit notifies the sidebar without replacing its dirty draft; stale sidebar save is rejected", async () => {
   const h = harness();
-  const resource = h.addFile("aic.md", "body");
+  const resource = h.addFile("workspace.note.md", "body");
   const document = h.getDocument(resource);
   h.pane.documentUri = resource;
   h.pane.document = document;
@@ -569,7 +569,7 @@ test("a main edit notifies the sidebar without replacing its dirty draft; stale 
   assert.equal(h.pane.draftDirty, true);
   assert.equal(h.pane.generation, 1);
   assert.equal(h.sent.includes("init"), false);
-  const result = await h.pane.commitDraft("sidebar unsaved", 0, 1, "aic.md");
+  const result = await h.pane.commitDraft("sidebar unsaved", 0, 1, "workspace.note.md");
   assert.equal(result.action, "stale-draft");
   assert.equal(document.getText(), "body main");
   assert.equal(
@@ -620,7 +620,7 @@ test("manifest retains main/legacy editors, one reveal command and no sidecar co
 
 test("dirty sidebar opens main read-only, rejects stale main edits, and unlocks main after explicit sidebar save", async () => {
   const h = harness(true);
-  const resource = h.addFile("aic.md", "base");
+  const resource = h.addFile("workspace.note.md", "base");
   const document = h.getDocument(resource);
   h.pane.documentUri = resource;
   h.pane.document = document;
@@ -659,7 +659,7 @@ test("dirty sidebar opens main read-only, rejects stale main edits, and unlocks 
     "sidebar edit",
     0,
     1,
-    "aic.md",
+    "workspace.note.md",
     sidebarLease,
   );
   assert.equal(result.saved, true);
@@ -674,7 +674,7 @@ test("dirty sidebar opens main read-only, rejects stale main edits, and unlocks 
     "stale queued sidebar edit",
     0,
     2,
-    "aic.md",
+    "workspace.note.md",
     sidebarLease,
   );
   assert.equal(stale.action, "not-owner");
@@ -684,7 +684,7 @@ test("dirty sidebar opens main read-only, rejects stale main edits, and unlocks 
 test("dirty main cannot transfer ownership, and queued sidebar commits cannot mutate it", async () => {
   const h = harness(true);
   h.addFile("file.js");
-  const resource = h.addFile("aic.md", "base");
+  const resource = h.addFile("workspace.note.md", "base");
   const document = h.getDocument(resource);
   const provider = new h.MarkdownEditorProvider(h.context, h.ownership);
   const panel = h.panel();
@@ -704,7 +704,7 @@ test("dirty main cannot transfer ownership, and queued sidebar commits cannot mu
     "sidebar queued",
     0,
     1,
-    "aic.md",
+    "workspace.note.md",
     initial.lease,
   );
   assert.equal(stale.action, "not-owner");
@@ -714,7 +714,7 @@ test("dirty main cannot transfer ownership, and queued sidebar commits cannot mu
 
 test("clean native Save preserves exact source and unlocks a waiting sidebar", async () => {
   const h = harness(true);
-  const resource = h.addFile("aic.md", "base");
+  const resource = h.addFile("workspace.note.md", "base");
   const document = h.getDocument(resource);
   const provider = new h.MarkdownEditorProvider(h.context, h.ownership);
   const panel = h.panel();
@@ -751,7 +751,7 @@ test("clean native Save preserves exact source and unlocks a waiting sidebar", a
 
 test("native manual Save has no AIC metadata writer", async () => {
   const h = harness(true);
-  const document = h.getDocument(h.addFile("aic.md", "base"));
+  const document = h.getDocument(h.addFile("workspace.note.md", "base"));
   const provider = new h.MarkdownEditorProvider(h.context, h.ownership);
   const panel = h.panel();
   await provider.resolveCustomTextEditor(document, panel);
@@ -795,7 +795,7 @@ test("primary save rejects a deleted existing file without recreating it and ret
 
 test("secondary rejects saving a deleted existing note while preserving a new placeholder creation", async () => {
   const h = harness();
-  const resource = h.addFile("aic.md", "base");
+  const resource = h.addFile("workspace.note.md", "base");
   const document = h.getDocument(resource);
   h.pane.documentUri = resource;
   h.pane.document = document;
@@ -805,7 +805,7 @@ test("secondary rejects saving a deleted existing note while preserving a new pl
     "recoverable draft",
     h.pane.generation,
     124,
-    "aic.md",
+    "workspace.note.md",
   );
   assert.equal(result.action, "missing");
   assert.equal(h.files.has(resource.path), false);
@@ -817,7 +817,7 @@ test("secondary rejects saving a deleted existing note while preserving a new pl
     false,
   );
   const fresh = harness();
-  const target = fresh.uri("/workspace/aic.md");
+  const target = fresh.uri("/workspace/workspace.note.md");
   fresh.pane.placeholderUri = target;
   fresh.pane.placeholderText = "";
   fresh.pane.draftDirty = true;
@@ -825,7 +825,7 @@ test("secondary rejects saving a deleted existing note while preserving a new pl
     "new authored note",
     fresh.pane.generation,
     125,
-    "aic.md",
+    "workspace.note.md",
   );
   assert.equal(created.saved, true);
   assert.equal(fresh.files.get(target.path).text, "new authored note");
@@ -862,7 +862,7 @@ test("primary keeps genuine untitled document creation available", async () => {
 
 test("secondary does not save a note deleted while its draft edit is applied", async () => {
   const h = harness();
-  const resource = h.addFile("aic.md", "base");
+  const resource = h.addFile("workspace.note.md", "base");
   const document = h.getDocument(resource);
   h.pane.documentUri = resource;
   h.pane.document = document;
@@ -877,7 +877,7 @@ test("secondary does not save a note deleted while its draft edit is applied", a
     "recoverable changed draft",
     h.pane.generation,
     127,
-    "aic.md",
+    "workspace.note.md",
   );
   assert.equal(result.action, "missing");
   assert.equal(h.files.has(resource.path), false);
@@ -887,7 +887,7 @@ test("secondary does not save a note deleted while its draft edit is applied", a
 });
 
 // ---------------------------------------------------------------------------
-// One note per workspace folder: `<workspaceFolder>/aic.md`, one page per file.
+// One note per project: `<workspace folder>/<folder name>.note.md`, one page per file.
 // `live()` runs the real init/pane-state path and pairs the pane with a small
 // stand-in for its webview: the shared page-cards extension on a bare
 // EditorState, driven by the same host messages as src/webview/main.js.
@@ -1117,10 +1117,10 @@ function live({ ownership = false, readOnly = false } = {}) {
 test("following a file opens its page of the workspace note and writes nothing", async () => {
   const h = live();
   const a = h.addFile("src/a.js", "code");
-  const note = h.addFile("aic.md", "# Project\n\n--- src/a.js\nabout a\n");
+  const note = h.addFile("workspace.note.md", "# Project\n\n--- src/a.js\nabout a\n");
   assert.equal(await h.activate(a), true);
   const [init] = h.of("init");
-  assert.equal(init.relativePath, "aic.md");
+  assert.equal(init.relativePath, "workspace.note.md");
   assert.equal(init.resourceUri, note.toString());
   assert.equal(init.focus, "src/a.js");
   assert.equal(init.placeholder, false);
@@ -1142,7 +1142,7 @@ test("switching files keeps the unsaved draft in the same document and only move
   const h = live();
   const a = h.addFile("a.js");
   const b = h.addFile("lib/b.js");
-  const note = h.addFile("aic.md", "--- a.js\nabout a\n");
+  const note = h.addFile("workspace.note.md", "--- a.js\nabout a\n");
   await h.activate(a);
   assert.equal(await h.client.type(" more"), true);
   assert.equal(h.pane.draftDirty, true);
@@ -1153,7 +1153,7 @@ test("switching files keeps the unsaved draft in the same document and only move
     { ...h.of("page.focus").at(-1) },
     {
       type: "page.focus",
-      relativePath: "aic.md",
+      relativePath: "workspace.note.md",
       target: "lib/b.js",
     },
   );
@@ -1184,7 +1184,7 @@ test("switching files keeps the unsaved draft in the same document and only move
   assert.equal(h.client.page.text, "about a more");
 });
 
-test("without aic.md nothing is created until the first edit is saved", async () => {
+test("without a project note nothing is created until the first edit is saved", async () => {
   const h = live();
   const a = h.addFile("src/a.js");
   const b = h.addFile("b.js");
@@ -1194,7 +1194,7 @@ test("without aic.md nothing is created until the first edit is saved", async ()
   const [init] = h.of("init");
   assert.deepEqual(
     [init.text, init.placeholder, init.focus, init.relativePath],
-    ["", true, "src/a.js", "aic.md"],
+    ["", true, "src/a.js", "workspace.note.md"],
   );
   assert.equal(h.client.inits, 1);
   assert.deepEqual(h.client.page, {
@@ -1204,36 +1204,36 @@ test("without aic.md nothing is created until the first edit is saved", async ()
     exists: false,
     text: "",
   });
-  assert.equal(h.files.has("/workspace/aic.md"), false);
+  assert.equal(h.files.has("/workspace/workspace.note.md"), false);
   assert.deepEqual(h.events.opened, []);
   h.untouched();
   // Saving the untouched empty card creates nothing either.
   assert.equal((await h.client.save()).action, "placeholder");
-  assert.equal(h.files.has("/workspace/aic.md"), false);
+  assert.equal(h.files.has("/workspace/workspace.note.md"), false);
   h.untouched();
 
   await h.client.type("first note");
   assert.equal(h.client.text, "--- src/a.js\nfirst note");
-  assert.equal(h.files.has("/workspace/aic.md"), false);
+  assert.equal(h.files.has("/workspace/workspace.note.md"), false);
   assert.equal((await h.client.save()).saved, true);
   assert.equal(
-    h.files.get("/workspace/aic.md").text,
+    h.files.get("/workspace/workspace.note.md").text,
     "--- src/a.js\nfirst note",
   );
   assert.equal(h.events.applied.length, 1);
   assert.deepEqual(
     h.events.applied[0].creates.map((resource) => resource.path),
-    ["/workspace/aic.md"],
+    ["/workspace/workspace.note.md"],
   );
-  assert.equal(h.pane.documentUri.path, "/workspace/aic.md");
+  assert.equal(h.pane.documentUri.path, "/workspace/workspace.note.md");
   assert.equal(h.pane.placeholderUri, undefined);
 });
 
-test("a pre-existing aic.md is adopted as is and only appended to by the first edit", async () => {
+test("a project note of an earlier version is adopted as is and only appended to by the first edit", async () => {
   const h = live();
   const a = h.addFile("src/a.js");
   const original = "---\ntitle: mine\n---\n# Project\n\nintro\n";
-  const note = h.addFile("aic.md", original);
+  const note = h.addFile("workspace.note.md", original);
   await h.activate(a);
   assert.equal(h.client.page.exists, false);
   assert.equal(h.client.text, original);
@@ -1248,14 +1248,14 @@ test("a pre-existing aic.md is adopted as is and only appended to by the first e
   assert.deepEqual(h.events.applied[0].creates, []);
 });
 
-test("aic.md itself, a non-file tab, an outside file and no editor show the whole note unfocused", async () => {
+test("the project note itself, a non-file tab, an outside file and no editor show the whole note unfocused", async () => {
   const h = live();
   const a = h.addFile("a.js");
-  const note = h.addFile("aic.md", "--- a.js\nabout a\n");
+  const note = h.addFile("workspace.note.md", "--- a.js\nabout a\n");
   await h.activate(note);
   assert.equal(h.of("init")[0].focus, null);
   assert.equal(h.client.page, null);
-  assert.equal(h.pane.view.title, "aic.md");
+  assert.equal(h.pane.view.title, "workspace.note.md");
   await h.activate(a);
   assert.equal(h.client.page.target, "a.js");
   for (const resource of [
@@ -1263,7 +1263,7 @@ test("aic.md itself, a non-file tab, an outside file and no editor show the whol
     undefined,
     h.uri("/elsewhere/outside.js"),
     { scheme: "untitled", path: "Untitled-1", toString: () => "untitled:1" },
-    h.uri("/workspace/AIC.md"),
+    h.uri("/workspace/WORKSPACE.NOTE.MD"),
   ]) {
     await h.activate(a);
     assert.equal(await h.activate(resource), true);
@@ -1275,9 +1275,9 @@ test("aic.md itself, a non-file tab, an outside file and no editor show the whol
   await h.activate(note);
   await h.client.type("\nfree text");
   assert.equal(h.client.text, "--- a.js\nabout a\n\nfree text");
-  // A nested aic.md is an ordinary file with its own page.
-  await h.activate(h.addFile("docs/aic.md"));
-  assert.equal(h.client.page.target, "docs/aic.md");
+  // A nested note of the same name is an ordinary file with its own page.
+  await h.activate(h.addFile("docs/workspace.note.md"));
+  assert.equal(h.client.page.target, "docs/workspace.note.md");
   assert.deepEqual(h.events.saved, []);
 });
 
@@ -1303,18 +1303,18 @@ test("no workspace folder shows nothing and the reveal command reports an outsid
   rooted.untouched();
 });
 
-test("multi-root: each workspace folder has its own aic.md, chosen by the active file", async () => {
+test("multi-root: each workspace folder has its own <name>.note.md, chosen by the active file", async () => {
   const h = live();
   const a = h.addFile("a.js");
   const x = h.addFile("pkg/x.js", "code", 1, h.other);
-  const first = h.addFile("aic.md", "--- a.js\nfirst root\n");
-  const second = h.addFile("aic.md", "--- pkg/x.js\nsecond root\n", 1, h.other);
+  const first = h.addFile("workspace.note.md", "--- a.js\nfirst root\n");
+  const second = h.addFile("other.note.md", "--- pkg/x.js\nsecond root\n", 1, h.other);
   await h.activate(x);
   assert.equal(h.of("init").at(-1).resourceUri, second.toString());
   assert.equal(h.client.page.text, "second root");
   await h.activate(a);
   assert.equal(h.of("init").at(-1).resourceUri, first.toString());
-  assert.equal(h.of("init").at(-1).relativePath, "aic.md");
+  assert.equal(h.of("init").at(-1).relativePath, "workspace.note.md");
   assert.equal(h.client.page.text, "first root");
   assert.equal(h.client.inits, 2);
   h.untouched();
@@ -1346,15 +1346,15 @@ test("a read-only workspace shows the card and writes nothing", async () => {
   assert.equal(await h.client.type("blocked"), false);
   assert.equal(h.client.text, "");
   await assert.rejects(
-    h.pane.commitDraft("--- a.js\nforced", h.client.generation, 1, "aic.md"),
+    h.pane.commitDraft("--- a.js\nforced", h.client.generation, 1, "workspace.note.md"),
     /read-only/u,
   );
-  assert.equal(h.files.has("/workspace/aic.md"), false);
+  assert.equal(h.files.has("/workspace/workspace.note.md"), false);
   assert.equal(h.of("committed").at(-1).saved, false);
   h.untouched();
 
   const existing = live({ readOnly: true });
-  const note = existing.addFile("aic.md", "--- a.js\nabout a\n");
+  const note = existing.addFile("workspace.note.md", "--- a.js\nabout a\n");
   await existing.activate(existing.addFile("a.js"));
   assert.equal(existing.client.page.text, "about a");
   assert.equal(await existing.client.type("!"), false);
@@ -1362,10 +1362,10 @@ test("a read-only workspace shows the card and writes nothing", async () => {
   existing.untouched();
 });
 
-test("an external change to aic.md while a page is focused is applied and the focus kept", async () => {
+test("an external change to the project note while a page is focused is applied and the focus kept", async () => {
   const h = live();
   const a = h.addFile("a.js");
-  const note = h.addFile("aic.md", "--- a.js\nabout a\n\n--- b.js\nabout b\n");
+  const note = h.addFile("workspace.note.md", "--- a.js\nabout a\n\n--- b.js\nabout b\n");
   await h.activate(a);
   const document = h.getDocument(note);
   // Another editor rewrites text before, inside and after the focused page.
@@ -1405,7 +1405,7 @@ test("the note appearing or vanishing on disk swaps placeholder and file only fo
   const a = h.addFile("a.js");
   await h.activate(a);
   assert.equal(h.of("init").at(-1).placeholder, true);
-  const note = h.addFile("aic.md", "--- a.js\nfrom git\n");
+  const note = h.addFile("workspace.note.md", "--- a.js\nfrom git\n");
   await h.activate(a);
   assert.equal(h.of("init").at(-1).placeholder, false);
   assert.equal(h.client.page.text, "from git");
@@ -1418,7 +1418,7 @@ test("the note appearing or vanishing on disk swaps placeholder and file only fo
   );
   // A typed-in placeholder is never replaced by a file that appears later.
   await h.client.type("mine");
-  h.addFile("aic.md", "theirs\n");
+  h.addFile("workspace.note.md", "theirs\n");
   const inits = h.client.inits;
   await h.activate(h.addFile("b.js"));
   assert.equal(h.client.inits, inits);
@@ -1438,7 +1438,7 @@ test("a typed-in placeholder is appended to the note that appeared on disk", asy
   const draft = "--- a.js\nmine  \n  a\t\n\n--- lib/b.js\nabout b";
   assert.equal(h.client.text, draft);
   const theirs = "---\ntitle: t\n---\n# Theirs\n\n--- c.js\nabout c";
-  const note = h.addFile("aic.md", theirs);
+  const note = h.addFile("workspace.note.md", theirs);
   await h.activate(a);
   assert.equal(h.client.text, draft);
   assert.equal(h.pane.draftDirty, true);
@@ -1476,7 +1476,7 @@ for (const failure of ["apply", "save"]) {
     await h.activate(h.addFile("a.js"));
     await h.client.type("mine");
     const theirs = "theirs\n";
-    const note = h.addFile("aic.md", theirs);
+    const note = h.addFile("workspace.note.md", theirs);
     const document = h.getDocument(note);
     const apply = h.vscode.workspace.applyEdit;
     const save = document.save;
@@ -1507,7 +1507,7 @@ test("a placeholder draft that collides with the appeared note is kept and saved
   await h.activate(a);
   await h.client.type("mine");
   const theirs = "intro\n\n--- a.js\nfrom git\n";
-  const note = h.addFile("aic.md", theirs);
+  const note = h.addFile("workspace.note.md", theirs);
   for (let attempt = 0; attempt < 2; attempt++) {
     const result = await h.client.save();
     assert.equal(result.action, "appeared");
@@ -1538,7 +1538,7 @@ test("a placeholder draft that collides with the appeared note is kept and saved
   const w = live();
   await w.activate(undefined);
   await w.client.type("loose text");
-  const other = w.addFile("aic.md", "theirs\n");
+  const other = w.addFile("workspace.note.md", "theirs\n");
   assert.equal((await w.client.save()).action, "appeared");
   assert.equal(w.files.get(other.path).text, "theirs\n");
   assert.equal(w.client.text, "loose text");
@@ -1549,7 +1549,7 @@ test("an external change on another page and the dirty page both survive the sav
   const h = live();
   const a = h.addFile("a.js");
   const base = "# T  \n\n--- a.js\nabout a\n\n--- b.js\nabout b\n";
-  const note = h.addFile("aic.md", base);
+  const note = h.addFile("workspace.note.md", base);
   await h.activate(a);
   await h.client.type(" mine\t");
   const document = h.getDocument(note);
@@ -1614,7 +1614,7 @@ test("external changes on both sides of the dirty page are merged by pages, byte
   const a = h.addFile("src/a.js");
   const base =
     "intro \t\n\n--- src/a.js\nabout a\n\n--- b.js\nabout b  \n\n--- c.js\nabout c";
-  const note = h.addFile("aic.md", base);
+  const note = h.addFile("workspace.note.md", base);
   await h.activate(a);
   await h.client.type(" MINE");
   const document = h.getDocument(note);
@@ -1667,7 +1667,7 @@ test("a page added in the pane is appended to the changed file unless the file h
   const h = live();
   const x = h.addFile("new/x.js");
   const base = "intro\n\n--- a.js\nabout a\n";
-  const note = h.addFile("aic.md", base);
+  const note = h.addFile("workspace.note.md", base);
   await h.activate(x);
   await h.client.type("mine\n\tx  ");
   const document = h.getDocument(note);
@@ -1710,7 +1710,7 @@ test("a page added in the pane is appended to the changed file unless the file h
 test("a structural draft change or a repeated target is saved only onto an unchanged file", async () => {
   const h = live();
   const base = "intro\n\n--- a.js\nabout a\n\n--- b.js\nabout b\n";
-  const note = h.addFile("aic.md", base);
+  const note = h.addFile("workspace.note.md", base);
   await h.activate(undefined);
   const document = h.getDocument(note);
   // The draft renames page a; the file changes on page b.
@@ -1755,7 +1755,7 @@ test("a structural draft change or a repeated target is saved only onto an uncha
 test("unbound text of the whole-note view merges with a change on a bound page", async () => {
   const h = live();
   const base = "intro\n\n--- a.js\nabout a\n\n---\nloose\n";
-  const note = h.addFile("aic.md", base);
+  const note = h.addFile("workspace.note.md", base);
   await h.activate(undefined);
   await h.client.replace(0, 5, "INTRO  ");
   await h.client.replace(
@@ -1786,7 +1786,7 @@ test("Discard my changes and reload drops the draft for the document text after 
   const h = live();
   const a = h.addFile("a.js");
   const base = "intro\n\n--- a.js\nabout a\n\n--- b.js\nabout b\n";
-  const note = h.addFile("aic.md", base);
+  const note = h.addFile("workspace.note.md", base);
   await h.activate(a);
   await h.client.type(" mine");
   const draft = h.client.text;
@@ -1808,7 +1808,7 @@ test("Discard my changes and reload drops the draft for the document text after 
   };
   await h.client.discard();
   assert.equal(asked.length, 1);
-  assert.match(asked[0][0], /^Discard your unsaved changes in aic\.md/u);
+  assert.match(asked[0][0], /^Discard your unsaved changes in workspace\.note\.md/u);
   assert.equal(asked[0][1].modal, true);
   assert.equal(asked[0][2], "Discard and reload");
   assert.equal(h.client.text, draft);
@@ -1851,10 +1851,10 @@ test("Discard my changes and reload drops the draft for the document text after 
   assert.equal(h.pane.draftDirty, true);
 });
 
-test("the pane and the main tab of aic.md share one edit lease", async () => {
+test("the pane and the main tab of the project note share one edit lease", async () => {
   const h = live({ ownership: true });
   const a = h.addFile("a.js");
-  const note = h.addFile("aic.md", "--- a.js\nabout a\n");
+  const note = h.addFile("workspace.note.md", "--- a.js\nabout a\n");
   const readme = h.addFile("README.md", "plain");
   await h.activate(a);
   assert.equal(h.client.state.readOnly, false);
@@ -1894,11 +1894,11 @@ test("the pane and the main tab of aic.md share one edit lease", async () => {
   provider.dispose();
 });
 
-test("Open target opens the page's file and refuses paths that leave the workspace folder", async () => {
+test("Open target opens the page's project file and refuses folders and paths that leave the project", async () => {
   const h = live();
   const a = h.addFile("src/a.js");
   h.addFile("src", "", 2);
-  const note = h.addFile("aic.md", "--- src/a.js\nabout a\n");
+  const note = h.addFile("workspace.note.md", "--- src/a.js\nabout a\n");
   await h.activate(a);
   for (const target of ["src/a.js", "/src/a.js", "./src/a.js", "src\\a.js"]) {
     h.commands.length = 0;
@@ -1910,11 +1910,6 @@ test("Open target opens the page's file and refuses paths that leave the workspa
     );
   }
   h.commands.length = 0;
-  await h.pane.onMessage({ type: "page.openTarget", target: "src/" });
-  assert.deepEqual(
-    h.commands.map(([command, resource]) => [command, resource.path]),
-    [["revealInExplorer", "/workspace/src"]],
-  );
   await h.pane.onMessage({
     type: "page.openTarget",
     target: "https://example.com/docs?q=1",
@@ -1938,6 +1933,8 @@ test("Open target opens the page's file and refuses paths that leave the workspa
     "",
     "/",
     "src/missing.js",
+    "src",
+    "src/",
   ];
   for (const target of refused) {
     await h.pane.onMessage({ type: "page.openTarget", target });
@@ -1955,7 +1952,7 @@ test("Open target opens the page's file and refuses paths that leave the workspa
   h.untouched();
 });
 
-test("a workspace with legacy .note.md files is byte-identical after following files and saving a page", async () => {
+test("an earlier project note is adopted byte-identical until edited; aic.md of 61.6.5 and sidecars stay untouched", async () => {
   const h = live();
   const a = h.addFile("src/a.js", "code a");
   const b = h.addFile("src/b.ts", "code b");
@@ -1965,18 +1962,26 @@ test("a workspace with legacy .note.md files is byte-identical after following f
   );
   h.addFile("src/b.note.md", "legacy b");
   h.addFile("src.note.md", "legacy folder note");
-  h.addFile("workspace.note.md", "legacy project note");
   h.addFile(".aic/templates/file-note.md", "# {{title}}\n");
-  const note = h.addFile("aic.md", "existing\n");
+  const aic = h.addFile("aic.md", "--- src/b.ts\nfrom 61.6.5\n");
+  const note = h.addFile("workspace.note.md", "legacy project note  \n");
   const before = new Map(
     [...h.files].map(([name, file]) => [name, JSON.stringify(file)]),
   );
   await h.activate(a);
   await h.activate(b);
+  // The 61.6.5 note is not followed: its page for b.ts is not shown.
+  assert.equal(h.client.page.exists, false);
   await h.activate(legacy);
   // A legacy sidecar is an ordinary file: it is not followed as a note.
   assert.equal(h.client.page.target, "src/a.note.md");
-  assert.equal(h.client.text, "existing\n");
+  assert.equal(h.client.text, "legacy project note  \n");
+  await h.activate(aic);
+  assert.equal(h.client.page.target, "aic.md");
+  for (const [name, file] of before)
+    assert.equal(JSON.stringify(h.files.get(name)), file, name);
+  h.untouched();
+
   await h.activate(b);
   await h.client.type("about b");
   assert.equal((await h.client.save()).saved, true);
@@ -1988,7 +1993,7 @@ test("a workspace with legacy .note.md files is byte-identical after following f
   assert.deepEqual([...h.files.keys()], [...before.keys()]);
   assert.equal(
     h.files.get(note.path).text,
-    "existing\n\n--- src/b.ts\nabout b",
+    "legacy project note  \n\n--- src/b.ts\nabout b",
   );
   assert.deepEqual(h.events.saved, [note.path]);
   assert.deepEqual(h.events.opened, [note.path]);
@@ -2000,4 +2005,39 @@ test("a workspace with legacy .note.md files is byte-identical after following f
     h.events.applied[0].edits.map(({ resource }) => resource.path),
     [note.path],
   );
+});
+
+test("the note is named after the project folder: spaces, Unicode, dots and case kept", async () => {
+  for (const [name, file, root = `/srv/${name}`] of [
+    ["my app", "my app.note.md"],
+    ["Проєкт ünï", "Проєкт ünï.note.md"],
+    ["my.app.v2", "my.app.v2.note.md"],
+    ["MyApp", "MyApp.note.md"],
+    // A custom workspace name that is no file name: the folder's own name.
+    ["Docs / API", "api-docs.note.md", "/srv/api-docs"],
+  ]) {
+    const h = live();
+    h.folder.name = name;
+    h.folder.uri = h.uri(root);
+    const index = h.addFile("src/index.js", "code");
+    await h.activate(index);
+    assert.equal(h.pane.view.title, "index.js", name);
+    assert.equal(h.of("init").at(-1).relativePath, file, name);
+    h.untouched();
+    await h.client.type("hello");
+    assert.equal((await h.client.save()).saved, true);
+    assert.equal(
+      h.files.get(`${root}/${file}`).text,
+      "--- src/index.js\nhello",
+      name,
+    );
+    assert.deepEqual(
+      h.events.applied[0].creates.map((resource) => resource.path),
+      [`${root}/${file}`],
+    );
+    // The note in another case is still the note, never a page of itself.
+    await h.activate(h.uri(`${root}/${file.toUpperCase()}`));
+    assert.equal(h.client.page, null, name);
+    assert.equal(h.pane.view.title, file, name);
+  }
 });

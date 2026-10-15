@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   activeResource,
-  isWorkspaceNote,
+  isProjectNote,
+  projectNoteName,
   NavigationQueue,
   pageTargetFor,
   preferredWorkspaceFolder,
@@ -68,29 +69,43 @@ test("navigation requests stay ordered and recover after rejection", async () =>
   assert.deepEqual(events, ["first", "failed", "last"]);
 });
 
-test("a file's page target is its folder-relative path; the note is never its own page", () => {
-  const folder = { path: "/work/app" };
+test("the project note is <folder name>.note.md; a file's page target is its project-relative path", () => {
+  const folder = { name: "app", uri: { path: "/work/app" } };
   const at = (path) => ({ path });
+  assert.equal(projectNoteName(folder), "app.note.md");
+  assert.equal(
+    projectNoteName({ name: "My Ünï.v2", uri: { path: "/x/y" } }),
+    "My Ünï.v2.note.md",
+  );
+  // A custom workspace name that is no file name: the folder's own name.
+  for (const name of ["a/b", "a\\b", "", "..", undefined])
+    assert.equal(
+      projectNoteName({ name, uri: { path: "/srv/api-docs/" } }),
+      "api-docs.note.md",
+      String(name),
+    );
+  assert.equal(projectNoteName({ name: "", uri: { path: "/" } }), null);
   assert.equal(pageTargetFor(folder, at("/work/app/src/a.ts")), "src/a.ts");
   assert.equal(pageTargetFor(folder, at("/work/app/a.note.md")), "a.note.md");
+  assert.equal(pageTargetFor(folder, at("/work/app/aic.md")), "aic.md");
   assert.equal(
-    pageTargetFor(folder, at("/work/app/docs/aic.md")),
-    "docs/aic.md",
+    pageTargetFor(folder, at("/work/app/docs/app.note.md")),
+    "docs/app.note.md",
   );
   assert.equal(
-    pageTargetFor({ path: "/work/app/" }, at("/work/app/b.js")),
+    pageTargetFor({ ...folder, uri: { path: "/work/app/" } }, at("/work/app/b.js")),
     "b.js",
   );
   for (const path of [
-    "/work/app/aic.md",
-    "/work/app/AIC.md",
+    "/work/app/app.note.md",
+    "/work/app/APP.NOTE.md",
     "/work/app",
     "/work/application/a.ts",
     "/elsewhere/a.ts",
   ])
     assert.equal(pageTargetFor(folder, at(path)), null, path);
-  assert.equal(isWorkspaceNote(folder, at("/work/app/aic.md")), true);
-  assert.equal(isWorkspaceNote(folder, at("/work/app/docs/aic.md")), false);
-  assert.equal(isWorkspaceNote(folder, at("/work/app/a.note.md")), false);
-  assert.equal(isWorkspaceNote(folder, at("/work/application/aic.md")), false);
+  assert.equal(isProjectNote(folder, at("/work/app/app.note.md")), true);
+  assert.equal(isProjectNote(folder, at("/work/app/docs/app.note.md")), false);
+  assert.equal(isProjectNote(folder, at("/work/app/aic.md")), false);
+  assert.equal(isProjectNote(folder, at("/work/application/app.note.md")), false);
 });
