@@ -21,19 +21,18 @@ The extension does not open or convert `.aicnotes` files; existing files are lef
 untouched. Secret fields remain visually masked, but their Markdown source is plain
 text. Use your filesystem or device controls when file encryption is required.
 
-Prepared release 61.6.5 uses shared editor core 8.0.0 in the main editor and Linked Note.
+Prepared release 62.3.1 uses shared editor core 8.1.0 in the main editor and Linked Note.
 A `---` line after a blank line splits a note into page cards, and `--- <path>`
-binds a page to a file. Linked Note shows the page of the project note bound
+binds a page to a file by its project-relative path, matched exactly as written. Linked Note shows the page of the project note bound
 to the active file and keeps edits and Undo inside that page. Sidecar notes, pin,
 Trash and the Current, Shared and Global tabs are removed; existing sidecar `*.note.md`
 files stay ordinary Markdown. Slash templates follow DDK, and `/aic` inserts an
 AIC block. Store availability is verified separately.
 
-The local-file PWA opens and edits Markdown files and folders directly on disk.
+The PWA edits one chosen Markdown note file directly on disk.
 In VS Code the main editor shows the opened document and Linked Note shows the
 active file's note; mobile navigation gives the editor more space. Optional on-device AI and the shared DDK-based writing guide help
-revise documents. Folder imports count only Markdown files and support progress
-and cancellation. VS Code refuses to save an existing document after its file
+revise documents. VS Code refuses to save an existing document after its file
 has been deleted. Synchronization remains under the user's control.
 
 Empty editable secret (`*|`) parts offer **Generate password** at every panel
@@ -160,8 +159,8 @@ without a duplicate heading row. Use `## Account name` for a custom name or bare
 for the default Security header.
 
 The independent [AIC for Standard Notes](https://github.com/ldzyha/standard-notes-aic) plugin shares
-editor-core 8.0.0 but is a separate product. Current release targets are AIC Notes
-61.6.5 and AIC for Standard Notes 52.7.6. This page describes the release contract;
+editor-core 8.1.0 but is a separate product. Current release targets are AIC Notes
+62.3.1 and AIC for Standard Notes 53.6.3. This page describes the release contract;
 published artifacts are verified separately by the release workflow. Transfer content manually
 between the two applications; VS Code has no Standard Notes account integration.
 
@@ -374,25 +373,25 @@ Use the manual GitHub VSIX until that separate distribution is set up.
 The [unified release page](https://github.com/ldzyha/standard-notes-aic/releases/tag/v48.4.5)
 has installation steps for VS Code, Standard Notes and Chrome/Edge in one place.
 
-For manual installation, download `aic-notes-61.6.5.vsix` and its
-`aic-notes-61.6.5.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
+For manual installation, download `aic-notes-62.3.1.vsix` and its
+`aic-notes-62.3.1.vsix.sha256` checksum from [AIC Notes releases](https://github.com/ldzyha/aic-notes/releases).
 The VSIX is universal: use the same file on Windows, Linux, macOS, and code-server. Do not
 substitute an older release's checksum for this candidate.
 
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\aic-notes-61.6.5.vsix -Algorithm SHA256).Hash.ToLower()
-Get-Content .\aic-notes-61.6.5.vsix.sha256
-code --install-extension .\aic-notes-61.6.5.vsix --force
+(Get-FileHash .\aic-notes-62.3.1.vsix -Algorithm SHA256).Hash.ToLower()
+Get-Content .\aic-notes-62.3.1.vsix.sha256
+code --install-extension .\aic-notes-62.3.1.vsix --force
 ```
 
 Linux, macOS, or code-server:
 
 ```sh
-sha256sum -c aic-notes-61.6.5.vsix.sha256
-code --install-extension ./aic-notes-61.6.5.vsix --force
-# or: code-server --install-extension ./aic-notes-61.6.5.vsix --force
+sha256sum -c aic-notes-62.3.1.vsix.sha256
+code --install-extension ./aic-notes-62.3.1.vsix --force
+# or: code-server --install-extension ./aic-notes-62.3.1.vsix --force
 ```
 
 Reload the VS Code window after installation. Local editing and the bundled agent instructions require no additional executable.

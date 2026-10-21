@@ -7,20 +7,23 @@
 Public product documentation: [releases and installation](https://aic.dzyha.com/releases),
 [terms and privacy](https://aic.dzyha.com/terms), [AIC Notes](https://aic.dzyha.com/).
 
-### Prepared release — October 14, 2026
+### Prepared release — October 21, 2026
 
 The existing [AIC Notes listing](https://marketplace.visualstudio.com/items?itemName=ldzyha.aic-notes)
-under publisher **ldzyha** is the update destination. **61.6.5 is prepared**, with
-shared core 8.0.0: note pages as cards, Linked Note showing the page of the
-workspace `aic.md` bound to the active file, removal of sidecar notes, pin, Trash
-and the Current, Shared and Global tabs, and DDK slash templates with `/aic`. Its GitHub assets,
+under publisher **ldzyha** is the update destination. **62.3.1 is prepared**, with
+shared core 8.1.0: one note per project, `<folder>/<folder name>.note.md`, with
+project-relative page targets matched exactly as written (the `aic.md` of 61.6.5
+is no longer followed), agent guide version 4, and warning and error quotes that
+redraw when the parse finishes. The 61.6.5 note pages as cards, removal of sidecar
+notes, pin, Trash and the Current, Shared and Global tabs, and DDK slash templates
+with `/aic` are carried. Its GitHub assets,
 upload acceptance and public Marketplace availability require separate verification.
 The authenticated publisher dashboard confirmed **59.0.2 public** on October 2.
-This does not establish publication of the prepared 61.6.5 update.
+This does not establish publication of the prepared 62.3.1 update.
 
 The earlier [verification-only publishing run](https://github.com/ldzyha/aic-notes/actions/runs/36847214736)
 checked 57.1.2 release bytes without authenticating or submitting them. It is
-historical verification evidence, not proof of a 61.6.5 publication.
+historical verification evidence, not proof of a 62.3.1 publication.
 
 Automatic publishing code is prepared. The repository does **not** yet have the
 `VSCE_PAT` Actions secret, so authenticated automatic publishing is **not fully
@@ -122,20 +125,23 @@ installation path. [code-server extension sources](https://coder.com/docs/code-s
 Публічна документація продукту: [випуски та встановлення](https://aic.dzyha.com/releases),
 [умови й приватність](https://aic.dzyha.com/terms), [AIC Notes](https://aic.dzyha.com/).
 
-### Підготовлений випуск — 14 жовтня 2026
+### Підготовлений випуск — 21 жовтня 2026
 
 Наявний [запис AIC Notes](https://marketplace.visualstudio.com/items?itemName=ldzyha.aic-notes)
-від видавця **ldzyha** є призначенням оновлення. **61.6.5 підготовлено** зі
-спільним ядром 8.0.0: картки сторінок нотатки, Linked Note зі сторінкою робочого
-`aic.md`, прив’язаною до активного файла, вилучення sidecar-нотаток, закріплення,
-Trash і вкладок Current, Shared та Global, а також шаблони `/` за DDK з `/aic`. Файли GitHub,
+від видавця **ldzyha** є призначенням оновлення. **62.3.1 підготовлено** зі
+спільним ядром 8.1.0: одна нотатка на проєкт, `<папка>/<назва папки>.note.md`, зі
+сторінками, прив’язаними за шляхом у проєкті, що зіставляються точно як записані
+(`aic.md` з 61.6.5 більше не відстежується), інструкція агента версії 4 і
+цитати-попередження та помилки, що перемальовуються після завершення розбору. Зберігаються
+картки сторінок нотатки з 61.6.5, вилучення sidecar-нотаток, закріплення, Trash і
+вкладок Current, Shared та Global, а також шаблони `/` за DDK з `/aic`. Файли GitHub,
 прийняття завантаження та публічна доступність у Marketplace перевіряються окремо.
 Авторизована панель видавця 2 жовтня підтвердила **59.0.2 у публічному доступі**.
-Це не означає публікації підготовленого оновлення 61.6.5.
+Це не означає публікації підготовленого оновлення 62.3.1.
 
 Попередній [запуск лише для перевірки](https://github.com/ldzyha/aic-notes/actions/runs/36847214736)
 звірив файли 57.1.2 без авторизації та подання. Це історичний результат,
-а не підтвердження публікації 61.6.5.
+а не підтвердження публікації 62.3.1.
 
 Код автоматичної публікації підготовлений. У репозиторії **ще немає** Actions
 secret `VSCE_PAT`, тому автоматична публікація з авторизацією **ще не повністю

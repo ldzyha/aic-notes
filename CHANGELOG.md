@@ -2,6 +2,48 @@
 
 [English](CHANGELOG.md) · [Українська](CHANGELOG.uk.md)
 
+## 62.3.1 — 2026-10-21
+
+Release sequence 62 · 3 feature outcomes · 1 fixed-bug outcome.
+Coordinates Standard Notes AIC 53.6.3, AIC Notes 62.3.1, experimental browser
+0.13.0 and shared core 8.1.0. Prepared release; publication is verified separately.
+Shared core 8.1.0 changes how a page target is matched: exactly as written.
+
+### F01 — One note per project, `<folder name>.note.md`
+
+Each project (workspace folder) keeps one note at its root, named after the
+folder, for example `my app/my app.note.md`. Linked Note and the main editor use
+it instead of the `aic.md` of 61.6.5, which is no longer followed and is never
+changed or deleted: copy its pages into the project note. A project note of that
+name from versions up to 60.x is used as is. Viewing a file writes nothing; the
+first save creates a missing project note. Other `*.note.md` files stay ordinary
+Markdown.
+
+### F02 — Pages bind by the project-relative path, matched exactly as written
+
+`--- src/app/editor.ts` binds a page to exactly that project-relative file,
+written with `/` and without a leading `./` or `/`. `src/a.js`, `./src/a.js` and
+`/src/a.js` are different targets, so pages copied from 61.6.5 must be written in
+that form. **Open target** opens a file inside the project or an `http(s)`
+address; a folder target is refused instead of being revealed in Explorer.
+
+### F03 — Coding agents read the project note
+
+**Copy Agent Instructions** and the agent workflow handoff carry guide version 4:
+the project note `<folder name>.note.md` is read-only, owner-authored context,
+namely its leading text and the page bound to the file being changed. Agents
+never create the note or add pages. Per-file and per-folder `*.note.md` files are
+read if present and not created. A changed guide is written by **Enable AIC Agent
+Workflow** or **Sync Agent Instructions** as a new
+`.vscode/aic-agent-<content-hash>.md`, and the marker points to it; the previous
+file stays in place.
+
+### B01 — Warning and error quotes follow the finished parse
+
+A `!>` or `!>>` line inside a code fence could be drawn as a warning or error
+quote while the editor had not finished parsing the note, and stayed that way
+until the next edit or scroll. Quotes now redraw when the parse finishes.
+
 ## 61.6.5 — 2026-10-14
 
 Release sequence 61 · 6 feature outcomes · 5 fixed-bug outcomes.
