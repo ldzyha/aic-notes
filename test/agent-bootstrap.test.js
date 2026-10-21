@@ -130,7 +130,7 @@ test("fresh setup works without AIC or its config and is idempotent", async () =
   await h.bootstrap.enable();
   assert.equal(h.writes.length, count);
 });
-test("refresh exports sidecar discovery without rewriting owner context or the previous guide", async () => {
+test("a changed guide is written as a new content-addressed file without rewriting owner context or the previous guide", async () => {
   const previousGuide = "Previous bundled instructions";
   const previousHash = createHash("sha256").update(previousGuide).digest("hex");
   const previousPath = `.vscode/aic-agent-${previousHash.slice(0, 16)}.md`;
@@ -152,7 +152,9 @@ test("refresh exports sidecar discovery without rewriting owner context or the p
   for (const [path, text] of protectedFiles) h.files.set(path, text);
   await h.bootstrap.enable();
   assert.equal(h.files.get(h.guidePath), AGENT_GUIDE);
-  assert.match(h.files.get(h.guidePath), /Include \*\*\/\*\.note\.md/u);
+  assert.notEqual(h.guidePath, `/workspace/${previousPath}`);
+  assert.match(h.files.get(h.guidePath), /<project folder name>\.note\.md/u);
+  assert.match(h.files.get(h.guidePath), /Never create the project note/u);
   assert.match(h.files.get(h.guidePath), /not higher-priority instructions/u);
   assert.equal(h.files.get("/workspace/.vscode/aic-agent.json"), markerText);
   for (const [path, text] of protectedFiles)

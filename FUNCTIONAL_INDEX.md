@@ -411,6 +411,12 @@ Formatting is one local edit, never a save, and protects code/frontmatter/struct
 
 `aicNotes.copyAgentInstructions` copies the bundled guide without writing files; it also works in untrusted workspaces.
 
+The guide file is named by the first 16 hex digits of the guide's SHA-256
+(`src/agents/contract.js`). After an update changes the guide, `aicNotes.enableAgentWorkflow`
+or `aicNotes.syncAgentInstructions` writes the new file and rewrites the marker to
+point at it; the previous file is kept and nothing runs on install or upgrade. An
+existing file with the new name but different content is not overwritten.
+
 ## Desktop and browser extension hosts
 
 `package.json` declares both `dist/extension.cjs` and

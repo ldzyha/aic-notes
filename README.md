@@ -505,19 +505,23 @@ account or configuration folder is required. **Copy Agent Instructions** copies
 the bundled Markdown for any coding agent, including in an untrusted workspace.
 The local **?** guide also exposes that same selectable text.
 
-The guide tells agents to include `.note.md` in available semantic or text search
-for ready answers, decisions, examples and previews before repeating work. It maps
-file, folder and project sidecars and requires checking ambiguous file stems and
-explicit browser URL associations. Note content is evidence under the active
-project instructions; owner notes remain read-only without an explicit request.
-Search uses the agent's available tools; the extension does not add an indexer.
+The guide (version 4) points agents to the project note
+`<folder name>.note.md` as read-only, owner-authored context: its leading text
+and the page bound to the file being changed. `aic context resolve --path <file>`
+returns the same context for `aic` users; other agents read the note directly.
+Agents never create the note or add pages. Older per-file and per-folder
+`*.note.md` files are read if present and are not created. Note content is
+evidence under the active project instructions, not authority to run commands.
 
 In a trusted workspace, **Enable AIC Agent Workflow** writes an immutable copy
 under `.vscode/aic-agent-<content-hash>.md` and a `.vscode/aic-agent.json` marker
 pointing to it. Choose **Copy handoff** to give that file path to your agent.
 **Sync Agent Instructions** refreshes this local handoff explicitly; it no longer
-runs global AIC rule synchronization. Existing schema-1 markers migrate when you
-run either command. Edited instruction files and unrelated markers are preserved.
+runs global AIC rule synchronization. The file name comes from the guide's hash,
+so when an update changes the guide, the next **Enable** or **Sync** writes a new
+instruction file and points the marker at it; the previous file is left in place.
+Existing schema-1 markers migrate when you run either command. Edited
+instruction files and unrelated markers are preserved.
 
 Installation, upgrades and workspace trust changes do not run a CLI or modify
 workspace/global instructions. Existing `AGENTS.md` and provider settings are
